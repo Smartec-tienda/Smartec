@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec · Inventario</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="cache.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  #store-selector {
+    background-color: rgba(255,255,255,0.15);
+    color: #ffffff;
+    min-width: 200px;
+  }
+  #store-selector:hover { background-color: rgba(255,255,255,0.25); }
+  #store-selector:focus { outline: none; border-color: rgba(255,255,255,0.6); }
+  #store-selector option {
+    color: #0A2A4A;
+    background-color: #ffffff;
+    padding: 6px;
+    font-size: 14px;
+  }
+  #store-selector option:checked { background-color: #4A7A9A; color: #ffffff; }
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<!-- LOGIN -->
+<div id="login-screen" class="hidden min-h-screen items-center justify-center bg-sd p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
+    <p class="text-center text-sm text-gray-500 mb-6">Inventario</p>
+    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
+    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
+    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
+    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
+  </div>
+</div>
+
+<!-- VERIFICANDO SESIÓN -->
+<div id="loading-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+  <div class="text-center">
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
+    <p class="text-white font-semibold text-sm">Verificando sesión...</p>
+  </div>
+</div>
+
+<!-- PANEL -->
+<div id="panel-screen" class="hidden min-h-screen flex flex-col">
+
+  <header class="bg-sd text-white px-4 py-3 flex justify-between items-center shrink-0 gap-3">
+    <div class="flex items-center gap-3 min-w-0 flex-1">
+      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap shrink-0">SMART<span class="text-sl">EC</span></h1>
+      <div class="hidden md:block w-px h-6 bg-white/20 shrink-0"></div>
+      <div class="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
+        <p id="header-store-text" class="text-sm md:text-base font-semibold truncate">—</p>
+        <select id="store-selector" class="hidden text-sm rounded-lg px-3 py-1.5"></select>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 text-sm shrink-0">
+      <span id="user-info" class="hidden lg:inline opacity-80 text-xs"></span>
+      <button onclick="forceRefresh()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition" title="Refrescar datos">🔄</button>
+      <a href="home.html" class="hover:text-sl transition text-xs">← Inicio</a>
+      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
+    </div>
+  </header>
+
+  <main class="flex-1 container mx-auto p-4 md:p-6 max-w-6xl">
+
+    <!-- Modo -->
+    <div class="bg-white rounded-xl shadow p-3 mb-4 flex flex-wrap gap-2">
+      <button onclick="setMode('explorar')" id="mode-explorar" class="mode-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-lg font-semibold text-sm bg-sd text-white">
+        🔍 Explorar
+      </button>
+      <button onclick="setMode('conteo')" id="mode-conteo" class="mode-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-lg font-semibold text-sm bg-gray-100 text-sd hover:bg-gray-200">
+        📊 Conteo rápido
+      </button>
+      <button onclick="setMode('recepcion')" id="mode-recepcion" class="mode-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-lg font-semibold text-sm bg-gray-100 text-sd hover:bg-gray-200">
+        📦 Recepción
+      </button>
+    </div>
+
+    <!-- Buscador con escáner -->
+    <div class="bg-white rounded-xl shadow p-4 mb-4">
+      <div class="flex gap-2">
+        <div class="relative flex-1">
+          <input id="search" type="text" placeholder="🔍 Buscar producto por nombre, SKU o código de barras..." class="w-full pl-4 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-sl">
+        </div>
+        <button onclick="openScanner()" class="px-4 py-3 bg-sd text-white rounded-xl hover:bg-sl transition flex items-center gap-2 shrink-0 font-semibold text-sm">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V5a2 2 0 012-2h2m0 0h2M5 3h2M3 17v2a2 2 0 002 2h2m0 0h2m-2 0h2M21 7V5a2 2 0 00-2-2h-2m0 0h-2m2 0h-2M21 17v2a2 2 0 01-2 2h-2m0 0h-2m2 0h-2M7 8v8m4-8v8m4-8v8"/></svg>
+          Escanear
+        </button>
+      </div>
+    </div>
+
+    <!-- Panel de la tarjeta del producto (modo explorar) -->
+    <div id="product-card-panel" class="hidden">
+      <div class="bg-white rounded-xl shadow overflow-hidden mb-4">
+        <div id="product-card-header" class="p-5 border-b"></div>
+        <div id="product-card-variants" class="p-5"></div>
+      </div>
+      <div class="bg-white rounded-xl shadow p-5 mb-4">
+        <h3 class="font-bold text-sd mb-3">Historial reciente de movimientos</h3>
+        <div id="product-history" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <!-- Mensaje cuando no encuentra (modo explorar) -->
+    <div id="not-found-panel" class="hidden bg-white rounded-xl shadow p-8 text-center">
+      <p class="text-5xl mb-3">🔍</p>
+      <p class="text-gray-600 font-semibold mb-1">Producto no encontrado</p>
+      <p id="not-found-code" class="text-xs text-gray-400 mb-5"></p>
+      <button onclick="goToCreateProduct()" class="bg-sd text-white px-6 py-2.5 rounded-lg hover:bg-sl font-semibold text-sm">
+        + Crear producto nuevo en admin
+      </button>
+    </div>
+
+    <!-- Modo conteo rápido -->
+    <div id="mode-conteo-panel" class="hidden">
+      <div class="bg-white rounded-xl shadow p-5 mb-4">
+        <h3 class="font-bold text-sd mb-3">Conteo rápido</h3>
+        <p class="text-xs text-gray-500 mb-4">Escanea o busca los productos y ajusta la cantidad real. Los cambios se aplican al final.</p>
+        <div id="conteo-list" class="space-y-2 mb-4">
+          <p class="text-center text-gray-400 py-8 text-sm">Aún no hay productos en el conteo</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="clearConteo()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">
+            Limpiar lista
+          </button>
+          <button onclick="applyConteo()" id="apply-conteo-btn" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold text-sm disabled:opacity-40" disabled>
+            💾 Aplicar ajustes
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modo recepción -->
+    <div id="mode-recepcion-panel" class="hidden">
+      <div class="bg-white rounded-xl shadow p-5 mb-4">
+        <h3 class="font-bold text-sd mb-3">Recepción de mercancía</h3>
+        <p class="text-xs text-gray-500 mb-4">Escanea los productos que llegan y ajusta la cantidad. Se suman al stock al confirmar.</p>
+        <div id="recepcion-list" class="space-y-2 mb-4">
+          <p class="text-center text-gray-400 py-8 text-sm">Aún no hay productos en la recepción</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="clearRecepcion()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">
+            Limpiar lista
+          </button>
+          <button onclick="applyRecepcion()" id="apply-recepcion-btn" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold text-sm disabled:opacity-40" disabled>
+            📥 Confirmar entrada
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL ESCÁNER -->
+<div id="scanner-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/80 pointer-events-auto" onclick="closeScanner()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[95vh] overflow-y-auto p-6 pointer-events-auto">
+    <button onclick="closeScanner()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-1 pr-10">📷 Escanear código</h3>
+    <p class="text-xs text-gray-500 mb-4">Apunta la cámara al código de barras o QR del producto</p>
+
+    <div id="scanner-reader" class="w-full rounded-xl overflow-hidden bg-black mb-3" style="min-height:280px;"></div>
+
+    <div id="scanner-status" class="text-center text-sm text-gray-600 mb-4">
+      Iniciando cámara...
+    </div>
+
+    <div id="scanner-debug" class="hidden border-t pt-4 mt-2">
+      <p class="text-[10px] font-semibold text-gray-400 uppercase mb-2">Modo debug (superadmin)</p>
+      <div class="flex gap-2">
+        <input id="scanner-debug-input" type="text" placeholder="Escribe el código y Enter..." class="flex-1 px-3 py-2 border rounded-lg text-sm font-mono">
+        <button onclick="simulateScan()" class="px-3 py-2 bg-sl text-white rounded-lg hover:bg-sd text-sm font-semibold">
+          Simular
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MOVIMIENTO RÁPIDO -->
+<div id="quick-mov-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeQuickMov()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto">
+    <button onclick="closeQuickMov()" class="absolute top-3 right-3 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="quick-mov-title" class="text-lg font-bold text-sd mb-1 pr-10">Movimiento</h3>
+    <p id="quick-mov-subtitle" class="text-xs text-gray-500 mb-4"></p>
+    <div id="quick-mov-body"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
+  updateDoc, serverTimestamp, query, where
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+/* ============ CONFIG ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* ============ ESTADO ============ */
+let currentUser = null;
+let currentUserData = null;
+let currentStore = null;
+let stores = [];
+let products = [];
+let inventory = [];      // de la tienda actual
+let allInventory = [];   // global
+let categories = {};
+let currentMode = 'explorar';
+
+// Buffers para conteo y recepción
+let conteoBuffer = [];    // [{productId, variantId, sku, name, colorName, size, stockAntes, stockDespues}]
+let recepcionBuffer = []; // igual estructura
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+
+/* Traductor hex → nombre */
+const COLOR_NAMES = {
+  '#000000':'Negro', '#ffffff':'Blanco', '#c0c0c0':'Plateado', '#808080':'Gris',
+  '#ff0000':'Rojo', '#00ff00':'Verde', '#0000ff':'Azul', '#ffff00':'Amarillo',
+  '#ffa500':'Naranja', '#800080':'Morado', '#ffc0cb':'Rosado', '#a52a2a':'Café',
+  '#964b00':'Café', '#8b4513':'Café', '#d2b48c':'Beige', '#f5f5dc':'Crema',
+  '#00ffff':'Cian', '#008080':'Turquesa', '#4a7a9a':'Azul petróleo',
+  '#0a2a4a':'Azul oscuro', '#191970':'Azul medianoche', '#f0f0f0':'Blanco humo',
+  '#e0e0e0':'Gris claro', '#a9a9a9':'Gris oscuro', '#ffd700':'Dorado',
+  '#b87333':'Bronce', '#cd7f32':'Bronce', '#36454f':'Gris carbón'
+};
+const colorName = (hex, fallback) => {
+  if (!hex) return fallback || '';
+  const k = String(hex).toLowerCase();
+  return COLOR_NAMES[k] || fallback || hex;
+};
+
+async function audit(entry) {
+  try {
+    await addDoc(collection(db,'auditLog'), {
+      ...entry,
+      userId: currentUser?.uid || null,
+      userEmail: currentUser?.email || null,
+      userRole: currentUserData?.role || null,
+      storeId: currentStore?.storeId || null,
+      timestamp: serverTimestamp()
+    });
+  } catch(e) { console.warn('audit fail', e); }
+}
+
+/* ============ AUTH ============ */
+$('login-btn').onclick = async () => {
+  const err = $('login-error');
+  err.classList.add('hidden');
+  try {
+    await signInWithEmailAndPassword(auth, $('login-email').value.trim(), $('login-pass').value);
+  } catch(e) {
+    err.innerText = 'Error: ' + e.message;
+    err.classList.remove('hidden');
+  }
+};
+
+$('logout-btn').onclick = async () => {
+  await audit({ action:'logout', collection:'system', note:'Cierre de sesión inventario' });
+  await signOut(auth);
+  window.location.href = 'home.html';
+};
+
+onAuthStateChanged(auth, async user => {
+  document.getElementById('loading-screen').classList.add('hidden');
+
+  if (!user) {
+    window.location.href = 'home.html';
+    return;
+  }
+
+  currentUser = user;
+  try {
+    const snap = await getDoc(doc(db,'users',user.uid));
+    currentUserData = snap.exists() ? snap.data() : null;
+  } catch(e) { currentUserData = null; }
+
+  const validRoles = ['superadmin','admin','vendedor'];
+  if (!currentUserData || !validRoles.includes(currentUserData.role)) {
+    alert('⛔ No tienes permisos.');
+    await signOut(auth);
+    window.location.href = 'home.html';
+    return;
+  }
+
+  if (currentUserData.role !== 'superadmin' && !currentUserData.storeId) {
+    alert('⛔ No tienes una tienda asignada.');
+    await signOut(auth);
+    window.location.href = 'home.html';
+    return;
+  }
+
+  await audit({ action:'login', collection:'system', note:'Inicio de sesión inventario' });
+
+  $('login-screen').classList.add('hidden');
+  $('panel-screen').classList.remove('hidden');
+  $('user-info').innerText = '👤 ' + user.email;
+
+  await loadAll();
+});
+
+/* ============ CARGA ============ */
+async function loadAll() {
+  const C = window.SmartecCache;
+  const isSuper = currentUserData.role === 'superadmin';
+  const myStoreId = currentUserData.storeId;
+
+  stores = await C.wrap('stores', async () => {
+    const s = await getDocs(collection(db,'stores'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+
+  if (isSuper) {
+    const activeStores = stores.filter(s => s.active).sort((a,b) => a.name.localeCompare(b.name));
+    if (!activeStores.length) {
+      alert('⛔ No hay tiendas activas.');
+      return;
+    }
+    const saved = sessionStorage.getItem('smartec_inventario_store');
+    currentStore = activeStores.find(s => s.storeId === saved) || activeStores[0];
+    sessionStorage.setItem('smartec_inventario_store', currentStore.storeId);
+
+    const sel = $('store-selector');
+    sel.classList.remove('hidden');
+    sel.innerHTML = activeStores.map(s =>
+      `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
+    ).join('');
+    $('header-store-text').classList.add('hidden');
+
+    sel.onchange = async () => {
+      currentStore = stores.find(s => s.storeId === sel.value);
+      sessionStorage.setItem('smartec_inventario_store', sel.value);
+      await loadInventory();
+      renderAll();
+    };
+  } else {
+    currentStore = stores.find(s => s.storeId === myStoreId);
+    if (!currentStore) {
+      alert('⛔ Tu tienda no existe.');
+      await signOut(auth);
+      window.location.href = 'home.html';
+      return;
+    }
+    $('store-selector').classList.add('hidden');
+    $('header-store-text').innerText = currentStore.name;
+  }
+
+  products = await C.wrap('products', async () => {
+    const s = await getDocs(collection(db,'products'));
+    return s.docs.map(d => ({id:d.id, ...d.data()})).filter(p => p.active !== false);
+  });
+
+  await loadInventory();
+
+  const settings = await C.wrap('settings', async () => {
+    const s = await getDoc(doc(db,'settings','general'));
+    return s.exists() ? s.data() : {};
+  });
+  categories = settings.categories || {};
+
+  renderAll();
+}
+
+async function loadInventory() {
+  const C = window.SmartecCache;
+  const storeId = currentStore.storeId;
+
+  inventory = await C.wrap(`inventory_${storeId}`, async () => {
+    const s = await getDocs(query(collection(db,'inventory'), where('storeId','==', storeId)));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+
+  allInventory = await C.wrap('inventory_all', async () => {
+    const s = await getDocs(collection(db,'inventory'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+}
+
+/* ============ MODOS ============ */
+window.setMode = (mode) => {
+  currentMode = mode;
+  ['explorar','conteo','recepcion'].forEach(m => {
+    const btn = $('mode-' + m);
+    const panel = $('mode-' + m + '-panel');
+    if (m === mode) {
+      btn.className = 'mode-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-lg font-semibold text-sm bg-sd text-white';
+    } else {
+      btn.className = 'mode-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-lg font-semibold text-sm bg-gray-100 text-sd hover:bg-gray-200';
+    }
+    if (panel) {
+      if (m === mode) panel.classList.remove('hidden');
+      else panel.classList.add('hidden');
+    }
+  });
+
+  // En modo explorar, ocultar el panel de tarjeta si no hay producto seleccionado
+  if (mode !== 'explorar') {
+    $('product-card-panel').classList.add('hidden');
+    $('not-found-panel').classList.add('hidden');
+  } else {
+    // Si hay un producto cargado y volvemos a explorar, mostrar
+    const lastProduct = window.__lastProductId;
+    if (lastProduct) {
+      const p = products.find(x => x.id === lastProduct);
+      if (p) showProductCard(p);
+    }
+  }
+
+  // Actualizar listas
+  renderConteo();
+  renderRecepcion();
+};
+
+/* ============ BUSCAR / ESCANEAR ============ */
+$('search').addEventListener('input', () => {
+  const term = $('search').value.trim();
+  if (!term) return;
+
+  // Buscar producto por nombre o SKU
+  const p = products.find(x =>
+    (x.name||'').toLowerCase().includes(term.toLowerCase()) ||
+    (x.sku||'').toLowerCase() === term.toLowerCase() ||
+    (x.variants||[]).some(v => (v.sku||'').toLowerCase() === term.toLowerCase() || String(v.barcode||'') === term)
+  );
+
+  if (p) handleProductFound(p);
+});
+
+function handleProductFound(p) {
+  if (currentMode === 'explorar') {
+    window.__lastProductId = p.id;
+    showProductCard(p);
+    $('not-found-panel').classList.add('hidden');
+  } else if (currentMode === 'conteo') {
+    // Abrir modal para preguntar cantidad real
+    openQuickMov('conteo', p);
+  } else if (currentMode === 'recepcion') {
+    openQuickMov('recepcion', p);
+  }
+}
+
+/* ============ TARJETA DE PRODUCTO (modo explorar) ============ */
+function showProductCard(p) {
+  $('product-card-panel').classList.remove('hidden');
+
+  // Header de la tarjeta
+  const img = p.images && p.images[0] ? p.images[0] : 'https://placehold.co/200x200/e5e7eb/9ca3af?text=Sin+imagen';
+  $('product-card-header').innerHTML = `
+    <div class="flex gap-4 items-start">
+      <div class="w-24 h-24 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+        <img src="${img}" class="object-contain max-h-full max-w-full" alt="${p.name}">
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs text-gray-400">${p.sku||'-'}</p>
+        <h2 class="text-xl font-bold text-sd">${p.name}</h2>
+        <p class="text-sm text-gray-500 mt-1">${p.categoryGroupName||''} · ${p.categoryName||''}</p>
+        <div class="flex gap-4 mt-2 text-xs">
+          <span>Costo: <b class="text-sd">${fmt(p.cost)}</b></span>
+          <span>Precio: <b class="text-sl">${fmt(p.onSale && p.salePrice ? p.salePrice : p.price)}</b></span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Variantes con stock por tienda
+  const variantsHtml = (p.variants||[]).map(v => {
+    const stockLocal = getStockForVariant(v.variantId);
+    const stockGlobal = getGlobalStockForVariant(v.variantId);
+    const minStock = 5;
+    const isZero = stockLocal === 0;
+    const isLow = stockLocal > 0 && stockLocal <= minStock;
+
+    const variantLabel = [colorName(v.color, v.colorName), v.size].filter(Boolean).join(' · ') || 'Estándar';
+
+    return `
+      <div class="border rounded-lg p-4 flex flex-wrap items-center gap-3 justify-between">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          ${v.color ? `<span class="w-8 h-8 rounded-full border shrink-0" style="background:${v.color}"></span>` : ''}
+          <div class="min-w-0">
+            <p class="font-semibold text-sd text-sm">${variantLabel}</p>
+            <p class="text-[10px] text-gray-400 font-mono">${v.sku}</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 items-center flex-wrap">
+          <div class="text-right">
+            <p class="text-[10px] text-gray-400 uppercase font-semibold">En esta tienda</p>
+            <p class="text-xl font-bold ${isZero?'text-red-500':isLow?'text-orange-500':'text-green-600'}">${stockLocal}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] text-gray-400 uppercase font-semibold">Total</p>
+            <p class="text-xl font-bold text-sd">${stockGlobal}</p>
+          </div>
+
+          <div class="flex gap-1">
+            <button onclick='openQuickMov("entrada","${p.id}","${v.variantId}")' class="w-9 h-9 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 font-bold flex items-center justify-center" title="Entrada">+</button>
+            <button onclick='openQuickMov("salida","${p.id}","${v.variantId}")' class="w-9 h-9 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 font-bold flex items-center justify-center" title="Salida">−</button>
+            <button onclick='openQuickMov("ajuste","${p.id}","${v.variantId}")' class="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold flex items-center justify-center" title="Ajuste">⚙️</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  $('product-card-variants').innerHTML = variantsHtml;
+
+  // Historial
+  loadHistory(p.id);
+}
+
+async function loadHistory(productId) {
+  const container = $('product-history');
+  container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Cargando historial...</p>';
+
+  try {
+    const q = query(
+      collection(db,'inventoryMovements'),
+      where('storeId','==',currentStore.storeId),
+      where('productId','==',productId)
+    );
+    const snap = await getDocs(q);
+    const movs = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    movs.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+    if (!movs.length) {
+      container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Sin movimientos registrados en esta tienda</p>';
+      return;
+    }
+
+    const typeColors = {
+      'entrada':'bg-green-100 text-green-700',
+      'salida':'bg-red-100 text-red-700',
+      'ajuste':'bg-gray-200 text-gray-700',
+      'traslado-salida':'bg-orange-100 text-orange-700',
+      'traslado-entrada':'bg-blue-100 text-blue-700'
+    };
+    const typeLabels = {
+      'entrada':'Entrada',
+      'salida':'Salida',
+      'ajuste':'Ajuste',
+      'traslado-salida':'Traslado (sale)',
+      'traslado-entrada':'Traslado (entra)'
+    };
+
+    container.innerHTML = movs.slice(0, 10).map(mv => `
+      <div class="flex justify-between items-center border-b border-gray-100 pb-2 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded ${typeColors[mv.type]||'bg-gray-100 text-gray-700'} font-semibold text-[10px]">${typeLabels[mv.type]||mv.type}</span>
+          <span class="text-gray-500">${mv.sku || ''}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="font-semibold ${mv.delta>0?'text-green-600':'text-red-500'}">${mv.delta>0?'+':''}${mv.delta}</span>
+          <span class="text-gray-400">${mv.qtyBefore} → ${mv.qtyAfter}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    console.error(e);
+    container.innerHTML = '<p class="text-red-500 text-xs text-center py-4">Error cargando historial</p>';
+  }
+}
+
+/* ============ STOCK HELPERS ============ */
+function getStockForVariant(variantId) {
+  const invId = `${currentStore.storeId}_${variantId}`;
+  let inv = inventory.find(i => i.id === invId);
+  if (!inv) inv = inventory.find(i => i.variantId === variantId);
+  return inv ? Number(inv.stock||0) : 0;
+}
+
+function getGlobalStockForVariant(variantId) {
+  return allInventory
+    .filter(i => i.variantId === variantId)
+    .reduce((sum, i) => sum + Number(i.stock||0), 0);
+}
+
+/* ============ MODAL DE MOVIMIENTO RÁPIDO ============ */
+let quickMovData = null;
+
+window.openQuickMov = (type, productIdOrObj, variantId) => {
+  let p, v;
+
+  // Dos formas de llamarlo: openQuickMov("conteo", productoObj) o openQuickMov("entrada", productId, variantId)
+  if (typeof productIdOrObj === 'object') {
+    // Viene de handleProductFound (modo conteo o recepción)
+    p = productIdOrObj;
+    // Tomar la primera variante con stock (o la primera)
+    v = (p.variants||[]).find(x => getStockForVariant(x.variantId) > 0) || (p.variants||[])[0];
+    if (!v) {
+      alert('Este producto no tiene variantes.');
+      return;
+    }
+    // Buscar si ya está en el buffer
+    if (type === 'conteo') {
+      const existing = conteoBuffer.find(x => x.variantId === v.variantId);
+      if (existing) {
+        // Ya está en la lista, pedir nueva cantidad
+        askConteoQty(p, v, existing);
+        return;
+      }
+      askConteoQty(p, v, null);
+    } else if (type === 'recepcion') {
+      const existing = recepcionBuffer.find(x => x.variantId === v.variantId);
+      if (existing) {
+        existing.qty += 1;
+        renderRecepcion();
+        alert(`✅ ${p.name} +1 (ahora ${existing.qty} en la lista)`);
+        return;
+      }
+      recepcionBuffer.push({
+        productId: p.id,
+        variantId: v.variantId,
+        sku: v.sku,
+        productName: p.name,
+        colorName: v.colorName,
+        size: v.size,
+        color: v.color,
+        qty: 1,
+        stockAntes: getStockForVariant(v.variantId)
+      });
+      renderRecepcion();
+      alert(`✅ ${p.name} agregado a la recepción`);
+    }
+    return;
+  }
+
+  // Modo normal (entrada / salida / ajuste) con productId y variantId
+  p = products.find(x => x.id === productIdOrObj);
+  if (!p) return;
+  v = (p.variants||[]).find(x => x.variantId === variantId);
+  if (!v) return;
+
+  quickMovData = { type, productId: p.id, variantId: v.variantId, sku: v.sku, product: p, variant: v };
+
+  const titles = {
+    entrada: '➕ Entrada de mercancía',
+    salida: '➖ Salida de mercancía',
+    ajuste: '⚙️ Ajuste de inventario'
+  };
+  const subtitles = {
+    entrada: 'Suma unidades al stock',
+    salida: 'Resta unidades del stock',
+    ajuste: 'Establece el stock real tras un conteo'
+  };
+
+  $('quick-mov-title').innerText = titles[type];
+  const variantLabel = [colorName(v.color, v.colorName), v.size].filter(Boolean).join(' · ') || 'Estándar';
+  $('quick-mov-subtitle').innerText = `${p.name} · ${variantLabel} · ${v.sku}`;
+
+  const stockLocal = getStockForVariant(v.variantId);
+
+  $('quick-mov-body').innerHTML = `
+    <div class="bg-gray-50 rounded-lg p-3 mb-4 text-sm">
+      <p>Stock actual: <b class="text-sd">${stockLocal} unidades</b></p>
+    </div>
+
+    <label class="text-xs font-semibold text-sd block mb-1">
+      ${type === 'ajuste' ? 'Stock real (después del conteo)' : 'Cantidad'}
+    </label>
+    <input id="qm-qty" type="number" min="0" value="${type === 'ajuste' ? stockLocal : ''}" class="w-full px-3 py-3 border rounded-lg text-lg font-semibold mb-3">
+
+    <label class="text-xs font-semibold text-sd block mb-1">Motivo</label>
+    <textarea id="qm-reason" rows="2" placeholder="${type === 'entrada' ? 'Ej: Compra a proveedor' : type === 'salida' ? 'Ej: Producto dañado' : 'Ej: Conteo físico'}" class="w-full px-3 py-2 border rounded-lg text-sm mb-4"></textarea>
+
+    <button onclick="saveQuickMov()" class="w-full bg-sd text-white py-3 rounded-lg hover:bg-sl font-bold">
+      Guardar
+    </button>
+  `;
+
+  const m = $('quick-mov-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeQuickMov = () => {
+  const m = $('quick-mov-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+  quickMovData = null;
+};
+
+window.saveQuickMov = async () => {
+  const qty = Number($('qm-qty').value);
+  const reason = $('qm-reason').value.trim();
+
+  if (quickMovData.type === 'ajuste') {
+    if (qty < 0) return alert('La cantidad no puede ser negativa');
+  } else {
+    if (!qty || qty <= 0) return alert('La cantidad debe ser mayor a 0');
+  }
+  if (!reason) return alert('El motivo es obligatorio');
+
+  const { type, productId, variantId, sku, product, variant } = quickMovData;
+  const stockBefore = getStockForVariant(variantId);
+  let stockAfter = stockBefore;
+
+  if (type === 'entrada') stockAfter = stockBefore + qty;
+  else if (type === 'salida') stockAfter = Math.max(0, stockBefore - qty);
+  else if (type === 'ajuste') stockAfter = qty;
+
+  const btn = event.target;
+  btn.disabled = true; btn.innerText = '⏳ Guardando...';
+
+  try {
+    // Actualizar inventario
+    const invId = `${currentStore.storeId}_${variantId}`;
+    await setDoc(doc(db,'inventory',invId), {
+      storeId: currentStore.storeId,
+      productId,
+      variantId,
+      productName: product.name,
+      sku: variant.sku,
+      color: variant.color || null,
+      colorName: variant.colorName || '',
+      size: variant.size || null,
+      minStock: 5,
+      stock: stockAfter,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    // Movimiento
+    await addDoc(collection(db,'inventoryMovements'), {
+      storeId: currentStore.storeId,
+      productId,
+      variantId,
+      sku: variant.sku,
+      productName: product.name,
+      type,
+      qtyBefore: stockBefore,
+      qtyAfter: stockAfter,
+      delta: stockAfter - stockBefore,
+      reason,
+      userId: currentUser.uid,
+      userEmail: currentUser.email,
+      createdAt: serverTimestamp()
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'inventory',
+      docId: invId,
+      before: { stock: stockBefore },
+      after: { stock: stockAfter },
+      note: `${type}: ${product.name} · ${variant.sku} · ${stockBefore} → ${stockAfter} · ${reason}`
+    });
+
+    window.SmartecCache.invalidate(`inventory_${currentStore.storeId}`);
+    window.SmartecCache.invalidate('inventory_all');
+
+    closeQuickMov();
+    await loadInventory();
+
+    // Refrescar tarjeta si estaba abierta
+    if (window.__lastProductId) {
+      const p = products.find(x => x.id === window.__lastProductId);
+      if (p) showProductCard(p);
+    }
+
+    alert('✅ Movimiento registrado');
+  } catch(e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+    btn.disabled = false; btn.innerText = 'Guardar';
+  }
+};
+
+/* ============ CONTEO RÁPIDO ============ */
+function askConteoQty(p, v, existing) {
+  const stockActual = getStockForVariant(v.variantId);
+  const currentQty = existing ? existing.stockDespues : stockActual;
+
+  const qty = prompt(
+    `Conteo para:\n${p.name}\n${[colorName(v.color, v.colorName), v.size].filter(Boolean).join(' · ') || 'Estándar'}\n\nStock actual: ${stockActual}\nIngresa la cantidad REAL contada:`,
+    currentQty
+  );
+
+  if (qty === null) return;
+  const qtyNum = Number(qty);
+  if (isNaN(qtyNum) || qtyNum < 0) return alert('Cantidad inválida');
+
+  if (existing) {
+    existing.stockDespues = qtyNum;
+  } else {
+    conteoBuffer.push({
+      productId: p.id,
+      variantId: v.variantId,
+      sku: v.sku,
+      productName: p.name,
+      colorName: v.colorName,
+      size: v.size,
+      color: v.color,
+      stockAntes: stockActual,
+      stockDespues: qtyNum
+    });
+  }
+
+  renderConteo();
+  $('search').value = '';
+  alert(`✅ ${p.name} agregado al conteo`);
+}
+
+function renderConteo() {
+  const container = $('conteo-list');
+  const btn = $('apply-conteo-btn');
+
+  if (!conteoBuffer.length) {
+    container.innerHTML = '<p class="text-center text-gray-400 py-8 text-sm">Aún no hay productos en el conteo</p>';
+    btn.disabled = true;
+    return;
+  }
+  btn.disabled = false;
+
+  container.innerHTML = conteoBuffer.map((item, i) => {
+    const variantLabel = [item.colorName, item.size].filter(Boolean).join(' · ') || 'Estándar';
+    const diff = item.stockDespues - item.stockAntes;
+    return `
+      <div class="flex items-center justify-between border rounded-lg p-3 text-sm">
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-sd truncate">${item.productName}</p>
+          <p class="text-[10px] text-gray-400">${variantLabel} · ${item.sku}</p>
+        </div>
+        <div class="text-right ml-3">
+          <p class="text-xs text-gray-500">
+            ${item.stockAntes} → <b class="${diff===0?'text-gray-500':diff>0?'text-green-600':'text-red-500'}">${item.stockDespues}</b>
+            ${diff!==0 ? `<span class="text-[10px]">(${diff>0?'+':''}${diff})</span>` : ''}
+          </p>
+          <button onclick="removeConteoItem(${i})" class="text-red-500 hover:underline text-[10px] mt-1">Quitar</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.removeConteoItem = (i) => {
+  conteoBuffer.splice(i,1);
+  renderConteo();
+};
+
+window.clearConteo = () => {
+  if (!conteoBuffer.length) return;
+  if (!confirm('¿Vaciar la lista del conteo?')) return;
+  conteoBuffer = [];
+  renderConteo();
+};
+
+window.applyConteo = async () => {
+  if (!conteoBuffer.length) return;
+
+  const cambios = conteoBuffer.filter(x => x.stockAntes !== x.stockDespues);
+  if (!cambios.length) {
+    alert('No hay cambios para aplicar.');
+    return;
+  }
+
+  if (!confirm(`¿Aplicar ${cambios.length} ajuste(s) de conteo?\n\nLos cambios se registrarán en el inventario.`)) return;
+
+  const btn = $('apply-conteo-btn');
+  btn.disabled = true; btn.innerText = '⏳ Aplicando...';
+
+  try {
+    for (const item of cambios) {
+      const invId = `${currentStore.storeId}_${item.variantId}`;
+      const v = (products.find(x => x.id === item.productId)?.variants||[]).find(v => v.variantId === item.variantId);
+
+      await setDoc(doc(db,'inventory',invId), {
+        storeId: currentStore.storeId,
+        productId: item.productId,
+        variantId: item.variantId,
+        productName: item.productName,
+        sku: item.sku,
+        color: item.color || null,
+        colorName: item.colorName || '',
+        size: item.size || null,
+        minStock: 5,
+        stock: item.stockDespues,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      await addDoc(collection(db,'inventoryMovements'), {
+        storeId: currentStore.storeId,
+        productId: item.productId,
+        variantId: item.variantId,
+        sku: item.sku,
+        productName: item.productName,
+        type: 'ajuste',
+        qtyBefore: item.stockAntes,
+        qtyAfter: item.stockDespues,
+        delta: item.stockDespues - item.stockAntes,
+        reason: 'Conteo rápido desde inventario',
+        userId: currentUser.uid,
+        userEmail: currentUser.email,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    await audit({
+      action: 'update',
+      collection: 'inventory',
+      note: `Conteo rápido: ${cambios.length} ajustes aplicados`
+    });
+
+    window.SmartecCache.invalidate(`inventory_${currentStore.storeId}`);
+    window.SmartecCache.invalidate('inventory_all');
+
+    conteoBuffer = [];
+    renderConteo();
+    await loadInventory();
+    alert(`✅ ${cambios.length} ajuste(s) aplicados`);
+  } catch(e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerText = '💾 Aplicar ajustes';
+  }
+};
+
+/* ============ RECEPCIÓN ============ */
+function renderRecepcion() {
+  const container = $('recepcion-list');
+  const btn = $('apply-recepcion-btn');
+
+  if (!recepcionBuffer.length) {
+    container.innerHTML = '<p class="text-center text-gray-400 py-8 text-sm">Aún no hay productos en la recepción</p>';
+    btn.disabled = true;
+    return;
+  }
+  btn.disabled = false;
+
+  container.innerHTML = recepcionBuffer.map((item, i) => {
+    const variantLabel = [item.colorName, item.size].filter(Boolean).join(' · ') || 'Estándar';
+    return `
+      <div class="flex items-center justify-between border rounded-lg p-3 text-sm">
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-sd truncate">${item.productName}</p>
+          <p class="text-[10px] text-gray-400">${variantLabel} · ${item.sku}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <input type="number" min="1" value="${item.qty}" onchange="setRecepcionQty(${i}, this.value)" class="w-16 px-2 py-1 border rounded text-center text-sm">
+          <button onclick="removeRecepcionItem(${i})" class="text-red-500 hover:underline text-xs">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.setRecepcionQty = (i, val) => {
+  const q = Math.max(1, Number(val)||1);
+  recepcionBuffer[i].qty = q;
+  renderRecepcion();
+};
+
+window.removeRecepcionItem = (i) => {
+  recepcionBuffer.splice(i,1);
+  renderRecepcion();
+};
+
+window.clearRecepcion = () => {
+  if (!recepcionBuffer.length) return;
+  if (!confirm('¿Vaciar la lista de recepción?')) return;
+  recepcionBuffer = [];
+  renderRecepcion();
+};
+
+window.applyRecepcion = async () => {
+  if (!recepcionBuffer.length) return;
+  if (!confirm(`¿Confirmar la entrada de ${recepcionBuffer.length} producto(s)?`)) return;
+
+  const btn = $('apply-recepcion-btn');
+  btn.disabled = true; btn.innerText = '⏳ Aplicando...';
+
+  try {
+    for (const item of recepcionBuffer) {
+      const invId = `${currentStore.storeId}_${item.variantId}`;
+      const stockBefore = getStockForVariant(item.variantId);
+      const stockAfter = stockBefore + item.qty;
+
+      await setDoc(doc(db,'inventory',invId), {
+        storeId: currentStore.storeId,
+        productId: item.productId,
+        variantId: item.variantId,
+        productName: item.productName,
+        sku: item.sku,
+        color: item.color || null,
+        colorName: item.colorName || '',
+        size: item.size || null,
+        minStock: 5,
+        stock: stockAfter,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      await addDoc(collection(db,'inventoryMovements'), {
+        storeId: currentStore.storeId,
+        productId: item.productId,
+        variantId: item.variantId,
+        sku: item.sku,
+        productName: item.productName,
+        type: 'entrada',
+        qtyBefore: stockBefore,
+        qtyAfter: stockAfter,
+        delta: item.qty,
+        reason: 'Recepción de mercancía desde inventario',
+        userId: currentUser.uid,
+        userEmail: currentUser.email,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    await audit({
+      action: 'update',
+      collection: 'inventory',
+      note: `Recepción: ${recepcionBuffer.length} productos ingresados`
+    });
+
+    window.SmartecCache.invalidate(`inventory_${currentStore.storeId}`);
+    window.SmartecCache.invalidate('inventory_all');
+
+    recepcionBuffer = [];
+    renderRecepcion();
+    await loadInventory();
+    alert('✅ Recepción confirmada');
+  } catch(e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerText = '📥 Confirmar entrada';
+  }
+};
+
+/* ============ ESCÁNER ============ */
+let html5QrCode = null;
+
+window.openScanner = () => {
+  const m = $('scanner-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+
+  if (currentUserData?.role === 'superadmin') {
+    $('scanner-debug').classList.remove('hidden');
+  } else {
+    $('scanner-debug').classList.add('hidden');
+  }
+
+  setTimeout(() => startScanner(), 200);
+};
+
+window.closeScanner = async () => {
+  await stopScanner();
+  const m = $('scanner-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+};
+
+async function startScanner() {
+  const status = $('scanner-status');
+  status.innerText = 'Iniciando cámara...';
+  status.className = 'text-center text-sm text-gray-600 mb-4';
+
+  if (!window.Html5Qrcode) {
+    status.innerText = '⚠️ Librería no cargada. Usa el modo debug.';
+    status.className = 'text-center text-sm text-orange-500 mb-4';
+    return;
+  }
+
+  try {
+    html5QrCode = new Html5Qrcode("scanner-reader");
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 150 },
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ]
+      },
+      onScanSuccess,
+      onScanError
+    );
+    status.innerText = '✅ Cámara activa. Apunta al código.';
+    status.className = 'text-center text-sm text-green-600 mb-4';
+  } catch(e) {
+    console.error(e);
+    status.innerText = '⚠️ No se pudo acceder a la cámara.';
+    status.className = 'text-center text-sm text-orange-500 mb-4';
+    html5QrCode = null;
+  }
+}
+
+async function stopScanner() {
+  if (!html5QrCode) return;
+  try { await html5QrCode.stop(); await html5QrCode.clear(); } catch(e) {}
+  html5QrCode = null;
+}
+
+let lastScanTime = 0;
+function onScanSuccess(decodedText) {
+  const now = Date.now();
+  if (now - lastScanTime < 1500) return;
+  lastScanTime = now;
+  processScannedCode(decodedText);
+}
+
+function onScanError() {}
+
+window.simulateScan = () => {
+  const code = $('scanner-debug-input').value.trim();
+  if (!code) return;
+  processScannedCode(code);
+  $('scanner-debug-input').value = '';
+};
+
+function processScannedCode(code) {
+  stopScanner();
+  closeScanner();
+
+  // Buscar en todas las variantes
+  let foundProduct = null;
+  let foundVariant = null;
+  for (const p of products) {
+    for (const v of (p.variants || [])) {
+      if (String(v.barcode || '').trim() === code) {
+        foundProduct = p;
+        foundVariant = v;
+        break;
+      }
+    }
+    if (foundProduct) break;
+  }
+
+  if (!foundProduct) {
+    // No encontrado
+    if (currentMode === 'explorar') {
+      $('product-card-panel').classList.add('hidden');
+      $('not-found-panel').classList.remove('hidden');
+      $('not-found-code').innerText = `Código escaneado: ${code}`;
+    } else {
+      alert(`⛔ Código no registrado: ${code}`);
+    }
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    return;
+  }
+
+  // Producto encontrado
+  $('not-found-panel').classList.add('hidden');
+
+  if (currentMode === 'explorar') {
+    window.__lastProductId = foundProduct.id;
+    showProductCard(foundProduct);
+  } else if (currentMode === 'conteo') {
+    // Tomar esa variante específica
+    askConteoQty(foundProduct, foundVariant, conteoBuffer.find(x => x.variantId === foundVariant.variantId));
+  } else if (currentMode === 'recepcion') {
+    // Agregar esa variante al buffer de recepción
+    const existing = recepcionBuffer.find(x => x.variantId === foundVariant.variantId);
+    if (existing) {
+      existing.qty += 1;
+    } else {
+      recepcionBuffer.push({
+        productId: foundProduct.id,
+        variantId: foundVariant.variantId,
+        sku: foundVariant.sku,
+        productName: foundProduct.name,
+        colorName: foundVariant.colorName,
+        size: foundVariant.size,
+        color: foundVariant.color,
+        qty: 1,
+        stockAntes: getStockForVariant(foundVariant.variantId)
+      });
+    }
+    renderRecepcion();
+  }
+
+  if (navigator.vibrate) navigator.vibrate(50);
+}
+
+/* ============ IR A CREAR PRODUCTO ============ */
+window.goToCreateProduct = () => {
+  window.location.href = 'admin.html#products';
+};
+
+/* ============ REFRESCAR ============ */
+window.forceRefresh = async () => {
+  window.SmartecCache.clear();
+  await loadAll();
+  alert('✅ Datos actualizados');
+};
+
+function renderAll() {
+  // Si estamos en explorar y ya había un producto cargado, refrescarlo
+  if (currentMode === 'explorar' && window.__lastProductId) {
+    const p = products.find(x => x.id === window.__lastProductId);
+    if (p) showProductCard(p);
+  }
+  renderConteo();
+  renderRecepcion();
+}
+
+/* Cerrar con ESC */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (!$('scanner-modal').classList.contains('hidden')) return closeScanner();
+    if (!$('quick-mov-modal').classList.contains('hidden')) return closeQuickMov();
+  }
+});
+</script>
+</body>
+</html>

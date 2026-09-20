@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec · Centro Contable</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="cache.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  #store-selector {
+    background-color: rgba(255,255,255,0.15);
+    color: #ffffff;
+    min-width: 200px;
+  }
+  #store-selector:hover { background-color: rgba(255,255,255,0.25); }
+  #store-selector:focus { outline: none; border-color: rgba(255,255,255,0.6); }
+  #store-selector option {
+    color: #0A2A4A;
+    background-color: #ffffff;
+    padding: 6px;
+    font-size: 14px;
+  }
+  #store-selector option:checked { background-color: #4A7A9A; color: #ffffff; }
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<!-- ============================================================
+     LOGIN
+============================================================ -->
+<div id="login-screen" class="hidden min-h-screen items-center justify-center bg-sd p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
+    <p class="text-center text-sm text-gray-500 mb-6">Centro Contable</p>
+    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
+    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
+    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
+    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
+    <a href="index.html" class="block text-center text-xs text-gray-400 hover:text-sl mt-4">← Ir a la tienda</a>
+  </div>
+</div>
+
+<!-- ============================================================
+     VERIFICANDO SESIÓN
+============================================================ -->
+<div id="loading-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+  <div class="text-center">
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
+    <p class="text-white font-semibold text-sm">Verificando sesión...</p>
+  </div>
+</div>
+
+<!-- ============================================================
+     PANEL
+============================================================ -->
+<div id="panel-screen" class="hidden min-h-screen flex flex-col">
+
+  <header class="bg-sd text-white px-4 py-4 flex justify-between items-center shrink-0">
+    <div class="flex items-center gap-3 min-w-0">
+      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap">SMART<span class="text-sl">EC</span></h1>
+      <div class="hidden md:block w-px h-6 bg-white/20"></div>
+      <div class="min-w-0">
+        <p id="header-title" class="text-sm md:text-base font-semibold truncate">Centro Contable</p>
+        <p id="header-role" class="text-[10px] opacity-70">—</p>
+        <select id="store-selector" class="hidden mt-1 text-sm rounded-lg px-3 py-1.5 cursor-pointer focus:outline-none border border-white/30"></select>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 text-sm shrink-0">
+      <span id="user-info" class="hidden lg:inline opacity-80 text-xs"></span>
+      <button onclick="forceRefresh()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition" title="Refrescar datos">🔄</button>
+      <a href="home.html" class="hover:text-sl transition text-xs">← Inicio</a>
+      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
+    </div>
+  </header>
+
+  <main class="flex-1 container mx-auto p-4 md:p-6">
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Total del período</p>
+        <p id="kpi-total" class="text-2xl font-bold text-sd mt-1">$0</p>
+        <p id="kpi-count" class="text-[10px] text-gray-400 mt-1">0 movimientos</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Costos</p>
+        <p id="kpi-cost" class="text-2xl font-bold text-orange-500 mt-1">$0</p>
+        <p class="text-[10px] text-gray-400 mt-1">Compra de mercancía</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Gastos</p>
+        <p id="kpi-expense" class="text-2xl font-bold text-red-500 mt-1">$0</p>
+        <p class="text-[10px] text-gray-400 mt-1">Operativos</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">IVA / Retenciones</p>
+        <p id="kpi-tax" class="text-2xl font-bold text-sl mt-1">$0</p>
+        <p id="kpi-retention" class="text-[10px] text-gray-400 mt-1">Retenciones: $0</p>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow p-4 mb-4">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 mb-3">
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Desde</label>
+          <input id="f-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Hasta</label>
+          <input id="f-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Tipo</label>
+          <select id="f-type" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+            <option value="costo">Solo costos</option>
+            <option value="gasto">Solo gastos</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Categoría</label>
+          <select id="f-category" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todas</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Proveedor</label>
+          <input id="f-provider" type="text" placeholder="Buscar..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Concepto</label>
+          <input id="f-search" type="text" placeholder="Buscar..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Responsable</label>
+          <input id="f-responsible" type="text" placeholder="Buscar..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+      </div>
+      <div class="flex justify-between items-center flex-wrap gap-2 pt-3 border-t">
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="setRange('today')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Hoy</button>
+          <button onclick="setRange('week')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Esta semana</button>
+          <button onclick="setRange('month')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este mes</button>
+          <button onclick="setRange('lastmonth')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes pasado</button>
+          <button onclick="setRange('year')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este año</button>
+        </div>
+        <button onclick="clearFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+      <h2 class="text-xl font-bold text-sd">Movimientos</h2>
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="exportPDF()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-semibold">📄 Exportar PDF</button>
+        <button onclick="openExpenseForm()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold">+ Nuevo movimiento</button>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+      <table class="w-full text-sm min-w-[1000px]">
+        <thead class="bg-gray-100 text-sd">
+          <tr>
+            <th class="p-3 text-left">Fecha</th>
+            <th class="p-3 text-left">Tipo</th>
+            <th class="p-3 text-left">Categoría</th>
+            <th class="p-3 text-left">Proveedor</th>
+            <th class="p-3 text-left">Responsable</th>
+            <th class="p-3 text-left">Concepto</th>
+            <th class="p-3 text-left">Tienda</th>
+            <th class="p-3 text-right">Base</th>
+            <th class="p-3 text-right">IVA</th>
+            <th class="p-3 text-right">Total</th>
+            <th class="p-3 text-center">Soporte</th>
+            <th class="p-3"></th>
+          </tr>
+        </thead>
+        <tbody id="expenses-tbody"></tbody>
+      </table>
+    </div>
+    <p id="expenses-empty" class="hidden text-center py-8 text-gray-400">Sin movimientos con esos filtros.</p>
+
+  </main>
+</div>
+
+<!-- ============================================================
+     MODAL FORMULARIO DE GASTO
+============================================================ -->
+<div id="expense-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeExpenseForm()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeExpenseForm()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="expense-title" class="text-xl font-bold text-sd mb-4 pr-10">Nuevo movimiento</h3>
+    <div id="expense-body"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL DETALLE
+============================================================ -->
+<div id="detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeDetail()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeDetail()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-4 pr-10">Detalle del movimiento</h3>
+    <div id="detail-body"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
+  updateDoc, deleteDoc, serverTimestamp, query, where
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
+
+/* ============================================================
+   CONFIG
+============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+/* ============================================================
+   ESTADO
+============================================================ */
+let currentUser = null;
+let currentUserData = null;
+let currentStore = null;
+let stores = [];
+let expenses = [];
+let categories = [];
+let users = [];
+
+const DEFAULT_CATEGORIES = [
+  { slug:'arriendo', name:'Arriendo', type:'gasto' },
+  { slug:'servicios', name:'Servicios públicos', type:'gasto' },
+  { slug:'nomina', name:'Nómina', type:'gasto' },
+  { slug:'papeleria', name:'Papelería', type:'gasto' },
+  { slug:'transporte', name:'Transporte', type:'gasto' },
+  { slug:'publicidad', name:'Publicidad', type:'gasto' },
+  { slug:'mantenimiento', name:'Mantenimiento', type:'gasto' },
+  { slug:'impuestos', name:'Impuestos', type:'gasto' },
+  { slug:'mercancia', name:'Compra de mercancía', type:'costo' },
+  { slug:'otros', name:'Otros', type:'gasto' }
+];
+
+/* ============================================================
+   HELPERS
+============================================================ */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const fmtDate = ts => {
+  if (!ts) return '-';
+  const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+  return d.toLocaleDateString('es-CO', { year:'2-digit', month:'2-digit', day:'2-digit' });
+};
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
+async function audit(entry) {
+  try {
+    await addDoc(collection(db,'auditLog'), {
+      ...entry,
+      userId: currentUser?.uid || null,
+      userEmail: currentUser?.email || null,
+      userRole: currentUserData?.role || null,
+      storeId: currentStore?.storeId || null,
+      timestamp: serverTimestamp()
+    });
+  } catch(e) { console.warn('audit fail', e); }
+}
+
+/* ============================================================
+   AUTENTICACIÓN
+============================================================ */
+$('login-btn').onclick = async () => {
+  const err = $('login-error');
+  err.classList.add('hidden');
+  try {
+    await signInWithEmailAndPassword(auth, $('login-email').value.trim(), $('login-pass').value);
+  } catch(e) {
+    err.innerText = 'Error: ' + e.message;
+    err.classList.remove('hidden');
+  }
+};
+
+$('logout-btn').onclick = async () => {
+  await audit({ action:'logout', collection:'system', note:'Cierre de sesión contabilidad' });
+  await signOut(auth);
+  window.location.href = 'home.html';
+};
+
+onAuthStateChanged(auth, async user => {
+  document.getElementById('loading-screen').classList.add('hidden');
+
+    if (!user) {
+    // 🆕 Sin sesión → redirigir a home
+    window.location.href = 'home.html';
+    return;
+  }
+
+  currentUser = user;
+  try {
+    const snap = await getDoc(doc(db,'users',user.uid));
+    currentUserData = snap.exists() ? snap.data() : null;
+  } catch(e) { currentUserData = null; }
+
+  const validRoles = ['superadmin','admin'];
+  if (!currentUserData || !validRoles.includes(currentUserData.role)) {
+    alert('⛔ No tienes permisos para el centro contable.');
+    await signOut(auth);
+    window.location.href = 'home.html';
+    return;
+  }
+
+  await audit({ action:'login', collection:'system', note:'Inicio de sesión contabilidad' });
+
+  $('login-screen').classList.add('hidden');
+  $('panel-screen').classList.remove('hidden');
+
+  $('user-info').innerText = '👤 ' + user.email;
+  const roleLabels = { superadmin:'Superadmin', admin:'Admin de tienda' };
+  $('header-role').innerText = roleLabels[currentUserData.role] || currentUserData.role;
+
+  await loadAll();
+});
+
+/* ============================================================
+   CARGA DE DATOS
+============================================================ */
+async function loadAll() {
+  const C = window.SmartecCache;
+
+  const storesData = await C.wrap('stores', async () => {
+    const s = await getDocs(collection(db,'stores'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+  stores = storesData;
+
+  const isSuper = currentUserData.role === 'superadmin';
+  const myStoreId = currentUserData.storeId;
+
+  if (isSuper) {
+    const activeStores = stores.filter(s => s.active).sort((a,b) => a.name.localeCompare(b.name));
+    if (!activeStores.length) {
+      alert('⛔ No hay tiendas activas.');
+      return;
+    }
+    const saved = sessionStorage.getItem('smartec_contab_store');
+    currentStore = activeStores.find(s => s.storeId === saved) || activeStores[0];
+    sessionStorage.setItem('smartec_contab_store', currentStore.storeId);
+
+    const sel = $('store-selector');
+    sel.classList.remove('hidden');
+    sel.innerHTML = activeStores.map(s =>
+      `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
+    ).join('');
+    $('header-title').classList.add('hidden');
+
+    sel.onchange = async () => {
+      currentStore = stores.find(s => s.storeId === sel.value);
+      sessionStorage.setItem('smartec_contab_store', sel.value);
+      await loadExpenses();
+      renderAll();
+    };
+  } else {
+    currentStore = stores.find(s => s.storeId === myStoreId);
+    if (!currentStore) {
+      alert('⛔ Tu tienda asignada no existe.');
+      await signOut(auth);
+      window.location.href = 'home.html';
+      return;
+    }
+    $('store-selector').classList.add('hidden');
+    $('header-title').innerText = 'Centro Contable · ' + currentStore.name;
+  }
+
+  // Categorías
+  categories = await C.wrap('expenseCategories', async () => {
+    const s = await getDocs(collection(db,'expenseCategories'));
+    const list = s.docs.map(d => ({id:d.id, ...d.data()}));
+    return list.length ? list : DEFAULT_CATEGORIES.map(c => ({id:c.slug, ...c}));
+  });
+
+  // Usuarios (para mostrar quién registró)
+  users = await C.wrap('users', async () => {
+    const s = await getDocs(collection(db,'users'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+
+  await loadExpenses();
+  populateCategoryFilter();
+  setRange('month');
+  renderAll();
+}
+
+async function loadExpenses() {
+  const C = window.SmartecCache;
+  const isSuper = currentUserData.role === 'superadmin';
+
+  let list;
+  if (isSuper) {
+    // Superadmin: gastos de la tienda seleccionada + gastos generales
+    list = await C.wrap(`expenses_all`, async () => {
+      const s = await getDocs(collection(db,'expenses'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+    list = list.filter(e => e.storeId === currentStore.storeId || e.storeId === 'general');
+  } else {
+    // Admin: solo su tienda + generales
+    list = await C.wrap(`expenses_all`, async () => {
+      const s = await getDocs(collection(db,'expenses'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+    list = list.filter(e => e.storeId === currentStore.storeId || e.storeId === 'general');
+  }
+
+  expenses = list;
+}
+
+/* ============================================================
+   FILTROS
+============================================================ */
+function populateCategoryFilter() {
+  const sel = $('f-category');
+  sel.innerHTML = '<option value="all">Todas</option>' +
+    categories.map(c => `<option value="${c.slug}">${c.name}</option>`).join('');
+}
+
+window.setRange = (range) => {
+  const now = new Date();
+  let from, to;
+
+  switch(range) {
+    case 'today': from = to = now; break;
+    case 'week': {
+      const day = now.getDay() || 7;
+      from = new Date(now); from.setDate(now.getDate() - day + 1);
+      to = now;
+      break;
+    }
+    case 'month': from = new Date(now.getFullYear(), now.getMonth(), 1); to = now; break;
+    case 'lastmonth':
+      from = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      to = new Date(now.getFullYear(), now.getMonth(), 0);
+      break;
+    case 'year': from = new Date(now.getFullYear(), 0, 1); to = now; break;
+    default: return;
+  }
+  const fmtD = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  $('f-date-from').value = fmtD(from);
+  $('f-date-to').value = fmtD(to);
+  renderAll();
+};
+
+window.clearFilters = () => {
+  $('f-date-from').value = '';
+  $('f-date-to').value = '';
+  $('f-type').value = 'all';
+  $('f-category').value = 'all';
+  $('f-provider').value = '';
+  $('f-search').value = '';
+  $('f-responsible').value = '';
+  renderAll();
+};
+
+['f-date-from','f-date-to','f-type','f-category','f-provider','f-search','f-responsible'].forEach(id => {
+  const el = $(id);
+  if (el) {
+    el.addEventListener('input', renderAll);
+    el.addEventListener('change', renderAll);
+  }
+});
+
+function getFiltered() {
+  let list = expenses.slice();
+
+  const from = $('f-date-from').value;
+  const to = $('f-date-to').value;
+  if (from) list = list.filter(e => e.date >= from);
+  if (to) list = list.filter(e => e.date <= to);
+
+  const typeF = $('f-type').value;
+  if (typeF !== 'all') list = list.filter(e => e.type === typeF);
+
+  const catF = $('f-category').value;
+  if (catF !== 'all') list = list.filter(e => e.category === catF);
+
+  const provF = ($('f-provider').value || '').toLowerCase().trim();
+  if (provF) list = list.filter(e => (e.provider||'').toLowerCase().includes(provF));
+
+  const searchF = ($('f-search').value || '').toLowerCase().trim();
+  if (searchF) list = list.filter(e => (e.concept||'').toLowerCase().includes(searchF));
+
+  const respF = ($('f-responsible').value || '').toLowerCase().trim();
+  if (respF) list = list.filter(e => (e.responsible||'').toLowerCase().includes(respF));
+
+  return list.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+}
+
+/* ============================================================
+   RENDER
+============================================================ */
+function renderAll() {
+  renderKPIs();
+  renderTable();
+}
+
+function renderKPIs() {
+  const list = getFiltered();
+  let total = 0, cost = 0, expense = 0, tax = 0, retention = 0;
+
+  list.forEach(e => {
+    total += Number(e.total || 0);
+    if (e.type === 'costo') cost += Number(e.total || 0);
+    else expense += Number(e.total || 0);
+    tax += Number(e.taxAmount || 0);
+    retention += Number(e.retentionAmount || 0);
+  });
+
+  $('kpi-total').innerText = fmt(total);
+  $('kpi-count').innerText = `${list.length} movimiento${list.length !== 1 ? 's' : ''}`;
+  $('kpi-cost').innerText = fmt(cost);
+  $('kpi-expense').innerText = fmt(expense);
+  $('kpi-tax').innerText = fmt(tax);
+  $('kpi-retention').innerText = `Retenciones: ${fmt(retention)}`;
+}
+
+function renderTable() {
+  const tb = $('expenses-tbody');
+  const empty = $('expenses-empty');
+  const list = getFiltered();
+
+  if (!list.length) {
+    tb.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tb.innerHTML = list.map(e => {
+    const cat = categories.find(c => c.slug === e.category);
+    const store = stores.find(s => s.storeId === e.storeId);
+    const typeBadge = e.type === 'costo'
+      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-semibold">Costo</span>'
+      : '<span class="text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-700 font-semibold">Gasto</span>';
+
+      return `<tr class="border-b hover:bg-gray-50">
+      <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${e.date || '-'}</td>
+      <td class="p-3">${typeBadge}</td>
+      <td class="p-3 text-xs">${cat?.name || e.category || '-'}</td>
+      <td class="p-3 text-xs">${e.provider || '-'}</td>
+      <td class="p-3 text-xs">${e.responsible || '-'}</td>
+      <td class="p-3 text-xs max-w-xs truncate">${e.concept || '-'}</td>
+      <td class="p-3 text-xs">${e.storeId === 'general' ? 'General' : (store?.name || e.storeId || '-')}</td>
+      <td class="p-3 text-right text-xs">${fmt(e.amount)}</td>
+      <td class="p-3 text-right text-xs text-gray-500">${fmt(e.taxAmount)}</td>
+      <td class="p-3 text-right text-xs font-bold text-sd">${fmt(e.total)}</td>
+      <td class="p-3 text-center">
+        ${e.supportUrl
+          ? `<a href="${e.supportUrl}" target="_blank" class="text-sl hover:underline text-xs">📎 Ver</a>`
+          : '<span class="text-gray-300 text-xs">—</span>'}
+      </td>
+      <td class="p-3 text-right whitespace-nowrap">
+        <button onclick='viewDetail("${e.id}")' class="text-sl hover:underline text-xs mr-2">Ver</button>
+        <button onclick='editExpense("${e.id}")' class="text-sl hover:underline text-xs mr-2">Editar</button>
+        <button onclick='deleteExpense("${e.id}")' class="text-red-500 hover:underline text-xs">Borrar</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   FORMULARIO
+============================================================ */
+let editingId = null;
+
+window.openExpenseForm = () => {
+  editingId = null;
+  $('expense-title').innerText = 'Nuevo movimiento';
+  renderForm({});
+  const m = $('expense-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeExpenseForm = () => {
+  const m = $('expense-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+  editingId = null;
+};
+
+window.editExpense = (id) => {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  editingId = id;
+  $('expense-title').innerText = 'Editar movimiento';
+  renderForm(e);
+  const m = $('expense-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+function renderForm(v) {
+  const isSuper = currentUserData.role === 'superadmin';
+  const storeOpts = stores.filter(s => s.active).map(s =>
+    `<option value="${s.storeId}" ${v.storeId === s.storeId ? 'selected' : ''}>${s.name}</option>`
+  ).join('');
+
+  const catOpts = categories.map(c =>
+    `<option value="${c.slug}" data-type="${c.type}" ${v.category === c.slug ? 'selected' : ''}>${c.name}</option>`
+  ).join('');
+
+  $('expense-body').innerHTML = `
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd">Fecha *</label>
+        <input id="x-date" type="date" value="${v.date || todayStr()}" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Tipo *</label>
+        <select id="x-type" class="w-full px-3 py-2 border rounded-lg mt-1">
+          <option value="costo" ${v.type === 'costo' ? 'selected' : ''}>Costo (mercancía)</option>
+          <option value="gasto" ${v.type === 'gasto' || !v.type ? 'selected' : ''}>Gasto operativo</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd">Categoría *</label>
+        <select id="x-category" class="w-full px-3 py-2 border rounded-lg mt-1">
+          ${catOpts}
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Tienda</label>
+        <select id="x-store" class="w-full px-3 py-2 border rounded-lg mt-1" ${isSuper ? '' : 'disabled'}>
+          <option value="general" ${v.storeId === 'general' ? 'selected' : ''}>— General (sin tienda) —</option>
+          ${storeOpts}
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd">Proveedor</label>
+        <input id="x-provider" type="text" value="${v.provider || ''}" placeholder="Nombre del proveedor" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">NIT / Cédula</label>
+        <input id="x-nit" type="text" value="${v.providerNit || ''}" placeholder="900123456-7" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+    </div>
+    
+    <label class="text-xs font-semibold text-sd">Responsable (quién autoriza o gestiona)</label>
+    <input id="x-responsible" type="text" value="${v.responsible || ''}" placeholder="Ej: Juan Pérez, Área administrativa" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3">
+    <label class="text-xs font-semibold text-sd">Concepto *</label>
+    <input id="x-concept" type="text" value="${v.concept || ''}" placeholder="Ej: Factura 001 - Compra de neveras" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3">
+
+    <div class="grid grid-cols-3 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd">Valor base *</label>
+        <input id="x-amount" type="number" value="${v.amount || ''}" placeholder="0" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">IVA (%)</label>
+        <input id="x-taxRate" type="number" step="0.01" value="${((v.taxRate||0)*100).toFixed(2)}" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Retención (%)</label>
+        <input id="x-retentionRate" type="number" step="0.01" value="${((v.retentionRate||0)*100).toFixed(2)}" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+    </div>
+
+    <div class="bg-gray-50 rounded-lg p-3 mb-3 text-sm space-y-1">
+      <div class="flex justify-between"><span class="text-gray-500">IVA:</span><span id="x-taxAmount" class="font-semibold">$0</span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Retención:</span><span id="x-retentionAmount" class="font-semibold text-red-500">$0</span></div>
+      <div class="flex justify-between border-t pt-1"><span class="font-semibold text-sd">Total:</span><span id="x-total" class="font-bold text-sl">$0</span></div>
+    </div>
+
+    <label class="text-xs font-semibold text-sd">Forma de pago</label>
+    <select id="x-payment" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3">
+      <option value="efectivo" ${v.paymentMethod === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+      <option value="transferencia" ${v.paymentMethod === 'transferencia' ? 'selected' : ''}>Transferencia</option>
+      <option value="tarjeta" ${v.paymentMethod === 'tarjeta' ? 'selected' : ''}>Tarjeta</option>
+      <option value="credito" ${v.paymentMethod === 'credito' ? 'selected' : ''}>Crédito</option>
+    </select>
+
+    <label class="text-xs font-semibold text-sd">Notas</label>
+    <textarea id="x-notes" rows="2" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3 text-sm">${v.notes || ''}</textarea>
+
+    <label class="text-xs font-semibold text-sd">Soporte (PDF o imagen)</label>
+    <input id="x-file" type="file" accept="image/*,application/pdf" class="w-full px-3 py-2 border rounded-lg mt-1 mb-2 text-sm">
+    <div id="x-file-info" class="text-xs text-gray-500 mb-3"></div>
+
+    <div class="flex gap-3">
+      <button onclick="closeExpenseForm()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">Cancelar</button>
+      <button onclick="saveExpense()" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold">Guardar</button>
+    </div>
+  `;
+
+  // Recalcular en vivo
+  ['x-amount','x-taxRate','x-retentionRate'].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('input', recalcTotals);
+  });
+  recalcTotals();
+
+  // Cargar info del soporte si ya existe
+  if (v.supportUrl) {
+    $('x-file-info').innerHTML = `Soporte actual: <a href="${v.supportUrl}" target="_blank" class="text-sl hover:underline">📎 Ver archivo</a>`;
+  }
+}
+
+function recalcTotals() {
+  const amount = Number($('x-amount').value) || 0;
+  const taxRate = (Number($('x-taxRate').value) || 0) / 100;
+  const retRate = (Number($('x-retentionRate').value) || 0) / 100;
+
+  const taxAmount = amount * taxRate;
+  const retentionAmount = amount * retRate;
+  const total = amount + taxAmount - retentionAmount;
+
+  $('x-taxAmount').innerText = fmt(taxAmount);
+  $('x-retentionAmount').innerText = fmt(retentionAmount);
+  $('x-total').innerText = fmt(total);
+}
+
+/* ============================================================
+   GUARDAR
+============================================================ */
+window.saveExpense = async () => {
+  const date = $('x-date').value;
+  const type = $('x-type').value;
+  const category = $('x-category').value;
+  const storeId = $('x-store').value;
+  const provider = $('x-provider').value.trim();
+  const providerNit = $('x-nit').value.trim();
+  const responsible = $('x-responsible').value.trim();
+  const concept = $('x-concept').value.trim();
+  const amount = Number($('x-amount').value);
+  const taxRate = (Number($('x-taxRate').value) || 0) / 100;
+  const retentionRate = (Number($('x-retentionRate').value) || 0) / 100;
+  const paymentMethod = $('x-payment').value;
+  const notes = $('x-notes').value.trim();
+
+  if (!date) return alert('La fecha es obligatoria');
+  if (!concept) return alert('El concepto es obligatorio');
+  if (!amount || amount <= 0) return alert('El valor debe ser mayor a 0');
+
+  const taxAmount = amount * taxRate;
+  const retentionAmount = amount * retentionRate;
+  const total = amount + taxAmount - retentionAmount;
+
+  const btn = event.target;
+  btn.disabled = true; btn.innerText = '⏳ Guardando...';
+
+  try {
+    // Subir archivo si hay
+    let supportUrl = null, supportName = null;
+    const fileInput = $('x-file');
+    if (fileInput && fileInput.files[0]) {
+      const file = fileInput.files[0];
+      const path = `expenses/${storeId}/${Date.now()}_${file.name}`;
+      const fileRef = storageRef(storage, path);
+      await uploadBytes(fileRef, file);
+      supportUrl = await getDownloadURL(fileRef);
+      supportName = file.name;
+    }
+
+    const data = {
+      date, type, category, storeId,
+      provider, providerNit, responsible, concept,
+      amount, taxRate, taxAmount,
+      retentionRate, retentionAmount,
+      total, paymentMethod, notes,
+      supportUrl, supportName,
+      updatedAt: serverTimestamp()
+    };
+
+    if (editingId) {
+      const prev = expenses.find(e => e.id === editingId);
+      if (!supportUrl && prev?.supportUrl) {
+        data.supportUrl = prev.supportUrl;
+        data.supportName = prev.supportName;
+      }
+      await updateDoc(doc(db,'expenses',editingId), data);
+      await audit({
+        action:'update', collection:'expenses', docId: editingId,
+        before: prev, after: data,
+        note:`Editado movimiento: ${concept} · ${fmt(total)}`
+      });
+    } else {
+      data.createdBy = currentUser.email;
+      data.createdAt = serverTimestamp();
+      const ref = await addDoc(collection(db,'expenses'), data);
+      await audit({
+        action:'create', collection:'expenses', docId: ref.id,
+        after: data,
+        note:`Creado ${type}: ${concept} · ${fmt(total)}`
+      });
+    }
+
+    window.SmartecCache.invalidate('expenses_all');
+    closeExpenseForm();
+    await loadExpenses();
+    renderAll();
+    alert('✅ Guardado correctamente');
+  } catch(e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+    btn.disabled = false; btn.innerText = 'Guardar';
+  }
+};
+
+/* ============================================================
+   VER / BORRAR
+============================================================ */
+window.viewDetail = (id) => {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  const cat = categories.find(c => c.slug === e.category);
+  const store = stores.find(s => s.storeId === e.storeId);
+
+  $('detail-body').innerHTML = `
+    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+      <div><p class="text-xs text-gray-400">Fecha</p><p class="font-semibold">${e.date}</p></div>
+      <div><p class="text-xs text-gray-400">Tipo</p><p class="font-semibold capitalize">${e.type}</p></div>
+      <div><p class="text-xs text-gray-400">Categoría</p><p class="font-semibold">${cat?.name || e.category}</p></div>
+      <div><p class="text-xs text-gray-400">Tienda</p><p class="font-semibold">${e.storeId === 'general' ? 'General' : (store?.name || e.storeId)}</p></div>
+      <div><p class="text-xs text-gray-400">Proveedor</p><p class="font-semibold">${e.provider || '—'}</p></div>
+      <div><p class="text-xs text-gray-400">NIT</p><p class="font-semibold">${e.providerNit || '—'}</p></div>
+      <div class="col-span-2"><p class="text-xs text-gray-400">Responsable</p><p class="font-semibold">${e.responsible || '—'}</p></div>
+    </div>
+    <div class="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
+      <p class="text-xs text-gray-400 mb-1">Concepto</p>
+      <p>${e.concept}</p>
+    </div>
+    <div class="bg-gray-50 p-3 rounded-lg mb-4 text-sm space-y-1">
+      <div class="flex justify-between"><span class="text-gray-500">Base</span><span>${fmt(e.amount)}</span></div>
+      <div class="flex justify-between"><span class="text-gray-500">IVA (${((e.taxRate||0)*100).toFixed(2)}%)</span><span>${fmt(e.taxAmount)}</span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Retención (${((e.retentionRate||0)*100).toFixed(2)}%)</span><span class="text-red-500">-${fmt(e.retentionAmount)}</span></div>
+      <div class="flex justify-between border-t pt-2 font-bold text-sd"><span>TOTAL</span><span>${fmt(e.total)}</span></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+      <div><p class="text-xs text-gray-400">Forma de pago</p><p class="font-semibold capitalize">${e.paymentMethod || '-'}</p></div>
+      <div><p class="text-xs text-gray-400">Registró</p><p class="font-semibold text-xs">${e.createdBy || '-'}</p></div>
+    </div>
+    ${e.notes ? `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm mb-4"><p class="text-xs text-yellow-700 font-semibold mb-1">Notas</p><p>${e.notes}</p></div>` : ''}
+    ${e.supportUrl ? `
+      <a href="${e.supportUrl}" target="_blank" class="block text-center bg-sl text-white py-2 rounded-lg hover:bg-sd font-semibold text-sm">
+        📎 Ver soporte adjunto
+      </a>
+    ` : '<p class="text-xs text-gray-400 text-center">Sin soporte adjunto</p>'}
+  `;
+
+  const m = $('detail-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeDetail = () => {
+  const m = $('detail-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+};
+
+window.deleteExpense = async (id) => {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  if (!confirm(`¿Eliminar el movimiento "${e.concept}" por ${fmt(e.total)}?\n\nEsta acción no se puede deshacer.`)) return;
+
+  try {
+    if (e.supportUrl) {
+      try {
+        const fileRef = storageRef(storage, e.supportUrl);
+        await deleteObject(fileRef);
+      } catch(err) { console.warn('No se pudo borrar el soporte:', err); }
+    }
+
+    await deleteDoc(doc(db,'expenses',id));
+    await audit({
+      action:'delete', collection:'expenses', docId:id,
+      before: e,
+      note:`Eliminado: ${e.concept} · ${fmt(e.total)}`
+    });
+
+    window.SmartecCache.invalidate('expenses_all');
+    await loadExpenses();
+    renderAll();
+    alert('✅ Movimiento eliminado');
+  } catch(err) {
+    console.error(err);
+    alert('Error: ' + err.message);
+  }
+};
+
+/* ============================================================
+   EXPORTAR PDF
+============================================================ */
+window.exportPDF = () => {
+  const { jsPDF } = window.jspdf;
+  const list = getFiltered();
+  if (!list.length) return alert('No hay movimientos para exportar.');
+
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const pageW = doc.internal.pageSize.getWidth();
+  let y = 15;
+
+  doc.setFillColor(10, 42, 74);
+  doc.rect(0, 0, pageW, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SMARTEC · Centro Contable', 14, 13);
+
+  y = 28;
+  doc.setTextColor(60, 60, 60);
+  doc.setFontSize(9);
+  doc.text(`Período: ${$('f-date-from').value || 'todo'} — ${$('f-date-to').value || 'hoy'}`, 14, y); y += 5;
+  doc.text(`Tienda: ${currentStore?.name || 'General'}`, 14, y); y += 5;
+  doc.text(`Generado: ${new Date().toLocaleString('es-CO')}`, 14, y); y += 8;
+
+  const total = list.reduce((s,e) => s + Number(e.total||0), 0);
+  const cost = list.filter(e => e.type === 'costo').reduce((s,e) => s + Number(e.total||0), 0);
+  const expense = list.filter(e => e.type === 'gasto').reduce((s,e) => s + Number(e.total||0), 0);
+  const tax = list.reduce((s,e) => s + Number(e.taxAmount||0), 0);
+  const retention = list.reduce((s,e) => s + Number(e.retentionAmount||0), 0);
+
+  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
+  doc.text('Resumen', 14, y); y += 3;
+
+  doc.autoTable({
+    startY: y,
+    head: [['Total', 'Costos', 'Gastos', 'IVA', 'Retenciones', 'Movimientos']],
+    body: [[
+      '$' + total.toLocaleString('es-CO'),
+      '$' + cost.toLocaleString('es-CO'),
+      '$' + expense.toLocaleString('es-CO'),
+      '$' + tax.toLocaleString('es-CO'),
+      '$' + retention.toLocaleString('es-CO'),
+      String(list.length)
+    ]],
+    theme: 'grid',
+    headStyles: { fillColor: [74, 122, 154], textColor: 255, halign: 'center' },
+    bodyStyles: { halign: 'center', fontSize: 10 },
+    margin: { left: 14, right: 14 }
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  const rows = list.map(e => {
+    const cat = categories.find(c => c.slug === e.category);
+    const store = stores.find(s => s.storeId === e.storeId);
+    return [
+      e.date,
+      e.type === 'costo' ? 'Costo' : 'Gasto',
+      cat?.name || e.category,
+      e.provider || '',
+      (e.concept || '').substring(0, 40),
+      e.storeId === 'general' ? 'General' : (store?.name || e.storeId),
+      '$' + Number(e.amount||0).toLocaleString('es-CO'),
+      '$' + Number(e.taxAmount||0).toLocaleString('es-CO'),
+      '$' + Number(e.total||0).toLocaleString('es-CO')
+    ];
+  });
+
+  doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text(`Detalle de movimientos (${rows.length})`, 14, y); y += 3;
+
+  doc.autoTable({
+    startY: y,
+    head: [['Fecha','Tipo','Categoría','Proveedor','Concepto','Tienda','Base','IVA','Total']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 8 },
+    bodyStyles: { fontSize: 8 },
+    margin: { left: 14, right: 14 }
+  });
+
+  const pages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `Smartec · Centro Contable · Página ${i} de ${pages}`,
+      pageW / 2, doc.internal.pageSize.getHeight() - 8, { align: 'center' }
+    );
+  }
+
+  doc.save(`smartec_contabilidad_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+/* ============================================================
+   REFRESCAR
+============================================================ */
+window.forceRefresh = async () => {
+  window.SmartecCache.clear();
+  await loadAll();
+  alert('✅ Datos actualizados desde el servidor');
+};
+
+/* Cerrar con ESC */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (!$('expense-modal').classList.contains('hidden')) return closeExpenseForm();
+    if (!$('detail-modal').classList.contains('hidden')) return closeDetail();
+  }
+});
+
+</script>
+</body>
+</html>

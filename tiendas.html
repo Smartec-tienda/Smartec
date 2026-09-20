@@ -1,0 +1,2626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec · Panel de Tienda</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="cache.js"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+    .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+
+  /* Selector de tienda del superadmin */
+  #store-selector {
+    background-color: rgba(255,255,255,0.15);
+    color: #ffffff;
+    min-width: 200px;
+  }
+  #store-selector:hover {
+    background-color: rgba(255,255,255,0.25);
+  }
+  #store-selector:focus {
+    outline: none;
+    border-color: rgba(255,255,255,0.6);
+  }
+  /* Opciones del desplegable (fondo blanco, texto oscuro) */
+  #store-selector option {
+    color: #0A2A4A;
+    background-color: #ffffff;
+    padding: 6px;
+    font-size: 14px;
+  }
+  #store-selector option:checked {
+    background-color: #4A7A9A;
+    color: #ffffff;
+  }
+</style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+<!-- ============ VERIFICANDO SESIÓN ============ -->
+<div id="loading-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+  <div class="text-center">
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
+    <p class="text-white font-semibold text-sm">Verificando sesión...</p>
+  </div>
+</div>
+
+<!-- ============ LOGIN ============ -->
+<div id="login-screen" class="hidden min-h-screen items-center justify-center bg-sd p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
+    <p class="text-center text-sm text-gray-500 mb-6">Panel de Administración de Tienda</p>
+    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
+    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
+    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
+    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
+    <a href="index.html" class="block text-center text-xs text-gray-400 hover:text-sl mt-4">← Volver a la tienda</a>
+  </div>
+</div>
+
+<!-- ============ PANTALLA DE CARGA (estado tienda) ============ -->
+<div id="loading-store-screen" class="hidden min-h-screen flex items-center justify-center bg-gray-100">
+  <div class="text-center">
+    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-sl mb-4"></div>
+    <p class="text-sd font-semibold">Verificando estado de tienda...</p>
+    <p id="loading-detail" class="text-xs text-gray-400 mt-1"></p>
+  </div>
+</div>
+
+<!-- ============ PANTALLA BLOQUEADA ============ -->
+<div id="blocked-screen" class="hidden min-h-screen flex items-center justify-center bg-gray-100 p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+    <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    </div>
+    <h2 class="text-xl font-bold text-sd mb-2">Tienda bloqueada</h2>
+    <p id="blocked-reason" class="text-sm text-gray-600 mb-6"></p>
+    <button onclick="logout()" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 font-semibold">Cerrar sesión</button>
+  </div>
+</div>
+
+<!-- ============ PANEL PRINCIPAL (placeholder por ahora) ============ -->
+<div id="panel-screen" class="hidden min-h-screen">
+  <header class="bg-sd text-white px-4 py-4 flex justify-between items-center shrink-0">
+    <div class="flex items-center gap-3 min-w-0">
+      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap">SMART<span class="text-sl">EC</span></h1>
+      <div class="hidden md:block w-px h-6 bg-white/20"></div>
+      <div class="min-w-0">
+        <p id="header-store" class="text-sm md:text-base font-semibold truncate">—</p>
+        <p id="header-role" class="text-[10px] opacity-70">—</p>
+        <select id="store-selector" class="hidden mt-1 text-sm rounded-lg px-3 py-1.5 cursor-pointer focus:outline-none border border-white/30"></select>
+      </div>
+    </div>
+        <div class="flex items-center gap-3 text-sm shrink-0">
+      <span id="seller-info" class="hidden lg:inline opacity-80 text-xs"></span>
+      <button onclick="forceRefreshStore()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition" title="Refrescar datos">
+        🔄
+      </button>
+      <a href="home.html" class="hover:text-sl transition text-xs">← Inicio</a>
+      <button onclick="logout()" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
+    </div>
+  </header>
+
+    <!-- Nav tabs -->
+  <nav class="bg-white shadow-sm sticky top-[60px] z-30 overflow-x-auto scrollbar-thin">
+    <div class="container mx-auto px-4 flex gap-1 min-w-max">
+      <button class="tab-btn py-3 px-4 border-b-2 border-sl text-sl font-semibold whitespace-nowrap" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="inventory">Inventario</button>
+      <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="sellers">Vendedores</button>
+      <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="commissions">Comisiones</button>
+      <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="sales">Ventas</button>
+      <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="cash">Caja</button>
+    </div>
+  </nav>
+
+  <main class="container mx-auto p-4 md:p-6">
+
+    <!-- ============ DASHBOARD ============ -->
+    <section id="tab-dashboard" class="tab-content">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Resumen del mes</h2>
+          <p id="dash-month-label" class="text-xs text-gray-400">—</p>
+        </div>
+        <button onclick="loadAllData()" class="bg-white border border-gray-300 text-sd px-4 py-2 rounded-lg hover:bg-gray-50 text-sm">
+          🔄 Actualizar
+        </button>
+      </div>
+
+      <!-- KPIs principales -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-5 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Vendido este mes</p>
+          <p id="dash-total-sales" class="text-2xl font-bold text-sl mt-1">$0</p>
+          <p id="dash-total-sales-count" class="text-[10px] text-gray-400 mt-1">0 transacciones</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Unidades vendidas</p>
+          <p id="dash-units" class="text-2xl font-bold text-sd mt-1">0</p>
+          <p id="dash-ticket" class="text-[10px] text-gray-400 mt-1">Ticket: $0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Comisiones del mes</p>
+          <p id="dash-commissions" class="text-2xl font-bold text-orange-500 mt-1">$0</p>
+          <p class="text-[10px] text-gray-400 mt-1">Pool + bonos del equipo</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Caja de hoy</p>
+          <p id="dash-cash-status" class="text-2xl font-bold text-sd mt-1">—</p>
+          <p id="dash-cash-detail" class="text-[10px] text-gray-400 mt-1">Apertura pendiente</p>
+        </div>
+      </div>
+
+      <!-- Meta mensual -->
+      <div id="dash-goal-card" class="bg-white p-6 rounded-xl shadow mb-6">
+        <div class="flex justify-between items-start mb-4 flex-wrap gap-3">
+          <div>
+            <p class="text-xs text-gray-400">🎯 META MENSUAL</p>
+            <p id="dash-goal-month" class="text-lg font-bold text-sd">—</p>
+          </div>
+          <div class="text-right">
+            <p id="dash-goal-pct" class="text-3xl font-bold text-sl">0%</p>
+            <p id="dash-goal-status" class="text-xs text-gray-500">En progreso</p>
+          </div>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-4 mb-3">
+          <div id="dash-goal-bar" class="h-4 rounded-full bg-sl transition-all" style="width:0%"></div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-gray-500">Meta</p>
+            <p id="dash-goal-amount" class="font-bold text-sd text-sm mt-0.5">$0</p>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-gray-500">Vendido</p>
+            <p id="dash-goal-sold" class="font-bold text-sl text-sm mt-0.5">$0</p>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-gray-500">Faltante</p>
+            <p id="dash-goal-remaining" class="font-bold text-sd text-sm mt-0.5">$0</p>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-gray-500">Bonus admin</p>
+            <p id="dash-goal-bonus" class="font-bold text-orange-500 text-sm mt-0.5">$0</p>
+          </div>
+        </div>
+      </div>
+      <!-- Desglose de medios de pago -->
+      <div class="bg-white p-5 rounded-xl shadow mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-sd flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            Medios de pago del mes
+          </h3>
+          <p class="text-[10px] text-gray-400">Distribución de ventas</p>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+            <p class="text-[10px] text-green-700 font-semibold uppercase">💵 Efectivo</p>
+            <p id="dash-pay-cash" class="text-lg font-bold text-green-700 mt-1">$0</p>
+            <p id="dash-pay-cash-pct" class="text-[10px] text-green-600 mt-0.5">0% del total</p>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p class="text-[10px] text-blue-700 font-semibold uppercase">🏦 Transferencia</p>
+            <p id="dash-pay-transfer" class="text-lg font-bold text-blue-700 mt-1">$0</p>
+            <p id="dash-pay-transfer-pct" class="text-[10px] text-blue-600 mt-0.5">0% del total</p>
+          </div>
+            <div class="bg-fuchsia-50 border border-fuchsia-200 rounded-lg p-3">
+            <p class="text-[10px] text-fuchsia-700 font-semibold uppercase">📱 Nequi</p>
+            <p id="dash-pay-nequi" class="text-lg font-bold text-fuchsia-700 mt-1">$0</p>
+            <p id="dash-pay-nequi-pct" class="text-[10px] text-fuchsia-600 mt-0.5">0% del total</p>
+          </div>
+          <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+            <p class="text-[10px] text-orange-700 font-semibold uppercase">📦 Contra entrega</p>
+            <p id="dash-pay-cod" class="text-lg font-bold text-orange-700 mt-1">$0</p>
+            <p id="dash-pay-cod-pct" class="text-[10px] text-orange-600 mt-0.5">0% del total</p>
+          </div>
+        </div>
+
+        <!-- Extras del mes -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 pt-4 border-t">
+          <div class="flex justify-between items-center bg-gray-50 rounded-lg p-3">
+            <div>
+              <p class="text-[10px] text-gray-500 font-semibold uppercase">🚚 Envíos cobrados</p>
+              <p class="text-[10px] text-gray-400">Total shipping del mes</p>
+            </div>
+            <p id="dash-extra-shipping" class="text-base font-bold text-sd">$0</p>
+          </div>
+          <div class="flex justify-between items-center bg-gray-50 rounded-lg p-3">
+            <div>
+              <p class="text-[10px] text-gray-500 font-semibold uppercase">💳 Recargos tarjeta</p>
+              <p class="text-[10px] text-gray-400">Ingreso adicional por fees</p>
+            </div>
+            <p id="dash-extra-surcharge" class="text-base font-bold text-sd">$0</p>
+          </div>
+          <div class="flex justify-between items-center bg-gray-50 rounded-lg p-3">
+            <div>
+              <p class="text-[10px] text-gray-500 font-semibold uppercase">🎁 Descuentos otorgados</p>
+              <p class="text-[10px] text-gray-400">Total descuentos del mes</p>
+            </div>
+            <p id="dash-extra-discounts" class="text-base font-bold text-red-500">$0</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+        <!-- Estado de caja -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Estado de caja hoy
+          </h3>
+                    <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-gray-500">Base de apertura</span><span id="dash-cash-base" class="font-semibold">$0</span></div>
+
+            <div class="flex justify-between"><span class="text-gray-500">💵 Ventas en efectivo</span><span id="dash-cash-cashsales" class="font-semibold text-green-600">$0</span></div>
+
+            <div class="border-t pt-2 mt-2">
+              <p class="text-[10px] text-gray-400 uppercase font-semibold mb-1">Otros medios de pago</p>
+              <div class="flex justify-between"><span class="text-gray-500 pl-3">🏦 Transferencia</span><span id="dash-cash-transfer" class="font-semibold">$0</span></div>
+              <div class="flex justify-between"><span class="text-gray-500 pl-3">💳 Tarjeta</span><span id="dash-cash-card" class="font-semibold">$0</span></div>
+              <div class="flex justify-between"><span class="text-gray-500 pl-3">📦 Contra entrega</span><span id="dash-cash-cod" class="font-semibold">$0</span></div>
+              <div class="flex justify-between"><span class="text-gray-500 pl-3">📝 Crédito</span><span id="dash-cash-credit" class="font-semibold">$0</span></div>
+              <div class="flex justify-between mt-1 pt-1 border-t border-gray-100">
+                <span class="text-gray-600 font-medium">Subtotal otros medios</span>
+                <span id="dash-cash-othersales" class="font-bold text-sd">$0</span>
+              </div>
+            </div>
+
+            <div class="border-t pt-2 mt-2 space-y-1">
+              <p class="text-[10px] text-gray-400 uppercase font-semibold mb-1">Extras del día</p>
+              <div class="flex justify-between"><span class="text-gray-500 pl-3">🚚 Envíos cobrados</span><span id="dash-cash-shipping" class="font-semibold">$0</span></div>
+              <div class="flex justify-between"><span class="text-gray-500 pl-3">💳 Recargos por tarjeta</span><span id="dash-cash-surcharge" class="font-semibold">$0</span></div>
+            </div>
+
+            <div class="border-t pt-3 flex justify-between">
+              <span class="font-semibold text-sd">Efectivo esperado en caja</span>
+              <span id="dash-cash-expected" class="font-bold text-sl">$0</span>
+            </div>
+          </div>
+          <div class="mt-4">
+            <button onclick="document.querySelector('[data-tab=cash]').click()" class="w-full bg-gray-100 text-sd py-2 rounded-lg hover:bg-gray-200 text-sm font-medium">
+              Ver movimientos de caja →
+            </button>
+          </div>
+        </div>
+
+        <!-- Top vendedores -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            Top vendedores del mes
+          </h3>
+          <div id="dash-top-sellers" class="space-y-2">
+            <p class="text-xs text-gray-400 text-center py-4">Sin datos</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Últimas ventas -->
+      <div class="bg-white p-5 rounded-xl shadow">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-sd">Últimas ventas de hoy</h3>
+          <button onclick="document.querySelector('[data-tab=sales]').click()" class="text-xs text-sl hover:underline">Ver todas →</button>
+        </div>
+        <div id="dash-recent-sales" class="space-y-2">
+          <p class="text-xs text-gray-400 text-center py-4">Sin ventas hoy</p>
+        </div>
+      </div>
+    </section>
+
+        <!-- ============ INVENTARIO ============ -->
+    <section id="tab-inventory" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Inventario de la tienda</h2>
+          <p class="text-xs text-gray-400">Stock actual de tus variantes</p>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Variantes activas</p>
+          <p id="inv-kpi-variants" class="text-xl font-bold text-sd mt-1">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Unidades totales</p>
+          <p id="inv-kpi-units" class="text-xl font-bold text-sd mt-1">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Valor inventario (costo)</p>
+          <p id="inv-kpi-cost" class="text-xl font-bold text-sl mt-1">$0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Alertas stock bajo</p>
+          <p id="inv-kpi-alerts" class="text-xl font-bold text-orange-500 mt-1">0</p>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="bg-white rounded-xl shadow p-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-sd">Categoría</label>
+            <select id="inv-filter-group" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+              <option value="all">Todas las categorías</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-sd">Estado</label>
+            <select id="inv-filter-status" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+              <option value="all">Todos</option>
+              <option value="zero">Solo agotados</option>
+              <option value="low">Solo stock bajo</option>
+              <option value="available">Solo con stock</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-sd">Buscar</label>
+            <input id="inv-filter-search" type="text" placeholder="SKU o nombre..." class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[900px]">
+          <thead class="bg-gray-100 text-sd">
+            <tr>
+                <th class="p-3 text-left">Producto</th>
+                <th class="p-3 text-left">Variante</th>
+                <th class="p-3 text-left">SKU</th>
+                <th class="p-3 text-right">Costo</th>
+                <th class="p-3 text-right">Precio</th>
+                <th class="p-3 text-center">Mi stock</th>
+                <th class="p-3 text-center">Stock total</th>
+                <th class="p-3 text-center">Estado</th>
+                <th class="p-3"></th>
+            </tr>
+            </thead>>
+          <tbody id="inv-tbody"></tbody>
+        </table>
+      </div>
+      <p id="inv-empty" class="hidden text-center py-8 text-gray-400">Sin variantes con esos filtros.</p>
+    </section>
+
+       <!-- ============ VENDEDORES ============ -->
+    <section id="tab-sellers" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Rendimiento de vendedores</h2>
+          <p id="sellers-month-label" class="text-xs text-gray-400">—</p>
+        </div>
+      </div>
+
+      <!-- KPIs de equipo -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Vendedores activos</p>
+          <p id="sel-kpi-count" class="text-xl font-bold text-sd mt-1">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Vendido por el equipo</p>
+          <p id="sel-kpi-total" class="text-xl font-bold text-sl mt-1">$0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Ticket promedio</p>
+          <p id="sel-kpi-ticket" class="text-xl font-bold text-sd mt-1">$0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Comisiones del equipo</p>
+          <p id="sel-kpi-commission" class="text-xl font-bold text-orange-500 mt-1">$0</p>
+        </div>
+      </div>
+
+      <!-- Grid de tarjetas -->
+      <div id="sellers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      <p id="sellers-empty" class="hidden text-center py-8 text-gray-400">No hay vendedores registrados en esta tienda.</p>
+    </section>
+
+    <!-- ============ COMISIONES ============ -->
+    <section id="tab-commissions" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Comisiones de la tienda</h2>
+          <p id="comm-month-label" class="text-xs text-gray-400">—</p>
+        </div>
+        <button onclick="renderCommissionsTab()" class="bg-white border border-gray-300 text-sd px-4 py-2 rounded-lg hover:bg-gray-50 text-sm">
+          🔄 Actualizar
+        </button>
+      </div>
+
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Pool acumulado</p>
+          <p id="comm-kpi-pool" class="text-xl font-bold text-sl mt-1">$0</p>
+          <p class="text-[10px] text-gray-400 mt-1">Comisión de ventas</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Bonus por metas</p>
+          <p id="comm-kpi-bonus" class="text-xl font-bold text-green-600 mt-1">$0</p>
+          <p class="text-[10px] text-gray-400 mt-1">Excedente cumplido</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Total comisiones</p>
+          <p id="comm-kpi-total" class="text-xl font-bold text-orange-500 mt-1">$0</p>
+          <p class="text-[10px] text-gray-400 mt-1">Pool + bonus</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Ventas del mes</p>
+          <p id="comm-kpi-sales" class="text-xl font-bold text-sd mt-1">$0</p>
+          <p id="comm-kpi-count" class="text-[10px] text-gray-400 mt-1">0 transacciones</p>
+        </div>
+      </div>
+
+      <!-- Desglose por vendedor -->
+      <div class="bg-white rounded-xl shadow p-5 mb-6">
+        <h3 class="font-bold text-sd mb-4">Desglose por vendedor</h3>
+        <div id="comm-by-seller" class="space-y-3"></div>
+        <p id="comm-by-seller-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin vendedores activos</p>
+      </div>
+
+      <!-- Detalle de ventas con comisión -->
+      <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+        <div class="p-5 border-b">
+          <h3 class="font-bold text-sd">Detalle de ventas que generaron comisión</h3>
+        </div>
+        <table class="w-full text-sm min-w-[900px]">
+          <thead class="bg-gray-100 text-sd">
+            <tr>
+              <th class="p-3 text-left">Fecha</th>
+              <th class="p-3 text-left">Vendedor</th>
+              <th class="p-3 text-right">Venta</th>
+              <th class="p-3 text-right">Pool</th>
+              <th class="p-3 text-right">Bonus</th>
+              <th class="p-3 text-right">Total comisión</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="comm-tbody"></tbody>
+        </table>
+        <p id="comm-empty" class="hidden text-center py-8 text-gray-400">Sin ventas con comisión este mes.</p>
+      </div>
+    </section>
+
+        <!-- ============ VENTAS ============ -->
+    <section id="tab-sales" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Ventas de la tienda</h2>
+          <p id="sales-month-label" class="text-xs text-gray-400">—</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <select id="sales-seller-filter" class="px-3 py-2 border rounded-lg text-sm">
+            <option value="all">Todos los vendedores</option>
+          </select>
+          <select id="sales-status-filter" class="px-3 py-2 border rounded-lg text-sm">
+            <option value="all">Todos los estados</option>
+            <option value="completada">Completadas</option>
+            <option value="anulada">Anuladas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[900px]">
+          <thead class="bg-gray-100 text-sd">
+            <tr>
+              <th class="p-3 text-left">Fecha</th>
+              <th class="p-3 text-left">Cliente</th>
+              <th class="p-3 text-left">Vendedor</th>
+              <th class="p-3 text-center">Items</th>
+              <th class="p-3 text-right">Total</th>
+              <th class="p-3 text-right">Comisión</th>
+              <th class="p-3 text-center">Estado</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="sales-tbody-store"></tbody>
+        </table>
+      </div>
+      <p id="sales-empty-store" class="hidden text-center py-8 text-gray-400">Sin ventas con esos filtros.</p>
+    </section>
+
+       <!-- ============ CAJA ============ -->
+    <section id="tab-cash" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Caja de la tienda</h2>
+          <p id="cash-today-label" class="text-xs text-gray-400">—</p>
+        </div>
+        <button onclick="renderCashTab()" class="bg-white border border-gray-300 text-sd px-4 py-2 rounded-lg hover:bg-gray-50 text-sm">
+          🔄 Actualizar
+        </button>
+      </div>
+
+      <!-- Estado de caja HOY -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+
+        <!-- Apertura -->
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-blue-400">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-xs text-gray-400">🌅 APERTURA</p>
+              <p class="font-bold text-sd" id="cash-open-status">—</p>
+            </div>
+            <span id="cash-open-badge" class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600">—</span>
+          </div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-gray-500">Base esperada</span><span id="cash-open-expected" class="font-semibold">$0</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Monto ingresado</span><span id="cash-open-actual" class="font-semibold">$0</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Diferencia</span><span id="cash-open-diff" class="font-bold">$0</span></div>
+            <div id="cash-open-notes" class="text-[10px] text-gray-400 italic hidden"></div>
+          </div>
+        </div>
+
+        <!-- Movimientos del día -->
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
+          <p class="text-xs text-gray-400 mb-3">📊 MOVIMIENTOS DEL DÍA</p>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-gray-500">Base de apertura</span><span id="cash-mv-base" class="font-semibold">$0</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Ventas efectivo</span><span id="cash-mv-cash" class="font-semibold text-green-600">+$0</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Ventas otros medios</span><span id="cash-mv-other" class="font-semibold">$0</span></div>
+            <div class="flex justify-between border-t pt-2">
+              <span class="font-semibold text-sd">Efectivo esperado</span>
+              <span id="cash-mv-expected" class="font-bold text-sl">$0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cierre -->
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-orange-400">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <p class="text-xs text-gray-400">🌇 CIERRE</p>
+              <p class="font-bold text-sd" id="cash-close-status">Pendiente</p>
+            </div>
+            <span id="cash-close-badge" class="text-[10px] px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">Por cerrar</span>
+          </div>
+          <div id="cash-close-info" class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-gray-500">Contado</span><span id="cash-close-counted" class="font-semibold">$0</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Diferencia</span><span id="cash-close-diff" class="font-bold">$0</span></div>
+          </div>
+          <div id="cash-close-action" class="mt-4">
+            <button id="cash-close-btn" onclick="openCloseCashModal()" class="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600 font-semibold text-sm disabled:opacity-40" disabled>
+              Cerrar caja del día
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Histórico del mes -->
+      <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="p-5 border-b flex justify-between items-center">
+          <h3 class="font-bold text-sd">Histórico de arqueos del mes</h3>
+          <p id="cash-hist-month" class="text-xs text-gray-400"></p>
+        </div>
+        <div class="overflow-x-auto scrollbar-thin">
+          <table class="w-full text-sm min-w-[900px]">
+            <thead class="bg-gray-50 text-sd">
+              <tr>
+                <th class="p-3 text-left">Fecha</th>
+                <th class="p-3 text-left">Tipo</th>
+                <th class="p-3 text-right">Esperado</th>
+                <th class="p-3 text-right">Contado</th>
+                <th class="p-3 text-right">Diferencia</th>
+                <th class="p-3 text-center">Estado</th>
+                <th class="p-3 text-left">Nota</th>
+              </tr>
+            </thead>
+            <tbody id="cash-hist-tbody"></tbody>
+          </table>
+        </div>
+        <p id="cash-hist-empty" class="hidden text-center py-8 text-gray-400">Sin arqueos este mes.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============ MODAL DE APERTURA DE CAJA ============ -->
+<div id="open-cash-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/80 pointer-events-auto"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <div class="text-center mb-5">
+      <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <h3 class="text-xl font-bold text-sd">Apertura de caja</h3>
+      <p id="open-modal-subtitle" class="text-sm text-gray-500 mt-1"></p>
+    </div>
+
+    <div id="open-modal-body">
+      <!-- Base esperada -->
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <div class="flex justify-between items-center mb-1">
+          <p class="text-xs text-gray-600">Base esperada (cierre de ayer):</p>
+          <p id="open-expected" class="text-lg font-bold text-sd">$0</p>
+        </div>
+        <p class="text-[10px] text-gray-400">Fuente: <span id="open-expected-source">Sin cierre previo · usando $0</span></p>
+      </div>
+
+      <!-- Monto ingresado -->
+      <label class="text-xs font-semibold text-sd">¿Con cuánto efectivo inicias hoy?</label>
+      <input id="open-amount" type="number" placeholder="0" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg mt-1 mb-4 text-lg font-semibold focus:outline-none focus:border-sl">
+      <button type="button" onclick="useExpectedAmount()" class="text-xs text-sl hover:underline mb-4 block">
+        📌 Usar el monto esperado ($<span id="open-expected-short">0</span>)
+      </button>
+
+      <!-- Diferencia -->
+      <div id="open-diff-box" class="hidden rounded-lg p-3 mb-4 text-sm">
+        <div class="flex justify-between items-center">
+          <span>Diferencia:</span>
+          <span id="open-diff-amount" class="font-bold">$0</span>
+        </div>
+        <p id="open-diff-msg" class="text-xs mt-1"></p>
+      </div>
+
+      <!-- Nota (obligatoria si hay diferencia) -->
+      <div id="open-notes-box" class="hidden mb-4">
+        <label class="text-xs font-semibold text-red-600">⚠️ Motivo de la diferencia (obligatorio)</label>
+        <textarea id="open-notes" rows="2" placeholder="Explica por qué el monto no coincide..." class="w-full px-3 py-2 border border-red-300 rounded-lg mt-1 text-sm"></textarea>
+      </div>
+
+      <!-- Botón -->
+      <button id="open-confirm-btn" onclick="confirmOpenCash()" class="w-full bg-sd text-white py-3 rounded-lg hover:bg-sl font-bold disabled:opacity-40" disabled>
+        Confirmar apertura
+      </button>
+    </div>
+  </div>
+</div>
+<!-- ============ MODAL VER EN OTRAS TIENDAS ============ -->
+<div id="global-stock-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeGlobalStockModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeGlobalStockModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="global-stock-title" class="text-lg font-bold text-sd mb-1 pr-10">Disponibilidad</h3>
+    <p id="global-stock-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="global-stock-body"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL DETALLE VENTA (TIENDA) ============ -->
+<div id="sale-store-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeSaleStoreModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeSaleStoreModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-4 pr-10">Detalle de venta</h3>
+    <div id="sale-store-detail"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL DE CIERRE DE CAJA ============ -->
+<div id="close-cash-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/80 pointer-events-auto"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeCloseCashModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <div class="text-center mb-5">
+      <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+        <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+      </div>
+      <h3 class="text-xl font-bold text-sd">Cierre de caja</h3>
+      <p id="close-modal-subtitle" class="text-sm text-gray-500 mt-1"></p>
+    </div>
+
+    <div id="close-modal-body">
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <div class="flex justify-between items-center mb-1">
+          <p class="text-xs text-gray-600">Efectivo esperado en caja:</p>
+          <p id="close-expected" class="text-lg font-bold text-sd">$0</p>
+        </div>
+        <p class="text-[10px] text-gray-400">Base + ventas en efectivo del día</p>
+      </div>
+
+      <label class="text-xs font-semibold text-sd">¿Cuánto efectivo contaste al cierre?</label>
+      <input id="close-amount" type="number" placeholder="0" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg mt-1 mb-4 text-lg font-semibold focus:outline-none focus:border-sl">
+      <button type="button" onclick="useExpectedCloseAmount()" class="text-xs text-sl hover:underline mb-4 block">
+        📌 Usar el monto esperado ($<span id="close-expected-short">0</span>)
+      </button>
+
+      <div id="close-diff-box" class="hidden rounded-lg p-3 mb-4 text-sm">
+        <div class="flex justify-between items-center">
+          <span>Diferencia:</span>
+          <span id="close-diff-amount" class="font-bold">$0</span>
+        </div>
+        <p id="close-diff-msg" class="text-xs mt-1"></p>
+      </div>
+
+      <div id="close-notes-box" class="hidden mb-4">
+        <label class="text-xs font-semibold text-red-600">⚠️ Motivo de la diferencia (obligatorio)</label>
+        <textarea id="close-notes" rows="2" placeholder="Explica por qué el monto no coincide..." class="w-full px-3 py-2 border border-red-300 rounded-lg mt-1 text-sm"></textarea>
+      </div>
+
+      <button id="close-confirm-btn" onclick="confirmCloseCash()" class="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 font-bold disabled:opacity-40" disabled>
+        Confirmar cierre de caja
+      </button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, doc, getDoc,
+  query, where, addDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+/* ============ CONFIG ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* ============ ESTADO ============ */
+let currentUser = null;
+let currentUserData = null;
+let currentStore = null;
+let stores = [];
+let cashRegisters = [];  // arqueos del día
+let todayOpen = null;    // apertura del día actual
+let todayClose = null;   // cierre del día actual
+let settings = {};       // 🆕 configuración global
+let categories = {};     // 🆕 categorías del sistema
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const fmtDate = ts => {
+  if (!ts) return '-';
+  const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+  return d.toLocaleString('es-CO', { year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+};
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
+async function audit(entry) {
+  try {
+    await addDoc(collection(db,'auditLog'), {
+      ...entry,
+      userId: currentUser?.uid || null,
+      userEmail: currentUser?.email || null,
+      userRole: currentUserData?.role || null,
+      storeId: currentStore?.storeId || null,
+      timestamp: serverTimestamp()
+    });
+  } catch(e) { console.warn('audit fail', e); }
+}
+
+function showScreen(name) {
+  // Renombrar el antiguo loading-screen → loading-store-screen
+  if (name === 'loading-screen') name = 'loading-store-screen';
+
+  ['login-screen','loading-store-screen','blocked-screen','panel-screen'].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    if (id === name) {
+      el.classList.remove('hidden');
+      if (id === 'panel-screen') el.classList.add('min-h-screen');
+    } else {
+      el.classList.add('hidden');
+    }
+  });
+}
+
+/* ============ AUTENTICACIÓN ============ */
+$('login-btn').onclick = async () => {
+  const err = $('login-error');
+  err.classList.add('hidden');
+  try {
+    await signInWithEmailAndPassword(auth,
+      $('login-email').value.trim(),
+      $('login-pass').value);
+  } catch(e) {
+    err.innerText = 'Error: ' + e.message;
+    err.classList.remove('hidden');
+  }
+};
+
+window.logout = async () => {
+  await audit({ action:'logout', collection:'system', note:'Cierre de sesión panel tienda' });
+  await signOut(auth);
+  window.location.href = 'home.html';
+};
+
+onAuthStateChanged(auth, async user => {
+  // Ocultar la pantalla "Verificando sesión..."
+  document.getElementById('loading-screen').classList.add('hidden');
+
+  if (user) {
+    currentUser = user;
+    showScreen('loading-store-screen');
+    $('loading-detail').innerText = 'Cargando perfil de usuario...';
+
+    // Cargar perfil
+    try {
+      const snap = await getDoc(doc(db,'users',user.uid));
+      currentUserData = snap.exists() ? snap.data() : { role:'vendedor', storeId:null };
+    } catch(e) {
+      currentUserData = { role:'vendedor', storeId:null };
+    }
+
+    // Validar rol
+    if (!['superadmin','admin'].includes(currentUserData.role)) {
+      alert('⛔ Esta sección es solo para administradores.');
+      await signOut(auth);
+      return;
+    }
+
+    // Validar tienda
+    const myStoreId = currentUserData.storeId;
+    if (currentUserData.role !== 'superadmin' && !myStoreId) {
+      alert('⛔ No tienes una tienda asignada.');
+      await signOut(auth);
+      return;
+    }
+
+    $('loading-detail').innerText = 'Cargando tienda...';
+
+    // Cargar tiendas
+    try {
+      const sSnap = await getDocs(collection(db,'stores'));
+      stores = sSnap.docs.map(d => ({id:d.id, ...d.data()}));
+    } catch(e) {
+      console.error(e);
+      alert('Error cargando tiendas');
+      await signOut(auth);
+      return;
+    }
+
+    // Determinar tienda activa
+        if (currentUserData.role === 'superadmin') {
+      const activeStores = stores.filter(s => s.active).sort((a,b) => a.name.localeCompare(b.name));
+      if (!activeStores.length) {
+        alert('⛔ No hay tiendas activas.');
+        await signOut(auth);
+        return;
+      }
+      const saved = sessionStorage.getItem('smartec_store_panel');
+      currentStore = activeStores.find(s => s.storeId === saved) || activeStores[0];
+      sessionStorage.setItem('smartec_store_panel', currentStore.storeId);
+
+            // 🆕 Mostrar y poblar selector de tienda
+      const sel = $('store-selector');
+      if (sel) {
+        sel.classList.remove('hidden');
+        // Ocultar el nombre de tienda duplicado (ya está en el selector)
+        const headerStore = $('header-store');
+        if (headerStore) headerStore.classList.add('hidden');
+        sel.innerHTML = activeStores.map(s =>
+          `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
+        ).join('');
+
+        sel.onchange = async () => {
+          const newStoreId = sel.value;
+          currentStore = stores.find(s => s.storeId === newStoreId);
+          sessionStorage.setItem('smartec_store_panel', newStoreId);
+
+          // Recargar datos de la nueva tienda
+          window.SmartecCache.invalidate(`cashRegisters_${newStoreId}`);
+          await loadTodayCashRegisters();
+
+          const today = todayStr();
+          todayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === today);
+          todayClose = cashRegisters.find(a => a.type === 'cierre' && a.dateStr === today);
+
+          await loadAllData();
+        };
+      }
+        } else {
+      currentStore = stores.find(s => s.storeId === myStoreId);
+      if (!currentStore) {
+        alert('⛔ Tu tienda asignada no existe.');
+        await signOut(auth);
+        return;
+      }
+      // Asegurar que el selector quede oculto para no-superadmin
+      const sel = $('store-selector');
+      if (sel) sel.classList.add('hidden');
+      if (!currentStore.active) {
+        $('blocked-reason').innerText = 'Tu tienda está desactivada. Contacta al superadmin.';
+        showScreen('blocked-screen');
+        return;
+      }
+    }
+
+    // ========== VERIFICAR ARQUEO DEL DÍA ==========
+    $('loading-detail').innerText = 'Verificando arqueo de caja...';
+    await loadTodayCashRegisters();
+
+    const today = todayStr();
+    todayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === today);
+    todayClose = cashRegisters.find(a => a.type === 'cierre' && a.dateStr === today);
+
+    if (!todayOpen) {
+      // Sin apertura → mostrar modal bloqueante
+      showScreen('panel-screen');
+      openOpenCashModal();
+      return;
+    }
+
+    if (todayOpen && todayOpen.status === 'pending_approval') {
+      $('blocked-reason').innerText = `Tu apertura de hoy quedó PENDIENTE de aprobación por el superadmin. Motivo: ${todayOpen.notes || 'sin nota'}. No podrás operar la tienda hasta que sea revisada.`;
+      showScreen('blocked-screen');
+      return;
+    }
+
+    if (todayOpen && todayOpen.status === 'rejected') {
+      $('blocked-reason').innerText = `Tu apertura de hoy fue RECHAZADA por el superadmin. Motivo: ${todayOpen.reviewNotes || 'sin nota'}. Contacta al superadmin.`;
+      showScreen('blocked-screen');
+      return;
+    }
+
+    // Todo OK → mostrar panel
+    await audit({ action:'login', collection:'system', note:'Inicio de sesión panel tienda' });
+
+    $('header-store').innerText = currentStore.name;
+    const roleLabels = { superadmin:'Superadmin', admin:'Admin de tienda' };
+    $('header-role').innerText = roleLabels[currentUserData.role] || currentUserData.role;
+    $('seller-info').innerText = '👤 ' + user.email;
+   
+    await loadAllData();
+
+     } else {
+    // 🆕 Sin sesión → redirigir a home
+    window.location.href = 'home.html';
+  }
+});
+
+/* ============ CARGA DE ARQUEOS DEL DÍA ============ */
+async function loadTodayCashRegisters() {
+  try {
+    const C = window.SmartecCache;
+    cashRegisters = await C.wrap(`cashRegisters_${currentStore.storeId}`, async () => {
+      const q = query(
+        collection(db,'cashRegisters'),
+        where('storeId','==', currentStore.storeId)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+  } catch(e) {
+    console.error('Error cargando arqueos:', e);
+    cashRegisters = [];
+  }
+}
+/* ============================================================
+   MODAL DE APERTURA DE CAJA
+============================================================ */
+let expectedBaseForToday = 0;
+
+async function openOpenCashModal() {
+  // 1. Determinar la base esperada (último cierre aprobado)
+  expectedBaseForToday = await getExpectedBase(currentStore.storeId);
+
+  // 2. Configurar el modal
+  const todayLabel = new Date().toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  $('open-modal-subtitle').innerText = `${currentStore.name} · ${todayLabel}`;
+  $('open-expected').innerText = fmt(expectedBaseForToday);
+  $('open-expected-short').innerText = Math.round(expectedBaseForToday).toLocaleString('es-CO');
+  $('open-expected-source').innerText = expectedBaseForToday > 0
+    ? 'Cierre del último día aprobado'
+    : 'Sin cierre previo · usando $0';
+
+  // 3. Resetear inputs
+  $('open-amount').value = '';
+  $('open-notes').value = '';
+  $('open-diff-box').classList.add('hidden');
+  $('open-notes-box').classList.add('hidden');
+  $('open-confirm-btn').disabled = true;
+  $('open-confirm-btn').innerText = 'Confirmar apertura';
+  $('open-confirm-btn').className = 'w-full bg-sd text-white py-3 rounded-lg hover:bg-sl font-bold disabled:opacity-40';
+
+  // 4. Listener para calcular diferencia en vivo
+  $('open-amount').oninput = updateOpenDiff;
+  $('open-amount').onchange = updateOpenDiff;
+
+  window.SmartecCache.invalidate(`cashRegisters_${currentStore.storeId}`);
+  // 5. Mostrar modal
+  const m = $('open-cash-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+}
+
+async function getExpectedBase(storeId) {
+  try {
+    const q = query(
+      collection(db,'cashRegisters'),
+      where('storeId','==', storeId),
+      where('type','==', 'cierre'),
+      where('status','==', 'approved')
+    );
+    const snap = await getDocs(q);
+    const closes = snap.docs.map(d => ({id:d.id, ...d.data()}))
+      .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+    if (closes.length) return Number(closes[0].actualAmount || 0);
+    return 0;
+  } catch(e) {
+    console.warn('Error obteniendo base esperada:', e);
+    return 0;
+  }
+}
+
+window.useExpectedAmount = () => {
+  $('open-amount').value = expectedBaseForToday;
+  updateOpenDiff();
+};
+
+function updateOpenDiff() {
+  const amount = Number($('open-amount').value);
+  const diffBox = $('open-diff-box');
+  const notesBox = $('open-notes-box');
+  const confirmBtn = $('open-confirm-btn');
+
+  if ($('open-amount').value === '' || isNaN(amount)) {
+    diffBox.classList.add('hidden');
+    notesBox.classList.add('hidden');
+    confirmBtn.disabled = true;
+    return;
+  }
+
+  const diff = amount - expectedBaseForToday;
+  const margin = Number(currentStore.arqueoMargin || 0);
+  const exceedsMargin = Math.abs(diff) > margin;
+
+  // Mostrar diferencia
+  diffBox.classList.remove('hidden');
+  $('open-diff-amount').innerText = (diff > 0 ? '+' : '') + fmt(diff);
+  $('open-diff-amount').className = 'font-bold ' + (diff === 0 ? 'text-gray-500' : diff > 0 ? 'text-green-600' : 'text-red-500');
+
+  if (diff === 0) {
+    diffBox.className = 'rounded-lg p-3 mb-4 text-sm bg-green-50 border border-green-200';
+    $('open-diff-msg').innerText = '✅ El monto coincide con la base esperada.';
+    $('open-diff-msg').className = 'text-xs mt-1 text-green-700';
+    notesBox.classList.add('hidden');
+  } else if (exceedsMargin) {
+    diffBox.className = 'rounded-lg p-3 mb-4 text-sm bg-red-50 border border-red-200';
+    $('open-diff-msg').innerText = `⚠️ La diferencia supera el margen permitido (${fmt(margin)}). Deberás explicar el motivo y el superadmin tendrá que aprobarla.`;
+    $('open-diff-msg').className = 'text-xs mt-1 text-red-700 font-semibold';
+    notesBox.classList.remove('hidden');
+  } else {
+    diffBox.className = 'rounded-lg p-3 mb-4 text-sm bg-yellow-50 border border-yellow-200';
+    $('open-diff-msg').innerText = `🟡 Diferencia dentro del margen permitido (${fmt(margin)}). Se registrará automáticamente.`;
+    $('open-diff-msg').className = 'text-xs mt-1 text-yellow-700';
+    notesBox.classList.add('hidden');
+  }
+
+  // Habilitar botón
+  if (exceedsMargin) {
+    confirmBtn.disabled = false;
+    confirmBtn.innerText = '⚠️ Enviar para aprobación del superadmin';
+    confirmBtn.className = 'w-full bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 font-bold';
+  } else {
+    confirmBtn.disabled = false;
+    confirmBtn.innerText = '✅ Confirmar apertura';
+    confirmBtn.className = 'w-full bg-sd text-white py-3 rounded-lg hover:bg-sl font-bold';
+  }
+}
+
+window.confirmOpenCash = async () => {
+  const amount = Number($('open-amount').value);
+  if (isNaN(amount) || amount < 0) {
+    alert('Ingresa un monto válido');
+    return;
+  }
+
+  const diff = amount - expectedBaseForToday;
+  const margin = Number(currentStore.arqueoMargin || 0);
+  const exceedsMargin = Math.abs(diff) > margin;
+
+  let notes = ($('open-notes')?.value || '').trim();
+
+  if (exceedsMargin && !notes) {
+    alert('⚠️ Debes escribir el motivo de la diferencia');
+    return;
+  }
+
+  if (!notes) {
+    notes = diff === 0 ? 'Apertura sin novedad' : `Diferencia dentro del margen permitido (${fmt(margin)})`;
+  }
+
+  const btn = $('open-confirm-btn');
+  btn.disabled = true;
+  btn.innerText = '⏳ Guardando...';
+
+  const today = todayStr();
+
+  const data = {
+    storeId: currentStore.storeId,
+    storeName: currentStore.name,
+    type: 'apertura',
+    dateStr: today,
+    expectedBase: expectedBaseForToday,
+    actualAmount: amount,
+    difference: diff,
+    arqueoMargin: margin,
+    notes,
+    adminEmail: currentUser.email,
+    adminUid: currentUser.uid,
+    adminName: currentUserData.name || currentUser.email,
+    status: exceedsMargin ? 'pending_approval' : 'approved',
+    createdAt: serverTimestamp()
+  };
+
+  if (!exceedsMargin) {
+    data.reviewedBy = 'auto';
+    data.reviewedAt = serverTimestamp();
+    data.reviewNotes = 'Aprobado automáticamente (dentro del margen permitido)';
+  }
+
+  try {
+    await addDoc(collection(db,'cashRegisters'), data);
+
+    await audit({
+      action: 'create',
+      collection: 'cashRegisters',
+      after: data,
+      note: `Apertura de caja: ${fmt(amount)} (diff: ${fmt(diff)}) · ${exceedsMargin ? 'Pendiente aprobación' : 'Aprobada'}`
+    });
+
+    // Cerrar modal
+    const m = $('open-cash-modal');
+    m.classList.add('hidden'); m.classList.remove('flex');
+
+    if (exceedsMargin) {
+      // Bloquear tienda
+      $('blocked-reason').innerText = `Tu apertura quedó PENDIENTE de aprobación por el superadmin.\n\nMotivo: ${notes}\n\nDiferencia: ${fmt(diff)}\nMargen permitido: ${fmt(margin)}\n\nNo podrás operar la tienda hasta que sea revisada.`;
+      showScreen('blocked-screen');
+    } else {
+      // Todo OK → recargar
+      alert('✅ Apertura registrada correctamente');
+      window.location.reload();
+    }
+  } catch(e) {
+    console.error('Error guardando apertura:', e);
+    alert('Error al guardar: ' + e.message);
+    btn.disabled = false;
+    btn.innerText = 'Confirmar apertura';
+  }
+};
+
+/* ============================================================
+   DATOS DEL DASHBOARD
+============================================================ */
+let dashboardData = {
+  sales: [],
+  inventory: [],        // inventario solo de la tienda actual
+  allInventory: [],     // inventario de TODAS las tiendas (para stock total)
+  sellers: [],
+  products: [],
+  settings: null,
+  todayOpen: null,
+  todayClose: null,
+  goal: null,
+  currentMonth: null
+};
+
+window.loadAllData = async () => {
+  if (!currentStore) return;
+  showScreen('loading-screen');
+  $('loading-detail').innerText = 'Cargando datos de la tienda...';
+
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  try {
+    const C = window.SmartecCache;
+
+    // 1. Ventas del mes (con cache POR tienda)
+    const allSales = await C.wrap(`sales_${currentStore.storeId}`, async () => {
+      const s = await getDocs(query(collection(db,'sales'), where('storeId','==', currentStore.storeId)));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+    dashboardData.sales = allSales.filter(s =>
+      s.status !== 'anulada' && s.createdAt?.seconds && new Date(s.createdAt.seconds*1000) >= monthStart
+    );
+
+    // 2. Inventario de la tienda (con cache POR tienda)
+    dashboardData.inventory = await C.wrap(`inventory_${currentStore.storeId}`, async () => {
+      const s = await getDocs(query(collection(db,'inventory'), where('storeId','==', currentStore.storeId)));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+
+    // 3. Vendedores de la tienda (con cache)
+    const allUsers = await C.wrap('users', async () => {
+      const s = await getDocs(query(collection(db,'users'), where('storeId','==', currentStore.storeId)));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+    dashboardData.sellers = allUsers.filter(u => u.role === 'vendedor' && u.active !== false);
+
+    // 4. Meta del mes (con herencia) — SIN cache (es un solo doc)
+    const goalRef = doc(db,'storeGoals',`${currentStore.storeId}_${currentMonth}`);
+    const goalSnap = await getDoc(goalRef);
+    if (goalSnap.exists()) {
+      dashboardData.goal = goalSnap.data();
+    } else {
+      const prevD = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      const prevMonth = `${prevD.getFullYear()}-${String(prevD.getMonth()+1).padStart(2,'0')}`;
+      const prevSnap = await getDoc(doc(db,'storeGoals',`${currentStore.storeId}_${prevMonth}`));
+      if (prevSnap.exists()) {
+        dashboardData.goal = prevSnap.data();
+      } else {
+        dashboardData.goal = {
+          goalAmount: currentStore.goalAmount || 0,
+          bonusRate: currentStore.bonusRate || 0
+        };
+      }
+    }
+    dashboardData.currentMonth = currentMonth;
+
+    // 5. Apertura/cierre de hoy
+    const today = todayStr();
+    dashboardData.todayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === today);
+    dashboardData.todayClose = cashRegisters.find(a => a.type === 'cierre' && a.dateStr === today);
+
+    // 6. Cargar productos (con cache)
+    dashboardData.products = await C.wrap('products', async () => {
+      const s = await getDocs(collection(db,'products'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+
+    // 7. Cargar allInventory (con cache)
+    dashboardData.allInventory = await C.wrap('inventory_all', async () => {
+      const s = await getDocs(collection(db,'inventory'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+
+    // 8. Settings (con cache)
+    const settingsData = await C.wrap('settings', async () => {
+      const s = await getDoc(doc(db,'settings','general'));
+      return s.exists() ? s.data() : {};
+    });
+    settings = settingsData;
+    categories = settings.categories || {};
+
+    // Renderizar
+    renderDashboard();
+    renderInventoryTab();
+    renderSellersTab();
+    renderCommissionsTab();
+    renderSalesTab();
+    renderCashTab();
+    showScreen('panel-screen');
+  } catch(e) {
+    console.error('Error cargando dashboard:', e);
+    alert('Error: ' + e.message);
+    showScreen('panel-screen');
+  }
+};
+
+function renderDashboard() {
+  const now = new Date();
+  const monthName = now.toLocaleDateString('es-CO', { month:'long', year:'numeric' });
+  $('dash-month-label').innerText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+    const sales = dashboardData.sales;
+
+    // ===== Venta neta (sin envío ni recargo tarjeta) =====
+  let totalSales = 0;
+  let dashShipping = 0;
+  let dashSurcharge = 0;
+
+  sales.forEach(s => {
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    totalSales += base;
+    dashShipping += Number(s.shipping || 0);
+    dashSurcharge += Number(s.surchargeAmount || 0);
+  });
+
+  const units = sales.reduce((sum, s) => sum + (s.items||[]).reduce((x,i) => x + Number(i.qty||0), 0), 0);
+  const ticket = sales.length > 0 ? totalSales / sales.length : 0;
+
+const totalPool = sales.reduce((sum, s) =>
+    sum + Number(s.poolAmount || s.commissionAmount || 0), 0);
+  const totalBonus = sales.reduce((sum, s) =>
+    sum + Number(s.bonusAmount || 0), 0);
+  const totalCommissions = totalPool + totalBonus;
+    
+    // ===== Medios de pago (venta neta) =====
+  const getBase = (s) => {
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    return (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+  };
+
+    const payCash = sales.filter(s => s.paymentMethod === 'efectivo')
+    .reduce((sum, s) => sum + getBase(s), 0);
+  const payNequi = sales.filter(s => s.paymentMethod === 'nequi')
+    .reduce((sum, s) => sum + getBase(s), 0);
+  const payTransfer = sales.filter(s => s.paymentMethod === 'transferencia')
+    .reduce((sum, s) => sum + getBase(s), 0);
+  const payCard = sales.filter(s => s.paymentMethod === 'tarjeta')
+    .reduce((sum, s) => sum + getBase(s), 0);
+  const payCod = sales.filter(s => s.paymentMethod === 'contraentrega')
+    .reduce((sum, s) => sum + getBase(s), 0);
+
+  // Extras
+  const totalShipping = sales.reduce((sum, s) => sum + Number(s.shipping || 0), 0);
+  const totalSurcharge = sales.reduce((sum, s) => sum + Number(s.surchargeAmount || 0), 0);
+  const totalDiscounts = sales.reduce((sum, s) => sum + Number(s.discount || 0), 0);
+
+  const basePct = totalSales > 0 ? totalSales : 1;
+  const setPct = (id, val) => {
+    const el = $(id);
+    if (el) el.innerText = ((val / basePct) * 100).toFixed(1) + '% del total';
+  };
+
+  const setTxt = (id, txt) => {
+    const el = $(id);
+    if (el) el.innerText = txt;
+  };
+
+  setTxt('dash-pay-cash', fmt(payCash));
+  setPct('dash-pay-cash-pct', payCash);
+  setTxt('dash-pay-transfer', fmt(payTransfer));
+  setPct('dash-pay-transfer-pct', payTransfer);
+  setTxt('dash-pay-card', fmt(payCard));
+  setPct('dash-pay-card-pct', payCard);
+  setTxt('dash-pay-nequi', fmt(payNequi));
+  setPct('dash-pay-nequi-pct', payNequi);
+  setTxt('dash-pay-cod', fmt(payCod));
+  setPct('dash-pay-cod-pct', payCod);
+
+  setTxt('dash-extra-shipping', fmt(totalShipping));
+  setTxt('dash-extra-surcharge', fmt(totalSurcharge));
+  setTxt('dash-extra-discounts', fmt(totalDiscounts));
+
+  // ===== KPIs =====
+    $('dash-total-sales').innerText = fmt(totalSales);
+    $('dash-total-sales-count').innerText = `${sales.length} transacciones · +${fmt(dashShipping)} envíos · +${fmt(dashSurcharge)} recargos`;
+  $('dash-units').innerText = units.toLocaleString('es-CO');
+  $('dash-ticket').innerText = `Ticket: ${fmt(ticket)}`;
+  $('dash-commissions').innerText = fmt(totalCommissions);
+
+  // ===== Caja de hoy =====
+  const openBase = dashboardData.todayOpen ? Number(dashboardData.todayOpen.actualAmount || 0) : 0;
+  const todaySales = sales.filter(s => {
+    if (!s.createdAt?.seconds) return false;
+    const d = new Date(s.createdAt.seconds * 1000);
+    return d.toDateString() === now.toDateString();
+  });
+    
+      // ===== Ventas de hoy por método de pago (venta neta sin envío ni recargo) =====
+  const getNetSale = (s) => {
+    // Venta neta = subtotal - descuento (sin envío ni recargo)
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    return (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+  };
+
+  const todayCash = todaySales.filter(s => s.paymentMethod === 'efectivo')
+    .reduce((sum, s) => sum + getNetSale(s), 0);
+  const todayTransfer = todaySales.filter(s => s.paymentMethod === 'transferencia')
+    .reduce((sum, s) => sum + getNetSale(s), 0);
+  const todayCard = todaySales.filter(s => s.paymentMethod === 'tarjeta')
+    .reduce((sum, s) => sum + getNetSale(s), 0);
+  const todayCod = todaySales.filter(s => s.paymentMethod === 'contraentrega')
+    .reduce((sum, s) => sum + getNetSale(s), 0);
+  const todayCredit = todaySales.filter(s => s.paymentMethod === 'credito')
+    .reduce((sum, s) => sum + getNetSale(s), 0);
+  const todayOther = todayTransfer + todayCard + todayCod + todayCredit;
+
+  // ===== Extras del día (envíos + recargos) =====
+  const todayShipping = todaySales.reduce((sum, s) => sum + Number(s.shipping || 0), 0);
+  const todaySurcharge = todaySales.reduce((sum, s) => sum + Number(s.surchargeAmount || 0), 0);
+
+  const cashStatusEl = $('dash-cash-status');
+  const cashDetailEl = $('dash-cash-detail');
+
+  if (dashboardData.todayOpen) {
+    cashStatusEl.innerText = fmt(openBase + todayCash);
+    cashStatusEl.className = 'text-2xl font-bold text-green-600 mt-1';
+    cashDetailEl.innerText = `Base ${fmt(openBase)} + Ventas efectivo ${fmt(todayCash)}`;
+  } else {
+    cashStatusEl.innerText = 'Sin apertura';
+    cashStatusEl.className = 'text-2xl font-bold text-orange-500 mt-1';
+    cashDetailEl.innerText = 'Abre la caja para comenzar el día';
+  }
+
+  $('dash-cash-base').innerText = fmt(openBase);
+  $('dash-cash-cashsales').innerText = fmt(todayCash);
+  $('dash-cash-transfer').innerText = fmt(todayTransfer);
+  $('dash-cash-card').innerText = fmt(todayCard);
+  $('dash-cash-cod').innerText = fmt(todayCod);
+  $('dash-cash-credit').innerText = fmt(todayCredit);
+  $('dash-cash-othersales').innerText = fmt(todayOther);
+  $('dash-cash-shipping').innerText = fmt(todayShipping);
+  $('dash-cash-surcharge').innerText = fmt(todaySurcharge);
+   // Efectivo esperado en caja = base + ventas efectivo (con envío, porque ese efectivo entra)
+  const todayCashGross = todaySales.filter(s => s.paymentMethod === 'efectivo')
+    .reduce((sum, s) => sum + Number(s.total || 0), 0);
+  $('dash-cash-expected').innerText = fmt(openBase + todayCashGross);
+
+  // ===== Meta mensual =====
+  const goal = dashboardData.goal || {};
+  const goalAmount = Number(goal.goalAmount || 0);
+  const bonusRate = Number(goal.bonusRate || 0);
+
+  $('dash-goal-month').innerText = `Meta de ${monthName}`;
+  $('dash-goal-amount').innerText = fmt(goalAmount);
+  $('dash-goal-sold').innerText = fmt(totalSales);
+  $('dash-goal-remaining').innerText = fmt(Math.max(0, goalAmount - totalSales));
+
+  const pct = goalAmount > 0 ? Math.min(100, (totalSales / goalAmount) * 100) : 0;
+  const achieved = goalAmount > 0 && totalSales >= goalAmount;
+
+  $('dash-goal-pct').innerText = pct.toFixed(0) + '%';
+  $('dash-goal-pct').className = `text-3xl font-bold ${achieved ? 'text-green-600' : 'text-sl'}`;
+  $('dash-goal-bar').style.width = pct + '%';
+  $('dash-goal-bar').className = `h-4 rounded-full transition-all ${achieved ? 'bg-green-500' : 'bg-sl'}`;
+  $('dash-goal-status').innerText = goalAmount === 0
+    ? 'Sin meta asignada'
+    : (achieved ? '✅ Meta cumplida' : `Faltan ${fmt(Math.max(0, goalAmount - totalSales))}`);
+  $('dash-goal-status').className = `text-xs ${achieved ? 'text-green-600 font-semibold' : 'text-gray-500'}`;
+  $('dash-goal-bonus').innerText = achieved
+    ? fmt(totalSales * bonusRate) + ` (${(bonusRate*100).toFixed(2)}%)`
+    : (goalAmount > 0 ? `${(bonusRate*100).toFixed(2)}% al cumplir` : '—');
+
+  // ===== Top vendedores =====
+  renderTopSellers(sales);
+
+  // ===== Últimas ventas del día =====
+  renderRecentSales(todaySales);
+}
+
+function renderTopSellers(sales) {
+  const el = $('dash-top-sellers');
+  const bySeller = {};
+
+  sales.forEach(s => {
+    const key = s.sellerUid || s.sellerEmail || 'desconocido';
+    if (!bySeller[key]) bySeller[key] = { name: s.sellerName || s.sellerEmail || '—', total: 0, count: 0 };
+    bySeller[key].total += Number(s.total || 0);
+    bySeller[key].count += 1;
+  });
+
+  const list = Object.values(bySeller).sort((a,b) => b.total - a.total).slice(0, 5);
+
+  if (!list.length) {
+    el.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Sin ventas este mes</p>';
+    return;
+  }
+
+  const max = list[0].total;
+  el.innerHTML = list.map((s, i) => `
+    <div class="flex items-center gap-3">
+      <span class="w-6 h-6 rounded-full ${i===0?'bg-yellow-100 text-yellow-700':i===1?'bg-gray-100 text-gray-700':i===2?'bg-orange-100 text-orange-700':'bg-blue-50 text-blue-700'} flex items-center justify-center text-xs font-bold">${i+1}</span>
+      <div class="flex-1 min-w-0">
+        <div class="flex justify-between items-baseline">
+          <p class="text-xs font-semibold text-sd truncate">${s.name}</p>
+          <p class="text-xs font-bold text-sl ml-2">${fmt(s.total)}</p>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5 mt-1">
+          <div class="h-1.5 rounded-full bg-sl" style="width:${(s.total/max)*100}%"></div>
+        </div>
+        <p class="text-[10px] text-gray-400 mt-0.5">${s.count} ventas</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderRecentSales(todaySales) {
+  const el = $('dash-recent-sales');
+  if (!todaySales.length) {
+    el.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Sin ventas hoy</p>';
+    return;
+  }
+  const recent = todaySales
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0))
+    .slice(0, 5);
+
+  el.innerHTML = recent.map(s => {
+    const time = s.createdAt?.seconds
+      ? new Date(s.createdAt.seconds*1000).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})
+      : '-';
+    const items = (s.items||[]).reduce((x,i) => x + Number(i.qty||0), 0);
+    return `
+      <div class="flex justify-between items-center border-b border-gray-100 pb-2 last:border-0">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-sd truncate">${s.customer?.name || '—'}</p>
+          <p class="text-[10px] text-gray-400">${time} · ${items} item(s) · ${s.sellerName || s.sellerEmail || ''}</p>
+        </div>
+        <p class="text-sm font-bold text-sl ml-3 whitespace-nowrap">${fmt(s.total)}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   VENDEDORES
+============================================================ */
+function renderSellersTab() {
+  const grid = $('sellers-grid');
+  const empty = $('sellers-empty');
+  if (!grid) return;
+
+  const now = new Date();
+  const monthName = now.toLocaleDateString('es-CO', { month:'long', year:'numeric' });
+  $('sellers-month-label').innerText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  const sellers = dashboardData.sellers || [];
+  const sales = dashboardData.sales || [];
+
+  if (!sellers.length) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    // KPIs en 0
+    $('sel-kpi-count').innerText = '0';
+    $('sel-kpi-total').innerText = fmt(0);
+    $('sel-kpi-ticket').innerText = fmt(0);
+    $('sel-kpi-commission').innerText = fmt(0);
+    return;
+  }
+  empty.classList.add('hidden');
+
+  // Calcular stats por vendedor
+  const stats = sellers.map(s => {
+    const sellerSales = sales.filter(x => x.sellerUid === s.id);
+    const getBase = (x) => {
+      const sub = Number(x.subtotal || 0);
+      const disc = Number(x.discount || 0);
+      return (x.commissionBase !== undefined) ? Number(x.commissionBase) : (sub - disc);
+    };
+    const total = sellerSales.reduce((sum, x) => sum + getBase(x), 0);
+    const count = sellerSales.length;
+    const commission = sellerSales.reduce((sum, x) => {
+      const pool = Number(x.poolAmount || x.commissionAmount || 0);
+      const bonus = Number(x.bonusAmount || 0);
+      return sum + pool + bonus;
+    }, 0);
+    const units = sellerSales.reduce((sum, x) =>
+      sum + (x.items||[]).reduce((y,i) => y + Number(i.qty||0), 0), 0);
+
+    const goalAmount = Number(s.goalAmount || 0);
+    const bonusRate = Number(s.bonusRate || 0);
+    const pct = goalAmount > 0 ? Math.min(100, (total / goalAmount) * 100) : 0;
+    const achieved = goalAmount > 0 && total >= goalAmount;
+
+    return {
+      seller: s,
+      total, count, commission, units,
+      goalAmount, bonusRate, pct, achieved
+    };
+  }).sort((a,b) => b.total - a.total);
+
+  // KPIs de equipo
+  const teamTotal = stats.reduce((s, x) => s + x.total, 0);
+  const teamCount = stats.reduce((s, x) => s + x.count, 0);
+  const teamCommission = stats.reduce((s, x) => s + x.commission, 0);
+  const teamTicket = teamCount > 0 ? teamTotal / teamCount : 0;
+
+  $('sel-kpi-count').innerText = sellers.length;
+  $('sel-kpi-total').innerText = fmt(teamTotal);
+  $('sel-kpi-ticket').innerText = fmt(teamTicket);
+  $('sel-kpi-commission').innerText = fmt(teamCommission);
+
+  // Grid
+  grid.innerHTML = stats.map((st, i) => {
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+    return `
+      <div class="bg-white p-5 rounded-xl shadow hover:shadow-md transition">
+        <div class="flex justify-between items-start mb-3">
+          <div class="min-w-0">
+            <p class="text-xs text-gray-400">${medal} Vendedor #${i+1}</p>
+            <p class="font-bold text-sd truncate">${st.seller.name || st.seller.email}</p>
+            <p class="text-[10px] text-gray-400 truncate">${st.seller.email}</p>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded ${st.seller.active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}">
+            ${st.seller.active !== false ? 'Activo' : 'Inactivo'}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-3 text-xs">
+          <div>
+            <p class="text-gray-500">Vendido</p>
+            <p class="font-bold text-sl">${fmt(st.total)}</p>
+          </div>
+          <div>
+            <p class="text-gray-500">Ventas</p>
+            <p class="font-bold text-sd">${st.count}</p>
+          </div>
+          <div>
+            <p class="text-gray-500">Unidades</p>
+            <p class="font-bold text-sd">${st.units}</p>
+          </div>
+          <div>
+            <p class="text-gray-500">Comisión</p>
+            <p class="font-bold text-orange-500">${fmt(st.commission)}</p>
+          </div>
+        </div>
+
+        ${st.goalAmount > 0 ? `
+          <div class="border-t pt-3">
+            <div class="flex justify-between items-center text-[11px] mb-1">
+              <span class="text-gray-500">🎯 Meta</span>
+              <span class="${st.achieved?'text-green-600 font-bold':'text-gray-500'}">${st.pct.toFixed(0)}%</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-1.5 mb-1">
+              <div class="h-1.5 rounded-full ${st.achieved?'bg-green-500':'bg-sl'}" style="width:${st.pct}%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-gray-400">
+              <span>${fmt(st.total)}</span>
+              <span>${fmt(st.goalAmount)}</span>
+            </div>
+            <p class="text-[10px] mt-1 ${st.achieved?'text-green-600 font-semibold':'text-gray-400'}">
+              ${st.achieved
+                ? `✅ Meta cumplida · Bonus ${(st.bonusRate*100).toFixed(1)}%`
+                : `Bonus ${(st.bonusRate*100).toFixed(1)}% al cumplir`}
+            </p>
+          </div>
+        ` : '<p class="text-[10px] text-gray-300 border-t pt-3">Sin meta individual</p>'}
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   COMISIONES
+============================================================ */
+function renderCommissionsTab() {
+  const tbody = $('comm-tbody');
+  const empty = $('comm-empty');
+  if (!tbody) return;
+
+  const now = new Date();
+  const monthName = now.toLocaleDateString('es-CO', { month:'long', year:'numeric' });
+  $('comm-month-label').innerText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  const sales = dashboardData.sales || [];
+
+  // KPIs
+  const totalPool = sales.reduce((sum, x) => sum + Number(x.poolAmount || x.commissionAmount || 0), 0);
+  const totalBonus = sales.reduce((sum, x) => sum + Number(x.bonusAmount || 0), 0);
+  const totalCommission = totalPool + totalBonus;
+    const totalSales = sales.reduce((sum, x) => {
+    const sub = Number(x.subtotal || 0);
+    const disc = Number(x.discount || 0);
+    const base = (x.commissionBase !== undefined) ? Number(x.commissionBase) : (sub - disc);
+    return sum + base;
+  }, 0);
+
+  $('comm-kpi-pool').innerText = fmt(totalPool);
+  $('comm-kpi-bonus').innerText = fmt(totalBonus);
+  $('comm-kpi-total').innerText = fmt(totalCommission);
+  $('comm-kpi-sales').innerText = fmt(totalSales);
+    const totalShippingRep = sales.reduce((sum, x) => sum + Number(x.shipping || 0), 0);
+  const totalSurchargeRep = sales.reduce((sum, x) => sum + Number(x.surchargeAmount || 0), 0);
+  $('comm-kpi-count').innerText = `${sales.length} transacciones · +${fmt(totalShippingRep)} envíos · +${fmt(totalSurchargeRep)} recargos`;
+
+    // Desglose por vendedor
+  const bySeller = {};
+  sales.forEach(s => {
+    const key = s.sellerUid || s.sellerEmail || 'unknown';
+    if (!bySeller[key]) {
+      bySeller[key] = {
+        name: s.sellerName || s.sellerEmail || '—',
+        email: s.sellerEmail || '',
+        pool: 0, bonus: 0, total: 0, count: 0, sales: 0
+      };
+    }
+    // 🔥 Fallback para ventas antiguas con campo commissionAmount
+    const pool = Number(s.poolAmount || s.commissionAmount || 0);
+    const bonus = Number(s.bonusAmount || 0);
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+
+    bySeller[key].pool += pool;
+    bySeller[key].bonus += bonus;
+    bySeller[key].total += pool + bonus;
+    bySeller[key].sales += base;
+    bySeller[key].count += 1;
+  });
+
+  const sellerList = Object.entries(bySeller)
+    .map(([uid, data]) => ({ uid, ...data }))
+    .sort((a,b) => b.total - a.total);
+
+  const sellerBox = $('comm-by-seller');
+  const sellerEmpty = $('comm-by-seller-empty');
+
+  if (!sellerList.length) {
+    sellerBox.innerHTML = '';
+    sellerEmpty.classList.remove('hidden');
+  } else {
+    sellerEmpty.classList.add('hidden');
+    sellerBox.innerHTML = sellerList.map(s => `
+      <div class="border rounded-lg p-3 flex justify-between items-center flex-wrap gap-3">
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-sd text-sm">${s.name}</p>
+          <p class="text-[10px] text-gray-400">${s.email} · ${s.count} ventas · ${fmt(s.sales)} vendido</p>
+        </div>
+        <div class="flex gap-4 text-xs">
+          <div class="text-right">
+            <p class="text-gray-500">Pool</p>
+            <p class="font-bold text-sl">${fmt(s.pool)}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-gray-500">Bonus</p>
+            <p class="font-bold text-green-600">${fmt(s.bonus)}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-gray-500">Total</p>
+            <p class="font-bold text-orange-500">${fmt(s.total)}</p>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Tabla de ventas con comisión
+  const salesWithComm = sales
+    .filter(s => (Number(s.poolAmount||0) + Number(s.bonusAmount||0)) > 0)
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+  if (!salesWithComm.length) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = salesWithComm.slice(0, 200).map(s => {
+    const pool = Number(s.poolAmount||0);
+    const bonus = Number(s.bonusAmount||0);
+    const comm = pool + bonus;
+    return `<tr class="border-b hover:bg-gray-50">
+      <td class="p-3 text-xs text-gray-500">${fmtDate(s.createdAt)}</td>
+      <td class="p-3 text-xs">${s.sellerName || s.sellerEmail || '-'}</td>
+      <td class="p-3 text-right text-xs font-semibold">${fmt(s.total)}</td>
+      <td class="p-3 text-right text-xs text-sl">${fmt(pool)}</td>
+      <td class="p-3 text-right text-xs text-green-600">${fmt(bonus)}</td>
+      <td class="p-3 text-right text-xs font-bold text-orange-500">${fmt(comm)}</td>
+      <td class="p-3 text-right"><button onclick='viewSaleStore("${s.id}")' class="text-sl hover:underline text-xs">Ver</button></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   CAJA — ESTADO Y CIERRE
+============================================================ */
+function renderCashTab() {
+  if (!$('cash-open-status')) return;
+
+  const now = new Date();
+  const todayLabel = now.toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  $('cash-today-label').innerText = todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1);
+
+  const monthName = now.toLocaleDateString('es-CO', { month:'long', year:'numeric' });
+  $('cash-hist-month').innerText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  const today = todayStr();
+  const todayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === today);
+  const todayClose = cashRegisters.find(a => a.type === 'cierre' && a.dateStr === today);
+
+  // ===== Ventas del día =====
+  const todaySales = (dashboardData.sales || []).filter(s => {
+    if (!s.createdAt?.seconds) return false;
+    const d = new Date(s.createdAt.seconds * 1000);
+    return d.toDateString() === now.toDateString() && s.status !== 'anulada';
+  });
+
+  const todayCash = todaySales.filter(s => s.paymentMethod === 'efectivo')
+    .reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const todayOther = todaySales.filter(s => s.paymentMethod !== 'efectivo')
+    .reduce((sum, s) => sum + Number(s.total || 0), 0);
+
+  const openBase = todayOpen ? Number(todayOpen.actualAmount || 0) : 0;
+  const expectedCash = openBase + todayCash;
+
+  // ===== Apertura =====
+  if (todayOpen) {
+    $('cash-open-status').innerText = 'Registrada';
+    const statusMap = { approved: 'Aprobada', pending_approval: 'Pendiente', rejected: 'Rechazada' };
+    const badgeClass = todayOpen.status === 'approved' ? 'bg-green-100 text-green-700' :
+                       todayOpen.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+    $('cash-open-badge').className = `text-[10px] px-2 py-0.5 rounded ${badgeClass}`;
+    $('cash-open-badge').innerText = statusMap[todayOpen.status] || todayOpen.status;
+
+    $('cash-open-expected').innerText = fmt(todayOpen.expectedBase);
+    $('cash-open-actual').innerText = fmt(todayOpen.actualAmount);
+    const dOpen = Number(todayOpen.difference || 0);
+    const diffOpenEl = $('cash-open-diff');
+    diffOpenEl.innerText = (dOpen > 0 ? '+' : '') + fmt(dOpen);
+    diffOpenEl.className = `font-bold ${dOpen === 0 ? 'text-gray-500' : dOpen > 0 ? 'text-green-600' : 'text-red-500'}`;
+
+    if (todayOpen.notes) {
+      $('cash-open-notes').classList.remove('hidden');
+      $('cash-open-notes').innerText = `"${todayOpen.notes}"`;
+    } else {
+      $('cash-open-notes').classList.add('hidden');
+    }
+  } else {
+    $('cash-open-status').innerText = 'Sin registrar';
+    $('cash-open-badge').className = 'text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-700';
+    $('cash-open-badge').innerText = 'Pendiente';
+  }
+
+  // ===== Movimientos =====
+  $('cash-mv-base').innerText = fmt(openBase);
+  $('cash-mv-cash').innerText = '+' + fmt(todayCash);
+  $('cash-mv-other').innerText = fmt(todayOther);
+  $('cash-mv-expected').innerText = fmt(expectedCash);
+
+  // ===== Cierre =====
+  if (todayClose) {
+    $('cash-close-status').innerText = 'Registrado';
+    const badgeClass = todayClose.status === 'approved' ? 'bg-green-100 text-green-700' :
+                       todayClose.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+    const lbl = todayClose.status === 'approved' ? 'Aprobado' : todayClose.status === 'rejected' ? 'Rechazado' : 'Pendiente';
+    $('cash-close-badge').className = `text-[10px] px-2 py-0.5 rounded ${badgeClass}`;
+    $('cash-close-badge').innerText = lbl;
+
+    $('cash-close-info').classList.remove('hidden');
+    $('cash-close-counted').innerText = fmt(todayClose.actualAmount);
+    const dClose = Number(todayClose.difference || 0);
+    const diffCloseEl = $('cash-close-diff');
+    diffCloseEl.innerText = (dClose > 0 ? '+' : '') + fmt(dClose);
+    diffCloseEl.className = `font-bold ${dClose === 0 ? 'text-gray-500' : dClose > 0 ? 'text-green-600' : 'text-red-500'}`;
+
+    $('cash-close-action').innerHTML = `
+      <p class="text-xs text-gray-400 text-center">Caja cerrada por hoy</p>
+    `;
+  } else {
+    $('cash-close-status').innerText = 'Pendiente';
+    $('cash-close-badge').className = 'text-[10px] px-2 py-0.5 rounded bg-yellow-100 text-yellow-700';
+    $('cash-close-badge').innerText = 'Por cerrar';
+    $('cash-close-info').classList.add('hidden');
+    $('cash-close-action').innerHTML = `
+      <button id="cash-close-btn" onclick="openCloseCashModal()" class="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600 font-semibold text-sm">
+        Cerrar caja del día
+      </button>
+    `;
+  }
+
+  // ===== Histórico del mes =====
+  renderCashHistory();
+}
+
+function renderCashHistory() {
+  const tbody = $('cash-hist-tbody');
+  const empty = $('cash-hist-empty');
+  if (!tbody) return;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const monthArqueos = cashRegisters
+    .filter(a => {
+      if (!a.createdAt?.seconds) return false;
+      return new Date(a.createdAt.seconds * 1000) >= monthStart;
+    })
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+  if (!monthArqueos.length) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = monthArqueos.slice(0, 100).map(a => {
+    const diff = Number(a.difference || 0);
+    const diffCls = diff === 0 ? 'text-gray-500' : diff > 0 ? 'text-green-600' : 'text-red-500';
+    const typeLbl = a.type === 'apertura' ? '🌅 Apertura' : '🌇 Cierre';
+    const statusCls = a.status === 'approved' ? 'bg-green-100 text-green-700' :
+                      a.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+    const statusLbl = a.status === 'approved' ? 'Aprobado' : a.status === 'rejected' ? 'Rechazado' : 'Pendiente';
+
+    return `<tr class="border-b hover:bg-gray-50">
+      <td class="p-3 text-xs text-gray-500">${fmtDate(a.createdAt)}</td>
+      <td class="p-3 text-xs">${typeLbl}</td>
+      <td class="p-3 text-right text-xs">${fmt(a.expectedBase)}</td>
+      <td class="p-3 text-right text-xs font-semibold">${fmt(a.actualAmount)}</td>
+      <td class="p-3 text-right text-xs font-bold ${diffCls}">${diff > 0 ? '+' : ''}${fmt(diff)}</td>
+      <td class="p-3 text-center"><span class="text-[10px] px-2 py-0.5 rounded ${statusCls}">${statusLbl}</span></td>
+      <td class="p-3 text-xs text-gray-500 max-w-xs truncate">${a.notes || '-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ========== MODAL DE CIERRE ========== */
+let expectedCashForClose = 0;
+
+window.openCloseCashModal = () => {
+  const today = todayStr();
+  const todayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === today);
+  const todayClose = cashRegisters.find(a => a.type === 'cierre' && a.dateStr === today);
+
+  if (!todayOpen) {
+    alert('⚠️ No hay apertura registrada hoy. Debes abrir la caja primero.');
+    return;
+  }
+  if (todayClose) {
+    alert('Ya registraste el cierre de hoy.');
+    return;
+  }
+
+  const now = new Date();
+  const todaySales = (dashboardData.sales || []).filter(s => {
+    if (!s.createdAt?.seconds) return false;
+    const d = new Date(s.createdAt.seconds * 1000);
+    return d.toDateString() === now.toDateString() && s.status !== 'anulada';
+  });
+  const todayCash = todaySales.filter(s => s.paymentMethod === 'efectivo')
+    .reduce((sum, s) => sum + Number(s.total || 0), 0);
+
+  expectedCashForClose = Number(todayOpen.actualAmount || 0) + todayCash;
+
+  const todayLabel = now.toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long' });
+  $('close-modal-subtitle').innerText = `${currentStore.name} · ${todayLabel}`;
+  $('close-expected').innerText = fmt(expectedCashForClose);
+  $('close-expected-short').innerText = Math.round(expectedCashForClose).toLocaleString('es-CO');
+
+  // Reset
+  $('close-amount').value = '';
+  $('close-notes').value = '';
+  $('close-diff-box').classList.add('hidden');
+  $('close-notes-box').classList.add('hidden');
+  $('close-confirm-btn').disabled = true;
+  $('close-confirm-btn').innerText = 'Confirmar cierre de caja';
+  $('close-confirm-btn').className = 'w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 font-bold disabled:opacity-40';
+
+  $('close-amount').oninput = updateCloseDiff;
+  $('close-amount').onchange = updateCloseDiff;
+
+  const m = $('close-cash-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeCloseCashModal = () => {
+  const m = $('close-cash-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+};
+
+window.useExpectedCloseAmount = () => {
+  $('close-amount').value = expectedCashForClose;
+  updateCloseDiff();
+};
+
+function updateCloseDiff() {
+  const amount = Number($('close-amount').value);
+  const diffBox = $('close-diff-box');
+  const notesBox = $('close-notes-box');
+  const confirmBtn = $('close-confirm-btn');
+
+  if ($('close-amount').value === '' || isNaN(amount)) {
+    diffBox.classList.add('hidden');
+    notesBox.classList.add('hidden');
+    confirmBtn.disabled = true;
+    return;
+  }
+
+  const diff = amount - expectedCashForClose;
+  const margin = Number(currentStore.arqueoMargin || 0);
+  const exceedsMargin = Math.abs(diff) > margin;
+
+  diffBox.classList.remove('hidden');
+  $('close-diff-amount').innerText = (diff > 0 ? '+' : '') + fmt(diff);
+  $('close-diff-amount').className = 'font-bold ' + (diff === 0 ? 'text-gray-500' : diff > 0 ? 'text-green-600' : 'text-red-500');
+
+  if (diff === 0) {
+    diffBox.className = 'rounded-lg p-3 mb-4 text-sm bg-green-50 border border-green-200';
+    $('close-diff-msg').innerText = '✅ El conteo coincide perfectamente.';
+    $('close-diff-msg').className = 'text-xs mt-1 text-green-700';
+    notesBox.classList.add('hidden');
+  } else if (exceedsMargin) {
+    diffBox.className = 'rounded-lg p-3 mb-4 text-sm bg-red-50 border border-red-200';
+    $('close-diff-msg').innerText = `⚠️ Diferencia supera el margen (${fmt(margin)}). Explica el motivo y el superadmin deberá aprobar.`;
+    $('close-diff-msg').className = 'text-xs mt-1 text-red-700 font-semibold';
+    notesBox.classList.remove('hidden');
+  } else {
+    diffBox.className = 'rounded-lg p-3 mb-4 text-sm bg-yellow-50 border border-yellow-200';
+    $('close-diff-msg').innerText = `🟡 Diferencia dentro del margen permitido (${fmt(margin)}).`;
+    $('close-diff-msg').className = 'text-xs mt-1 text-yellow-700';
+    notesBox.classList.add('hidden');
+  }
+
+  if (exceedsMargin) {
+    confirmBtn.disabled = false;
+    confirmBtn.innerText = '⚠️ Enviar para aprobación del superadmin';
+    confirmBtn.className = 'w-full bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 font-bold';
+  } else {
+    confirmBtn.disabled = false;
+    confirmBtn.innerText = '✅ Confirmar cierre de caja';
+    confirmBtn.className = 'w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 font-bold';
+  }
+}
+
+window.confirmCloseCash = async () => {
+  const amount = Number($('close-amount').value);
+  if (isNaN(amount) || amount < 0) return alert('Ingresa un monto válido');
+
+  const diff = amount - expectedCashForClose;
+  const margin = Number(currentStore.arqueoMargin || 0);
+  const exceedsMargin = Math.abs(diff) > margin;
+
+  let notes = ($('close-notes')?.value || '').trim();
+  if (exceedsMargin && !notes) return alert('Debes escribir el motivo de la diferencia');
+  if (!notes) notes = diff === 0 ? 'Cierre sin novedad' : `Diferencia dentro del margen (${fmt(margin)})`;
+
+  const btn = $('close-confirm-btn');
+  btn.disabled = true;
+  btn.innerText = '⏳ Guardando...';
+
+  const today = todayStr();
+  const todayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === today);
+
+  const data = {
+    storeId: currentStore.storeId,
+    storeName: currentStore.name,
+    type: 'cierre',
+    dateStr: today,
+    expectedBase: expectedCashForClose,
+    actualAmount: amount,
+    difference: diff,
+    arqueoMargin: margin,
+    notes,
+    adminEmail: currentUser.email,
+    adminUid: currentUser.uid,
+    adminName: currentUserData.name || currentUser.email,
+    aperturaId: todayOpen?.id || null,
+    status: exceedsMargin ? 'pending_approval' : 'approved',
+    createdAt: serverTimestamp()
+  };
+
+  if (!exceedsMargin) {
+    data.reviewedBy = 'auto';
+    data.reviewedAt = serverTimestamp();
+    data.reviewNotes = 'Aprobado automáticamente (dentro del margen)';
+  }
+
+  try {
+    await addDoc(collection(db,'cashRegisters'), data);
+
+    await audit({
+      action: 'create',
+      collection: 'cashRegisters',
+      after: data,
+      note: `Cierre de caja: ${fmt(amount)} (diff: ${fmt(diff)}) · ${exceedsMargin ? 'Pendiente aprobación' : 'Aprobado'}`
+    });
+
+    closeCloseCashModal();
+
+    // Invalidar cache e invalidar
+    window.SmartecCache.invalidate(`cashRegisters_${currentStore.storeId}`);
+
+    // Recargar arqueos
+    await loadTodayCashRegisters();
+    renderCashTab();
+    renderDashboard();
+
+    if (exceedsMargin) {
+      alert('⏳ Cierre enviado para aprobación del superadmin.');
+    } else {
+      alert('✅ Cierre registrado correctamente.');
+    }
+  } catch(e) {
+    console.error('Error cerrando caja:', e);
+    alert('Error: ' + e.message);
+    btn.disabled = false;
+    btn.innerText = 'Confirmar cierre de caja';
+  }
+};
+
+/* ESC cierra el modal */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('close-cash-modal').classList.contains('hidden')) closeCloseCashModal();
+});
+
+/* ============================================================
+   VENTAS DE LA TIENDA
+============================================================ */
+function renderSalesTab() {
+  const tbody = $('sales-tbody-store');
+  const empty = $('sales-empty-store');
+  if (!tbody) return;
+
+  const now = new Date();
+  const monthName = now.toLocaleDateString('es-CO', { month:'long', year:'numeric' });
+  const lbl = $('sales-month-label');
+  if (lbl) lbl.innerText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  // Poblar filtro de vendedores (solo una vez)
+  const sellerSel = $('sales-seller-filter');
+  if (sellerSel && !sellerSel.dataset.loaded) {
+    sellerSel.dataset.loaded = '1';
+    const sellersSet = new Map();
+    (dashboardData.sales || []).forEach(s => {
+      const key = s.sellerUid || s.sellerEmail;
+      if (key && !sellersSet.has(key)) {
+        sellersSet.set(key, s.sellerName || s.sellerEmail);
+      }
+    });
+    sellerSel.innerHTML = '<option value="all">Todos los vendedores</option>' +
+      Array.from(sellersSet.entries()).map(([k,v]) =>
+        `<option value="${k}">${v}</option>`
+      ).join('');
+    sellerSel.onchange = renderSalesTab;
+    const statusSel = $('sales-status-filter');
+    if (statusSel) statusSel.onchange = renderSalesTab;
+  }
+
+  const sellerF = sellerSel?.value || 'all';
+  const statusF = $('sales-status-filter')?.value || 'all';
+
+  let list = (dashboardData.sales || []).slice();
+
+  if (sellerF !== 'all') {
+    list = list.filter(s => (s.sellerUid || s.sellerEmail) === sellerF);
+  }
+  if (statusF !== 'all') {
+    list = list.filter(s => s.status === statusF);
+  }
+
+  list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+  if (!list.length) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = list.slice(0, 200).map(s => {
+    const itemsCount = (s.items||[]).reduce((sum,i) => sum + (i.qty||0), 0);
+    const commission = Number(s.poolAmount || s.commissionAmount || 0) + Number(s.bonusAmount || 0);
+    const statusCls = s.status === 'anulada' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+    const statusLbl = s.status === 'anulada' ? 'Anulada' : 'Completada';
+
+    return `<tr class="border-b hover:bg-gray-50">
+      <td class="p-3 text-xs text-gray-500">${fmtDate(s.createdAt)}</td>
+      <td class="p-3 text-xs font-medium text-sd">${s.customer?.name || '-'}<br>
+        <span class="text-[10px] text-gray-400">${s.customer?.phone || ''}</span>
+      </td>
+      <td class="p-3 text-xs">${s.sellerName || s.sellerEmail || '-'}</td>
+      <td class="p-3 text-center text-xs">${itemsCount}</td>
+      <td class="p-3 text-right font-semibold text-xs">${fmt((s.commissionBase !== undefined) ? s.commissionBase : (Number(s.subtotal||0) - Number(s.discount||0)))}</td>
+      <td class="p-3 text-right text-xs text-orange-500 font-semibold">${fmt(commission)}</td>
+      <td class="p-3 text-center"><span class="text-[10px] px-2 py-0.5 rounded ${statusCls}">${statusLbl}</span></td>
+      <td class="p-3 text-right"><button onclick='viewSaleStore("${s.id}")' class="text-sl hover:underline text-xs">Ver</button></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   DETALLE DE VENTA
+============================================================ */
+window.viewSaleStore = (id) => {
+  const s = (dashboardData.sales || []).find(x => x.id === id);
+  if (!s) {
+    console.warn('Venta no encontrada:', id);
+    return;
+  }
+
+  const commission = Number(s.poolAmount||0) + Number(s.bonusAmount||0);
+
+  $('sale-store-detail').innerHTML = `
+    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+      <div><p class="text-xs text-gray-400">Fecha</p><p class="font-semibold">${fmtDate(s.createdAt)}</p></div>
+      <div><p class="text-xs text-gray-400">Estado</p><p class="font-semibold">${s.status === 'anulada' ? '⛔ Anulada' : '✅ Completada'}</p></div>
+      <div><p class="text-xs text-gray-400">Vendedor</p><p class="font-semibold">${s.sellerName || s.sellerEmail || '-'}</p></div>
+      <div><p class="text-xs text-gray-400">Método de pago</p><p class="font-semibold capitalize">${s.paymentMethod || '-'}</p></div>
+    </div>
+
+    <div class="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
+      <p class="font-bold text-sd mb-2">Cliente</p>
+      <p><b>${s.customer?.name || '-'}</b></p>
+      <p class="text-xs text-gray-500">${s.customer?.phone || ''} · ${s.customer?.email || ''}</p>
+      <p class="text-xs text-gray-500">${s.customer?.address || ''} ${s.customer?.city || ''}</p>
+      ${s.customer?.notes ? `<p class="text-xs text-gray-500 mt-1 italic">"${s.customer.notes}"</p>` : ''}
+    </div>
+
+    <div class="mb-4">
+      <p class="font-bold text-sd mb-2 text-sm">Productos</p>
+      <div class="space-y-2">
+        ${(s.items||[]).map(it => `
+          <div class="flex justify-between border-b pb-2 text-sm">
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-sd truncate">${it.name}</p>
+              <p class="text-[10px] text-gray-400">${it.sku || ''} ${it.colorName?'· '+it.colorName:''} ${it.size?'· '+it.size:''}</p>
+            </div>
+            <div class="text-right whitespace-nowrap ml-3">
+              <p class="text-xs">${it.qty} × ${fmt(it.unitPrice)}</p>
+              <p class="font-bold text-sl">${fmt(it.qty*it.unitPrice)}</p>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="bg-gray-50 p-3 rounded-lg text-sm space-y-1 mb-4">
+      <div class="flex justify-between"><span>Subtotal</span><span>${fmt(s.subtotal)}</span></div>
+      ${s.discount ? `<div class="flex justify-between text-red-500"><span>Descuento</span><span>-${fmt(s.discount)}</span></div>` : ''}
+      ${s.shipping ? `<div class="flex justify-between"><span>Envío</span><span>${fmt(s.shipping)}</span></div>` : ''}
+      ${s.surchargeAmount ? `<div class="flex justify-between text-gray-600"><span>Recargo tarjeta</span><span>${fmt(s.surchargeAmount)}</span></div>` : ''}
+      <div class="flex justify-between font-bold text-sd border-t pt-2"><span>TOTAL</span><span>${fmt(s.total)}</span></div>
+    </div>
+
+    <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm">
+      <p class="font-bold text-orange-700 mb-2">💰 Comisiones generadas</p>
+      <div class="flex justify-between text-xs">
+        <span>Pool (${((s.poolRate||0)*100).toFixed(2)}%)</span>
+        <span class="font-semibold">${fmt(s.poolAmount || 0)}</span>
+      </div>
+      ${s.bonusAmount ? `<div class="flex justify-between text-xs mt-1"><span>Bonus (${((s.bonusRate||0)*100).toFixed(2)}%)</span><span class="font-semibold">${fmt(s.bonusAmount)}</span></div>` : ''}
+      <div class="flex justify-between font-bold mt-2 pt-2 border-t border-orange-200">
+        <span>Total comisión</span><span>${fmt(commission)}</span>
+      </div>
+    </div>
+  `;
+
+  const m = $('sale-store-modal');
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+};
+
+window.closeSaleStoreModal = () => {
+  const m = $('sale-store-modal');
+  if (!m) return;
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+};
+
+/* ESC cierra modales */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if ($('global-stock-modal') && !$('global-stock-modal').classList.contains('hidden')) return closeGlobalStockModal();
+    if ($('sale-store-modal') && !$('sale-store-modal').classList.contains('hidden')) return closeSaleStoreModal();
+    if ($('close-cash-modal') && !$('close-cash-modal').classList.contains('hidden')) return closeCloseCashModal();
+  }
+});
+
+/* ============================================================
+   TABS
+============================================================ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('border-sl','text-sl','font-semibold');
+      b.classList.add('border-transparent','text-gray-500');
+    });
+    btn.classList.add('border-sl','text-sl','font-semibold');
+    btn.classList.remove('border-transparent','text-gray-500');
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    const tab = document.getElementById('tab-' + btn.dataset.tab);
+    if (tab) tab.classList.remove('hidden');
+
+    // Renderizar según tab
+    if (btn.dataset.tab === 'inventory') renderInventoryTab();
+    if (btn.dataset.tab === 'sellers') renderSellersTab();
+    if (btn.dataset.tab === 'commissions') renderCommissionsTab();
+    if (btn.dataset.tab === 'sales') renderSalesTab();
+    if (btn.dataset.tab === 'cash') renderCashTab();
+  };
+});
+
+/* ============================================================
+   INVENTARIO DE LA TIENDA
+============================================================ */
+function renderInventoryTab() {
+  const tbody = $('inv-tbody');
+  const empty = $('inv-empty');
+  if (!tbody) return;
+
+  // Poblar filtro de categorías (solo una vez)
+  const catSel = $('inv-filter-group');
+  if (catSel && !catSel.dataset.loaded) {
+    catSel.dataset.loaded = '1';
+    const cats = dashboardData.settings?.categories || {};
+    catSel.innerHTML = '<option value="all">Todas las categorías</option>' +
+      Object.entries(cats)
+        .sort((a,b) => (a[1].order||0) - (b[1].order||0))
+        .map(([slug, g]) => `<option value="${slug}">${g.name}</option>`)
+        .join('');
+  }
+
+  // Filtrar
+  let list = (dashboardData.inventory || []).slice();
+
+  const groupF = $('inv-filter-group')?.value || 'all';
+  const statusF = $('inv-filter-status')?.value || 'all';
+  const searchF = ($('inv-filter-search')?.value || '').toLowerCase().trim();
+
+  if (groupF !== 'all') {
+    list = list.filter(i => {
+      const p = (dashboardData.products || []).find(x => x.id === i.productId);
+      return p?.categoryGroup === groupF;
+    });
+  }
+
+  if (statusF !== 'all') {
+    list = list.filter(i => {
+      const stock = Number(i.stock||0);
+      const min = Number(i.minStock || 5);
+      if (statusF === 'zero') return stock === 0;
+      if (statusF === 'low') return stock > 0 && stock <= min;
+      if (statusF === 'available') return stock > min;
+      return true;
+    });
+  }
+
+  if (searchF) {
+    list = list.filter(i =>
+      (i.sku||'').toLowerCase().includes(searchF) ||
+      (i.productName||'').toLowerCase().includes(searchF) ||
+      (i.colorName||'').toLowerCase().includes(searchF) ||
+      (i.size||'').toLowerCase().includes(searchF)
+    );
+  }
+
+  // KPIs
+  const allInv = dashboardData.inventory || [];
+  const units = allInv.reduce((s, i) => s + Number(i.stock||0), 0);
+  let invCost = 0;
+  allInv.forEach(i => {
+    const p = (dashboardData.products || []).find(x => x.id === i.productId);
+    if (p) invCost += Number(p.cost||0) * Number(i.stock||0);
+  });
+  const alerts = allInv.filter(i => Number(i.stock||0) <= Number(i.minStock||5)).length;
+
+  $('inv-kpi-variants').innerText = allInv.length;
+  $('inv-kpi-units').innerText = units.toLocaleString('es-CO');
+  $('inv-kpi-cost').innerText = fmt(invCost);
+  $('inv-kpi-alerts').innerText = alerts;
+
+  // Ordenar: agotados primero, luego bajos
+  list.sort((a,b) => {
+    const sa = Number(a.stock||0), sb = Number(b.stock||0);
+    const ma = Number(a.minStock||5), mb = Number(b.minStock||5);
+    const prio = (s,m) => s === 0 ? 0 : s <= m ? 1 : 2;
+    const pa = prio(sa,ma), pb = prio(sb,mb);
+    if (pa !== pb) return pa - pb;
+    return (a.productName||'').localeCompare(b.productName||'');
+  });
+
+  if (!list.length) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  // Helper: stock total de una variante en todas las tiendas
+  const getGlobalStock = (variantId) => {
+    return (dashboardData.allInventory || [])
+      .filter(i => i.variantId === variantId)
+      .reduce((sum, i) => sum + Number(i.stock||0), 0);
+  };
+
+  tbody.innerHTML = list.map(i => {
+    const p = (dashboardData.products || []).find(x => x.id === i.productId) || {};
+    const myStock = Number(i.stock||0);
+    const globalStock = getGlobalStock(i.variantId);
+    const inOtherStores = globalStock - myStock; // lo que hay fuera de mi tienda
+
+    const min = Number(i.minStock || 5);
+    const isZero = myStock === 0;
+    const isLow = myStock > 0 && myStock <= min;
+
+    const statusBadge = isZero
+      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-700 font-semibold">Agotado</span>'
+      : isLow
+        ? '<span class="text-[10px] px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-semibold">Bajo</span>'
+        : '<span class="text-[10px] px-2 py-0.5 rounded bg-green-100 text-green-700">OK</span>';
+
+    const variantLabel = [i.colorName, i.size].filter(Boolean).join(' · ') || 'Estándar';
+    const colorDot = i.color
+      ? `<span class="inline-block w-3 h-3 rounded-full border" style="background:${i.color}"></span>`
+      : '';
+
+    // Color del stock total: resaltar si hay en otras tiendas
+    const globalStockClass = inOtherStores > 0 ? 'text-blue-600' : (isZero ? 'text-red-500' : 'text-sd');
+
+    return `<tr class="border-b hover:bg-gray-50 ${isZero?'bg-red-50/40':isLow?'bg-orange-50/40':''}">
+      <td class="p-3 font-medium text-sd text-xs">${i.productName||'-'}<br>
+        <span class="text-[10px] text-gray-400">${p.categoryName||''}</span>
+      </td>
+      <td class="p-3 text-xs">
+        <div class="flex items-center gap-2">
+          ${colorDot}<span>${variantLabel}</span>
+        </div>
+      </td>
+      <td class="p-3 text-xs font-mono text-gray-500">${i.sku||'-'}</td>
+      <td class="p-3 text-right text-xs">${fmt(p.cost)}</td>
+      <td class="p-3 text-right text-xs font-semibold">${fmt(p.onSale&&p.salePrice?p.salePrice:p.price)}</td>
+      <td class="p-3 text-center font-bold ${isZero?'text-red-600':isLow?'text-orange-500':'text-sd'}">${myStock}</td>
+      <td class="p-3 text-center font-bold ${globalStockClass}">
+        ${globalStock}
+        ${inOtherStores > 0 ? `<br><span class="text-[9px] text-blue-500 font-normal">+${inOtherStores} en otras</span>` : ''}
+      </td>
+      <td class="p-3 text-center">${statusBadge}</td>
+      <td class="p-3 text-right whitespace-nowrap">
+        <button onclick='openGlobalStock("${i.productId}","${i.variantId}")' class="text-sl hover:underline text-xs" title="Ver desglose por tienda">
+          🔍 Ver tiendas
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Listeners (solo una vez)
+  if (!catSel.dataset.listeners) {
+    catSel.dataset.listeners = '1';
+    catSel.onchange = renderInventoryTab;
+    $('inv-filter-status').onchange = renderInventoryTab;
+    let searchTimer;
+    $('inv-filter-search').oninput = () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(renderInventoryTab, 200);
+    };
+  }
+}
+/* ============================================================
+   MODAL VER EN OTRAS TIENDAS
+============================================================ */
+window.openGlobalStock = (productId, variantId) => {
+  const product = (dashboardData.products || []).find(x => x.id === productId);
+  const variant = (product?.variants || []).find(v => v.variantId === variantId);
+  if (!product) return;
+
+  $('global-stock-title').innerText = product.name;
+  $('global-stock-subtitle').innerText = [variant?.colorName, variant?.size].filter(Boolean).join(' · ') || 'Estándar';
+
+  // Filtrar del cache local (ya está cargado en allInventory)
+  const records = (dashboardData.allInventory || [])
+    .filter(r => r.variantId === variantId);
+
+  const storesSorted = stores.slice().sort((a,b) => {
+    if (a.storeId === currentStore.storeId) return -1;
+    if (b.storeId === currentStore.storeId) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  let html = '<div class="space-y-2">';
+  let totalGlobal = 0;
+
+  storesSorted.forEach(st => {
+    const rec = records.find(r => r.storeId === st.storeId);
+    const stock = rec ? Number(rec.stock||0) : 0;
+    totalGlobal += stock;
+
+    const isMine = st.storeId === currentStore.storeId;
+    const badge = isMine ? '<span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full ml-2">Tu tienda</span>' : '';
+    const stockColor = stock === 0 ? 'text-red-500' : stock <= 5 ? 'text-orange-500' : 'text-green-600';
+    const inactive = !st.active ? '<span class="text-[10px] text-gray-400 ml-1">(inactiva)</span>' : '';
+
+    html += `
+      <div class="flex justify-between items-center border rounded-lg p-3 ${isMine ? 'bg-blue-50 border-blue-200' : ''}">
+        <div>
+          <p class="text-sm font-semibold text-sd">${st.name}${badge}${inactive}</p>
+          <p class="text-[10px] text-gray-400">${st.storeId}</p>
+        </div>
+        <div class="text-right">
+          <p class="text-lg font-bold ${stockColor}">${stock} und</p>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `
+    <div class="border-t pt-3 mt-3 flex justify-between items-center">
+      <span class="text-sm text-gray-500 font-semibold">Total global</span>
+      <span class="text-xl font-bold text-sd">${totalGlobal} und</span>
+    </div>
+  </div>`;
+
+  $('global-stock-body').innerHTML = html;
+  const m = $('global-stock-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeGlobalStockModal = () => {
+  const m = $('global-stock-modal');
+  if (!m) return;
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+};
+
+window.viewSaleStore = (id) => {
+  const s = (dashboardData.sales || []).find(x => x.id === id);
+  if (!s) return;
+
+  const commission = Number(s.poolAmount||0) + Number(s.bonusAmount||0);
+
+  $('sale-store-detail').innerHTML = `
+    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+      <div><p class="text-xs text-gray-400">Fecha</p><p class="font-semibold">${fmtDate(s.createdAt)}</p></div>
+      <div><p class="text-xs text-gray-400">Estado</p><p class="font-semibold">${s.status === 'anulada' ? '⛔ Anulada' : '✅ Completada'}</p></div>
+      <div><p class="text-xs text-gray-400">Vendedor</p><p class="font-semibold">${s.sellerName || s.sellerEmail || '-'}</p></div>
+      <div><p class="text-xs text-gray-400">Método de pago</p><p class="font-semibold capitalize">${s.paymentMethod || '-'}</p></div>
+    </div>
+
+    <div class="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
+      <p class="font-bold text-sd mb-2">Cliente</p>
+      <p><b>${s.customer?.name || '-'}</b></p>
+      <p class="text-xs text-gray-500">${s.customer?.phone || ''} · ${s.customer?.email || ''}</p>
+      <p class="text-xs text-gray-500">${s.customer?.address || ''} ${s.customer?.city || ''}</p>
+    </div>
+
+    <div class="mb-4">
+      <p class="font-bold text-sd mb-2 text-sm">Productos</p>
+      <div class="space-y-2">
+        ${(s.items||[]).map(it => `
+          <div class="flex justify-between border-b pb-2 text-sm">
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-sd truncate">${it.name}</p>
+              <p class="text-[10px] text-gray-400">${it.sku || ''} ${it.colorName?'· '+it.colorName:''} ${it.size?'· '+it.size:''}</p>
+            </div>
+            <div class="text-right whitespace-nowrap ml-3">
+              <p class="text-xs">${it.qty} × ${fmt(it.unitPrice)}</p>
+              <p class="font-bold text-sl">${fmt(it.qty*it.unitPrice)}</p>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="bg-gray-50 p-3 rounded-lg text-sm space-y-1 mb-4">
+      <div class="flex justify-between"><span>Subtotal</span><span>${fmt(s.subtotal)}</span></div>
+      ${s.discount ? `<div class="flex justify-between text-red-500"><span>Descuento</span><span>-${fmt(s.discount)}</span></div>` : ''}
+      ${s.shipping ? `<div class="flex justify-between"><span>Envío</span><span>${fmt(s.shipping)}</span></div>` : ''}
+      ${s.surchargeAmount ? `<div class="flex justify-between text-gray-600"><span>Recargo tarjeta</span><span>${fmt(s.surchargeAmount)}</span></div>` : ''}
+      <div class="flex justify-between font-bold text-sd border-t pt-2"><span>TOTAL</span><span>${fmt(s.total)}</span></div>
+    </div>
+
+    <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm">
+      <p class="font-bold text-orange-700 mb-2">💰 Comisiones generadas</p>
+      <div class="flex justify-between text-xs"><span>Pool (${((s.poolRate||0)*100).toFixed(2)}%)</span><span class="font-semibold">${fmt(s.poolAmount || 0)}</span></div>
+      ${s.bonusAmount ? `<div class="flex justify-between text-xs mt-1"><span>Bonus (${((s.bonusRate||0)*100).toFixed(2)}%)</span><span class="font-semibold">${fmt(s.bonusAmount)}</span></div>` : ''}
+      <div class="flex justify-between font-bold mt-2 pt-2 border-t border-orange-200">
+        <span>Total comisión</span><span>${fmt(commission)}</span>
+      </div>
+    </div>
+  `;
+
+  const m = $('sale-store-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeSaleStoreModal = () => {
+  const m = $('sale-store-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+};
+
+window.forceRefreshStore = async () => {
+  window.SmartecCache.clear();
+  await loadAllData();
+  alert('✅ Datos actualizados desde el servidor');
+};
+
+/* ESC cierra modales */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (!$('global-stock-modal').classList.contains('hidden')) return closeGlobalStockModal();
+    if (!$('sale-store-modal').classList.contains('hidden')) return closeSaleStoreModal();
+  }
+});
+
+</script>
+</body>
+</html>

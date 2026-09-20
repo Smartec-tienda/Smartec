@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec · Mis Ventas</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="cache.js"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  #store-selector {
+    background-color: rgba(255,255,255,0.15);
+    color: #ffffff;
+    min-width: 200px;
+  }
+  #store-selector:hover { background-color: rgba(255,255,255,0.25); }
+  #store-selector:focus { outline: none; border-color: rgba(255,255,255,0.6); }
+  #store-selector option {
+    color: #0A2A4A;
+    background-color: #ffffff;
+    padding: 6px;
+    font-size: 14px;
+  }
+  #store-selector option:checked { background-color: #4A7A9A; color: #ffffff; }
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<!-- LOGIN -->
+<div id="login-screen" class="hidden min-h-screen items-center justify-center bg-sd p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
+    <p class="text-center text-sm text-gray-500 mb-6">Mis Ventas</p>
+    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
+    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
+    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
+    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
+    <a href="index.html" class="block text-center text-xs text-gray-400 hover:text-sl mt-4">← Ir a la tienda</a>
+  </div>
+</div>
+
+<!-- VERIFICANDO SESIÓN -->
+<div id="loading-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+  <div class="text-center">
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
+    <p class="text-white font-semibold text-sm">Verificando sesión...</p>
+  </div>
+</div>
+
+<!-- PANEL -->
+<div id="panel-screen" class="hidden min-h-screen flex flex-col">
+
+  <header class="bg-sd text-white px-4 py-4 flex justify-between items-center shrink-0">
+    <div class="flex items-center gap-3 min-w-0">
+      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap">SMART<span class="text-sl">EC</span></h1>
+      <div class="hidden md:block w-px h-6 bg-white/20"></div>
+      <div class="min-w-0">
+        <p id="header-title" class="text-sm md:text-base font-semibold truncate">Mis Ventas</p>
+        <p id="header-role" class="text-[10px] opacity-70">—</p>
+        <select id="store-selector" class="hidden mt-1 text-sm rounded-lg px-3 py-1.5 cursor-pointer focus:outline-none border border-white/30"></select>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 text-sm shrink-0">
+      <span id="user-info" class="hidden lg:inline opacity-80 text-xs"></span>
+      <button onclick="forceRefresh()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition" title="Refrescar datos">🔄</button>
+      <a href="home.html" class="hover:text-sl transition text-xs">← Inicio</a>
+      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
+    </div>
+  </header>
+
+  <main class="flex-1 container mx-auto p-4 md:p-6">
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow p-4 mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Desde</label>
+          <input id="f-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Hasta</label>
+          <input id="f-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+        <div id="filter-seller-wrap" class="hidden">
+          <label class="text-[10px] font-semibold text-sd">Vendedor</label>
+          <select id="f-seller" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Estado</label>
+          <select id="f-status" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+            <option value="completada">Completadas</option>
+            <option value="anulada">Anuladas</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Método de pago</label>
+          <select id="f-payment" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="nequi">Nequi</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="contraentrega">Contra entrega</option>
+            <option value="credito">Crédito</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-between items-center flex-wrap gap-2 pt-3 border-t">
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="setRange('today')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Hoy</button>
+          <button onclick="setRange('week')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Esta semana</button>
+          <button onclick="setRange('month')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este mes</button>
+          <button onclick="setRange('lastmonth')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes pasado</button>
+          <button onclick="setRange('year')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este año</button>
+        </div>
+        <button onclick="clearFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <!-- KPIs del período -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Total vendido</p>
+        <p id="kpi-total" class="text-2xl font-bold text-sl mt-1">$0</p>
+        <p id="kpi-count" class="text-[10px] text-gray-400 mt-1">0 transacciones</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Ticket promedio</p>
+        <p id="kpi-ticket" class="text-2xl font-bold text-sd mt-1">$0</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Unidades vendidas</p>
+        <p id="kpi-units" class="text-2xl font-bold text-sd mt-1">0</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Comisiones del período</p>
+        <p id="kpi-commission" class="text-2xl font-bold text-orange-500 mt-1">$0</p>
+        <p id="kpi-commission-detail" class="text-[10px] text-gray-400 mt-1">Pool: $0 · Bonus: $0</p>
+      </div>
+    </div>
+
+    <!-- Bloque mensual: comisiones y meta -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div class="bg-white p-5 rounded-xl shadow">
+        <h3 class="font-bold text-sd mb-4">💰 Comisiones del mes</h3>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center pb-2 border-b">
+            <span class="text-sm text-gray-600">Pool acumulado</span>
+            <span id="m-pool" class="text-lg font-bold text-sl">$0</span>
+          </div>
+          <div class="flex justify-between items-center pb-2 border-b">
+            <span class="text-sm text-gray-600">Bonus acumulado</span>
+            <span id="m-bonus" class="text-lg font-bold text-green-600">$0</span>
+          </div>
+          <div class="flex justify-between items-center pt-1">
+            <span class="text-sm font-semibold text-sd">Total del mes</span>
+            <span id="m-total" class="text-xl font-bold text-orange-500">$0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-xl shadow">
+        <h3 class="font-bold text-sd mb-4">🎯 Meta mensual</h3>
+        <div id="goal-block">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-sm text-gray-500">Progreso</p>
+            <p id="goal-pct" class="text-2xl font-bold text-sl">0%</p>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-3 mb-3">
+            <div id="goal-bar" class="h-3 rounded-full bg-sl transition-all" style="width:0%"></div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-xs">
+            <div>
+              <p class="text-gray-500">Meta</p>
+              <p id="goal-amount" class="font-bold text-sd">$0</p>
+            </div>
+            <div>
+              <p class="text-gray-500">Vendido</p>
+              <p id="goal-sold" class="font-bold text-sl">$0</p>
+            </div>
+            <div>
+              <p class="text-gray-500">Faltante</p>
+              <p id="goal-remaining" class="font-bold text-sd">$0</p>
+            </div>
+          </div>
+          <p id="goal-status" class="text-xs text-gray-400 mt-3 text-center">—</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desglose por método de pago -->
+    <div class="bg-white p-5 rounded-xl shadow mb-6">
+      <h3 class="font-bold text-sd mb-4">💳 Desglose por método de pago (período filtrado)</h3>
+      <div id="payment-breakdown" class="grid grid-cols-2 md:grid-cols-5 gap-3"></div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-sd">Detalle de ventas</h2>
+      <p id="table-count" class="text-xs text-gray-400">0 ventas</p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+      <table class="w-full text-sm min-w-[900px]">
+        <thead class="bg-gray-100 text-sd">
+          <tr>
+            <th class="p-3 text-left">Fecha</th>
+            <th class="p-3 text-left">Cliente</th>
+            <th class="p-3 text-left">Vendedor</th>
+            <th class="p-3 text-center">Items</th>
+            <th class="p-3 text-right">Total</th>
+            <th class="p-3 text-right">Comisión</th>
+            <th class="p-3 text-center">Estado</th>
+            <th class="p-3"></th>
+          </tr>
+        </thead>
+        <tbody id="sales-tbody"></tbody>
+      </table>
+    </div>
+    <p id="sales-empty" class="hidden text-center py-8 text-gray-400">Sin ventas con esos filtros.</p>
+
+  </main>
+</div>
+
+<!-- MODAL DETALLE -->
+<div id="sale-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeSaleModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeSaleModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-4 pr-10">Detalle de venta</h3>
+    <div id="sale-detail"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, doc, getDoc, addDoc, updateDoc,
+  serverTimestamp, query, where
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+/* ============ CONFIG ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* ============ ESTADO ============ */
+let currentUser = null;
+let currentUserData = null;
+let currentStore = null;
+let stores = [];
+let sales = [];       // ventas según el alcance del rol
+let users = [];
+let myStoreGoal = null;
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const fmtDate = ts => {
+  if (!ts) return '-';
+  const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+  return d.toLocaleString('es-CO', { year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+};
+
+async function audit(entry) {
+  try {
+    await addDoc(collection(db,'auditLog'), {
+      ...entry,
+      userId: currentUser?.uid || null,
+      userEmail: currentUser?.email || null,
+      userRole: currentUserData?.role || null,
+      storeId: currentStore?.storeId || null,
+      timestamp: serverTimestamp()
+    });
+  } catch(e) { console.warn('audit fail', e); }
+}
+
+/* ============ AUTH ============ */
+$('login-btn').onclick = async () => {
+  const err = $('login-error');
+  err.classList.add('hidden');
+  try {
+    await signInWithEmailAndPassword(auth, $('login-email').value.trim(), $('login-pass').value);
+  } catch(e) {
+    err.innerText = 'Error: ' + e.message;
+    err.classList.remove('hidden');
+  }
+};
+
+$('logout-btn').onclick = async () => {
+  await audit({ action:'logout', collection:'system', note:'Cierre de sesión mis ventas' });
+  await signOut(auth);
+  window.location.href = 'home.html';
+};
+
+onAuthStateChanged(auth, async user => {
+  document.getElementById('loading-screen').classList.add('hidden');
+
+    if (!user) {
+    // 🆕 Sin sesión → redirigir a home
+    window.location.href = 'home.html';
+    return;
+  }
+
+  currentUser = user;
+  try {
+    const snap = await getDoc(doc(db,'users',user.uid));
+    currentUserData = snap.exists() ? snap.data() : null;
+  } catch(e) { currentUserData = null; }
+
+  const validRoles = ['superadmin','admin','vendedor'];
+  if (!currentUserData || !validRoles.includes(currentUserData.role)) {
+    alert('⛔ No tienes permisos.');
+    await signOut(auth);
+    window.location.href = 'home.html';
+    return;
+  }
+
+  if (currentUserData.role !== 'superadmin' && !currentUserData.storeId) {
+    alert('⛔ No tienes una tienda asignada.');
+    await signOut(auth);
+    window.location.href = 'home.html';
+    return;
+  }
+
+  await audit({ action:'login', collection:'system', note:'Inicio de sesión mis ventas' });
+
+  $('login-screen').classList.add('hidden');
+  $('panel-screen').classList.remove('hidden');
+
+  $('user-info').innerText = '👤 ' + user.email;
+  const roleLabels = { superadmin:'Superadmin', admin:'Admin de tienda', vendedor:'Vendedor' };
+  $('header-role').innerText = roleLabels[currentUserData.role] || currentUserData.role;
+
+  await loadAll();
+});
+
+/* ============ CARGA ============ */
+async function loadAll() {
+  const C = window.SmartecCache;
+
+  stores = await C.wrap('stores', async () => {
+    const s = await getDocs(collection(db,'stores'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+
+  users = await C.wrap('users', async () => {
+    const s = await getDocs(collection(db,'users'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+
+  const isSuper = currentUserData.role === 'superadmin';
+  const myStoreId = currentUserData.storeId;
+
+  // Configurar tienda y selector
+  if (isSuper) {
+    const activeStores = stores.filter(s => s.active).sort((a,b) => a.name.localeCompare(b.name));
+    if (!activeStores.length) {
+      alert('⛔ No hay tiendas activas.');
+      return;
+    }
+    const saved = sessionStorage.getItem('smartec_misventas_store');
+    currentStore = activeStores.find(s => s.storeId === saved) || activeStores[0];
+    sessionStorage.setItem('smartec_misventas_store', currentStore.storeId);
+
+    const sel = $('store-selector');
+    sel.classList.remove('hidden');
+    sel.innerHTML = activeStores.map(s =>
+      `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
+    ).join('');
+    $('header-title').classList.add('hidden');
+
+    sel.onchange = async () => {
+      currentStore = stores.find(s => s.storeId === sel.value);
+      sessionStorage.setItem('smartec_misventas_store', sel.value);
+      await loadSales();
+      renderAll();
+    };
+  } else {
+    currentStore = stores.find(s => s.storeId === myStoreId);
+    if (!currentStore) {
+      alert('⛔ Tu tienda no existe.');
+      await signOut(auth);
+      window.location.href = 'home.html';
+      return;
+    }
+    $('store-selector').classList.add('hidden');
+    $('header-title').innerText = 'Mis Ventas · ' + currentStore.name;
+  }
+
+  // Configurar filtro de vendedor
+  const sellerWrap = $('filter-seller-wrap');
+  if (currentUserData.role === 'vendedor') {
+    sellerWrap.classList.add('hidden');
+  } else {
+    sellerWrap.classList.remove('hidden');
+    const team = users.filter(u => u.storeId === currentStore.storeId);
+    $('f-seller').innerHTML = '<option value="all">Todos</option>' +
+      team.map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
+  }
+
+  // Cargar meta de la tienda (mes actual)
+  await loadStoreGoal();
+
+  await loadSales();
+  setRange('month');
+  renderAll();
+}
+
+async function loadStoreGoal() {
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  try {
+    const snap = await getDoc(doc(db,'storeGoals',`${currentStore.storeId}_${currentMonth}`));
+    if (snap.exists()) {
+      myStoreGoal = snap.data();
+    } else {
+      myStoreGoal = {
+        goalAmount: currentStore.goalAmount || 0,
+        bonusRate: currentStore.bonusRate || 0
+      };
+    }
+  } catch(e) { myStoreGoal = null; }
+}
+
+async function loadSales() {
+  const C = window.SmartecCache;
+  const isSuper = currentUserData.role === 'superadmin';
+  const myStoreId = currentUserData.storeId;
+
+  let allSales;
+  if (isSuper) {
+    // Superadmin: ventas de la tienda seleccionada
+    allSales = await C.wrap(`sales_${currentStore.storeId}`, async () => {
+      const s = await getDocs(query(collection(db,'sales'), where('storeId','==', currentStore.storeId)));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+  } else {
+    // Admin y vendedor: ventas de su tienda
+    allSales = await C.wrap(`sales_${myStoreId}`, async () => {
+      const s = await getDocs(query(collection(db,'sales'), where('storeId','==', myStoreId)));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+  }
+
+  // Filtrar por rol
+  if (currentUserData.role === 'vendedor') {
+    sales = allSales.filter(s => s.sellerUid === currentUser.uid);
+  } else {
+    sales = allSales;
+  }
+}
+
+/* ============ FILTROS ============ */
+window.setRange = (range) => {
+  const now = new Date();
+  let from, to;
+
+  switch(range) {
+    case 'today': from = to = now; break;
+    case 'week': {
+      const day = now.getDay() || 7;
+      from = new Date(now); from.setDate(now.getDate() - day + 1);
+      to = now;
+      break;
+    }
+    case 'month': from = new Date(now.getFullYear(), now.getMonth(), 1); to = now; break;
+    case 'lastmonth':
+      from = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      to = new Date(now.getFullYear(), now.getMonth(), 0);
+      break;
+    case 'year': from = new Date(now.getFullYear(), 0, 1); to = now; break;
+    default: return;
+  }
+  const fmtD = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  $('f-date-from').value = fmtD(from);
+  $('f-date-to').value = fmtD(to);
+  renderAll();
+};
+
+window.clearFilters = () => {
+  $('f-date-from').value = '';
+  $('f-date-to').value = '';
+  $('f-status').value = 'all';
+  $('f-payment').value = 'all';
+  if ($('f-seller')) $('f-seller').value = 'all';
+  renderAll();
+};
+
+// Listeners de filtros
+['f-date-from','f-date-to','f-status','f-payment','f-seller'].forEach(id => {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener('input', renderAll);
+  el.addEventListener('change', renderAll);
+});
+
+function getFiltered() {
+  let list = sales.slice();
+
+  const from = $('f-date-from').value;
+  const to = $('f-date-to').value;
+  if (from) list = list.filter(s => {
+    if (!s.createdAt?.seconds) return false;
+    const d = new Date(s.createdAt.seconds * 1000);
+    return d >= new Date(from + 'T00:00:00');
+  });
+  if (to) list = list.filter(s => {
+    if (!s.createdAt?.seconds) return false;
+    const d = new Date(s.createdAt.seconds * 1000);
+    return d <= new Date(to + 'T23:59:59');
+  });
+
+  const statusF = $('f-status').value;
+  if (statusF !== 'all') list = list.filter(s => s.status === statusF);
+
+  const payF = $('f-payment').value;
+  if (payF !== 'all') list = list.filter(s => s.paymentMethod === payF);
+
+  const sellerF = $('f-seller')?.value || 'all';
+  if (sellerF !== 'all') list = list.filter(s => s.sellerUid === sellerF);
+
+  return list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+}
+
+/* ============ RENDER ============ */
+function renderAll() {
+  renderKPIs();
+  renderMonthlyBlock();
+  renderPaymentBreakdown();
+  renderTable();
+}
+
+function renderKPIs() {
+  const list = getFiltered();
+
+  const totalSales = list.reduce((sum, s) => {
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    return sum + ((s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc));
+  }, 0);
+
+  const totalUnits = list.reduce((sum, s) =>
+    sum + (s.items || []).reduce((y, it) => y + Number(it.qty || 0), 0), 0);
+
+  const totalPool = list.reduce((sum, s) => sum + Number(s.poolAmount || s.commissionAmount || 0), 0);
+  const totalBonus = list.reduce((sum, s) => sum + Number(s.bonusAmount || 0), 0);
+  const totalCommission = totalPool + totalBonus;
+
+  const ticket = list.length > 0 ? totalSales / list.length : 0;
+
+  $('kpi-total').innerText = fmt(totalSales);
+  $('kpi-count').innerText = `${list.length} transacciones`;
+  $('kpi-ticket').innerText = fmt(ticket);
+  $('kpi-units').innerText = totalUnits.toLocaleString('es-CO');
+  $('kpi-commission').innerText = fmt(totalCommission);
+  $('kpi-commission-detail').innerText = `Pool: ${fmt(totalPool)} · Bonus: ${fmt(totalBonus)}`;
+}
+
+function renderMonthlyBlock() {
+  // Mes calendario actual
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Filtrar ventas del mes según el rol
+  let monthSales = sales.filter(s => {
+    if (!s.createdAt?.seconds) return false;
+    const d = new Date(s.createdAt.seconds * 1000);
+    return d >= monthStart && s.status !== 'anulada';
+  });
+
+  const totalPool = monthSales.reduce((sum, s) => sum + Number(s.poolAmount || s.commissionAmount || 0), 0);
+  const totalBonus = monthSales.reduce((sum, s) => sum + Number(s.bonusAmount || 0), 0);
+  const totalComm = totalPool + totalBonus;
+
+  $('m-pool').innerText = fmt(totalPool);
+  $('m-bonus').innerText = fmt(totalBonus);
+  $('m-total').innerText = fmt(totalComm);
+
+  // Meta
+  const goal = myStoreGoal || {};
+  const goalAmount = Number(goal.goalAmount || 0);
+  const bonusRate = Number(goal.bonusRate || 0);
+
+  if (goalAmount === 0) {
+    $('goal-block').innerHTML = '<p class="text-sm text-gray-400 text-center py-6">Sin meta configurada para esta tienda.</p>';
+    return;
+  }
+
+  const monthTotalSold = monthSales.reduce((sum, s) => {
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    return sum + ((s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc));
+  }, 0);
+
+  const pct = Math.min(100, (monthTotalSold / goalAmount) * 100);
+  const achieved = monthTotalSold >= goalAmount;
+
+  $('goal-pct').innerText = pct.toFixed(0) + '%';
+  $('goal-pct').className = `text-2xl font-bold ${achieved ? 'text-green-600' : 'text-sl'}`;
+  $('goal-bar').style.width = pct + '%';
+  $('goal-bar').className = `h-3 rounded-full transition-all ${achieved ? 'bg-green-500' : 'bg-sl'}`;
+  $('goal-amount').innerText = fmt(goalAmount);
+  $('goal-sold').innerText = fmt(monthTotalSold);
+  $('goal-remaining').innerText = fmt(Math.max(0, goalAmount - monthTotalSold));
+  $('goal-status').innerText = achieved
+    ? `✅ Meta cumplida · Bonus ${(bonusRate*100).toFixed(1)}%`
+    : `Bonus ${(bonusRate*100).toFixed(1)}% al cumplir`;
+  $('goal-status').className = `text-xs mt-3 text-center ${achieved ? 'text-green-600 font-semibold' : 'text-gray-400'}`;
+}
+
+function renderPaymentBreakdown() {
+  const list = getFiltered();
+  const methods = {
+    efectivo: { label: '💵 Efectivo', color: 'green', sales: 0, count: 0 },
+    nequi: { label: '📱 Nequi', color: 'purple', sales: 0, count: 0 },
+    transferencia: { label: '🏦 Transferencia', color: 'blue', sales: 0, count: 0 },
+    tarjeta: { label: '💳 Tarjeta', color: 'purple', sales: 0, count: 0 },
+    contraentrega: { label: '📦 Contra entrega', color: 'orange', sales: 0, count: 0 },
+    credito: { label: '📝 Crédito', color: 'gray', sales: 0, count: 0 }
+  };
+
+  list.forEach(s => {
+    const k = s.paymentMethod || 'efectivo';
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    if (methods[k]) { methods[k].sales += base; methods[k].count += 1; }
+  });
+
+  const total = Object.values(methods).reduce((s, m) => s + m.sales, 0);
+  const el = $('payment-breakdown');
+
+  el.innerHTML = Object.entries(methods).map(([k, m]) => {
+    const pct = total > 0 ? (m.sales / total) * 100 : 0;
+    const colorMap = { green:'green', blue:'blue', purple:'purple', orange:'orange', gray:'gray' };
+    const c = colorMap[m.color];
+    return `
+      <div class="bg-${c}-50 border border-${c}-200 rounded-lg p-3">
+        <p class="text-[10px] text-${c}-700 font-semibold uppercase">${m.label}</p>
+        <p class="text-base font-bold text-${c}-700 mt-1">${fmt(m.sales)}</p>
+        <p class="text-[10px] text-${c}-600 mt-0.5">${pct.toFixed(1)}% · ${m.count} ventas</p>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderTable() {
+  const tb = $('sales-tbody');
+  const empty = $('sales-empty');
+  const list = getFiltered();
+
+  $('table-count').innerText = `${list.length} venta${list.length !== 1 ? 's' : ''}`;
+
+  if (!list.length) {
+    tb.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tb.innerHTML = list.slice(0, 300).map(s => {
+    const itemsCount = (s.items||[]).reduce((sum,i) => sum + (i.qty||0), 0);
+    const commission = Number(s.poolAmount || s.commissionAmount || 0) + Number(s.bonusAmount || 0);
+    const statusCls = s.status === 'anulada' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+    const statusLbl = s.status === 'anulada' ? 'Anulada' : 'Completada';
+    const total = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+
+    return `<tr class="border-b hover:bg-gray-50">
+      <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${fmtDate(s.createdAt)}</td>
+      <td class="p-3 text-xs font-medium text-sd">${s.customer?.name || '-'}<br><span class="text-[10px] text-gray-400">${s.customer?.phone || ''}</span></td>
+      <td class="p-3 text-xs">${s.sellerName || s.sellerEmail || '-'}</td>
+      <td class="p-3 text-center text-xs">${itemsCount}</td>
+      <td class="p-3 text-right text-xs font-semibold">${fmt(total)}</td>
+      <td class="p-3 text-right text-xs text-orange-500 font-semibold">${fmt(commission)}</td>
+      <td class="p-3 text-center"><span class="text-[10px] px-2 py-0.5 rounded ${statusCls}">${statusLbl}</span></td>
+      <td class="p-3 text-right"><button onclick='viewSale("${s.id}")' class="text-sl hover:underline text-xs">Ver</button></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============ DETALLE ============ */
+window.viewSale = (id) => {
+  const s = sales.find(x => x.id === id);
+  if (!s) return;
+
+  const pool = Number(s.poolAmount || s.commissionAmount || 0);
+  const bonus = Number(s.bonusAmount || 0);
+  const commission = pool + bonus;
+
+  $('sale-detail').innerHTML = `
+    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+      <div><p class="text-xs text-gray-400">Fecha</p><p class="font-semibold">${fmtDate(s.createdAt)}</p></div>
+      <div><p class="text-xs text-gray-400">Estado</p><p class="font-semibold">${s.status === 'anulada' ? '⛔ Anulada' : '✅ Completada'}</p></div>
+      <div><p class="text-xs text-gray-400">Vendedor</p><p class="font-semibold">${s.sellerName || s.sellerEmail || '-'}</p></div>
+      <div><p class="text-xs text-gray-400">Método de pago</p><p class="font-semibold capitalize">${s.paymentMethod || '-'}</p></div>
+    </div>
+
+    ${s.documentNumber ? `
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm">
+        <p class="text-xs text-blue-700 font-semibold">Documento</p>
+        <p class="font-mono font-bold text-sd">${s.documentNumber}</p>
+      </div>
+    ` : ''}
+
+    <div class="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
+      <p class="font-bold text-sd mb-2">Cliente</p>
+      <p><b>${s.customer?.name || '-'}</b></p>
+      <p class="text-xs text-gray-500">${s.customer?.phone || ''} · ${s.customer?.email || ''}</p>
+      <p class="text-xs text-gray-500">${s.customer?.address || ''} ${s.customer?.city || ''}</p>
+      ${s.customer?.notes ? `<p class="text-xs text-gray-500 mt-1 italic">"${s.customer.notes}"</p>` : ''}
+    </div>
+
+    <div class="mb-4">
+      <p class="font-bold text-sd mb-2 text-sm">Productos</p>
+      <div class="space-y-2">
+        ${(s.items||[]).map(it => `
+          <div class="flex justify-between border-b pb-2 text-sm">
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-sd truncate">${it.name}</p>
+              <p class="text-[10px] text-gray-400">${it.sku || ''} ${it.colorName?'· '+it.colorName:''} ${it.size?'· '+it.size:''}</p>
+            </div>
+            <div class="text-right whitespace-nowrap ml-3">
+              <p class="text-xs">${it.qty} × ${fmt(it.unitPrice)}</p>
+              <p class="font-bold text-sl">${fmt(it.qty*it.unitPrice)}</p>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="bg-gray-50 p-3 rounded-lg text-sm space-y-1 mb-4">
+      <div class="flex justify-between"><span>Subtotal</span><span>${fmt(s.subtotal)}</span></div>
+      ${s.discount ? `<div class="flex justify-between text-red-500"><span>Descuento</span><span>-${fmt(s.discount)}</span></div>` : ''}
+      ${s.shipping ? `<div class="flex justify-between"><span>Envío</span><span>${fmt(s.shipping)}</span></div>` : ''}
+      ${s.surchargeAmount ? `<div class="flex justify-between text-gray-600"><span>Recargo tarjeta</span><span>${fmt(s.surchargeAmount)}</span></div>` : ''}
+      <div class="flex justify-between font-bold text-sd border-t pt-2"><span>TOTAL</span><span>${fmt(s.total)}</span></div>
+      ${s.totalCost ? `<div class="flex justify-between text-xs text-gray-500"><span>Costo</span><span>${fmt(s.totalCost)}</span></div>` : ''}
+      ${s.profit ? `<div class="flex justify-between text-xs text-green-600 font-semibold"><span>Utilidad</span><span>${fmt(s.profit)}</span></div>` : ''}
+    </div>
+
+    <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm">
+      <p class="font-bold text-orange-700 mb-2">💰 Comisiones</p>
+      <div class="flex justify-between text-xs">
+        <span>Pool (${((s.poolRate||0)*100).toFixed(2)}%)</span>
+        <span class="font-semibold">${fmt(pool)}</span>
+      </div>
+      ${bonus ? `<div class="flex justify-between text-xs mt-1"><span>Bonus (${((s.bonusRate||0)*100).toFixed(2)}%)</span><span class="font-semibold text-green-600">${fmt(bonus)}</span></div>` : ''}
+      <div class="flex justify-between font-bold mt-2 pt-2 border-t border-orange-200">
+        <span>Total</span><span>${fmt(commission)}</span>
+      </div>
+    </div>
+
+    ${s.status === 'anulada' ? `
+      <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm mt-4">
+        <p class="font-bold text-red-700 mb-1">Venta anulada</p>
+        <p class="text-xs text-red-600">Motivo: ${s.cancelReason || '-'}</p>
+        <p class="text-xs text-gray-500 mt-1">Por: ${s.cancelledBy || '-'} · ${fmtDate(s.cancelledAt)}</p>
+      </div>
+    ` : ''}
+  `;
+
+  const m = $('sale-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeSaleModal = () => {
+  const m = $('sale-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+};
+
+/* ============ REFRESCAR ============ */
+window.forceRefresh = async () => {
+  window.SmartecCache.clear();
+  await loadAll();
+  alert('✅ Datos actualizados');
+};
+
+/* Cerrar con ESC */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('sale-modal').classList.contains('hidden')) closeSaleModal();
+});
+
+</script>
+</body>
+</html>

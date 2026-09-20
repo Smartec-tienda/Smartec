@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec · Migración inicial</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<!-- LOGIN -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
+    <p class="text-center text-sm text-gray-500 mb-6">Migración inicial · Superadmin</p>
+    <input id="email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3">
+    <input id="pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4">
+    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl font-semibold">Ingresar</button>
+    <p id="login-msg" class="text-sm mt-3"></p>
+  </div>
+</div>
+
+<!-- SEED -->
+<div id="seed-screen" class="hidden min-h-screen p-4 md:p-8">
+  <div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-6">
+      <h1 class="text-2xl font-bold text-sd mb-1">🌱 Migración inicial del sistema</h1>
+      <p class="text-sm text-gray-500 mb-6">
+        Esta operación creará la estructura base para el sistema multi-tienda.
+        Es <strong>segura de re-ejecutar</strong>: si algo ya existe, no lo duplica.
+      </p>
+
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm">
+        <p class="font-semibold text-sd mb-2">Se ejecutará en este orden:</p>
+        <ol class="list-decimal list-inside space-y-1 text-gray-700">
+          <li>Actualizar tu usuario con campos nuevos (name, email, active)</li>
+          <li>Crear <b>Tienda Alameda</b> (tienda-alameda)</li>
+          <li>Crear <b>Tienda Mallorquín</b> (tienda-mallorquin)</li>
+          <li>Crear <b>settings/general</b> (config global + categorías + estacionalidad)</li>
+          <li>Migrar los productos existentes a la nueva estructura (variantes)</li>
+          <li>Crear inventario por tienda para cada variante</li>
+          <li>Registrar todo en <b>auditLog</b></li>
+        </ol>
+      </div>
+
+      <div class="flex gap-3 mb-4">
+        <label class="flex items-center gap-2 text-sm">
+          <input id="reset-inventory" type="checkbox" checked class="w-4 h-4">
+          Resetear inventario existente (recomendado en la primera corrida)
+        </label>
+      </div>
+
+      <button id="run-btn" class="w-full bg-sl text-white py-3 rounded-lg hover:bg-sd transition font-bold">
+        🚀 Ejecutar migración
+      </button>
+
+      <div id="log" class="mt-6 bg-gray-900 text-green-400 p-4 rounded-lg text-xs font-mono max-h-96 overflow-y-auto hidden"></div>
+
+      <a href="index.html" class="block text-center text-sm text-sl hover:underline mt-6">← Volver a la tienda</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, doc, setDoc, updateDoc,
+  addDoc, getDoc, serverTimestamp, query, where
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+/* ============ CONFIG ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* ============ DATOS BASE ============ */
+
+const STORES = [
+  {
+    storeId: "tienda-alameda",
+    name: "Tienda Alameda",
+    address: "",
+    phone: "",
+    email: "",
+    commissionRate: 0.03,
+    active: true
+  },
+  {
+    storeId: "tienda-mallorquin",
+    name: "Tienda Mallorquín",
+    address: "",
+    phone: "",
+    email: "",
+    commissionRate: 0.03,
+    active: true
+  }
+];
+
+const CATEGORIES = {
+  "electrodomesticos": {
+    name: "Electrodomésticos",
+    description: "Productos para el hogar, cocina, limpieza y climatización.",
+    order: 1,
+    seasonal: false,
+    subcategories: {
+      "refrigeracion":      { name: "Refrigeración", order: 1 },
+      "lavado-ropa":        { name: "Lavado y cuidado de ropa", order: 2 },
+      "climatizacion":      { name: "Climatización", order: 3 },
+      "cocina-preparacion": { name: "Cocina y preparación de alimentos", order: 4 },
+      "limpieza-hogar":     { name: "Limpieza del hogar", order: 5 }
+    }
+  },
+  "belleza-cuidado": {
+    name: "Belleza y cuidado personal",
+    description: "Productos eléctricos y accesorios para cuidado personal y peinado.",
+    order: 2,
+    seasonal: false,
+    subcategories: {
+      "cuidado-cabello":         { name: "Cuidado y peinado del cabello", order: 1 },
+      "cuidado-facial-corporal": { name: "Cuidado facial y corporal", order: 2 },
+      "accesorios-belleza":      { name: "Accesorios de belleza", order: 3 }
+    }
+  },
+  "tecnologia-entretenimiento": {
+    name: "Tecnología y entretenimiento",
+    description: "Productos de imagen, sonido y dispositivos inteligentes.",
+    order: 3,
+    seasonal: false,
+    subcategories: {
+      "televisores":       { name: "Televisores", order: 1 },
+      "audio-sonido":      { name: "Audio y sonido", order: 2 },
+      "hogar-inteligente": { name: "Hogar inteligente", order: 3 }
+    }
+  },
+  "accesorios-complementos": {
+    name: "Accesorios y complementos",
+    description: "Productos complementarios para el hogar, dispositivos electrónicos y uso diario.",
+    order: 4,
+    seasonal: false,
+    subcategories: {
+      "hidratacion-termos":   { name: "Hidratación y termos", order: 1 },
+      "accesorios-celulares": { name: "Accesorios para celulares y dispositivos", order: 2 },
+      "energia-conexiones":   { name: "Energía y conexiones eléctricas", order: 3 },
+      "accesorios-audio":     { name: "Accesorios de audio", order: 4 }
+    }
+  },
+  "jugueteria-movilidad": {
+    name: "Juguetería y movilidad infantil",
+    description: "Categoría estacional (diciembre).",
+    order: 5,
+    seasonal: true,
+    subcategories: {
+      "munecas-figuras":        { name: "Muñecas y figuras", order: 1 },
+      "vehiculos-juguete":      { name: "Vehículos de juguete", order: 2 },
+      "movilidad-infantil":     { name: "Movilidad infantil", order: 3 },
+      "juguetes-electronicos":  { name: "Juguetes electrónicos", order: 4 },
+      "juegos-entretenimiento": { name: "Juegos y entretenimiento", order: 5 },
+      "productos-temporada":    { name: "Productos de temporada", order: 6 }
+    }
+  }
+};
+
+/* Mapa de categoría antigua → nueva */
+const CATEGORY_MAP = {
+  "refrigeracion": { group: "electrodomesticos", sub: "refrigeracion" },
+  "lavado":        { group: "electrodomesticos", sub: "lavado-ropa" },
+  "cocina":        { group: "electrodomesticos", sub: "cocina-preparacion" },
+  "televisores":   { group: "tecnologia-entretenimiento", sub: "televisores" },
+  "audio":         { group: "tecnologia-entretenimiento", sub: "audio-sonido" },
+  "computacion":   { group: "tecnologia-entretenimiento", sub: "hogar-inteligente" },
+  "otros":         { group: "electrodomesticos", sub: "limpieza-hogar" }
+};
+
+/* ============ AUTENTICACIÓN ============ */
+document.getElementById('login-btn').onclick = async () => {
+  const msg = document.getElementById('login-msg');
+  msg.textContent = 'Ingresando...'; msg.className = 'text-sm mt-3 text-gray-500';
+  try {
+    await signInWithEmailAndPassword(auth,
+      document.getElementById('email').value.trim(),
+      document.getElementById('pass').value);
+  } catch(e) {
+    msg.textContent = '❌ ' + e.message;
+    msg.className = 'text-sm mt-3 text-red-500';
+  }
+};
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('seed-screen').classList.remove('hidden');
+  } else {
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('seed-screen').classList.add('hidden');
+  }
+});
+
+/* ============ LOG VISUAL ============ */
+const logBox = document.getElementById('log');
+function log(msg, type='info') {
+  logBox.classList.remove('hidden');
+  const colors = { info:'text-green-400', warn:'text-yellow-400', error:'text-red-400', ok:'text-cyan-300' };
+  logBox.innerHTML += `<div class="${colors[type]||colors.info}">${msg}</div>`;
+  logBox.scrollTop = logBox.scrollHeight;
+}
+
+/* ============ HELPERS ============ */
+async function audit(entry) {
+  try {
+    await addDoc(collection(db,'auditLog'), {
+      ...entry,
+      timestamp: serverTimestamp()
+    });
+  } catch(e) { console.warn('audit error', e); }
+}
+
+function slugVariants(product) {
+  const colors = Array.isArray(product.colors) ? product.colors : [];
+  const sizes  = Array.isArray(product.sizes) ? product.sizes : [];
+  const variants = [];
+  const baseSku = (product.sku || 'SKU').toUpperCase();
+
+  const colorList = colors.length ? colors : [null];
+  const sizeList  = sizes.length  ? sizes  : [null];
+
+  for (const c of colorList) {
+    for (const s of sizeList) {
+      const parts = [baseSku];
+      if (c) parts.push(String(c).replace('#','').slice(0,6).toUpperCase());
+      if (s) parts.push(String(s).replace(/\s+/g,'').toUpperCase());
+      const variantSku = parts.join('-');
+      variants.push({
+        variantId: variantSku,
+        sku: variantSku,
+        color: c,
+        colorName: c ? c : '',
+        size: s,
+        priceDelta: 0,
+        active: true
+      });
+    }
+  }
+  return variants;
+}
+
+/* ============ SEED PRINCIPAL ============ */
+document.getElementById('run-btn').onclick = async () => {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.textContent = '⏳ Ejecutando...';
+  logBox.innerHTML = '';
+  logBox.classList.remove('hidden');
+
+  const user = auth.currentUser;
+  if (!user) { log('❌ No hay sesión activa', 'error'); btn.disabled = false; return; }
+
+  const userEmail = user.email;
+  const userId = user.uid;
+  const resetInv = document.getElementById('reset-inventory').checked;
+
+  try {
+    // ---------------------------------------------------------
+    // 1. Actualizar usuario
+    // ---------------------------------------------------------
+    log('▶ 1. Actualizando usuario…');
+    await updateDoc(doc(db,'users',userId), {
+      email: userEmail,
+      name: 'Super Admin',
+      storeId: null,
+      active: true,
+      commissionRate: 0,
+      updatedAt: serverTimestamp()
+    });
+    log('  ✔ Usuario actualizado', 'ok');
+
+    // ---------------------------------------------------------
+    // 2. Crear tiendas (idempotente)
+    // ---------------------------------------------------------
+    log('▶ 2. Creando tiendas…');
+    for (const s of STORES) {
+      const ref = doc(db,'stores', s.storeId);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        log(`  ℹ ${s.name} ya existía, se omite`, 'warn');
+      } else {
+        await setDoc(ref, { ...s, createdAt: serverTimestamp(), createdBy: userId });
+        log(`  ✔ Creada: ${s.name} (${s.storeId})`, 'ok');
+      }
+    }
+
+    // ---------------------------------------------------------
+    // 3. settings/general
+    // ---------------------------------------------------------
+    log('▶ 3. Creando settings/general…');
+    await setDoc(doc(db,'settings','general'), {
+      whatsapp: "573104304428",
+      minStock: 5,
+      taxEnabled: false,
+      taxRate: 0.19,
+      dianEnabled: false,
+      dianProvider: null,
+      categories: CATEGORIES,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    log('  ✔ Configuración global guardada', 'ok');
+
+    // ---------------------------------------------------------
+    // 4. Migrar productos existentes
+    // ---------------------------------------------------------
+    log('▶ 4. Migrando productos existentes…');
+    const productsSnap = await getDocs(collection(db,'products'));
+    log(`  ℹ Encontrados ${productsSnap.size} productos`, 'info');
+
+    const migratedProducts = [];
+    for (const d of productsSnap.docs) {
+      const p = d.data();
+      const map = CATEGORY_MAP[p.category] || { group:'electrodomesticos', sub:'limpieza-hogar' };
+
+      // Construir variantes si no existen
+      let variants = Array.isArray(p.variants) && p.variants.length ? p.variants : slugVariants(p);
+
+      const newDoc = {
+        sku: p.sku || '',
+        name: p.name || '',
+        brand: p.brand || '',
+        description: p.description || '',
+        categoryGroup: map.group,
+        categoryGroupName: CATEGORIES[map.group].name,
+        category: map.sub,
+        categoryName: CATEGORIES[map.group].subcategories[map.sub].name,
+        price: Number(p.price || 0),
+        cost: Number(p.cost || 0),
+        storePrices: p.storePrices || {},
+        taxRate: 0,
+        warrantyMonths: 12,
+        serialRequired: false,
+        onSale: !!p.onSale,
+        salePrice: Number(p.salePrice || 0),
+        active: true,
+        images: Array.isArray(p.images) ? p.images : [],
+        variants,
+        updatedAt: serverTimestamp()
+      };
+
+      await updateDoc(doc(db,'products',d.id), newDoc);
+      migratedProducts.push({ id: d.id, ...newDoc });
+      log(`  ✔ ${newDoc.name} → ${variants.length} variante(s)`, 'ok');
+    }
+
+    // ---------------------------------------------------------
+    // 5. Inventario por tienda (idempotente)
+    // ---------------------------------------------------------
+    log('▶ 5. Generando inventario por tienda…');
+    let invCount = 0;
+    for (const p of migratedProducts) {
+      for (const v of p.variants) {
+        for (const store of STORES) {
+          const invId = `${store.storeId}_${v.variantId}`;
+          const ref = doc(db,'inventory', invId);
+          const snap = await getDoc(ref);
+          if (snap.exists() && !resetInv) continue;
+
+          // Stock inicial: 6 para Alameda, 3 para Mallorquín (para probar)
+          const initialStock = store.storeId === 'tienda-alameda' ? 6 : 3;
+
+          await setDoc(ref, {
+            storeId: store.storeId,
+            productId: p.id,
+            variantId: v.variantId,
+            productName: p.name,
+            sku: v.sku,
+            color: v.color || null,
+            colorName: v.colorName || '',
+            size: v.size || null,
+            stock: initialStock,
+            minStock: 5,
+            serials: [],
+            updatedAt: serverTimestamp()
+          });
+          invCount++;
+        }
+      }
+    }
+    log(`  ✔ ${invCount} registros de inventario procesados`, 'ok');
+
+    // ---------------------------------------------------------
+    // 6. Auditoría
+    // ---------------------------------------------------------
+    log('▶ 6. Registrando auditoría…');
+    await audit({
+      action: 'seed',
+      collection: 'system',
+      userId, userEmail, userRole: 'superadmin',
+      storeId: null,
+      note: `Migración inicial ejecutada. ${migratedProducts.length} productos, ${invCount} inventarios.`
+    });
+    log('  ✔ Auditoría registrada', 'ok');
+
+    log('');
+    log('═══════════════════════════════════════', 'ok');
+    log('🎉 MIGRACIÓN COMPLETADA', 'ok');
+    log('═══════════════════════════════════════', 'ok');
+    log('');
+    log('Ahora puedes:');
+    log('• Abrir admin.html (cuando lo actualicemos en FASE 2)', 'info');
+    log('• Abrir venta.html (verás el selector de tienda)', 'info');
+    log('• Abrir index.html (catálogo con las nuevas categorías)', 'info');
+    log('');
+    log('Recarga la página si quieres volver a ejecutar.', 'warn');
+
+  } catch(e) {
+    console.error(e);
+    log('❌ ERROR: ' + e.message, 'error');
+    log('   Revisa la consola del navegador para más detalle.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Ejecutar migración';
+  }
+};
+</script>
+</body>
+</html>

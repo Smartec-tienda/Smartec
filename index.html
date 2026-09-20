@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec | Tu Tienda de Electrodomésticos</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  .line-clamp-2{
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  }
+  html{scroll-behavior:smooth}
+</style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+<!-- Barra de anuncios -->
+<div class="bg-sd text-white text-center py-2 text-xs md:text-sm font-medium">
+  🚚 Envío gratis en compras superiores a $200.000 | 🔧 Instalación profesional disponible
+</div>
+
+<!-- Header -->
+<header class="bg-white shadow-md sticky top-0 z-40">
+  <div class="container mx-auto px-4 py-3 flex items-center justify-between gap-3">
+    <a href="index.html" class="text-2xl md:text-3xl font-bold text-sd shrink-0">SMART<span class="text-sl">EC</span></a>
+
+    <!-- Buscador -->
+    <div class="flex-1 max-w-xl hidden md:flex relative">
+      <input id="search-input" type="text" placeholder="Buscar: tv de 30, nevera, licuadora..." class="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-sl text-sm">
+      <button class="absolute right-1 top-1/2 -translate-y-1/2 bg-sd text-white p-2 rounded-full hover:bg-sl transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </button>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button id="mobile-search-toggle" class="md:hidden text-sd p-2">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </button>
+      <a href="venta.html" class="hidden lg:inline text-xs text-sl hover:underline">Punto de venta</a>
+    </div>
+  </div>
+
+  <!-- Buscador móvil -->
+  <div id="mobile-search" class="hidden md:hidden px-4 pb-3">
+    <input id="search-input-mobile" type="text" placeholder="Buscar productos..." class="w-full px-4 py-2.5 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-sl text-sm">
+  </div>
+
+  <!-- Nav categorías -->
+  <nav class="bg-sd text-white">
+    <div class="container mx-auto px-4">
+      <ul id="categories-nav" class="flex gap-6 py-3 text-sm font-medium overflow-x-auto scrollbar-thin">
+        <li><button data-group="all" class="cat-nav-btn whitespace-nowrap hover:text-sl transition text-sl font-bold">Todos</button></li>
+        <!-- Se llena dinámicamente -->
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Subcategorías (aparecen al seleccionar grupo) -->
+  <div id="subcategories-bar" class="hidden bg-gray-50 border-b">
+    <div class="container mx-auto px-4 py-3">
+      <div id="subcategories-list" class="flex gap-2 overflow-x-auto scrollbar-thin"></div>
+    </div>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="relative bg-sd overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-r from-[#06182B] via-[#0A2A4A] to-[#3E6B8A]"></div>
+  <div class="relative container mx-auto px-4 py-16 md:py-24 text-center text-white">
+    <h1 class="text-3xl md:text-6xl font-bold mb-4 drop-shadow-lg">Tecnología que Transforma tu Hogar</h1>
+    <p class="text-base md:text-xl mb-8 max-w-2xl mx-auto drop-shadow">Descubre la mejor selección de electrodomésticos con la calidad y confianza que mereces.</p>
+    <a href="#catalogo" class="inline-block bg-white text-sd px-8 py-3 rounded-full font-bold hover:bg-gray-100 transition shadow-lg">Ver Productos</a>
+  </div>
+</section>
+
+<!-- Catálogo -->
+<section id="catalogo" class="container mx-auto px-4 py-6 md:py-10">
+  <div class="lg:grid lg:grid-cols-[280px_1fr] lg:gap-6">
+
+    <!-- ============ SIDEBAR FILTROS (Desktop) ============ -->
+    <aside class="hidden lg:block">
+      <div class="bg-white rounded-xl shadow-sm p-5 sticky top-32 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-thin">
+        <div class="flex justify-between items-center mb-4 pb-3 border-b">
+          <h3 class="font-bold text-sd flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+            Filtros
+          </h3>
+          <button id="clear-filters-desktop" class="hidden text-xs text-sl hover:underline font-medium">Limpiar</button>
+        </div>
+        <div id="filters-desktop-content" class="space-y-5"></div>
+      </div>
+    </aside>
+
+    <!-- ============ COLUMNA PRINCIPAL ============ -->
+    <div>
+      <!-- Header con título y controles -->
+      <div class="flex justify-between items-center mb-4 gap-3 flex-wrap">
+        <div class="flex-1 min-w-0">
+          <h2 id="results-title" class="text-lg md:text-2xl font-bold text-sd truncate">Nuestro Catálogo</h2>
+          <p id="results-count" class="text-xs text-gray-400 mt-1">Cargando...</p>
+        </div>
+
+        <!-- Botón Filtros (móvil/tablet) -->
+        <button id="open-filters-mobile" class="lg:hidden flex items-center gap-2 bg-white border border-gray-300 text-sd px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+          Filtros
+          <span id="filters-badge" class="hidden bg-sl text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center font-bold">0</span>
+        </button>
+
+        <!-- Ordenar -->
+        <select id="sort-select" class="text-xs border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sl">
+          <option value="relevance">Ordenar: Relevancia</option>
+          <option value="price-asc">Precio: menor a mayor</option>
+          <option value="price-desc">Precio: mayor a menor</option>
+          <option value="name-asc">Nombre: A → Z</option>
+          <option value="name-desc">Nombre: Z → A</option>
+          <option value="newest">Más nuevos</option>
+        </select>
+      </div>
+
+      <!-- Chips de filtros activos -->
+      <div id="active-filters" class="hidden mb-4 flex flex-wrap gap-2"></div>
+
+      <!-- Grid productos -->
+      <div id="loading" class="text-center py-16">
+        <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-sl"></div>
+        <p class="text-gray-500 mt-4 text-sm">Cargando catálogo...</p>
+      </div>
+      <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 hidden"></div>
+      <div id="empty" class="hidden text-center py-16">
+        <p class="text-5xl mb-3">🔍</p>
+        <p class="text-gray-500 font-semibold">No encontramos productos</p>
+        <p class="text-xs text-gray-400 mt-1">Intenta con otra búsqueda o cambia los filtros</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DRAWER FILTROS (Móvil) ============ -->
+<div id="filters-drawer" class="fixed inset-0 z-50 hidden lg:hidden">
+  <div id="filters-backdrop" class="absolute inset-0 bg-black/50 transition-opacity opacity-0"></div>
+
+  <div id="filters-panel" class="absolute right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
+    <div class="flex justify-between items-center p-4 border-b shrink-0">
+      <h3 class="font-bold text-sd flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+        Filtros
+      </h3>
+      <button id="close-filters-mobile" class="p-2 rounded-full hover:bg-gray-100">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div id="filters-mobile-content" class="flex-1 overflow-y-auto p-4 space-y-5 scrollbar-thin"></div>
+
+    <div class="border-t p-4 flex gap-3 shrink-0">
+      <button id="clear-filters-mobile" class="flex-1 bg-gray-100 text-sd py-3 rounded-lg hover:bg-gray-200 font-semibold text-sm">
+        Limpiar
+      </button>
+      <button id="apply-filters-mobile" class="flex-1 bg-sd text-white py-3 rounded-lg hover:bg-sl font-semibold text-sm">
+        Ver resultados
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Beneficios -->
+<section class="bg-sl text-white py-10 mt-8">
+  <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+    <div>
+      <p class="text-3xl mb-2">🚚</p>
+      <h3 class="text-lg font-bold mb-1">Envío Rápido</h3>
+      <p class="text-xs opacity-90">Recibe tus productos en tiempo récord.</p>
+    </div>
+    <div>
+      <p class="text-3xl mb-2">🛡️</p>
+      <h3 class="text-lg font-bold mb-1">Garantía Asegurada</h3>
+      <p class="text-xs opacity-90">Mínimo 12 meses en todos los productos.</p>
+    </div>
+    <div>
+      <p class="text-3xl mb-2">💬</p>
+      <h3 class="text-lg font-bold mb-1">Soporte 24/7</h3>
+      <p class="text-xs opacity-90">Siempre disponibles para ayudarte.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-sd text-white pt-12 pb-6 mt-8">
+  <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+    <div>
+      <h4 class="text-xl font-bold mb-3">SMART<span class="text-sl">EC</span></h4>
+      <p class="text-xs opacity-80">Tu tienda de confianza para electrodomésticos de alta calidad. Tecnología que mejora tu vida.</p>
+    </div>
+    <div>
+      <h4 class="font-bold mb-3 text-sm">Categorías</h4>
+      <ul id="footer-categories" class="space-y-1 text-xs opacity-80"></ul>
+    </div>
+    <div>
+      <h4 class="font-bold mb-3 text-sm">Contacto</h4>
+      <ul class="space-y-1 text-xs opacity-80">
+        <li>WhatsApp: +57 310 430 4428</li>
+        <li>Soporte: 24/7</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="font-bold mb-3 text-sm">Síguenos</h4>
+      <p class="text-xs opacity-80">@smartec</p>
+    </div>
+  </div>
+  <div class="border-t border-white/10 pt-6 text-center text-xs opacity-70">
+    <p>© 2026 Smartec. Todos los derechos reservados.</p>
+  </div>
+</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+/* ============ CONFIG ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ============ ESTADO ============ */
+let allProducts = [];
+let allInventory = [];
+let categories = {};
+let settings = {};
+let activeGroup = 'all';
+let activeSub = 'all';
+
+// Filtros estilo Amazon
+let filters = {
+  search: '',
+  brands: new Set(),
+  colors: new Set(),
+  sizes: new Set(),
+  priceMin: null,
+  priceMax: null,
+  availability: 'all',       // all | available | consult
+  onlyPromo: false,
+  inStockOnly: false
+};
+
+let sortBy = 'relevance';
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+
+const COLOR_NAMES = {
+  // Básicos
+  '#000000':'Negro', '#ffffff':'Blanco', '#808080':'Gris',
+  '#c0c0c0':'Plateado', '#a9a9a9':'Gris oscuro', '#d3d3d3':'Gris claro',
+  '#bab5b5':'Gris', '#b0b0b0':'Gris', '#dcdcdc':'Gris claro', '#f5f5f5':'Blanco humo',
+  '#e0e0e0':'Gris claro', '#36454f':'Gris carbón', '#696969':'Gris oscuro',
+  '#d9d9d9':'Gris claro', '#bfbfbf':'Gris', '#f0f0f0':'Blanco humo',
+
+  // Cálidos
+  '#ff0000':'Rojo', '#dc143c':'Rojo carmesí', '#8b0000':'Rojo oscuro',
+  '#ff6347':'Rojo tomate', '#ffa500':'Naranja', '#ff8c00':'Naranja oscuro',
+  '#ff4500':'Naranja rojizo', '#ffff00':'Amarillo', '#ffd700':'Dorado',
+  '#f0e68c':'Amarillo pálido', '#daa520':'Dorado oscuro',
+
+  // Marrones
+  '#a52a2a':'Café', '#964b00':'Café', '#8b4513':'Café', '#654321':'Café oscuro',
+  '#d2b48c':'Beige', '#f5f5dc':'Crema', '#f5deb3':'Trigo', '#ffe4c4':'Durazno',
+
+  // Verdes
+  '#00ff00':'Verde', '#008000':'Verde oscuro', '#228b22':'Verde bosque',
+  '#32cd32':'Verde lima', '#90ee90':'Verde claro', '#556b2f':'Verde oliva',
+  '#adff2f':'Verde amarillo', '#00ff7f':'Verde primavera',
+
+  // Azules
+  '#0000ff':'Azul', '#00008b':'Azul oscuro', '#191970':'Azul medianoche',
+  '#4682b4':'Azul acero', '#4169e1':'Azul rey', '#1e90ff':'Azul dodger',
+  '#87ceeb':'Celeste', '#00bfff':'Azul cielo', '#4a7a9a':'Azul petróleo',
+  '#0a2a4a':'Azul marino', '#5f9ea0':'Azul cadete', '#b0c4de':'Azul claro',
+
+  // Morados
+  '#800080':'Morado', '#8a2be2':'Morado azulado', '#9370db':'Morado medio',
+  '#ba55d3':'Orquídea', '#dda0dd':'Ciruela', '#4b0082':'Índigo',
+
+  // Rosas
+  '#ffc0cb':'Rosado', '#ff69b4':'Rosado fuerte', '#ff1493':'Rosado profundo',
+  '#db7093':'Rosado pálido',
+
+  // Cian / turquesa
+  '#00ffff':'Cian', '#008080':'Turquesa', '#40e0d0':'Turquesa claro',
+  '#20b2aa':'Turquesa mar', '#00ced1':'Turquesa oscuro',
+
+  // Metales
+  '#b87333':'Bronce', '#cd7f32':'Bronce', '#ffd700':'Dorado',
+  '#e5e4e2':'Platino', '#bcc6cc':'Plateado'
+
+};
+
+/* Convertir hex a RGB */
+function hexToRgb(hex) {
+  const m = String(hex).replace('#','').match(/^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+  if (!m) return null;
+  return { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) };
+}
+
+/* Distancia euclidiana entre 2 colores */
+function colorDistance(rgb1, rgb2) {
+  return Math.sqrt(
+    Math.pow(rgb1.r - rgb2.r, 2) +
+    Math.pow(rgb1.g - rgb2.g, 2) +
+    Math.pow(rgb1.b - rgb2.b, 2)
+  );
+}
+
+/* Nombre del color: exacto → parecido → hex */
+function colorNameFromHex(hex, fallback) {
+  if (!hex) return fallback || '';
+  const key = String(hex).toLowerCase();
+
+  // 1. Coincidencia exacta
+  if (COLOR_NAMES[key]) return COLOR_NAMES[key];
+
+  // 2. Buscar el color más parecido
+  const targetRgb = hexToRgb(key);
+  if (!targetRgb) return fallback || hex;
+
+  let bestName = null;
+  let bestDistance = Infinity;
+
+  for (const [cHex, cName] of Object.entries(COLOR_NAMES)) {
+    const cRgb = hexToRgb(cHex);
+    if (!cRgb) continue;
+    const dist = colorDistance(targetRgb, cRgb);
+    if (dist < bestDistance) {
+      bestDistance = dist;
+      bestName = cName;
+    }
+  }
+
+  // Si la distancia es razonable (< 100), usar el nombre más parecido
+  // Si es muy lejano, mostrar el hex original
+  if (bestName && bestDistance < 100) return bestName;
+  return fallback || hex;
+}
+
+/* Normalizar texto para búsqueda fuzzy */
+function normalize(str) {
+  return String(str || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar tildes
+    .replace(/[^a-z0-9\s]/g, ' ')                    // quitar símbolos
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/* Búsqueda fuzzy: todas las palabras deben encontrarse en algún campo */
+function fuzzyMatch(product, term) {
+  if (!term) return true;
+  const normalizedTerm = normalize(term);
+  const words = normalizedTerm.split(' ').filter(w => w.length >= 2);
+  if (!words.length) return true;
+
+  // Texto buscable: nombre + marca + SKU + categorías + tags de variantes
+  const searchable = normalize([
+    product.name,
+    product.brand,
+    product.sku,
+    product.categoryGroupName,
+    product.categoryName,
+    product.description,
+    ...(product.variants || []).map(v => [v.colorName, v.size].filter(Boolean).join(' '))
+  ].filter(Boolean).join(' '));
+
+  // Todas las palabras deben aparecer
+  return words.every(w => searchable.includes(w));
+}
+
+/* Stock global de una variante */
+function globalStock(variantId) {
+  return allInventory.filter(i => i.variantId === variantId)
+    .reduce((sum, i) => sum + Number(i.stock||0), 0);
+}
+
+/* Stock global de un producto (suma de todas sus variantes) */
+function globalProductStock(product) {
+  return (product.variants || []).reduce((sum, v) => sum + globalStock(v.variantId), 0);
+}
+
+/* ============ CARGA INICIAL ============ */
+async function init() {
+  try {
+    // Cargar settings, productos e inventario en paralelo
+    const [setSnap, prodSnap, invSnap] = await Promise.all([
+      getDoc(doc(db,'settings','general')),
+      getDocs(collection(db,'products')),
+      getDocs(collection(db,'inventory'))
+    ]);
+
+    settings = setSnap.exists() ? setSnap.data() : {};
+    categories = settings.categories || {};
+
+    allProducts = prodSnap.docs.map(d => ({id:d.id, ...d.data()})).filter(p => p.active !== false);
+    allInventory = invSnap.docs.map(d => ({id:d.id, ...d.data()}));
+
+    renderCategoryNav();
+    renderFooterCategories();
+    renderProducts();
+
+    $('loading').classList.add('hidden');
+    $('products-grid').classList.remove('hidden');
+  } catch(e) {
+    console.error('Error cargando datos:', e);
+    $('loading').innerHTML = '<p class="text-red-500">Error al cargar el catálogo</p>';
+  }
+}
+
+/* ============ NAVEGACIÓN DE CATEGORÍAS ============ */
+function isCategoryVisible(slug, group) {
+  if (!group.seasonal) return true;
+  if (group.seasonalActive === false) return false;
+  if (group.seasonalActive === true) return true;
+  // Auto por mes: solo diciembre
+  const month = new Date().getMonth() + 1;
+  return month === 12;
+}
+
+function renderCategoryNav() {
+  const nav = $('categories-nav');
+  const groups = Object.entries(categories)
+    .filter(([slug, g]) => isCategoryVisible(slug, g))
+    .sort((a,b) => (a[1].order||0) - (b[1].order||0));
+
+  nav.innerHTML = `
+    <li><button data-group="all" class="cat-nav-btn whitespace-nowrap hover:text-sl transition text-sl font-bold">Todos</button></li>
+    ${groups.map(([slug, g]) => `
+      <li><button data-group="${slug}" class="cat-nav-btn whitespace-nowrap hover:text-sl transition">${g.name}</button></li>
+    `).join('')}
+  `;
+
+  document.querySelectorAll('.cat-nav-btn').forEach(btn => {
+    btn.onclick = () => selectGroup(btn.dataset.group);
+  });
+}
+
+function renderFooterCategories() {
+  const el = $('footer-categories');
+  const groups = Object.entries(categories)
+    .filter(([slug, g]) => isCategoryVisible(slug, g))
+    .sort((a,b) => (a[1].order||0) - (b[1].order||0));
+
+  el.innerHTML = groups.map(([slug, g]) =>
+    `<li><a href="#catalogo" onclick="selectGroup('${slug}'); return false;" class="hover:text-sl transition cursor-pointer">${g.name}</a></li>`
+  ).join('');
+}
+
+window.selectGroup = (groupSlug) => {
+  activeGroup = groupSlug;
+  activeSub = 'all';
+
+  // Resetear filtros que dependen de categoría
+  filters.colors.clear();
+  filters.sizes.clear();
+  filters.brands.clear();
+
+  // Update UI de botones
+  document.querySelectorAll('.cat-nav-btn').forEach(btn => {
+    const isActive = btn.dataset.group === groupSlug;
+    btn.className = isActive
+      ? 'cat-nav-btn whitespace-nowrap text-sl font-bold'
+      : 'cat-nav-btn whitespace-nowrap hover:text-sl transition';
+  });
+
+  renderSubcategories();
+  renderProducts();
+
+  // Scroll al catálogo
+  setTimeout(() => $('catalogo').scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+};
+
+function renderSubcategories() {
+  const bar = $('subcategories-bar');
+  const list = $('subcategories-list');
+
+  if (activeGroup === 'all' || !categories[activeGroup]) {
+    bar.classList.add('hidden');
+    return;
+  }
+
+  const group = categories[activeGroup];
+  const subs = Object.entries(group.subcategories || {})
+    .sort((a,b) => (a[1].order||0) - (b[1].order||0));
+
+  bar.classList.remove('hidden');
+  list.innerHTML = `
+    <button data-sub="all" class="sub-btn whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium border bg-sl text-white border-sl">
+      Todas
+    </button>
+    ${subs.map(([slug, s]) => `
+      <button data-sub="${slug}" class="sub-btn whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white hover:border-sl transition">
+        ${s.name}
+      </button>
+    `).join('')}
+  `;
+
+  document.querySelectorAll('.sub-btn').forEach(btn => {
+    btn.onclick = () => {
+      activeSub = btn.dataset.sub;
+      document.querySelectorAll('.sub-btn').forEach(b => {
+        const active = b.dataset.sub === activeSub;
+        b.className = active
+          ? 'sub-btn whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium border bg-sl text-white border-sl'
+          : 'sub-btn whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white hover:border-sl transition';
+      });
+      renderProducts();
+    };
+  });
+}
+
+/* ============================================================
+   FILTROS ESTILO AMAZON
+============================================================ */
+
+/* Datos disponibles para filtros (marcas, colores, precios únicos) */
+function computeFilterOptions(productsFiltered) {
+  const brands = new Set();
+  const colors = new Map();  // hex → nombre
+  const sizes = new Set();
+  let minPrice = Infinity, maxPrice = 0;
+
+  productsFiltered.forEach(p => {
+    if (p.brand) brands.add(p.brand);
+
+    const basePrice = (p.onSale && p.salePrice) ? Number(p.salePrice) : Number(p.price || 0);
+    if (basePrice > 0) {
+      minPrice = Math.min(minPrice, basePrice);
+      maxPrice = Math.max(maxPrice, basePrice);
+    }
+
+    (p.variants || []).forEach(v => {
+      if (v.color && !colors.has(v.color)) {
+        colors.set(v.color, colorNameFromHex(v.color, v.colorName));
+      }
+      if (v.size) sizes.add(v.size);
+    });
+  });
+
+  return {
+    brands: Array.from(brands).sort(),
+    colors,
+    sizes: Array.from(sizes).sort(),
+    minPrice: minPrice === Infinity ? 0 : Math.floor(minPrice),
+    maxPrice: maxPrice === 0 ? 0 : Math.ceil(maxPrice)
+  };
+}
+
+/* Render del panel de filtros (sirve para desktop y móvil) */
+function renderFiltersPanel(productsAfterCategory) {
+  const opts = computeFilterOptions(productsAfterCategory);
+  const activeCount = countActiveFilters();
+
+  // Mostrar/ocultar botón "Limpiar"
+  ['clear-filters-desktop'].forEach(id => {
+    const el = $(id);
+    if (el) el.classList.toggle('hidden', activeCount === 0);
+  });
+
+  // Badge móvil
+  const badge = $('filters-badge');
+  if (badge) {
+    badge.classList.toggle('hidden', activeCount === 0);
+    badge.innerText = activeCount;
+  }
+
+  const html = `
+    <!-- Buscar dentro -->
+    <div>
+      <p class="text-xs font-bold text-sd mb-2">Buscar</p>
+      <input id="filter-search" type="text" value="${filters.search}" placeholder="Ej: tv 30..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-sl">
+    </div>
+
+    <!-- Categorías -->
+    ${activeGroup !== 'all' && categories[activeGroup] ? `
+      <div>
+        <p class="text-xs font-bold text-sd mb-2">Subcategoría</p>
+        <div class="space-y-1.5 text-xs max-h-40 overflow-y-auto scrollbar-thin">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl">
+            <input type="radio" name="filter-sub" value="all" ${activeSub === 'all' ? 'checked' : ''} class="w-3.5 h-3.5">
+            Todas
+          </label>
+          ${Object.entries(categories[activeGroup].subcategories || {})
+            .sort((a,b) => (a[1].order||0) - (b[1].order||0))
+            .map(([slug, s]) => `
+              <label class="flex items-center gap-2 cursor-pointer hover:text-sl">
+                <input type="radio" name="filter-sub" value="${slug}" ${activeSub === slug ? 'checked' : ''} class="w-3.5 h-3.5">
+                ${s.name}
+              </label>
+            `).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- Marcas -->
+    ${opts.brands.length ? `
+      <div>
+        <p class="text-xs font-bold text-sd mb-2">Marca</p>
+        <div class="space-y-1.5 text-xs max-h-40 overflow-y-auto scrollbar-thin">
+          ${opts.brands.map(b => `
+            <label class="flex items-center gap-2 cursor-pointer hover:text-sl">
+              <input type="checkbox" class="filter-brand w-3.5 h-3.5" value="${b}" ${filters.brands.has(b) ? 'checked' : ''}>
+              ${b}
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- Rango de precio -->
+    ${opts.maxPrice > 0 ? `
+      <div>
+        <p class="text-xs font-bold text-sd mb-2">Precio</p>
+        <div class="flex items-center gap-2">
+          <input type="number" id="filter-price-min" value="${filters.priceMin || ''}" placeholder="${opts.minPrice}" class="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-sl">
+          <span class="text-gray-400 text-xs">—</span>
+          <input type="number" id="filter-price-max" value="${filters.priceMax || ''}" placeholder="${opts.maxPrice}" class="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-sl">
+        </div>
+        <button id="filter-apply-price" class="mt-2 w-full bg-gray-100 hover:bg-gray-200 text-sd text-xs font-medium py-1.5 rounded">Aplicar precio</button>
+        <div class="flex flex-wrap gap-1.5 mt-2">
+          ${buildPriceRanges(opts.minPrice, opts.maxPrice).map(r => `
+            <button class="filter-price-preset text-[10px] border border-gray-300 hover:border-sl rounded-full px-2 py-0.5" data-min="${r.min}" data-max="${r.max}">${r.label}</button>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- Colores -->
+    ${opts.colors.size ? `
+      <div>
+        <p class="text-xs font-bold text-sd mb-2">Color</p>
+        <div class="grid grid-cols-6 gap-2">
+          ${Array.from(opts.colors.entries()).map(([hex, name]) => `
+            <button class="filter-color w-7 h-7 rounded-full border-2 transition relative ${filters.colors.has(hex) ? 'border-sl ring-2 ring-sl/40 scale-110' : 'border-gray-300 hover:border-sl'}" style="background:${hex}" data-color="${hex}" title="${name}"></button>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- Dimensiones -->
+    ${opts.sizes.length ? `
+      <div>
+        <p class="text-xs font-bold text-sd mb-2">Dimensión</p>
+        <div class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto scrollbar-thin">
+          ${opts.sizes.map(s => `
+            <button class="filter-size text-xs px-2.5 py-1 rounded-full border transition ${filters.sizes.has(s) ? 'bg-sl text-white border-sl' : 'bg-white border-gray-300 hover:border-sl'}" data-size="${s}">${s}</button>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- Disponibilidad -->
+    <div>
+      <p class="text-xs font-bold text-sd mb-2">Disponibilidad</p>
+      <div class="space-y-1.5 text-xs">
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl">
+          <input type="radio" name="filter-avail" value="all" ${filters.availability === 'all' ? 'checked' : ''} class="w-3.5 h-3.5">
+          Todos
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl">
+          <input type="radio" name="filter-avail" value="available" ${filters.availability === 'available' ? 'checked' : ''} class="w-3.5 h-3.5">
+          Solo disponibles
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl">
+          <input type="radio" name="filter-avail" value="consult" ${filters.availability === 'consult' ? 'checked' : ''} class="w-3.5 h-3.5">
+          Solo para consultar
+        </label>
+      </div>
+    </div>
+
+    <!-- Promoción -->
+    <div class="pt-3 border-t">
+      <label class="flex items-center gap-2 cursor-pointer text-xs hover:text-sl">
+        <input type="checkbox" id="filter-promo" ${filters.onlyPromo ? 'checked' : ''} class="w-3.5 h-3.5">
+        🔥 Solo en promoción
+      </label>
+    </div>
+  `;
+
+  // Render en desktop
+  const desktopContent = $('filters-desktop-content');
+  if (desktopContent) desktopContent.innerHTML = html;
+
+  // Render en móvil
+  const mobileContent = $('filters-mobile-content');
+  if (mobileContent) mobileContent.innerHTML = html;
+
+  // Adjuntar listeners a ambos paneles
+  attachFilterListeners('filters-desktop-content');
+  attachFilterListeners('filters-mobile-content');
+}
+
+function buildPriceRanges(min, max) {
+  if (max === 0) return [];
+  const ranges = [];
+  const step = (max - min) / 4;
+  if (step <= 0) return [];
+  for (let i = 0; i < 4; i++) {
+    const rMin = Math.floor(min + step * i);
+    const rMax = Math.ceil(min + step * (i + 1));
+    ranges.push({
+      min: rMin, max: rMax,
+      label: `$${(rMin/1000).toFixed(0)}k - $${(rMax/1000).toFixed(0)}k`
+    });
+  }
+  return ranges;
+}
+
+function attachFilterListeners(containerId) {
+  const container = $(containerId);
+  if (!container) return;
+
+  // Subcategorías (radios)
+  container.querySelectorAll('input[name="filter-sub"]').forEach(r => {
+    r.onchange = () => { activeSub = r.value; renderProducts(); };
+  });
+
+  // Marcas
+  container.querySelectorAll('.filter-brand').forEach(cb => {
+    cb.onchange = () => {
+      if (cb.checked) filters.brands.add(cb.value);
+      else filters.brands.delete(cb.value);
+      renderProducts();
+    };
+  });
+
+  // Colores
+  container.querySelectorAll('.filter-color').forEach(btn => {
+    btn.onclick = () => {
+      const c = btn.dataset.color;
+      if (filters.colors.has(c)) filters.colors.delete(c);
+      else filters.colors.add(c);
+      renderProducts();
+    };
+  });
+
+  // Dimensiones
+  container.querySelectorAll('.filter-size').forEach(btn => {
+    btn.onclick = () => {
+      const s = btn.dataset.size;
+      if (filters.sizes.has(s)) filters.sizes.delete(s);
+      else filters.sizes.add(s);
+      renderProducts();
+    };
+  });
+
+  // Disponibilidad
+  container.querySelectorAll('input[name="filter-avail"]').forEach(r => {
+    r.onchange = () => { filters.availability = r.value; renderProducts(); };
+  });
+
+  // Promoción
+  const promo = container.querySelector('#filter-promo');
+  if (promo) promo.onchange = () => { filters.onlyPromo = promo.checked; renderProducts(); };
+
+  // Búsqueda
+  const search = container.querySelector('#filter-search');
+  if (search) {
+    let t;
+    search.oninput = () => {
+      clearTimeout(t);
+      t = setTimeout(() => { filters.search = search.value.trim(); renderProducts(); }, 250);
+    };
+  }
+
+  // Precio aplicar
+  const applyPrice = container.querySelector('#filter-apply-price');
+  if (applyPrice) {
+    applyPrice.onclick = () => {
+      const min = container.querySelector('#filter-price-min').value;
+      const max = container.querySelector('#filter-price-max').value;
+      filters.priceMin = min ? Number(min) : null;
+      filters.priceMax = max ? Number(max) : null;
+      renderProducts();
+    };
+  }
+
+  // Precio presets
+  container.querySelectorAll('.filter-price-preset').forEach(btn => {
+    btn.onclick = () => {
+      filters.priceMin = Number(btn.dataset.min);
+      filters.priceMax = Number(btn.dataset.max);
+      renderProducts();
+    };
+  });
+}
+
+function countActiveFilters() {
+  let count = 0;
+  if (activeSub !== 'all') count++;
+  if (filters.search) count++;
+  count += filters.brands.size;
+  count += filters.colors.size;
+  count += filters.sizes.size;
+  if (filters.priceMin !== null || filters.priceMax !== null) count++;
+  if (filters.availability !== 'all') count++;
+  if (filters.onlyPromo) count++;
+  return count;
+}
+
+/* ============ RENDER PRODUCTOS ============ */
+function renderProducts() {
+  const grid = $('products-grid');
+  const empty = $('empty');
+  const countEl = $('results-count');
+  const titleEl = $('results-title');
+
+  // Filtrar por categoría primero
+  let baseList = allProducts.slice();
+  if (activeGroup !== 'all') baseList = baseList.filter(p => p.categoryGroup === activeGroup);
+
+  // Render del panel de filtros con las opciones disponibles
+  renderFiltersPanel(baseList);
+
+  // Aplicar filtros
+  let list = baseList.slice();
+
+  // Subcategoría
+  if (activeSub !== 'all') list = list.filter(p => p.category === activeSub);
+
+  // Búsqueda (global + panel)
+  const globalSearch = ($('search-input')?.value || '').trim();
+  const panelSearch = filters.search || '';
+  const finalSearch = panelSearch || globalSearch;
+  if (finalSearch) list = list.filter(p => fuzzyMatch(p, finalSearch));
+
+  // Marcas
+  if (filters.brands.size) list = list.filter(p => filters.brands.has(p.brand));
+
+  // Colores
+  if (filters.colors.size) {
+    list = list.filter(p => (p.variants||[]).some(v => filters.colors.has(v.color)));
+  }
+
+  // Dimensiones
+  if (filters.sizes.size) {
+    list = list.filter(p => (p.variants||[]).some(v => filters.sizes.has(v.size)));
+  }
+
+  // Precio
+  if (filters.priceMin !== null || filters.priceMax !== null) {
+    list = list.filter(p => {
+      const price = (p.onSale && p.salePrice) ? Number(p.salePrice) : Number(p.price || 0);
+      if (filters.priceMin !== null && price < filters.priceMin) return false;
+      if (filters.priceMax !== null && price > filters.priceMax) return false;
+      return true;
+    });
+  }
+
+  // Disponibilidad
+  if (filters.availability !== 'all') {
+    list = list.filter(p => {
+      const stock = globalProductStock(p);
+      if (filters.availability === 'available') return stock > 5;
+      if (filters.availability === 'consult') return stock <= 5;
+      return true;
+    });
+  }
+
+  // Promoción
+  if (filters.onlyPromo) list = list.filter(p => p.onSale && Number(p.salePrice) > 0);
+
+  // Ordenar
+  list = applySort(list);
+
+  // Título y contador
+  const parts = [];
+  if (activeGroup !== 'all' && categories[activeGroup]) parts.push(categories[activeGroup].name);
+  if (activeSub !== 'all' && categories[activeGroup]?.subcategories?.[activeSub]) {
+    parts.push(categories[activeGroup].subcategories[activeSub].name);
+  }
+  if (finalSearch) parts.push(`"${finalSearch}"`);
+  titleEl.innerText = parts.length ? parts.join(' › ') : 'Nuestro Catálogo';
+  countEl.innerText = `${list.length} producto${list.length !== 1 ? 's' : ''}`;
+
+  // Chips de filtros activos
+  renderActiveFilterChips();
+
+  // Render del grid
+  if (!list.length) {
+    grid.innerHTML = '';
+    grid.classList.add('hidden');
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  grid.classList.remove('hidden');
+  grid.innerHTML = list.map(p => renderProductCard(p)).join('');
+}
+
+function applySort(list) {
+  const sorted = list.slice();
+  switch (sortBy) {
+    case 'price-asc':
+      return sorted.sort((a,b) => getPrice(a) - getPrice(b));
+    case 'price-desc':
+      return sorted.sort((a,b) => getPrice(b) - getPrice(a));
+    case 'name-asc':
+      return sorted.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+    case 'name-desc':
+      return sorted.sort((a,b) => (b.name||'').localeCompare(a.name||''));
+    case 'newest':
+      return sorted.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+    default:
+      return sorted;
+  }
+}
+
+function getPrice(p) {
+  return (p.onSale && p.salePrice) ? Number(p.salePrice) : Number(p.price || 0);
+}
+
+function renderActiveFilterChips() {
+  const el = $('active-filters');
+  const chips = [];
+
+  filters.brands.forEach(b => chips.push({ type:'brand', value:b, label:b }));
+  filters.colors.forEach(c => chips.push({ type:'color', value:c, label:colorNameFromHex(c) }));
+  filters.sizes.forEach(s => chips.push({ type:'size', value:s, label:s }));
+  if (filters.priceMin !== null || filters.priceMax !== null) {
+    chips.push({ type:'price', label:`${fmt(filters.priceMin||0)} - ${fmt(filters.priceMax||0)}` });
+  }
+  if (filters.availability !== 'all') {
+    chips.push({ type:'avail', label: filters.availability === 'available' ? 'Disponibles' : 'Para consultar' });
+  }
+  if (filters.onlyPromo) chips.push({ type:'promo', label:'En promoción' });
+
+  if (!chips.length) {
+    el.classList.add('hidden');
+    return;
+  }
+  el.classList.remove('hidden');
+  el.innerHTML = chips.map(c => `
+    <button class="filter-chip bg-gray-100 hover:bg-gray-200 text-xs text-sd px-3 py-1 rounded-full flex items-center gap-1" data-type="${c.type}" data-value="${c.value||''}">
+      ${c.label}
+      <span class="text-gray-400 hover:text-red-500">✕</span>
+    </button>
+  `).join('');
+
+  el.querySelectorAll('.filter-chip').forEach(btn => {
+    btn.onclick = () => {
+      const t = btn.dataset.type;
+      const v = btn.dataset.value;
+      if (t === 'brand') filters.brands.delete(v);
+      if (t === 'color') filters.colors.delete(v);
+      if (t === 'size') filters.sizes.delete(v);
+      if (t === 'price') { filters.priceMin = null; filters.priceMax = null; }
+      if (t === 'avail') filters.availability = 'all';
+      if (t === 'promo') filters.onlyPromo = false;
+      renderProducts();
+    };
+  });
+}
+
+function renderProductCard(p) {
+  const img = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/400x400/e5e7eb/9ca3af?text=Sin+imagen';
+  const hasPromo = p.onSale && Number(p.salePrice) > 0;
+  const price = hasPromo ? Number(p.salePrice) : Number(p.price || 0);
+  const stock = globalProductStock(p);
+  const available = stock > 5;
+  const lowStock = stock > 0 && stock <= 5;
+
+  let availBadge = '';
+  if (available) {
+    availBadge = '<span class="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">✓ Disponible</span>';
+  } else if (lowStock) {
+    availBadge = '<span class="text-[9px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">⏳ Últimas</span>';
+  } else {
+    availBadge = '<span class="text-[9px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">🔍 Consultar</span>';
+  }
+
+  const promoBadge = hasPromo
+    ? `<span class="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-10">🔥 PROMO</span>`
+    : '';
+
+  return `
+    <a href="producto.html?id=${p.id}" class="product-card bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition group">
+      <div class="aspect-square bg-gray-50 flex items-center justify-center relative overflow-hidden">
+        ${promoBadge}
+        <img src="${img}" alt="${p.name}" class="object-contain w-full h-full p-4 group-hover:scale-105 transition" loading="lazy">
+      </div>
+      <div class="p-3">
+        <p class="text-[9px] text-gray-400 mb-0.5">${p.sku || ''}</p>
+        <p class="text-xs font-semibold text-sd leading-tight line-clamp-2 mb-1.5 min-h-[2rem]">${p.name}</p>
+        <div class="flex items-baseline gap-2 flex-wrap mb-1.5">
+          <p class="text-base font-bold text-sl">${fmt(price)}</p>
+          ${hasPromo ? `<p class="text-[10px] text-gray-400 line-through">${fmt(p.price)}</p>` : ''}
+        </div>
+        <div class="flex items-center justify-between gap-1">${availBadge}</div>
+      </div>
+    </a>
+  `;
+}
+
+/* ============ BÚSQUEDA ============ */
+const searchInputs = [$('search-input'), $('search-input-mobile')];
+searchInputs.forEach(inp => {
+  if (!inp) return;
+  let timer;
+  inp.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      // Sincronizar
+      searchInputs.forEach(i => { if (i && i !== inp) i.value = inp.value; });
+      renderProducts();
+    }, 250);
+  });
+});
+
+$('mobile-search-toggle')?.addEventListener('click', () => {
+  $('mobile-search').classList.toggle('hidden');
+  if (!$('mobile-search').classList.contains('hidden')) {
+    $('search-input-mobile').focus();
+  }
+});
+
+// Toggle buscador móvil
+$('mobile-search-toggle')?.addEventListener('click', () => {
+  $('mobile-search').classList.toggle('hidden');
+  if (!$('mobile-search').classList.contains('hidden')) {
+    $('search-input-mobile').focus();
+  }
+});
+
+/* ============ LIMPIAR FILTROS ============ */
+window.clearAllFilters = () => {
+  activeGroup = 'all';
+  activeSub = 'all';
+  filters = {
+    search: '',
+    brands: new Set(),
+    colors: new Set(),
+    sizes: new Set(),
+    priceMin: null,
+    priceMax: null,
+    availability: 'all',
+    onlyPromo: false,
+    inStockOnly: false
+  };
+  sortBy = 'relevance';
+
+  ['search-input','search-input-mobile'].forEach(id => { if ($(id)) $(id).value = ''; });
+  if ($('sort-select')) $('sort-select').value = 'relevance';
+
+  document.querySelectorAll('.cat-nav-btn').forEach(btn => {
+    btn.className = btn.dataset.group === 'all'
+      ? 'cat-nav-btn whitespace-nowrap text-sl font-bold'
+      : 'cat-nav-btn whitespace-nowrap hover:text-sl transition';
+  });
+  $('subcategories-bar').classList.add('hidden');
+  renderProducts();
+};
+
+$('clear-filters-desktop').onclick = clearAllFilters;
+$('clear-filters-mobile').onclick = clearAllFilters;
+
+/* ============ DRAWER MÓVIL ============ */
+function openFiltersDrawer() {
+  const drawer = $('filters-drawer');
+  const panel = $('filters-panel');
+  const backdrop = $('filters-backdrop');
+  drawer.classList.remove('hidden');
+  setTimeout(() => {
+    backdrop.classList.remove('opacity-0');
+    panel.classList.remove('translate-x-full');
+  }, 10);
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFiltersDrawer() {
+  const drawer = $('filters-drawer');
+  const panel = $('filters-panel');
+  const backdrop = $('filters-backdrop');
+  backdrop.classList.add('opacity-0');
+  panel.classList.add('translate-x-full');
+  document.body.style.overflow = '';
+  setTimeout(() => drawer.classList.add('hidden'), 300);
+}
+
+$('open-filters-mobile').onclick = openFiltersDrawer;
+$('close-filters-mobile').onclick = closeFiltersDrawer;
+$('filters-backdrop').onclick = closeFiltersDrawer;
+$('apply-filters-mobile').onclick = closeFiltersDrawer;
+
+/* ============ ORDENAR ============ */
+$('sort-select').onchange = (e) => {
+  sortBy = e.target.value;
+  renderProducts();
+};
+
+/* ============ ESC cierra drawer ============ */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('filters-drawer').classList.contains('hidden')) {
+    closeFiltersDrawer();
+  }
+});
+
+/* ============ INICIAR ============ */
+init();
+</script>
+</body>
+</html>

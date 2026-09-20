@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec · Garantías</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="cache.js"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  #store-selector {
+    background-color: rgba(255,255,255,0.15);
+    color: #ffffff;
+    min-width: 200px;
+  }
+  #store-selector:hover { background-color: rgba(255,255,255,0.25); }
+  #store-selector:focus { outline: none; border-color: rgba(255,255,255,0.6); }
+  #store-selector option {
+    color: #0A2A4A;
+    background-color: #ffffff;
+    padding: 6px;
+    font-size: 14px;
+  }
+  #store-selector option:checked { background-color: #4A7A9A; color: #ffffff; }
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<!-- LOGIN -->
+<div id="login-screen" class="hidden min-h-screen items-center justify-center bg-sd p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
+    <p class="text-center text-sm text-gray-500 mb-6">Garantías</p>
+    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
+    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
+    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
+    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
+  </div>
+</div>
+
+<!-- VERIFICANDO SESIÓN -->
+<div id="loading-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+  <div class="text-center">
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
+    <p class="text-white font-semibold text-sm">Verificando sesión...</p>
+  </div>
+</div>
+
+<!-- PANEL -->
+<div id="panel-screen" class="hidden min-h-screen flex flex-col">
+
+  <header class="bg-sd text-white px-4 py-4 flex justify-between items-center shrink-0">
+    <div class="flex items-center gap-3 min-w-0">
+      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap">SMART<span class="text-sl">EC</span></h1>
+      <div class="hidden md:block w-px h-6 bg-white/20"></div>
+      <div class="min-w-0">
+        <p id="header-title" class="text-sm md:text-base font-semibold truncate">Garantías</p>
+        <p id="header-role" class="text-[10px] opacity-70">—</p>
+        <select id="store-selector" class="hidden mt-1 text-sm rounded-lg px-3 py-1.5 cursor-pointer focus:outline-none border border-white/30"></select>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 text-sm shrink-0">
+      <span id="user-info" class="hidden lg:inline opacity-80 text-xs"></span>
+      <button onclick="forceRefresh()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition" title="Refrescar datos">🔄</button>
+      <a href="home.html" class="hover:text-sl transition text-xs">← Inicio</a>
+      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
+    </div>
+  </header>
+
+  <main class="flex-1 container mx-auto p-4 md:p-6">
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Total tickets</p>
+        <p id="kpi-total" class="text-2xl font-bold text-sd mt-1">0</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Abiertos</p>
+        <p id="kpi-abierto" class="text-2xl font-bold text-blue-600 mt-1">0</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">En proceso</p>
+        <p id="kpi-proceso" class="text-2xl font-bold text-orange-500 mt-1">0</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Resueltos</p>
+        <p id="kpi-resuelto" class="text-2xl font-bold text-green-600 mt-1">0</p>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow">
+        <p class="text-xs text-gray-500">Rechazados</p>
+        <p id="kpi-rechazado" class="text-2xl font-bold text-red-500 mt-1">0</p>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow p-4 mb-4">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Buscar</label>
+          <input id="f-search" type="text" placeholder="Ticket, cliente, producto..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Responsable</label>
+          <input id="f-responsible" type="text" placeholder="Buscar..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Estado</label>
+          <select id="f-status" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+            <option value="abierto">Abiertos</option>
+            <option value="en_proceso">En proceso</option>
+            <option value="resuelto">Resueltos</option>
+            <option value="rechazado">Rechazados</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Prioridad</label>
+          <select id="f-priority" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todas</option>
+            <option value="baja">Baja</option>
+            <option value="media">Media</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Ordenar</label>
+          <select id="f-sort" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="recent">Más recientes</option>
+            <option value="priority">Prioridad (alta primero)</option>
+            <option value="oldest">Más antiguos</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-between items-center mt-3 pt-3 border-t">
+        <p id="results-count" class="text-xs text-gray-500">0 tickets</p>
+        <button onclick="clearFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+      <h2 class="text-xl font-bold text-sd">Tickets de garantía</h2>
+      <button onclick="openTicketForm()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold">+ Nuevo ticket</button>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+      <table class="w-full text-sm min-w-[1000px]">
+        <thead class="bg-gray-100 text-sd">
+          <tr>
+            <th class="p-3 text-left">Ticket</th>
+            <th class="p-3 text-left">Fecha</th>
+            <th class="p-3 text-left">Cliente</th>
+            <th class="p-3 text-left">Producto</th>
+            <th class="p-3 text-left">Responsable</th>
+            <th class="p-3 text-center">Prioridad</th>
+            <th class="p-3 text-center">Estado</th>
+            <th class="p-3"></th>
+          </tr>
+        </thead>
+        <tbody id="tickets-tbody"></tbody>
+      </table>
+    </div>
+    <p id="tickets-empty" class="hidden text-center py-8 text-gray-400">Sin tickets con esos filtros.</p>
+
+  </main>
+</div>
+
+<!-- MODAL FORMULARIO -->
+<div id="ticket-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeTicketForm()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeTicketForm()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="ticket-title" class="text-xl font-bold text-sd mb-4 pr-10">Nuevo ticket de garantía</h3>
+    <div id="ticket-body"></div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE -->
+<div id="detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeDetail()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeDetail()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <div id="detail-body"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
+  updateDoc, serverTimestamp, query, where
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
+
+/* ============ CONFIG ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+/* ============ ESTADO ============ */
+let currentUser = null;
+let currentUserData = null;
+let currentStore = null;
+let stores = [];
+let warranties = [];
+let customers = [];
+let sales = [];
+let users = [];
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const fmtDate = ts => {
+  if (!ts) return '-';
+  const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+  return d.toLocaleDateString('es-CO', { year:'2-digit', month:'2-digit', day:'2-digit' });
+};
+
+function normalizePhone(raw) {
+  if (!raw) return '';
+  let p = String(raw).replace(/\D/g, '');
+  if (p.length === 10) p = '57' + p;
+  return p;
+}
+
+async function audit(entry) {
+  try {
+    await addDoc(collection(db,'auditLog'), {
+      ...entry,
+      userId: currentUser?.uid || null,
+      userEmail: currentUser?.email || null,
+      userRole: currentUserData?.role || null,
+      storeId: currentStore?.storeId || null,
+      timestamp: serverTimestamp()
+    });
+  } catch(e) { console.warn('audit fail', e); }
+}
+
+/* Generar consecutivo de garantía */
+async function generateWarrantyNumber(storeId) {
+  const year = new Date().getFullYear();
+  const counterId = `${storeId}_garantia_${year}`;
+  const ref = doc(db,'counters', counterId);
+
+  try {
+    const { runTransaction } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js");
+    const result = await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if (!snap.exists()) {
+        // Inicializar si no existe
+        const prefix = storeId.slice(0,3).toUpperCase() + '-GAR-' + year + '-';
+        transaction.set(ref, {
+          prefix,
+          lastNumber: 1,
+          type: 'garantia',
+          storeId,
+          year,
+          createdAt: serverTimestamp()
+        });
+        return { number: 1, prefix, fullNumber: prefix + '0001' };
+      }
+      const data = snap.data();
+      const nextNumber = (Number(data.lastNumber) || 0) + 1;
+      transaction.update(ref, {
+        lastNumber: nextNumber,
+        updatedAt: serverTimestamp()
+      });
+      return {
+        number: nextNumber,
+        prefix: data.prefix,
+        fullNumber: data.prefix + String(nextNumber).padStart(4, '0')
+      };
+    });
+    return result;
+  } catch(e) {
+    console.error('Error generando consecutivo:', e);
+    return { fullNumber: 'GAR-' + Date.now() };
+  }
+}
+
+/* ============ AUTH ============ */
+$('login-btn').onclick = async () => {
+  const err = $('login-error');
+  err.classList.add('hidden');
+  try {
+    await signInWithEmailAndPassword(auth, $('login-email').value.trim(), $('login-pass').value);
+  } catch(e) {
+    err.innerText = 'Error: ' + e.message;
+    err.classList.remove('hidden');
+  }
+};
+
+$('logout-btn').onclick = async () => {
+  await audit({ action:'logout', collection:'system', note:'Cierre de sesión garantías' });
+  await signOut(auth);
+  window.location.href = 'home.html';
+};
+
+onAuthStateChanged(auth, async user => {
+  document.getElementById('loading-screen').classList.add('hidden');
+
+  if (!user) {
+    window.location.href = 'home.html';
+    return;
+  }
+
+  currentUser = user;
+  try {
+    const snap = await getDoc(doc(db,'users',user.uid));
+    currentUserData = snap.exists() ? snap.data() : null;
+  } catch(e) { currentUserData = null; }
+
+  const validRoles = ['superadmin','admin','vendedor'];
+  if (!currentUserData || !validRoles.includes(currentUserData.role)) {
+    alert('⛔ No tienes permisos.');
+    await signOut(auth);
+    window.location.href = 'home.html';
+    return;
+  }
+
+  if (currentUserData.role !== 'superadmin' && !currentUserData.storeId) {
+    alert('⛔ No tienes una tienda asignada.');
+    await signOut(auth);
+    window.location.href = 'home.html';
+    return;
+  }
+
+  await audit({ action:'login', collection:'system', note:'Inicio de sesión garantías' });
+
+  $('login-screen').classList.add('hidden');
+  $('panel-screen').classList.remove('hidden');
+
+  $('user-info').innerText = '👤 ' + user.email;
+  const roleLabels = { superadmin:'Superadmin', admin:'Admin de tienda', vendedor:'Vendedor' };
+  $('header-role').innerText = roleLabels[currentUserData.role] || currentUserData.role;
+
+  await loadAll();
+});
+
+/* ============ CARGA ============ */
+async function loadAll() {
+  const C = window.SmartecCache;
+  const isSuper = currentUserData.role === 'superadmin';
+  const myStoreId = currentUserData.storeId;
+
+  stores = await C.wrap('stores', async () => {
+    const s = await getDocs(collection(db,'stores'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+
+  // Configurar tienda
+  if (isSuper) {
+    const activeStores = stores.filter(s => s.active).sort((a,b) => a.name.localeCompare(b.name));
+    if (!activeStores.length) {
+      alert('⛔ No hay tiendas activas.');
+      return;
+    }
+    const saved = sessionStorage.getItem('smartec_garantias_store');
+    currentStore = activeStores.find(s => s.storeId === saved) || activeStores[0];
+    sessionStorage.setItem('smartec_garantias_store', currentStore.storeId);
+
+    const sel = $('store-selector');
+    sel.classList.remove('hidden');
+    sel.innerHTML = activeStores.map(s =>
+      `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
+    ).join('');
+    $('header-title').classList.add('hidden');
+
+    sel.onchange = async () => {
+      currentStore = stores.find(s => s.storeId === sel.value);
+      sessionStorage.setItem('smartec_garantias_store', sel.value);
+      await loadWarrantiesAndCustomers();
+      renderAll();
+    };
+  } else {
+    currentStore = stores.find(s => s.storeId === myStoreId);
+    if (!currentStore) {
+      alert('⛔ Tu tienda no existe.');
+      await signOut(auth);
+      window.location.href = 'home.html';
+      return;
+    }
+    $('store-selector').classList.add('hidden');
+    $('header-title').innerText = 'Garantías · ' + currentStore.name;
+  }
+
+  await loadWarrantiesAndCustomers();
+  renderAll();
+}
+
+async function loadWarrantiesAndCustomers() {
+  const C = window.SmartecCache;
+
+  warranties = await C.wrap('warranties_all', async () => {
+    const s = await getDocs(collection(db,'warranties'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+
+  customers = await C.wrap('customers_all', async () => {
+    const s = await getDocs(collection(db,'customers'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+
+  users = await C.wrap('users', async () => {
+    const s = await getDocs(collection(db,'users'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+
+  sales = await C.wrap('sales_all_for_warranties', async () => {
+    const s = await getDocs(collection(db,'sales'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+}
+
+/* ============ FILTROS ============ */
+window.clearFilters = () => {
+  $('f-search').value = '';
+  $('f-responsible').value = '';
+  $('f-status').value = 'all';
+  $('f-priority').value = 'all';
+  $('f-sort').value = 'recent';
+  renderAll();
+};  
+
+['f-search','f-responsible','f-status','f-priority','f-sort'].forEach(id => {
+  const el = $(id);
+  if (el) {
+    el.addEventListener('input', renderAll);
+    el.addEventListener('change', renderAll);
+  }
+});
+
+function getFiltered() {
+  let list = warranties.slice();
+
+  // Filtro por tienda según rol
+  if (currentUserData.role !== 'superadmin') {
+    list = list.filter(w => w.storeId === currentUserData.storeId);
+  } else {
+    list = list.filter(w => w.storeId === currentStore.storeId);
+  }
+
+  const search = ($('f-search').value || '').toLowerCase().trim();
+  if (search) {
+    list = list.filter(w =>
+      (w.ticketNumber||'').toLowerCase().includes(search) ||
+      (w.customerName||'').toLowerCase().includes(search) ||
+      (w.productName||'').toLowerCase().includes(search) ||
+      (w.issueDescription||'').toLowerCase().includes(search)
+    );
+  }
+
+  const respFilter = ($('f-responsible').value || '').toLowerCase().trim();
+  if (respFilter) {
+    list = list.filter(w => (w.responsible || '').toLowerCase().includes(respFilter));
+  }
+
+  const statusF = $('f-status').value;
+  if (statusF !== 'all') list = list.filter(w => w.status === statusF);
+
+  const priorityF = $('f-priority').value;
+  if (priorityF !== 'all') list = list.filter(w => w.priority === priorityF);
+
+  const sort = $('f-sort').value;
+  switch(sort) {
+    case 'recent':
+      list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+      break;
+    case 'oldest':
+      list.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
+      break;
+    case 'priority': {
+      const prioVal = { alta: 3, media: 2, baja: 1 };
+      list.sort((a,b) => (prioVal[b.priority]||0) - (prioVal[a.priority]||0));
+      break;
+    }
+  }
+
+  return list;
+}
+
+/* ============ RENDER ============ */
+function renderAll() {
+  renderKPIs();
+  renderTable();
+}
+
+function renderKPIs() {
+  let base = warranties.slice();
+  if (currentUserData.role !== 'superadmin') {
+    base = base.filter(w => w.storeId === currentUserData.storeId);
+  } else {
+    base = base.filter(w => w.storeId === currentStore.storeId);
+  }
+
+  $('kpi-total').innerText = base.length;
+  $('kpi-abierto').innerText = base.filter(w => w.status === 'abierto').length;
+  $('kpi-proceso').innerText = base.filter(w => w.status === 'en_proceso').length;
+  $('kpi-resuelto').innerText = base.filter(w => w.status === 'resuelto').length;
+  $('kpi-rechazado').innerText = base.filter(w => w.status === 'rechazado').length;
+}
+
+function renderTable() {
+  const tb = $('tickets-tbody');
+  const empty = $('tickets-empty');
+  const list = getFiltered();
+
+  $('results-count').innerText = `${list.length} ticket${list.length !== 1 ? 's' : ''}`;
+
+  if (!list.length) {
+    tb.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tb.innerHTML = list.slice(0, 500).map(w => {
+    const statusCls = {
+      abierto: 'bg-blue-100 text-blue-700',
+      en_proceso: 'bg-orange-100 text-orange-700',
+      resuelto: 'bg-green-100 text-green-700',
+      rechazado: 'bg-red-100 text-red-700'
+    }[w.status] || 'bg-gray-100 text-gray-700';
+
+    const statusLbl = {
+      abierto: 'Abierto',
+      en_proceso: 'En proceso',
+      resuelto: 'Resuelto',
+      rechazado: 'Rechazado'
+    }[w.status] || w.status;
+
+    const prioCls = {
+      alta: 'bg-red-100 text-red-700',
+      media: 'bg-yellow-100 text-yellow-700',
+      baja: 'bg-gray-100 text-gray-600'
+    }[w.priority] || 'bg-gray-100 text-gray-600';
+
+    const prioLbl = (w.priority||'media').charAt(0).toUpperCase() + (w.priority||'media').slice(1);
+
+    return `<tr class="border-b hover:bg-gray-50">
+      <td class="p-3 text-xs font-mono font-semibold text-sd">${w.ticketNumber || '-'}</td>
+      <td class="p-3 text-xs text-gray-500">${fmtDate(w.createdAt)}</td>
+      <td class="p-3 text-xs">${w.customerName || '-'}<br><span class="text-[10px] text-gray-400">${w.customerPhone || ''}</span></td>
+      <td class="p-3 text-xs">${w.productName || '-'}</td>
+      <td class="p-3 text-xs">${w.responsible || '-'}</td>
+      <td class="p-3 text-center"><span class="text-[10px] px-2 py-0.5 rounded ${prioCls} font-semibold">${prioLbl}</span></td>
+      <td class="p-3 text-center"><span class="text-[10px] px-2 py-0.5 rounded ${statusCls} font-semibold">${statusLbl}</span></td>
+      <td class="p-3 text-right whitespace-nowrap">
+        <button onclick='viewDetail("${w.id}")' class="text-sl hover:underline text-xs">Ver</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============ FORMULARIO ============ */
+window.openTicketForm = () => {
+  $('ticket-title').innerText = 'Nuevo ticket de garantía';
+  renderForm();
+  const m = $('ticket-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeTicketForm = () => {
+  const m = $('ticket-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+};
+
+function renderForm() {
+  const isSuper = currentUserData.role === 'superadmin';
+  const storeOpts = stores.filter(s => s.active).map(s =>
+    `<option value="${s.storeId}" ${currentStore.storeId === s.storeId ? 'selected' : ''}>${s.name}</option>`
+  ).join('');
+
+  $('ticket-body').innerHTML = `
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd">Teléfono del cliente *</label>
+        <input id="t-phone" type="text" placeholder="3001234567" class="w-full px-3 py-2 border rounded-lg mt-1">
+        <p id="t-phone-status" class="text-[10px] text-gray-400 mt-1"></p>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Nombre del cliente *</label>
+        <input id="t-name" type="text" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd">Producto *</label>
+        <input id="t-product" type="text" placeholder="Ej: Nevera No Frost 300L" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">SKU</label>
+        <input id="t-sku" type="text" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd">Fecha de compra</label>
+        <input id="t-purchaseDate" type="date" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Garantía (meses)</label>
+        <input id="t-warrantyMonths" type="number" value="12" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Prioridad</label>
+        <select id="t-priority" class="w-full px-3 py-2 border rounded-lg mt-1">
+          <option value="baja">Baja</option>
+          <option value="media" selected>Media</option>
+          <option value="alta">Alta</option>
+        </select>
+      </div>
+    </div>
+
+    ${isSuper ? `
+    <div class="mb-3">
+      <label class="text-xs font-semibold text-sd">Tienda</label>
+      <select id="t-store" class="w-full px-3 py-2 border rounded-lg mt-1">
+        ${storeOpts}
+      </select>
+    </div>` : ''}
+
+    <label class="text-xs font-semibold text-sd">Descripción del problema *</label>
+    <textarea id="t-issue" rows="3" placeholder="Describe el problema del producto..." class="w-full px-3 py-2 border rounded-lg mt-1 mb-3"></textarea>
+    <label class="text-xs font-semibold text-sd">Responsable (opcional)</label>
+    <input id="t-responsible" list="responsible-list" type="text" placeholder="Ej: Juan Pérez o selecciona de la lista" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3">
+    <datalist id="responsible-list">
+      ${users.filter(u => u.active !== false).map(u => `<option value="${u.name || u.email}">`).join('')}
+    </datalist>
+    <label class="text-xs font-semibold text-sd">Adjuntos (imágenes o PDF, opcional)</label>
+    <input id="t-files" type="file" accept="image/*,application/pdf" multiple class="w-full px-3 py-2 border rounded-lg mt-1 mb-2 text-sm">
+
+    <div class="flex gap-3 mt-4">
+      <button onclick="closeTicketForm()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">Cancelar</button>
+      <button onclick="saveTicket()" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold">Crear ticket</button>
+    </div>
+  `;
+
+  // Autocompletar cliente por teléfono
+  $('t-phone').addEventListener('blur', tryAutocomplete);
+  $('t-phone').addEventListener('input', () => {
+    clearTimeout(window.__acTimer);
+    window.__acTimer = setTimeout(tryAutocomplete, 600);
+  });
+}
+
+async function tryAutocomplete() {
+  const phone = normalizePhone($('t-phone').value.trim());
+  const status = $('t-phone-status');
+
+  if (phone.length < 10) { status.innerText = ''; return; }
+
+  try {
+    const snap = await getDoc(doc(db,'customers',phone));
+    if (!snap.exists()) {
+      status.innerText = 'Cliente nuevo (se creará al guardar)';
+      status.className = 'text-[10px] text-gray-400 mt-1';
+      return;
+    }
+    const c = snap.data();
+    if (!$('t-name').value.trim()) $('t-name').value = c.name || '';
+    status.innerHTML = `✅ Cliente: <b>${c.name}</b>`;
+    status.className = 'text-[10px] text-green-600 mt-1';
+  } catch(e) {
+    console.warn(e);
+  }
+}
+
+window.saveTicket = async () => {
+  const phone = normalizePhone($('t-phone').value.trim());
+  const name = $('t-name').value.trim();
+  const product = $('t-product').value.trim();
+  const sku = $('t-sku').value.trim();
+  const purchaseDate = $('t-purchaseDate').value;
+  const warrantyMonths = Number($('t-warrantyMonths').value) || 12;
+  const priority = $('t-priority').value;
+  const issue = $('t-issue').value.trim();
+  const responsible = $('t-responsible').value.trim();
+  const storeId = $('t-store')?.value || currentStore.storeId;
+
+  if (!phone || phone.length < 10) return alert('El teléfono es obligatorio (10 dígitos)');
+  if (!name) return alert('El nombre del cliente es obligatorio');
+  if (!product) return alert('El producto es obligatorio');
+  if (!issue) return alert('La descripción del problema es obligatoria');
+
+  // Calcular fecha de fin de garantía
+  let warrantyEndDate = null;
+  if (purchaseDate) {
+    const pd = new Date(purchaseDate);
+    const end = new Date(pd.getFullYear(), pd.getMonth() + warrantyMonths, pd.getDate());
+    warrantyEndDate = end.toISOString().split('T')[0];
+  }
+
+  const btn = event.target;
+  btn.disabled = true; btn.innerText = '⏳ Guardando...';
+
+  try {
+    // Subir archivos
+    const attachments = [];
+    const files = $('t-files').files;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+            // Sanitizar el nombre del archivo (quitar caracteres problemáticos)
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `warranties/${storeId}/${Date.now()}_${i}_${safeName}`;
+      const fRef = storageRef(storage, path);
+      await uploadBytes(fRef, file);
+      const url = await getDownloadURL(fRef);
+      attachments.push({ url, name: file.name, type: file.type });
+    }
+
+    // Generar ticket number
+    const docNum = await generateWarrantyNumber(storeId);
+
+    // Crear ticket
+    const data = {
+      ticketNumber: docNum.fullNumber,
+      customerId: phone,
+      customerName: name,
+      customerPhone: phone,
+      productName: product,
+      sku,
+      purchaseDate: purchaseDate || null,
+      warrantyMonths,
+      warrantyEndDate,
+      issueDescription: issue,
+      responsible,
+      status: 'abierto',
+      priority,
+      notes: '',
+      resolution: '',
+      attachments,
+      storeId,
+      storeName: stores.find(s => s.storeId === storeId)?.name || storeId,
+      createdBy: currentUser.email,
+      createdByName: currentUserData.name || currentUser.email,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    const ref = await addDoc(collection(db,'warranties'), data);
+
+    await audit({
+      action: 'create',
+      collection: 'warranties',
+      docId: ref.id,
+      after: data,
+      note: `Ticket garantía: ${docNum.fullNumber} · ${product}`
+    });
+
+    // Asegurar que el cliente exista
+    const custRef = doc(db,'customers',phone);
+    const custSnap = await getDoc(custRef);
+    if (!custSnap.exists()) {
+      await setDoc(custRef, {
+        name,
+        phone,
+        tags: ['Cliente'],
+        totalSpent: 0,
+        purchaseCount: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdBy: currentUser.email,
+        storeId
+      });
+    }
+
+    window.SmartecCache.invalidate('warranties_all');
+    closeTicketForm();
+    await loadWarrantiesAndCustomers();
+    renderAll();
+    alert('✅ Ticket creado: ' + docNum.fullNumber);
+  } catch(e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+    btn.disabled = false; btn.innerText = 'Crear ticket';
+  }
+};
+
+/* ============ DETALLE ============ */
+window.viewDetail = (id) => {
+  const w = warranties.find(x => x.id === id);
+  if (!w) return;
+
+  const isAdmin = ['superadmin','admin'].includes(currentUserData.role);
+
+  const statusCls = {
+    abierto: 'bg-blue-100 text-blue-700',
+    en_proceso: 'bg-orange-100 text-orange-700',
+    resuelto: 'bg-green-100 text-green-700',
+    rechazado: 'bg-red-100 text-red-700'
+  }[w.status];
+
+  const statusLbl = {
+    abierto: 'Abierto',
+    en_proceso: 'En proceso',
+    resuelto: 'Resuelto',
+    rechazado: 'Rechazado'
+  }[w.status];
+
+  const prioLbl = (w.priority||'media').charAt(0).toUpperCase() + (w.priority||'media').slice(1);
+
+  $('detail-body').innerHTML = `
+    <div class="flex justify-between items-start mb-4">
+      <div>
+        <h3 class="text-xl font-bold text-sd">${w.ticketNumber}</h3>
+        <p class="text-xs text-gray-400">Creado: ${fmtDate(w.createdAt)} por ${w.createdByName || w.createdBy || '-'}</p>
+      </div>
+      <div class="flex gap-2">
+        <span class="text-xs px-3 py-1 rounded-full ${statusCls} font-semibold">${statusLbl}</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+      <div><p class="text-xs text-gray-400">Cliente</p><p class="font-semibold">${w.customerName}</p></div>
+      <div><p class="text-xs text-gray-400">Teléfono</p><p class="font-semibold">${w.customerPhone}</p></div>
+      <div><p class="text-xs text-gray-400">Producto</p><p class="font-semibold">${w.productName}</p></div>
+      <div><p class="text-xs text-gray-400">SKU</p><p class="font-semibold text-xs font-mono">${w.sku || '-'}</p></div>
+      <div><p class="text-xs text-gray-400">Compra</p><p class="font-semibold">${w.purchaseDate || '-'}</p></div>
+      <div><p class="text-xs text-gray-400">Garantía</p><p class="font-semibold">${w.warrantyMonths} meses${w.warrantyEndDate ? ' (vence ' + w.warrantyEndDate + ')' : ''}</p></div>
+      <div><p class="text-xs text-gray-400">Prioridad</p><p class="font-semibold">${prioLbl}</p></div>
+      <div><p class="text-xs text-gray-400">Tienda</p><p class="font-semibold">${w.storeName || w.storeId}</p></div>
+      <div class="col-span-2">
+        <p class="text-xs text-gray-400">Responsable</p>
+        <p class="font-semibold">${w.responsible || '—'}</p>
+      </div>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+      <p class="text-xs text-blue-700 font-semibold mb-1">Problema reportado</p>
+      <p class="text-sm">${w.issueDescription}</p>
+    </div>
+
+    ${w.resolution ? `
+      <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+        <p class="text-xs text-green-700 font-semibold mb-1">Resolución</p>
+        <p class="text-sm">${w.resolution}</p>
+      </div>
+    ` : ''}
+
+    ${w.rejectionReason ? `
+      <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+        <p class="text-xs text-red-700 font-semibold mb-1">Motivo de rechazo</p>
+        <p class="text-sm">${w.rejectionReason}</p>
+      </div>
+    ` : ''}
+
+    ${(w.attachments||[]).length ? `
+      <div class="mb-4">
+        <p class="text-xs text-gray-400 font-semibold mb-2">Adjuntos (${w.attachments.length})</p>
+        <div class="flex flex-wrap gap-2">
+          ${w.attachments.map(a => `
+            <a href="${a.url}" target="_blank" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg">
+              📎 ${a.name}
+            </a>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+    
+        ${w.notes ? `
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+        <p class="text-xs text-yellow-700 font-semibold mb-1">📝 Notas internas</p>
+        <pre class="text-xs text-gray-700 whitespace-pre-wrap font-sans">${w.notes}</pre>
+      </div>
+    ` : ''}
+
+    ${isAdmin && w.status !== 'resuelto' && w.status !== 'rechazado' ? `
+      <div class="border-t pt-4 mt-4 space-y-3">
+        <p class="text-xs font-semibold text-sd">Acciones:</p>
+
+        <div class="flex gap-2 flex-wrap">
+          ${w.status === 'abierto' ? `
+            <button onclick="changeStatus('${w.id}','en_proceso')" class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 text-xs font-semibold">
+              → Marcar en proceso
+            </button>
+          ` : ''}
+          ${w.status === 'en_proceso' ? `
+            <button onclick="changeStatus('${w.id}','abierto')" class="bg-gray-200 text-sd px-4 py-2 rounded-lg hover:bg-gray-300 text-xs font-semibold">
+              ← Volver a abierto
+            </button>
+          ` : ''}
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-sd">Responsable</label>
+          <input id="d-responsible" list="responsible-list-detail" type="text" value="${w.responsible || ''}" placeholder="Ej: Juan Pérez" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+          <datalist id="responsible-list-detail">
+            ${users.filter(u => u.active !== false).map(u => `<option value="${u.name || u.email}">`).join('')}
+          </datalist>
+          <button onclick="updateResponsible('${w.id}')" class="mt-2 text-xs bg-sl text-white px-3 py-1.5 rounded-lg hover:bg-sd font-semibold">Guardar responsable</button>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-sd">Nota interna</label>
+          <textarea id="d-notes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm mt-1" placeholder="Observaciones..."></textarea>
+          <button onclick="addNote('${w.id}')" class="mt-2 text-xs bg-sl text-white px-3 py-1.5 rounded-lg hover:bg-sd font-semibold">Agregar nota</button>
+        </div>
+
+        <div class="pt-3 border-t">
+          <label class="text-xs font-semibold text-green-700">Resolver ticket</label>
+          <textarea id="d-resolution" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm mt-1" placeholder="Qué se hizo..."></textarea>
+          <button onclick="resolveTicket('${w.id}')" class="mt-2 text-xs bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold">
+            ✅ Marcar como resuelto
+          </button>
+        </div>
+
+        <div class="pt-3 border-t">
+          <label class="text-xs font-semibold text-red-600">Rechazar ticket</label>
+          <textarea id="d-rejectReason" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm mt-1" placeholder="Motivo del rechazo..."></textarea>
+          <button onclick="rejectTicket('${w.id}')" class="mt-2 text-xs bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 font-semibold">
+            ⛔ Rechazar
+          </button>
+        </div>
+      </div>
+    ` : ''}
+
+    ${!isAdmin ? `
+      <div class="border-t pt-4 mt-4">
+        <p class="text-xs text-gray-400 italic">Solo superadmin y admin de tienda pueden cambiar el estado de los tickets.</p>
+      </div>
+    ` : ''}
+  `;
+
+  const m = $('detail-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeDetail = () => {
+  const m = $('detail-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+};
+
+window.changeStatus = async (id, newStatus) => {
+  try {
+    await updateDoc(doc(db,'warranties',id), {
+      status: newStatus,
+      updatedAt: serverTimestamp()
+    });
+    await audit({ action:'update', collection:'warranties', docId:id, note:`Estado: ${newStatus}` });
+    window.SmartecCache.invalidate('warranties_all');
+    closeDetail();
+    await loadWarrantiesAndCustomers();
+    renderAll();
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+};
+
+window.addNote = async (id) => {
+  const note = $('d-notes').value.trim();
+  if (!note) return alert('Escribe una nota');
+  const w = warranties.find(x => x.id === id);
+  const current = w.notes || '';
+  const newNote = current
+    ? current + '\n[' + new Date().toLocaleString('es-CO') + '] ' + note
+    : '[' + new Date().toLocaleString('es-CO') + '] ' + note;
+  await updateDoc(doc(db,'warranties',id), {
+    notes: newNote,
+    updatedAt: serverTimestamp()
+  });
+  await audit({ action:'update', collection:'warranties', docId:id, note:'Nota agregada: ' + note });
+  window.SmartecCache.invalidate('warranties_all');
+  closeDetail();
+  await loadWarrantiesAndCustomers();
+  renderAll();
+};
+
+window.resolveTicket = async (id) => {
+  const resolution = $('d-resolution').value.trim();
+  if (!resolution) return alert('Describe qué se hizo');
+  if (!confirm('¿Marcar este ticket como resuelto?')) return;
+
+  await updateDoc(doc(db,'warranties',id), {
+    status: 'resuelto',
+    resolution,
+    resolvedAt: serverTimestamp(),
+    resolvedBy: currentUser.email,
+    updatedAt: serverTimestamp()
+  });
+  await audit({ action:'update', collection:'warranties', docId:id, note:'Ticket resuelto: ' + resolution });
+  window.SmartecCache.invalidate('warranties_all');
+  closeDetail();
+  await loadWarrantiesAndCustomers();
+  renderAll();
+  alert('✅ Ticket resuelto');
+};
+
+window.rejectTicket = async (id) => {
+  const reason = $('d-rejectReason').value.trim();
+  if (!reason) return alert('Escribe el motivo del rechazo');
+  if (!confirm('¿Rechazar este ticket?')) return;
+
+  await updateDoc(doc(db,'warranties',id), {
+    status: 'rechazado',
+    rejectionReason: reason,
+    rejectedAt: serverTimestamp(),
+    rejectedBy: currentUser.email,
+    updatedAt: serverTimestamp()
+  });
+  await audit({ action:'update', collection:'warranties', docId:id, note:'Ticket rechazado: ' + reason });
+  window.SmartecCache.invalidate('warranties_all');
+  closeDetail();
+  await loadWarrantiesAndCustomers();
+  renderAll();
+  alert('⛔ Ticket rechazado');
+};
+
+window.updateResponsible = async (id) => {
+  const responsible = $('d-responsible').value.trim();
+
+  try {
+    await updateDoc(doc(db,'warranties',id), {
+      responsible,
+      updatedAt: serverTimestamp()
+    });
+    await audit({
+      action: 'update',
+      collection: 'warranties',
+      docId: id,
+      note: 'Responsable: ' + (responsible || '(sin asignar)')
+    });
+    window.SmartecCache.invalidate('warranties_all');
+    closeDetail();
+    await loadWarrantiesAndCustomers();
+    renderAll();
+    alert('✅ Responsable actualizado');
+  } catch(e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  }
+};
+
+
+/* ============ REFRESCAR ============ */
+window.forceRefresh = async () => {
+  window.SmartecCache.clear();
+  await loadAll();
+  alert('✅ Datos actualizados');
+};
+
+/* Cerrar con ESC */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (!$('ticket-modal').classList.contains('hidden')) return closeTicketForm();
+    if (!$('detail-modal').classList.contains('hidden')) return closeDetail();
+  }
+});
+</script>
+</body>
+</html>

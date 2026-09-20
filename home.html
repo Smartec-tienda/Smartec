@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec · Inicio</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+  .card-module{transition:all .2s ease}
+  .card-module:not(.disabled):hover{transform:translateY(-4px);box-shadow:0 12px 24px -8px rgba(10,42,74,.25)}
+  .card-module.disabled{opacity:.55;cursor:not-allowed}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<!-- ============ LOGIN ============ -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
+    <p class="text-center text-sm text-gray-500 mb-6">Panel de inicio</p>
+    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
+    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
+    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
+    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
+    <a href="index.html" class="block text-center text-xs text-gray-400 hover:text-sl mt-4">← Ir a la tienda</a>
+  </div>
+</div>
+
+<!-- ============ HOME ============ -->
+<div id="home-screen" class="hidden min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-sd text-white px-4 py-4 flex justify-between items-center shrink-0">
+    <div class="flex items-center gap-3 min-w-0">
+      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap">SMART<span class="text-sl">EC</span></h1>
+      <div class="hidden md:block w-px h-6 bg-white/20"></div>
+      <p class="hidden md:block text-sm opacity-80">Panel de inicio</p>
+    </div>
+    <div class="flex items-center gap-3 text-sm shrink-0">
+      <a href="index.html" class="hidden md:inline text-xs hover:text-sl transition">Ver tienda</a>
+      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
+    </div>
+  </header>
+
+  <!-- Contenido -->
+  <main class="flex-1 container mx-auto p-4 md:p-8">
+
+    <!-- Saludo -->
+    <div class="mb-6 md:mb-8">
+      <h2 class="text-2xl md:text-3xl font-bold text-sd">Hola, <span id="user-name">—</span></h2>
+      <p class="text-sm text-gray-500 mt-1">
+        <span id="user-role" class="inline-block bg-sl/10 text-sl font-semibold px-2 py-0.5 rounded text-xs uppercase tracking-wide">—</span>
+        <span id="user-store" class="ml-2 text-xs text-gray-400"></span>
+      </p>
+    </div>
+
+    <!-- Grid de módulos -->
+    <div id="modules-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+
+  </main>
+
+  <footer class="bg-white border-t py-4 text-center text-xs text-gray-400">
+    © 2026 Smartec · Todos los derechos reservados.
+  </footer>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, query, where, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+/* ============ CONFIG ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const ROLE_LABELS = {
+  superadmin: 'Superadmin',
+  admin: 'Administrador de tienda',
+  vendedor: 'Vendedor'
+};
+
+/* ============ DEFINICIÓN DE MÓDULOS ============ */
+const MODULES = [
+  {
+    key: 'index',
+    icon: '🛒',
+    title: 'Tienda pública',
+    desc: 'Catálogo visible para clientes',
+    href: 'index.html',
+    roles: ['superadmin','admin','vendedor'],
+    soon: false
+  },
+   {
+    key: 'venta',
+    icon: '💰',
+    title: 'Punto de venta',
+    desc: 'Registrar ventas y generar documentos',
+    href: 'venta.html',
+    roles: ['superadmin','admin','vendedor'],
+    soon: false
+  },
+  {
+    key: 'mis_ventas',
+    icon: '📈',
+    title: 'Mis Ventas',
+    desc: 'Historial, comisiones y metas',
+    href: 'mis_ventas.html',
+    roles: ['superadmin','admin','vendedor'],
+    soon: false
+  },
+  {
+    key: 'tiendas',
+    icon: '🏪',
+    title: 'Panel de tienda',
+    desc: 'Dashboard, inventario, ventas y caja',
+    href: 'tiendas.html',
+    roles: ['superadmin','admin'],
+    soon: false
+  },
+    {
+    key: 'admin',
+    icon: '⚙️',
+    title: 'Panel admin',
+    desc: 'Configuración global del sistema',
+    href: 'admin.html',
+    roles: ['superadmin'],
+    soon: false
+  },
+    {
+    key: 'contabilidad',
+    icon: '📊',
+    title: 'Centro contable',
+    desc: 'Gastos, costos y soportes',
+    href: 'contabilidad.html',
+    roles: ['superadmin','admin'],
+    soon: false
+  },
+    {
+    key: 'inventario',
+    icon: '📦',
+    title: 'Inventario',
+    desc: 'Conteo, recepción y ajustes rápidos',
+    href: 'inventario.html',
+    roles: ['superadmin','admin','vendedor'],
+    soon: false
+  },
+  {
+    key: 'transfers',
+    icon: '📦',
+    title: 'Solicitudes de traslado',
+    desc: 'Solicitudes entre tiendas pendientes',
+    href: 'admin.html#transfers',
+    roles: ['superadmin'],
+    soon: false,
+    badge: 'transfers'
+  },
+    {
+    key: 'clientes',
+    icon: '👥',
+    title: 'Clientes',
+    desc: 'Base de clientes, historial y estadísticas',
+    href: 'clientes.html',
+    roles: ['superadmin','admin','vendedor'],
+    soon: false
+  },
+    {
+    key: 'garantias',
+    icon: '🛡️',
+    title: 'Garantías',
+    desc: 'Tickets y seguimiento de servicios',
+    href: 'garantias.html',
+    roles: ['superadmin','admin','vendedor'],
+    soon: false
+  },
+  {
+    key: 'facturacion',
+    icon: '🧾',
+    title: 'Facturación DIAN',
+    desc: 'Factura electrónica (en desarrollo)',
+    href: 'facturacion.html',
+    roles: ['superadmin','admin','vendedor'],
+    soon: true
+  }
+];
+
+/* ============ AUTENTICACIÓN ============ */
+$('login-btn').onclick = async () => {
+  const err = $('login-error');
+  err.classList.add('hidden');
+  try {
+    await signInWithEmailAndPassword(auth,
+      $('login-email').value.trim(),
+      $('login-pass').value);
+  } catch(e) {
+    err.innerText = 'Error: ' + e.message;
+    err.classList.remove('hidden');
+  }
+};
+
+$('logout-btn').onclick = async () => {
+  await signOut(auth);
+  window.location.href = 'index.html';
+};
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    $('login-screen').classList.remove('hidden');
+    $('home-screen').classList.add('hidden');
+    return;
+  }
+
+  // Cargar perfil
+  let userData = null;
+  try {
+    const snap = await getDoc(doc(db,'users',user.uid));
+    userData = snap.exists() ? snap.data() : null;
+  } catch(e) {
+    userData = null;
+  }
+
+  // Validar perfil y rol
+  const validRoles = ['superadmin','admin','vendedor'];
+  if (!userData || !validRoles.includes(userData.role)) {
+    await signOut(auth);
+    window.location.href = 'index.html';
+    return;
+  }
+
+  // Mostrar home
+  $('login-screen').classList.add('hidden');
+  $('home-screen').classList.remove('hidden');
+
+  $('user-name').innerText = userData.name || user.email;
+  $('user-role').innerText = ROLE_LABELS[userData.role] || userData.role;
+
+  if (userData.role === 'superadmin') {
+    $('user-store').innerText = '· Acceso a todas las tiendas';
+  } else if (userData.storeId) {
+    $('user-store').innerText = '· Tienda: ' + userData.storeId;
+  }
+
+   renderModules(userData.role);
+
+  // Activar badge en tiempo real para superadmin
+  if (userData.role === 'superadmin') {
+    startTransfersBadgeListener();
+  }
+});
+
+/* ============================================================
+   BADGE EN TIEMPO REAL — SOLICITUDES PENDIENTES
+============================================================ */
+let transfersUnsubscribe = null;
+
+function startTransfersBadgeListener() {
+  if (transfersUnsubscribe) transfersUnsubscribe();
+
+  const q = query(
+    collection(db,'transferRequests'),
+    where('status','==','pendiente')
+  );
+
+  transfersUnsubscribe = onSnapshot(q, (snap) => {
+    const count = snap.size;
+    const badge = document.getElementById('home-badge-transfers');
+    if (!badge) return;
+    if (count > 0) {
+      badge.classList.remove('hidden');
+      badge.innerText = count > 99 ? '99+' : count;
+    } else {
+      badge.classList.add('hidden');
+    }
+  }, (err) => {
+    console.warn('Badge listener error:', err);
+  });
+}
+
+window.addEventListener('beforeunload', () => {
+  if (transfersUnsubscribe) transfersUnsubscribe();
+});
+
+function renderModules(role) {
+  const grid = $('modules-grid');
+  const allowed = MODULES.filter(m => m.roles.includes(role));
+
+  grid.innerHTML = allowed.map(m => {
+    const disabled = m.soon;
+    const soonTag = disabled
+      ? '<span class="absolute top-3 right-3 text-[10px] bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">Próximamente</span>'
+      : '';
+
+    // Badge dinámico (solo si la tarjeta lo declara)
+    const badgeTag = m.badge
+      ? `<span id="home-badge-${m.badge}" class="hidden absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center">0</span>`
+      : '';
+
+    const content = `
+      <div class="card-module ${disabled?'disabled':''} relative bg-white rounded-2xl p-5 h-full flex flex-col">
+        ${soonTag}
+        ${badgeTag}
+        <div class="text-4xl mb-3">${m.icon}</div>
+        <h3 class="font-bold text-sd text-base mb-1">${m.title}</h3>
+        <p class="text-xs text-gray-500 leading-relaxed">${m.desc}</p>
+        ${!disabled ? `
+          <div class="mt-4 pt-3 border-t border-gray-100 text-xs text-sl font-semibold flex items-center gap-1">
+            Abrir
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    return disabled
+      ? `<div class="cursor-not-allowed">${content}</div>`
+      : `<a href="${m.href}" class="block h-full">${content}</a>`;
+  }).join('');
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imprimir documento | Smartec</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  body { font-family: Arial, Helvetica, sans-serif; }
+
+  /* ============ BOTONES EN PANTALLA ============ */
+  .toolbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    background: #0A2A4A; color: white;
+    padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
+    z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .toolbar h1 { font-size: 15px; font-weight: bold; }
+  .toolbar button {
+    background: #4A7A9A; color: white; border: none; padding: 8px 16px;
+    border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .toolbar button:hover { background: #5d8aab; }
+  .toolbar .btn-close { background: #dc2626; }
+  .toolbar .btn-close:hover { background: #b91c1c; }
+
+  .doc-wrapper {
+    padding: 80px 20px 40px;
+    max-width: 900px; margin: 0 auto;
+    background: #f3f4f6; min-height: 100vh;
+  }
+
+  .doc {
+    background: white; padding: 40px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    border-radius: 4px;
+  }
+
+  /* ============ ESTILOS DEL DOCUMENTO ============ */
+  .doc-header { border-bottom: 2px solid #0A2A4A; padding-bottom: 16px; margin-bottom: 24px; }
+  .doc-header h1 { color: #0A2A4A; font-size: 28px; font-weight: bold; margin: 0; }
+  .doc-header .sub { color: #4A7A9A; font-size: 12px; font-weight: bold; letter-spacing: 1px; margin-top: 2px; }
+  .doc-header .company-info { font-size: 11px; color: #555; margin-top: 10px; line-height: 1.5; }
+  .doc-header .doc-type { text-align: right; }
+  .doc-header .doc-type .t { font-size: 20px; font-weight: bold; color: #0A2A4A; }
+  .doc-header .doc-type .num { font-size: 12px; color: #666; margin-top: 4px; }
+  .doc-header .doc-type .date { font-size: 11px; color: #888; }
+
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 11px; font-weight: bold; color: #0A2A4A; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+  .section-body { font-size: 12px; color: #333; line-height: 1.6; }
+  .section-body b { color: #0A2A4A; }
+
+  table.items { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }
+  table.items th { background: #0A2A4A; color: white; padding: 8px; text-align: left; font-weight: 600; }
+  table.items th.r { text-align: right; }
+  table.items th.c { text-align: center; }
+  table.items td { padding: 7px 8px; border-bottom: 1px solid #e5e7eb; }
+  table.items td.r { text-align: right; }
+  table.items td.c { text-align: center; }
+  table.items tr:nth-child(even) td { background: #fafafa; }
+
+  .totals { margin-top: 16px; display: flex; justify-content: flex-end; }
+  .totals table { width: 280px; font-size: 12px; }
+  .totals table td { padding: 4px 8px; }
+  .totals table td.r { text-align: right; }
+  .totals .total-row td { font-size: 16px; font-weight: bold; color: #0A2A4A; border-top: 2px solid #0A2A4A; padding-top: 8px; }
+
+  .garantia { font-size: 10px; color: #666; margin-top: 24px; padding: 12px; background: #f9fafb; border-left: 3px solid #4A7A9A; line-height: 1.6; }
+
+  .firmas { margin-top: 60px; display: flex; justify-content: space-between; gap: 40px; }
+  .firma { flex: 1; text-align: center; }
+  .firma .linea { border-top: 1px solid #333; margin-bottom: 4px; }
+  .firma .label { font-size: 10px; color: #666; }
+  .firma .nombre { font-size: 11px; font-weight: bold; color: #0A2A4A; margin-top: 2px; }
+
+  .footer { text-align: center; font-size: 10px; color: #999; margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+
+  /* ============ TIRILLA POS (58mm) ============ */
+  .tirilla {
+    width: 58mm;
+    background: white;
+    padding: 4mm;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 1.3;
+    color: #000;
+    margin: 0 auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  .tirilla.center { text-align: center; }
+  .tirilla .bold { font-weight: bold; }
+  .tirilla .linea { border-top: 1px dashed #000; margin: 4px 0; }
+  .tirilla .fila { display: flex; justify-content: space-between; }
+  .tirilla .producto { margin: 4px 0; }
+  .tirilla .producto .nombre { word-wrap: break-word; }
+  .tirilla .producto .detalle { display: flex; justify-content: space-between; font-size: 10px; }
+  .tirilla .total-final { font-size: 14px; font-weight: bold; text-align: center; margin: 6px 0; }
+  .tirilla .garantia-mini { font-size: 8px; margin-top: 8px; text-align: justify; }
+
+  /* ============ IMPRESIÓN ============ */
+  @media print {
+    .toolbar { display: none !important; }
+    .doc-wrapper { padding: 0; background: white; max-width: none; }
+    .doc { box-shadow: none; padding: 0; border-radius: 0; }
+    .tirilla { box-shadow: none; width: 58mm; }
+    @page { margin: 10mm; }
+  }
+  @media print and (max-width: 80mm) {
+    @page { margin: 2mm; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Toolbar (solo visible en pantalla) -->
+<div class="toolbar">
+  <h1 id="toolbar-title">Smartec · Previsualización</h1>
+  <div class="flex gap-2">
+    <button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
+  </div>
+</div>
+
+<!-- Contenedor del documento -->
+<div class="doc-wrapper">
+  <div id="loading" class="text-center py-20 text-gray-500">
+    Cargando documento...
+  </div>
+  <div id="doc-container" class="hidden"></div>
+  <div id="error-container" class="hidden text-center py-20">
+    <p class="text-red-500 font-bold mb-2">No se pudo cargar el documento</p>
+    <p id="error-msg" class="text-sm text-gray-500"></p>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const fmtDate = ts => {
+  if (!ts) return '-';
+  const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+  return d.toLocaleString('es-CO', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+};
+const fmtDateShort = ts => {
+  if (!ts) return '-';
+  const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+  return d.toLocaleDateString('es-CO', { year:'numeric', month:'2-digit', day:'2-digit' });
+};
+const fmtTime = ts => {
+  if (!ts) return '-';
+  const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+  return d.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+};
+
+const FORMAT_LABELS = {
+  remision: 'Remisión',
+  tirilla: 'Comprobante de venta',
+  mediacarta: 'Documento comercial'
+};
+
+/* ============ INIT ============ */
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const saleId = params.get('id');
+  const format = params.get('format') || 'remision';
+
+  if (!saleId) {
+    return showError('Falta el ID de la venta en la URL');
+  }
+
+  document.title = `Imprimir | Smartec`;
+
+   try {
+    // 1. Intentar por ID del documento
+    let saleSnap = await getDoc(doc(db,'sales',saleId));
+
+    // 2. Si no existe, buscar por documentNumber
+    let sale = null;
+    if (saleSnap.exists()) {
+      sale = { id: saleSnap.id, ...saleSnap.data() };
+    } else {
+      const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js");
+      const q = query(collection(db,'sales'), where('documentNumber','==',saleId));
+      const results = await getDocs(q);
+      if (results.empty) {
+        return showError('La venta no existe');
+      }
+      const first = results.docs[0];
+      sale = { id: first.id, ...first.data() };
+    }
+
+    // Cargar settings (para datos de empresa)
+    const setSnap = await getDoc(doc(db,'settings','general'));
+    const settings = setSnap.exists() ? setSnap.data() : {};
+
+    // Render según formato
+    $('toolbar-title').innerText = `Smartec · ${FORMAT_LABELS[format] || 'Documento'}`;
+
+    let html = '';
+    if (format === 'tirilla') {
+      html = renderTirilla(sale, settings);
+    } else if (format === 'mediacarta') {
+      html = renderMediaCarta(sale, settings);
+    } else {
+      html = renderRemision(sale, settings);
+    }
+
+    $('doc-container').innerHTML = html;
+    $('doc-container').classList.remove('hidden');
+    $('loading').classList.add('hidden');
+  } catch(e) {
+    console.error(e);
+    showError(e.message);
+  }
+}
+
+function showError(msg) {
+  $('loading').classList.add('hidden');
+  $('error-container').classList.remove('hidden');
+  $('error-msg').innerText = msg;
+}
+
+/* ============ DATOS DE LA EMPRESA ============ */
+function getCompanyInfo(sale, settings) {
+  // Datos globales de la empresa
+  const razonSocial = settings.companyRazonSocial || 'Smartec';
+  const nit = settings.companyNit || '—';
+  const regimen = settings.companyRegimen || '';
+  const address = settings.companyAddress || '';
+  const phone = settings.companyPhone || settings.whatsapp || '';
+  const email = settings.companyEmail || '';
+
+  // Tienda que emite
+  const storeName = sale.storeName || '';
+  const storeAddress = sale.storeAddress || ''; // puede no existir
+  const storePhone = sale.storePhone || '';
+
+  return { razonSocial, nit, regimen, address, phone, email, storeName, storeAddress, storePhone };
+}
+
+/* ============ RENDER REMISIÓN ============ */
+function renderRemision(sale, settings) {
+  const c = getCompanyInfo(sale, settings);
+  const docNumber = sale.documentNumber || 'SIN-NÚMERO';
+
+  return `
+    <div class="doc">
+      <div class="doc-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h1>SMART<span style="color:#4A7A9A;">EC</span></h1>
+          <div class="sub">${c.razonSocial}</div>
+          <div class="company-info">
+            NIT: <b>${c.nit}</b>${c.regimen ? ' · ' + c.regimen : ''}<br>
+            ${c.address ? c.address + '<br>' : ''}
+            ${c.phone ? 'Tel: ' + c.phone + '<br>' : ''}
+            ${c.email ? 'Email: ' + c.email : ''}
+          </div>
+        </div>
+        <div class="doc-type">
+          <div class="t">REMISIÓN</div>
+          <div class="num">No. <b>${docNumber}</b></div>
+          <div class="date">${fmtDate(sale.createdAt)}</div>
+          ${c.storeName ? `<div class="date" style="margin-top:6px;">Sede: <b>${c.storeName}</b></div>` : ''}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Datos del cliente</div>
+        <div class="section-body">
+          <b>${sale.customer?.name || '-'}</b><br>
+          ${sale.customer?.phone ? 'Teléfono: ' + sale.customer.phone + '<br>' : ''}
+          ${sale.customer?.email ? 'Email: ' + sale.customer.email + '<br>' : ''}
+          ${sale.customer?.address ? 'Dirección: ' + sale.customer.address + (sale.customer.city ? ', ' + sale.customer.city : '') : ''}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Productos</div>
+        <table class="items">
+          <thead>
+            <tr>
+              <th style="width:60px;">SKU</th>
+              <th>Producto</th>
+               <th style="width:80px;">Características</th>>
+              <th class="c" style="width:50px;">Cant.</th>
+              <th class="r" style="width:90px;">V. Unit.</th>
+              <th class="r" style="width:100px;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(sale.items || []).map(it => {
+              const variantParts = [];
+              if (it.colorName) variantParts.push(it.colorName);
+              if (it.size) variantParts.push(it.size);
+              const variant = variantParts.join(' · ') || '—';
+              return `<tr>
+                <td>${it.sku || '-'}</td>
+                <td>${it.name || '-'}</td>
+                <td>${variant}</td>
+                <td class="c">${it.qty || 0}</td>
+                <td class="r">${fmt(it.unitPrice)}</td>
+                <td class="r">${fmt((it.qty||0) * (it.unitPrice||0))}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      ${renderTotals(sale)}
+
+      ${sale.customer?.notes ? `
+        <div class="section">
+          <div class="section-title">Observaciones</div>
+          <div class="section-body">${sale.customer.notes}</div>
+        </div>
+      ` : ''}
+
+      <div class="section">
+        <div class="section-title">Información de pago</div>
+        <div class="section-body">
+          Método: <b style="text-transform:capitalize;">${sale.paymentMethod || '-'}</b><br>
+          Vendedor: <b>${sale.sellerName || sale.sellerEmail || '-'}</b>
+        </div>
+      </div>
+
+      <div class="garantia">
+        <b>GARANTÍA:</b> Todos los productos cuentan con garantía mínima de 12 meses o la superior otorgada por el fabricante. La garantía cubre defectos de fábrica y no cubre daños por mal uso, golpes, líquidos o manipulación indebida. Para hacer efectiva la garantía, presente este documento junto con el producto.
+      </div>
+
+      <div class="firmas">
+        <div class="firma">
+          <div class="linea"></div>
+          <div class="label">Firma del cliente</div>
+          <div class="nombre">${sale.customer?.name || ''}</div>
+        </div>
+        <div class="firma">
+          <div class="linea"></div>
+          <div class="label">Firma del vendedor</div>
+          <div class="nombre">${sale.sellerName || sale.sellerEmail || ''}</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        Este documento no constituye factura electrónica de venta. Smartec · ${c.nit}
+      </div>
+    </div>
+  `;
+}
+
+/* ============ RENDER MEDIA CARTA ============ */
+function renderMediaCarta(sale, settings) {
+  // Mismo contenido que remisión pero con estilo más compacto
+  const c = getCompanyInfo(sale, settings);
+  const docNumber = sale.documentNumber || 'SIN-NÚMERO';
+
+  return `
+    <div class="doc" style="max-width: 700px;">
+      <div class="doc-header" style="display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:12px; margin-bottom:16px;">
+        <div>
+          <h1 style="font-size:22px;">SMART<span style="color:#4A7A9A;">EC</span></h1>
+          <div class="sub" style="font-size:10px;">${c.razonSocial}</div>
+          <div class="company-info" style="font-size:10px;">
+            NIT: <b>${c.nit}</b>${c.regimen ? ' · ' + c.regimen : ''}<br>
+            ${c.address ? c.address + '<br>' : ''}
+            ${c.phone ? 'Tel: ' + c.phone : ''}
+          </div>
+        </div>
+        <div class="doc-type">
+          <div class="t" style="font-size:16px;">DOCUMENTO COMERCIAL</div>
+          <div class="num" style="font-size:11px;">No. <b>${docNumber}</b></div>
+          <div class="date" style="font-size:10px;">${fmtDate(sale.createdAt)}</div>
+          ${c.storeName ? `<div class="date" style="margin-top:4px; font-size:10px;">Sede: <b>${c.storeName}</b></div>` : ''}
+        </div>
+      </div>
+
+      <div class="section" style="margin-bottom:14px;">
+        <div class="section-title" style="font-size:10px;">Cliente</div>
+        <div class="section-body" style="font-size:11px;">
+          <b>${sale.customer?.name || '-'}</b>
+          ${sale.customer?.phone ? ' · Tel: ' + sale.customer.phone : ''}
+          ${sale.customer?.address ? '<br>' + sale.customer.address + (sale.customer.city ? ', ' + sale.customer.city : '') : ''}
+        </div>
+      </div>
+
+      <table class="items" style="font-size:10px;">
+        <thead>
+          <tr>
+            <th style="width:50px;">SKU</th>
+            <th>Producto</th>
+            <th class="c" style="width:40px;">Cant.</th>
+            <th class="r" style="width:80px;">V. Unit.</th>
+            <th class="r" style="width:90px;">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(sale.items || []).map(it => {
+            const variantParts = [];
+            if (it.colorName) variantParts.push(it.colorName);
+            if (it.size) variantParts.push(it.size);
+            const variant = variantParts.join(' · ');
+            return `<tr>
+              <td>${it.sku || '-'}</td>
+              <td>${it.name || '-'}${variant ? '<br><span style="font-size:9px; color:#888;">' + variant + '</span>' : ''}</td>
+              <td class="c">${it.qty || 0}</td>
+              <td class="r">${fmt(it.unitPrice)}</td>
+              <td class="r">${fmt((it.qty||0) * (it.unitPrice||0))}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+
+      ${renderTotals(sale, true)}
+
+      <div class="section" style="margin-top:14px;">
+        <div class="section-title" style="font-size:10px;">Pago</div>
+        <div class="section-body" style="font-size:11px;">
+          Método: <b style="text-transform:capitalize;">${sale.paymentMethod || '-'}</b> · Vendedor: <b>${sale.sellerName || sale.sellerEmail || '-'}</b>
+        </div>
+      </div>
+
+      <div class="garantia" style="font-size:9px; padding:8px; margin-top:16px;">
+        <b>GARANTÍA:</b> Productos con garantía mínima de 12 meses o la superior de fábrica. No cubre daños por mal uso.
+      </div>
+
+      <div class="firmas" style="margin-top:40px;">
+        <div class="firma">
+          <div class="linea"></div>
+          <div class="label">Firma del cliente</div>
+        </div>
+        <div class="firma">
+          <div class="linea"></div>
+          <div class="label">Firma del vendedor</div>
+        </div>
+      </div>
+
+      <div class="footer" style="margin-top:20px; font-size:9px;">
+        Documento no válido como factura electrónica · Smartec · ${c.nit}
+      </div>
+    </div>
+  `;
+}
+
+/* ============ RENDER TIRILLA POS ============ */
+function renderTirilla(sale, settings) {
+  const c = getCompanyInfo(sale, settings);
+  const docNumber = sale.documentNumber || 'SIN-NÚMERO';
+  const date = sale.createdAt?.seconds
+    ? new Date(sale.createdAt.seconds * 1000)
+    : new Date();
+
+  const dateStr = date.toLocaleDateString('es-CO');
+  const timeStr = date.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+
+  return `
+    <div class="tirilla">
+      <div class="center bold" style="font-size:14px;">SMARTEC</div>
+      <div class="center">${c.razonSocial}</div>
+      <div class="center" style="font-size:9px;">NIT: ${c.nit}</div>
+      ${c.address ? `<div class="center" style="font-size:9px;">${c.address}</div>` : ''}
+      ${c.phone ? `<div class="center" style="font-size:9px;">Tel: ${c.phone}</div>` : ''}
+      <div class="linea"></div>
+
+      <div class="center bold">COMPROBANTE DE VENTA</div>
+      <div class="center">No. ${docNumber}</div>
+      <div class="linea"></div>
+
+      <div>Fecha: ${dateStr} ${timeStr}</div>
+      ${c.storeName ? `<div>Sede: ${c.storeName}</div>` : ''}
+      <div class="linea"></div>
+
+      <div class="bold">CLIENTE</div>
+      <div>${sale.customer?.name || '-'}</div>
+      ${sale.customer?.phone ? `<div>Tel: ${sale.customer.phone}</div>` : ''}
+      ${sale.customer?.address ? `<div>${sale.customer.address}</div>` : ''}
+      <div class="linea"></div>
+
+      <div class="bold">PRODUCTOS</div>
+      ${(sale.items || []).map(it => {
+        const variantParts = [];
+        if (it.colorName) variantParts.push(it.colorName);
+        if (it.size) variantParts.push(it.size);
+        const variant = variantParts.join(' · ');
+        return `
+          <div class="producto">
+            <div class="nombre">${it.name || '-'}</div>
+            ${variant ? `<div style="font-size:9px;">${variant}</div>` : ''}
+            <div class="detalle">
+              <span>${it.qty} × ${fmt(it.unitPrice)}</span>
+              <span class="bold">${fmt((it.qty||0) * (it.unitPrice||0))}</span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+      <div class="linea"></div>
+
+      <div class="fila"><span>Subtotal</span><span>${fmt(sale.subtotal)}</span></div>
+      ${sale.discount ? `<div class="fila"><span>Descuento</span><span>-${fmt(sale.discount)}</span></div>` : ''}
+      ${sale.shipping ? `<div class="fila"><span>Envío</span><span>${fmt(sale.shipping)}</span></div>` : ''}
+      ${sale.surchargeAmount ? `<div class="fila"><span>Rec. tarjeta</span><span>${fmt(sale.surchargeAmount)}</span></div>` : ''}
+      <div class="linea"></div>
+
+      <div class="total-final">TOTAL: ${fmt(sale.total)}</div>
+      <div class="linea"></div>
+
+      <div>Pago: ${sale.paymentMethod || '-'}</div>
+      <div>Vendedor: ${sale.sellerName || sale.sellerEmail || '-'}</div>
+
+      ${sale.customer?.notes ? `<div class="linea"></div><div style="font-size:9px;">Nota: ${sale.customer.notes}</div>` : ''}
+
+      <div class="garantia-mini">
+        <b>GARANTÍA:</b> Garantía mínima de 12 meses o la superior de fábrica. Presente este recibo para hacerla efectiva. No cubre daños por mal uso.
+      </div>
+
+      <div class="linea"></div>
+      <div class="center" style="margin-top:8px; font-size:10px;">¡Gracias por su compra!</div>
+      <div class="center" style="font-size:8px; margin-top:4px;">Este documento no es factura electrónica</div>
+    </div>
+  `;
+}
+
+/* ============ RENDER TOTALES ============ */
+function renderTotals(sale, compact = false) {
+  const fontSize = compact ? '11px' : '12px';
+  const totalFont = compact ? '14px' : '16px';
+
+  return `
+    <div class="totals">
+      <table style="font-size:${fontSize};">
+        <tr>
+          <td>Subtotal</td>
+          <td class="r">${fmt(sale.subtotal)}</td>
+        </tr>
+        ${sale.discount ? `
+        <tr>
+          <td>Descuento</td>
+          <td class="r" style="color:#dc2626;">-${fmt(sale.discount)}</td>
+        </tr>` : ''}
+        ${sale.shipping ? `
+        <tr>
+          <td>Envío</td>
+          <td class="r">${fmt(sale.shipping)}</td>
+        </tr>` : ''}
+        ${sale.surchargeAmount ? `
+        <tr>
+          <td>Recargo tarjeta</td>
+          <td class="r">${fmt(sale.surchargeAmount)}</td>
+        </tr>` : ''}
+        <tr class="total-row" style="font-size:${totalFont};">
+          <td>TOTAL</td>
+          <td class="r">${fmt(sale.total)}</td>
+        </tr>
+      </table>
+    </div>
+  `;
+}
+
+/* Esperar a que Firebase Auth restaure la sesión antes de cargar */
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    init();
+  } else {
+    // 🆕 Sin sesión → redirigir a home
+    window.location.href = 'home.html';
+  }
+});
+</script>
+
+</body>
+</html> 

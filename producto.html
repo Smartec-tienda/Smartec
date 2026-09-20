@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cargando producto... | Smartec</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  html{scroll-behavior:smooth}
+</style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+<!-- ============ NAVBAR ============ -->
+<header class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="container mx-auto px-4 py-3 flex items-center gap-3">
+    <button onclick="history.back()" class="p-2 rounded-full hover:bg-gray-100">
+      <svg class="w-5 h-5 text-sd" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </button>
+    <a href="index.html" class="text-2xl font-bold text-sd">SMART<span class="text-sl">EC</span></a>
+    <div class="flex-1"></div>
+    <a href="index.html" class="text-xs text-sl hover:underline">← Volver al catálogo</a>
+  </div>
+</header>
+
+<!-- ============ CARGANDO ============ -->
+<div id="loading" class="container mx-auto px-4 py-20 text-center">
+  <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-sl"></div>
+  <p class="text-gray-500 mt-4 text-sm">Cargando producto...</p>
+</div>
+
+<!-- ============ PRODUCTO ============ -->
+<main id="product-detail" class="container mx-auto px-4 py-6 md:py-10 hidden">
+
+  <!-- Breadcrumb -->
+  <nav id="breadcrumb" class="text-xs text-gray-400 mb-5 flex items-center gap-1 flex-wrap"></nav>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+
+    <!-- ========== GALERÍA ========== -->
+    <div>
+      <div class="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
+        <div class="aspect-square flex items-center justify-center bg-white relative group">
+          <img id="main-image" src="" alt="" class="object-contain w-full h-full p-6 transition-opacity duration-200 cursor-zoom-in">
+          <span id="sale-badge" class="hidden absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10">🔥 PROMO</span>
+          <!-- Hint de zoom -->
+          <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur rounded-full px-3 py-1.5 text-xs text-gray-600 shadow-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition pointer-events-none">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
+            Clic para ampliar
+          </div>
+        </div>
+      </div>
+      <div id="thumbs" class="grid grid-cols-5 gap-2"></div>
+    </div>
+
+    <!-- ========== INFO ========== -->
+    <div>
+      <p id="product-category" class="text-xs text-sl font-semibold uppercase tracking-wide mb-1"></p>
+      <h1 id="product-name" class="text-2xl md:text-3xl font-bold text-sd mb-2"></h1>
+      <div class="flex flex-wrap gap-3 text-xs text-gray-500 mb-4">
+        <span id="product-brand" class="hidden">🏷️ <b></b></span>
+        <span id="product-sku">SKU: —</span>
+      </div>
+
+      <!-- Precio -->
+      <div class="mb-5">
+        <div class="flex items-baseline gap-3 flex-wrap">
+          <span id="product-price" class="text-3xl md:text-4xl font-bold text-sl">$0</span>
+          <span id="product-old-price" class="text-lg text-gray-400 line-through hidden"></span>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Precio sujeto a cambios · No incluye IVA</p>
+      </div>
+
+      <!-- Disponibilidad -->
+      <div id="availability-box" class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-5 flex items-center gap-3">
+        <span id="availability-dot" class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+        <div class="flex-1">
+          <p id="availability-text" class="text-sm font-semibold text-sd">Verificando disponibilidad...</p>
+          <p id="availability-sub" class="text-[10px] text-gray-400"></p>
+        </div>
+      </div>
+
+      <!-- Selector de color -->
+      <div id="colors-wrap" class="mb-5 hidden">
+        <p class="text-sm font-semibold text-sd mb-2">Color: <span id="selected-color-name" class="text-gray-500 font-normal"></span></p>
+        <div id="colors-list" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Selector de dimensión -->
+      <div id="sizes-wrap" class="mb-5 hidden">
+        <p class="text-sm font-semibold text-sd mb-2">Dimensión: <span id="selected-size-name" class="text-gray-500 font-normal"></span></p>
+        <div id="sizes-list" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Cantidad -->
+      <div class="mb-6">
+        <p class="text-sm font-semibold text-sd mb-2">Cantidad:</p>
+        <div class="inline-flex items-center border border-gray-300 rounded-lg bg-white">
+          <button onclick="changeQty(-1)" class="px-4 py-2.5 hover:bg-gray-100 text-lg">−</button>
+          <span id="qty-value" class="px-6 py-2.5 font-semibold min-w-[3rem] text-center">1</span>
+          <button onclick="changeQty(1)" class="px-4 py-2.5 hover:bg-gray-100 text-lg">+</button>
+        </div>
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="space-y-3 mb-6">
+        <button id="btn-buy" class="w-full bg-[#25D366] hover:bg-[#1eb053] text-white py-3.5 rounded-xl font-bold text-base flex justify-center items-center gap-2 transition shadow-md">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+          Comprar por WhatsApp
+        </button>
+        <button id="btn-consult" class="w-full bg-sd hover:bg-sl text-white py-3.5 rounded-xl font-bold text-base flex justify-center items-center gap-2 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Consultar disponibilidad
+        </button>
+      </div>
+
+      <!-- Beneficios rápidos -->
+      <div class="grid grid-cols-3 gap-2 mb-6 text-center">
+        <div class="bg-gray-50 rounded-lg p-2">
+          <p class="text-lg">🛡️</p>
+          <p class="text-[10px] text-gray-600 font-semibold">Garantía</p>
+          <p id="warranty-mini" class="text-[10px] text-gray-400">12 meses</p>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-2">
+          <p class="text-lg">🚚</p>
+          <p class="text-[10px] text-gray-600 font-semibold">Envío</p>
+          <p class="text-[10px] text-gray-400">A coordinar</p>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-2">
+          <p class="text-lg">💬</p>
+          <p class="text-[10px] text-gray-600 font-semibold">Soporte</p>
+          <p class="text-[10px] text-gray-400">24/7</p>
+        </div>
+      </div>
+
+      <!-- Acordeón: Descripción -->
+      <details open class="bg-white rounded-lg shadow-sm mb-2 group">
+        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
+          📋 Descripción
+          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div id="product-desc" class="px-4 pb-4 text-sm text-gray-600 leading-relaxed whitespace-pre-line"></div>
+      </details>
+
+      <!-- Acordeón: Garantía -->
+      <details class="bg-white rounded-lg shadow-sm mb-2 group">
+        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
+          🛡️ Garantía del producto
+          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-4 pb-4 text-sm text-gray-600 leading-relaxed">
+          <p id="warranty-text" class="mb-3"></p>
+          <p class="text-xs text-gray-500">
+            <b>GARANTÍA DEL PRODUCTO:</b> Este electrodoméstico cuenta con una garantía mínima de doce (12) meses o con el término superior establecido por la marca para el producto adquirido, de acuerdo con las condiciones de garantía aplicables y la normativa colombiana de protección al consumidor. Para conocer el término específico, las coberturas y las condiciones, el cliente podrá consultar la información oficial de la marca o solicitar asesoría a nuestro equipo.
+          </p>
+          <p class="text-xs text-gray-500 mt-3">
+            <b>Atención y acompañamiento:</b> La garantía será atendida directamente por la marca fabricante o por sus centros de servicio autorizados. Nuestro equipo gestionará, asesorará y acompañará al cliente durante el proceso, facilitando la comunicación y el seguimiento con la marca.
+          </p>
+        </div>
+      </details>
+
+      <!-- Acordeón: Envío -->
+      <details class="bg-white rounded-lg shadow-sm group">
+        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
+          🚚 Envío y entrega
+          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-4 pb-4 text-sm text-gray-600 leading-relaxed">
+          <p>Envío a coordinar según la ciudad. Envío gratis en compras superiores a $200.000. Tiempo estimado de entrega: 2-5 días hábiles (varía según la ubicación).</p>
+        </div>
+      </details>
+
+            <!-- Acordeón: Descripción larga -->
+      <details id="longdesc-section" class="bg-white rounded-lg shadow-sm mt-2 group hidden">
+        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
+          📖 Descripción detallada
+          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div id="longdesc-content" class="px-4 pb-4 text-sm text-gray-600 leading-relaxed whitespace-pre-line"></div>
+      </details>
+
+      <!-- Acordeón: Especificaciones técnicas -->
+      <details id="specs-section" class="bg-white rounded-lg shadow-sm mt-2 group hidden">
+        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
+          ⚙️ Especificaciones técnicas
+          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-4 pb-4">
+          <table id="specs-table" class="w-full text-sm"></table>
+        </div>
+      </details>
+
+      <!-- Acordeón: Preguntas frecuentes -->
+      <details id="faq-section" class="bg-white rounded-lg shadow-sm mt-2 group hidden">
+        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
+          ❓ Preguntas frecuentes
+          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div id="faq-content" class="px-4 pb-4 space-y-2"></div>
+      </details>
+
+    </div>
+  </div>
+
+  <!-- ========== RELACIONADOS ========== -->
+  <section id="related-section" class="mt-16 hidden">
+    <h2 class="text-xl font-bold text-sd mb-5">También te puede interesar</h2>
+    <div id="related-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+  </section>
+
+</main>
+
+<!-- ============ NO ENCONTRADO ============ -->
+<div id="not-found" class="hidden container mx-auto px-4 py-20 text-center">
+  <p class="text-6xl mb-4">🔍</p>
+  <h1 class="text-2xl font-bold text-sd mb-2">Producto no encontrado</h1>
+  <p class="text-gray-500 text-sm mb-6">El producto que buscas no existe o fue retirado del catálogo.</p>
+  <a href="index.html" class="inline-block bg-sd text-white px-6 py-2 rounded-lg hover:bg-sl font-semibold">Volver al catálogo</a>
+</div>
+
+<!-- ============ FOOTER ============ -->
+<footer class="bg-sd text-white mt-16 py-8">
+  <div class="container mx-auto px-4 text-center text-xs opacity-70">
+    <p>© 2026 Smartec. Todos los derechos reservados.</p>
+  </div>
+</footer>
+
+<!-- ============ MODAL ZOOM IMAGEN ============ -->
+<div id="zoom-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/95">
+  <button onclick="closeZoom()" class="absolute top-4 right-4 z-20 p-2 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition">
+    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  </button>
+
+  <!-- Controles -->
+  <div class="absolute top-4 left-4 z-20 flex gap-2">
+    <button onclick="zoomOut()" class="w-10 h-10 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition text-white text-xl font-bold">−</button>
+    <button onclick="zoomIn()" class="w-10 h-10 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition text-white text-xl font-bold">+</button>
+    <button onclick="resetZoom()" class="px-3 h-10 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition text-white text-xs font-semibold">100%</button>
+  </div>
+
+  <!-- Indicador de zoom -->
+  <div id="zoom-level" class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-white/10 backdrop-blur rounded-full text-white text-xs">
+    100%
+  </div>
+
+  <!-- Navegación entre imágenes -->
+  <button id="zoom-prev" onclick="prevZoomImage()" class="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition items-center justify-center">
+    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+  </button>
+  <button id="zoom-next" onclick="nextZoomImage()" class="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition items-center justify-center">
+    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+  </button>
+
+  <!-- Contenedor de imagen -->
+  <div id="zoom-container" class="w-full h-full flex items-center justify-center overflow-hidden touch-none" style="cursor: grab;">
+    <img id="zoom-image" src="" alt="" class="select-none transition-transform duration-100" style="transform-origin: center center; max-width: 90vw; max-height: 90vh;">
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, doc, getDoc, query, where
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+/* ============ CONFIG ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const WHATSAPP_NUMBER = "573104304428";
+
+/* ============ ESTADO ============ */
+let product = null;
+let allInventory = [];
+let selectedVariant = null;
+let qty = 1;
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+
+/* Traductor hex → nombre de color */
+const COLOR_NAMES = {
+  '#000000':'Negro', '#ffffff':'Blanco', '#c0c0c0':'Plateado', '#808080':'Gris',
+  '#ff0000':'Rojo', '#00ff00':'Verde', '#0000ff':'Azul', '#ffff00':'Amarillo',
+  '#ffa500':'Naranja', '#800080':'Morado', '#ffc0cb':'Rosado', '#a52a2a':'Café',
+  '#964b00':'Café', '#8b4513':'Café', '#d2b48c':'Beige', '#f5f5dc':'Crema',
+  '#00ffff':'Cian', '#008080':'Turquesa', '#4a7a9a':'Azul petróleo',
+  '#0a2a4a':'Azul oscuro', '#191970':'Azul medianoche', '#f0f0f0':'Blanco humo',
+  '#e0e0e0':'Gris claro', '#a9a9a9':'Gris oscuro', '#ffd700':'Dorado',
+  '#b87333':'Bronce', '#cd7f32':'Bronce', '#36454f':'Gris carbón'
+};
+const colorNameFromHex = (hex, fallback) => {
+  if (!hex) return fallback || '';
+  const k = String(hex).toLowerCase();
+  return COLOR_NAMES[k] || fallback || hex;
+};
+
+/* Stock total de una variante en todas las tiendas (para disponibilidad) */
+function getGlobalStock(variantId) {
+  return allInventory
+    .filter(i => i.variantId === variantId)
+    .reduce((sum, i) => sum + Number(i.stock||0), 0);
+}
+
+/* ============ INICIALIZACIÓN ============ */
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const productId = params.get('id');
+
+  if (!productId) {
+    showNotFound();
+    return;
+  }
+
+  try {
+    const snap = await getDoc(doc(db,'products', productId));
+    if (!snap.exists() || snap.data().active === false) {
+      showNotFound();
+      return;
+    }
+    product = { id: snap.id, ...snap.data() };
+
+    // Cargar inventario global (para saber si hay stock en alguna tienda)
+    const invSnap = await getDocs(collection(db,'inventory'));
+    allInventory = invSnap.docs.map(d => ({id:d.id, ...d.data()}));
+
+    renderProduct();
+    $('loading').classList.add('hidden');
+    $('product-detail').classList.remove('hidden');
+
+    // Cargar relacionados (async, sin bloquear)
+    loadRelated();
+  } catch(e) {
+    console.error('Error cargando producto:', e);
+    showNotFound();
+  }
+}
+
+function showNotFound() {
+  $('loading').classList.add('hidden');
+  $('not-found').classList.remove('hidden');
+  document.title = 'Producto no encontrado | Smartec';
+}
+
+/* ============ RENDER PRINCIPAL ============ */
+function renderProduct() {
+  document.title = `${product.name} | Smartec`;
+
+  // Breadcrumb
+  const crumbs = [
+    { label: 'Inicio', href: 'index.html' },
+    { label: product.categoryGroupName || 'Catálogo', href: `index.html?cat=${product.categoryGroup||''}` },
+    { label: product.categoryName || '', href: `index.html?sub=${product.category||''}` },
+    { label: product.name }
+  ].filter(c => c.label);
+
+  $('breadcrumb').innerHTML = crumbs.map((c, i) => {
+    const isLast = i === crumbs.length - 1;
+    return isLast
+      ? `<span class="text-sd font-medium truncate">${c.label}</span>`
+      : `<a href="${c.href}" class="hover:text-sl">${c.label}</a><span>›</span>`;
+  }).join(' ');
+
+  // Categoría
+  $('product-category').innerText = [product.categoryGroupName, product.categoryName].filter(Boolean).join(' › ');
+
+  // Nombre
+  $('product-name').innerText = product.name || '';
+
+  // Marca
+  if (product.brand) {
+    $('product-brand').classList.remove('hidden');
+    $('product-brand').innerHTML = `🏷️ <b>${product.brand}</b>`;
+  }
+
+  // SKU
+  $('product-sku').innerText = 'SKU: ' + (product.sku || '—');
+
+  // Descripción
+  $('product-desc').innerText = product.description || 'Sin descripción disponible.';
+
+    // Descripción larga
+  if (product.longDescription) {
+    $('longdesc-section').classList.remove('hidden');
+    $('longdesc-content').innerText = product.longDescription;
+  }
+
+  // Especificaciones
+  if (product.specs && product.specs.length) {
+    $('specs-section').classList.remove('hidden');
+    const rows = product.specs.map((s, i) => `
+      <tr class="${i % 2 === 0 ? 'bg-gray-50' : ''}">
+        <td class="py-2 px-3 text-xs font-semibold text-gray-500 w-2/5 align-top">${s.key}</td>
+        <td class="py-2 px-3 text-xs text-sd">${s.value}</td>
+      </tr>
+    `).join('');
+    $('specs-table').innerHTML = `<tbody>${rows}</tbody>`;
+  }
+
+  // Preguntas frecuentes
+  if (product.faqs && product.faqs.length) {
+    $('faq-section').classList.remove('hidden');
+    $('faq-content').innerHTML = product.faqs.map((f, i) => `
+      <details class="border border-gray-200 rounded-lg overflow-hidden group/faq ${i > 0 ? 'mt-2' : ''}">
+        <summary class="px-3 py-2.5 bg-gray-50 cursor-pointer flex justify-between items-center text-sm font-medium text-sd">
+          ${f.question}
+          <svg class="w-4 h-4 text-gray-400 transition-transform group-open/faq:rotate-180 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-3 py-3 text-sm text-gray-600 leading-relaxed bg-white">${f.answer}</div>
+      </details>
+    `).join('');
+  }
+
+  // Garantía
+  const months = Number(product.warrantyMonths || 12);
+  $('warranty-mini').innerText = `${months} meses`;
+  $('warranty-text').innerHTML = `Este producto cuenta con una garantía de <b>${months} meses</b> otorgada por la marca.`;
+
+    // Imágenes
+  const images = (product.images && product.images.length) ? product.images : ['https://placehold.co/600x600/e5e7eb/9ca3af?text=Sin+imagen'];
+  zoomImages = images;   // ← NUEVO: guardar para el zoom
+  $('main-image').src = images[0];
+  $('main-image').alt = product.name;
+
+  // Thumbnails
+  const thumbsEl = $('thumbs');
+  thumbsEl.innerHTML = '';
+  if (images.length > 1) {
+    images.forEach((url, i) => {
+      const t = document.createElement('div');
+      t.className = `aspect-square bg-white rounded-lg border-2 cursor-pointer overflow-hidden ${i===0?'border-sl':'border-gray-200 hover:border-sl'}`;
+      t.innerHTML = `<img src="${url}" class="w-full h-full object-contain p-2" alt="">`;
+      t.onclick = () => {
+        $('main-image').src = url;
+        thumbsEl.querySelectorAll('div').forEach(x => x.className = 'aspect-square bg-white rounded-lg border-2 cursor-pointer overflow-hidden border-gray-200 hover:border-sl');
+        t.className = 'aspect-square bg-white rounded-lg border-2 cursor-pointer overflow-hidden border-sl';
+      };
+      thumbsEl.appendChild(t);
+    });
+  } else {
+    thumbsEl.classList.add('hidden');
+  }
+
+  // Precio
+  renderPrice();
+
+  // Variantes
+  renderVariantSelectors();
+
+  // Imagen según variante inicial
+  updateSelectedVariantUI();
+}
+
+function renderPrice() {
+  const hasPromo = product.onSale && Number(product.salePrice) > 0;
+  const finalPrice = hasPromo ? Number(product.salePrice) : Number(product.price || 0);
+
+  $('product-price').innerText = fmt(finalPrice);
+
+  if (hasPromo) {
+    $('product-old-price').classList.remove('hidden');
+    $('product-old-price').innerText = fmt(product.price);
+    $('sale-badge').classList.remove('hidden');
+  } else {
+    $('product-old-price').classList.add('hidden');
+    $('sale-badge').classList.add('hidden');
+  }
+}
+
+function renderVariantSelectors() {
+  const variants = (product.variants || []).filter(v => v.active !== false);
+
+  if (!variants.length) {
+    selectedVariant = {
+      variantId: product.sku || 'default',
+      sku: product.sku || '',
+      color: null, colorName: '',
+      size: null, priceDelta: 0
+    };
+    $('colors-wrap').classList.add('hidden');
+    $('sizes-wrap').classList.add('hidden');
+    updateAvailability();
+    return;
+  }
+
+  // Si no hay variante seleccionada, elegir la primera con stock (o la primera)
+  if (!selectedVariant) {
+    selectedVariant = variants.find(v => getGlobalStock(v.variantId) > 0) || variants[0];
+  }
+
+  // Colores únicos
+  const uniqueColors = new Map();
+  variants.forEach(v => {
+    if (v.color && !uniqueColors.has(v.color)) {
+      uniqueColors.set(v.color, { color: v.color, name: colorNameFromHex(v.color, v.colorName) });
+    }
+  });
+
+  // Sizes únicos
+  const uniqueSizes = new Set();
+  variants.forEach(v => { if (v.size) uniqueSizes.add(v.size); });
+
+  // ===== RENDER COLORES =====
+  if (uniqueColors.size) {
+    $('colors-wrap').classList.remove('hidden');
+    const colorsList = $('colors-list');
+    colorsList.innerHTML = '';
+    uniqueColors.forEach(({ color, name }) => {
+      const btn = document.createElement('button');
+      const isSelected = selectedVariant.color === color;
+      // Mostrar si tiene stock en alguna tienda
+      const hasStock = variants.some(v => v.color === color && getGlobalStock(v.variantId) > 0);
+      btn.className = `w-11 h-11 rounded-full border-2 transition relative ${isSelected ? 'border-sl ring-2 ring-sl/30 scale-105' : 'border-gray-300 hover:border-sl'}`;
+      btn.style.background = color;
+      btn.title = name + (hasStock ? '' : ' (sin stock)');
+      // Marca de "sin stock" con un puntito pequeño
+      if (!hasStock) {
+        const dot = document.createElement('span');
+        dot.className = 'absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-red-500 border-2 border-white rounded-full';
+        btn.appendChild(dot);
+      }
+      btn.onclick = () => selectColor(color);
+      colorsList.appendChild(btn);
+    });
+    $('selected-color-name').innerText = colorNameFromHex(selectedVariant.color, selectedVariant.colorName);
+  } else {
+    $('colors-wrap').classList.add('hidden');
+  }
+
+  // ===== RENDER SIZES =====
+  if (uniqueSizes.size) {
+    $('sizes-wrap').classList.remove('hidden');
+    const sizesList = $('sizes-list');
+    sizesList.innerHTML = '';
+    uniqueSizes.forEach(size => {
+      const btn = document.createElement('button');
+      const isSelected = selectedVariant.size === size;
+      const hasStock = variants.some(v => v.size === size && getGlobalStock(v.variantId) > 0);
+      btn.className = `px-4 py-2 border rounded-lg text-sm font-medium transition relative ${isSelected ? 'border-sl bg-sl text-white' : 'border-gray-300 hover:border-sl bg-white'}`;
+      btn.innerText = size;
+      if (!hasStock && !isSelected) {
+        btn.classList.add('opacity-60');
+      }
+      btn.onclick = () => selectSize(size);
+      sizesList.appendChild(btn);
+    });
+    $('selected-size-name').innerText = selectedVariant.size || '';
+  } else {
+    $('sizes-wrap').classList.add('hidden');
+  }
+
+  updateAvailability();
+}
+
+function selectColor(color) {
+  const variants = (product.variants || []).filter(v => v.active !== false);
+
+  // 1. Intentar la combinación exacta color + size actual
+  let next = variants.find(v => v.color === color && v.size === selectedVariant?.size);
+
+  // 2. Si no existe, buscar cualquier variante con ese color (preferir una con stock)
+  if (!next) {
+    const candidates = variants.filter(v => v.color === color);
+    next = candidates.find(v => getGlobalStock(v.variantId) > 0) || candidates[0];
+  }
+
+  if (!next) return;
+
+  selectedVariant = next;
+  renderVariantSelectors();
+  updateSelectedVariantUI();
+  // Ajustar cantidad si el nuevo stock es menor
+  qty = 1;
+  $('qty-value').innerText = '1';
+}
+
+function selectSize(size) {
+  const variants = (product.variants || []).filter(v => v.active !== false);
+
+  // 1. Intentar la combinación exacta size + color actual
+  let next = variants.find(v => v.size === size && v.color === selectedVariant?.color);
+
+  // 2. Si no existe, buscar cualquier variante con ese size (preferir una con stock)
+  if (!next) {
+    const candidates = variants.filter(v => v.size === size);
+    next = candidates.find(v => getGlobalStock(v.variantId) > 0) || candidates[0];
+  }
+
+  if (!next) return;
+
+  selectedVariant = next;
+  renderVariantSelectors();
+  updateSelectedVariantUI();
+  qty = 1;
+  $('qty-value').innerText = '1';
+}
+
+function updateSelectedVariantUI() {
+  if (!selectedVariant) return;
+
+  // Actualizar labels
+  if (selectedVariant.color) {
+    $('selected-color-name').innerText = colorNameFromHex(selectedVariant.color, selectedVariant.colorName);
+  } else {
+    $('selected-color-name').innerText = '';
+  }
+  if (selectedVariant.size) {
+    $('selected-size-name').innerText = selectedVariant.size;
+  } else {
+    $('selected-size-name').innerText = '';
+  }
+
+  // Actualizar precio (con priceDelta si aplica)
+  const hasPromo = product.onSale && Number(product.salePrice) > 0;
+  const base = hasPromo ? Number(product.salePrice) : Number(product.price || 0);
+  const delta = Number(selectedVariant.priceDelta || 0);
+  $('product-price').innerText = fmt(base + delta);
+
+  // Actualizar disponibilidad
+  updateAvailability();
+}
+
+/* ============ DISPONIBILIDAD ============ */
+function updateAvailability() {
+  if (!selectedVariant) return;
+
+  const stock = getGlobalStock(selectedVariant.variantId);
+  const dot = $('availability-dot');
+  const txt = $('availability-text');
+  const sub = $('availability-sub');
+
+  if (stock > 5) {
+    dot.className = 'w-2.5 h-2.5 rounded-full bg-green-500';
+    txt.innerText = '✅ Disponible';
+    txt.className = 'text-sm font-semibold text-green-700';
+    sub.innerText = 'Listo para compra inmediata';
+  } else if (stock > 0) {
+    dot.className = 'w-2.5 h-2.5 rounded-full bg-orange-500';
+    txt.innerText = '⏳ Últimas unidades';
+    txt.className = 'text-sm font-semibold text-orange-700';
+    sub.innerText = 'Te recomendamos confirmar disponibilidad';
+  } else {
+    dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500';
+    txt.innerText = '🔍 Consultar disponibilidad';
+    txt.className = 'text-sm font-semibold text-red-600';
+    sub.innerText = 'Este producto puede estar disponible por encargo';
+  }
+}
+
+window.changeQty = (delta) => {
+  if (!selectedVariant) return;
+  const stock = getGlobalStock(selectedVariant.variantId);
+  // Si no hay stock, permitir máximo 1 para "consultar"
+  const max = stock > 0 ? stock : 1;
+  qty = Math.max(1, Math.min(max, qty + delta));
+  $('qty-value').innerText = qty;
+};
+
+/* ============ WHATSAPP ============ */
+function buildVariantLabel() {
+  const parts = [];
+  if (selectedVariant?.colorName || selectedVariant?.color) {
+    parts.push(colorNameFromHex(selectedVariant.color, selectedVariant.colorName));
+  }
+  if (selectedVariant?.size) parts.push(selectedVariant.size);
+  return parts.filter(Boolean).join(' · ');
+}
+
+window.btnBuy = () => {
+  if (!product) return;
+  const variant = buildVariantLabel();
+  const unitPrice = (product.onSale && product.salePrice) ? product.salePrice : product.price;
+  const delta = Number(selectedVariant?.priceDelta || 0);
+  const total = (Number(unitPrice) + delta) * qty;
+
+  let msg = `¡Hola Smartec! 👋\n\nQuiero COMPRAR:\n`;
+  msg += `• *${product.name}*\n`;
+  if (product.brand) msg += `• Marca: ${product.brand}\n`;
+  msg += `• SKU: ${selectedVariant?.sku || product.sku || '-'}\n`;
+  if (variant) msg += `• Variante: ${variant}\n`;
+  msg += `• Cantidad: ${qty}\n`;
+  msg += `• Total aprox: *${fmt(total)}*\n\n`;
+  msg += `¿Me confirman el proceso de compra?`;
+
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+};
+
+window.btnConsult = () => {
+  if (!product) return;
+  const variant = buildVariantLabel();
+
+  let msg = `¡Hola Smartec! 👋\n\nQuiero CONSULTAR DISPONIBILIDAD:\n`;
+  msg += `• *${product.name}*\n`;
+  if (product.brand) msg += `• Marca: ${product.brand}\n`;
+  msg += `• SKU: ${selectedVariant?.sku || product.sku || '-'}\n`;
+  if (variant) msg += `• Variante: ${variant}\n`;
+  msg += `\n¿Tienen este producto disponible? ¿Cuál es el tiempo de entrega?`;
+
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+};
+
+// Vincular botones
+$('btn-buy').onclick = () => window.btnBuy();
+$('btn-consult').onclick = () => window.btnConsult();
+
+/* ============ RELACIONADOS ============ */
+async function loadRelated() {
+  if (!product) return;
+  try {
+    const snap = await getDocs(collection(db,'products'));
+    const others = snap.docs
+      .map(d => ({id:d.id, ...d.data()}))
+      .filter(p =>
+        p.id !== product.id &&
+        p.active !== false &&
+        (p.category === product.category || p.categoryGroup === product.categoryGroup)
+      )
+      .slice(0, 4);
+
+    if (!others.length) return;
+
+    $('related-section').classList.remove('hidden');
+    $('related-grid').innerHTML = others.map(p => {
+      const img = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/400x400/e5e7eb/9ca3af?text=Sin+imagen';
+      const price = (p.onSale && p.salePrice) ? p.salePrice : p.price;
+      const hasPromo = p.onSale && p.salePrice > 0;
+      return `
+        <a href="producto.html?id=${p.id}" class="group bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden">
+          <div class="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+            <img src="${img}" class="object-contain w-full h-full p-4 group-hover:scale-105 transition" alt="${p.name}" loading="lazy">
+          </div>
+          <div class="p-3">
+            <p class="text-xs font-semibold text-sd line-clamp-2 mb-1">${p.name}</p>
+            <div class="flex items-baseline gap-2">
+              <p class="text-sm font-bold text-sl">${fmt(price)}</p>
+              ${hasPromo ? `<p class="text-[10px] text-gray-400 line-through">${fmt(p.price)}</p>` : ''}
+            </div>
+          </div>
+        </a>
+      `;
+    }).join('');
+  } catch(e) {
+    console.warn('Error cargando relacionados:', e);
+  }
+}
+/* ============================================================
+   ZOOM DE IMAGEN
+============================================================ */
+let zoomImages = [];
+let zoomIndex = 0;
+let zoomScale = 1;
+let isDragging = false;
+let dragStart = { x: 0, y: 0 };
+let translate = { x: 0, y: 0 };
+
+function openZoom() {
+  if (!zoomImages.length) return;
+  zoomIndex = zoomImages.indexOf($('main-image').src);
+  if (zoomIndex === -1) zoomIndex = 0;
+
+  $('zoom-image').src = zoomImages[zoomIndex];
+  zoomScale = 1;
+  translate = { x: 0, y: 0 };
+  applyZoomTransform();
+  updateZoomUI();
+
+  const m = $('zoom-modal');
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+  document.body.style.overflow = 'hidden';
+}
+
+window.closeZoom = () => {
+  const m = $('zoom-modal');
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+  document.body.style.overflow = '';
+  resetZoom();
+};
+
+window.zoomIn = () => {
+  zoomScale = Math.min(4, zoomScale + 0.25);
+  applyZoomTransform();
+  updateZoomUI();
+};
+
+window.zoomOut = () => {
+  zoomScale = Math.max(1, zoomScale - 0.25);
+  if (zoomScale === 1) translate = { x: 0, y: 0 };
+  applyZoomTransform();
+  updateZoomUI();
+};
+
+window.resetZoom = () => {
+  zoomScale = 1;
+  translate = { x: 0, y: 0 };
+  applyZoomTransform();
+  updateZoomUI();
+};
+
+window.nextZoomImage = () => {
+  if (!zoomImages.length) return;
+  zoomIndex = (zoomIndex + 1) % zoomImages.length;
+  $('zoom-image').src = zoomImages[zoomIndex];
+  resetZoom();
+  updateZoomUI();
+};
+
+window.prevZoomImage = () => {
+  if (!zoomImages.length) return;
+  zoomIndex = (zoomIndex - 1 + zoomImages.length) % zoomImages.length;
+  $('zoom-image').src = zoomImages[zoomIndex];
+  resetZoom();
+  updateZoomUI();
+};
+
+function applyZoomTransform() {
+  const img = $('zoom-image');
+  img.style.transform = `translate(${translate.x}px, ${translate.y}px) scale(${zoomScale})`;
+  img.style.cursor = zoomScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in';
+}
+
+function updateZoomUI() {
+  $('zoom-level').innerText = Math.round(zoomScale * 100) + '%';
+  const showNav = zoomImages.length > 1;
+  $('zoom-prev').style.display = showNav && window.innerWidth >= 768 ? 'flex' : 'none';
+  $('zoom-next').style.display = showNav && window.innerWidth >= 768 ? 'flex' : 'none';
+}
+
+/* Click en imagen principal → abrir zoom */
+$('main-image').addEventListener('click', openZoom);
+
+/* Controles dentro del modal */
+const zoomContainer = $('zoom-container');
+const zoomImageEl = $('zoom-image');
+
+/* Rueda del mouse para zoom */
+zoomContainer.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (e.deltaY < 0) zoomIn();
+  else zoomOut();
+}, { passive: false });
+
+/* Drag para mover imagen cuando está zoomeada */
+zoomContainer.addEventListener('mousedown', (e) => {
+  if (zoomScale <= 1) return;
+  isDragging = true;
+  dragStart = { x: e.clientX - translate.x, y: e.clientY - translate.y };
+  applyZoomTransform();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  translate.x = e.clientX - dragStart.x;
+  translate.y = e.clientY - dragStart.y;
+  applyZoomTransform();
+});
+
+document.addEventListener('mouseup', () => {
+  if (isDragging) {
+    isDragging = false;
+    applyZoomTransform();
+  }
+});
+
+/* Touch (móvil) - pinch to zoom */
+let initialPinchDistance = 0;
+let initialScale = 1;
+
+zoomContainer.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    initialPinchDistance = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    initialScale = zoomScale;
+  } else if (e.touches.length === 1 && zoomScale > 1) {
+    isDragging = true;
+    dragStart = { x: e.touches[0].clientX - translate.x, y: e.touches[0].clientY - translate.y };
+  }
+}, { passive: true });
+
+zoomContainer.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2 && initialPinchDistance > 0) {
+    e.preventDefault();
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    zoomScale = Math.max(1, Math.min(4, initialScale * (dist / initialPinchDistance)));
+    applyZoomTransform();
+    updateZoomUI();
+  } else if (e.touches.length === 1 && isDragging) {
+    e.preventDefault();
+    translate.x = e.touches[0].clientX - dragStart.x;
+    translate.y = e.touches[0].clientY - dragStart.y;
+    applyZoomTransform();
+  }
+}, { passive: false });
+
+zoomContainer.addEventListener('touchend', () => {
+  initialPinchDistance = 0;
+  isDragging = false;
+  if (zoomScale === 1) translate = { x: 0, y: 0 };
+  applyZoomTransform();
+});
+
+/* Cerrar con ESC */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('zoom-modal').classList.contains('hidden')) closeZoom();
+  if (e.key === 'ArrowRight' && !$('zoom-modal').classList.contains('hidden')) nextZoomImage();
+  if (e.key === 'ArrowLeft' && !$('zoom-modal').classList.contains('hidden')) prevZoomImage();
+});
+/* ============ INICIAR ============ */
+init();
+</script>
+</body>
+</html>
