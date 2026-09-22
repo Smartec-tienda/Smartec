@@ -200,8 +200,19 @@ const MODULES = [
     href: 'facturacion.html',
     roles: ['superadmin','admin','vendedor'],
     soon: true
+  },
+
+  {
+    key: 'bot_compras',
+    icon: '🤖',
+    title: 'Bot Compras',
+    desc: 'Compara precios en 7 tiendas colombianas',
+    href: 'bot_compras.html',
+    roles: ['superadmin','admin','vendedor'],
+    soon: false
   }
 ];
+
 
 /* ============ AUTENTICACIÓN ============ */
 $('login-btn').onclick = async () => {

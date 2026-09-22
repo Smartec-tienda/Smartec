@@ -1806,12 +1806,53 @@ window.saveStore = async (existingId) => {
       console.log('✅ Meta del mes sincronizada');
     }
 
+        // ========== NUEVO: Asegurar contadores de documentos ==========
+    // Se crean los contadores de remisión, tirilla y media carta
+    // para el año actual. Si ya existen, no se tocan.
+    const year = new Date().getFullYear();
+    const tiposDocumento = ['remision', 'tirilla', 'mediacarta'];
+
+    for (const tipo of tiposDocumento) {
+      const counterId = `${storeId}_${tipo}_${year}`;
+      const counterRef = doc(db, 'counters', counterId);
+      const counterSnap = await getDoc(counterRef);
+
+      if (!counterSnap.exists()) {
+        // Prefijo: primeras 3 letras de la tienda en mayúsculas + tipo corto
+        const tipoShort = tipo === 'remision' ? 'REM'
+                        : tipo === 'tirilla' ? 'TIR'
+                        : 'MED';
+        const prefix = storeId.slice(0, 3).toUpperCase() + '-' + tipoShort + '-' + year + '-';
+
+        await setDoc(counterRef, {
+          prefix,
+          lastNumber: 0,
+          type: tipo,
+          storeId,
+          year,
+          createdAt: serverTimestamp()
+        });
+
+        console.log(`✅ Contador ${counterId} creado (prefix: ${prefix})`);
+
+        await audit({
+          action: 'create',
+          collection: 'counters',
+          docId: counterId,
+          after: { prefix, lastNumber: 0, type: tipo, storeId, year },
+          note: `Contador inicializado: ${tipo} ${year} (${prefix})`
+        });
+      } else {
+        console.log(`ℹ️ Contador ${counterId} ya existe. Sin cambios.`);
+      }
+    }
+
     window.SmartecCache.invalidate('stores');
 
     // ========== 3. Cerrar y recargar ==========
     closeForm();
     await loadAll();
-    alert('✅ Tienda guardada correctamente');
+    alert('✅ Tienda guardada correctamente. Contadores de documentos listos.');
 
   } catch (e) {
     console.error('❌ Error en saveStore:', e);

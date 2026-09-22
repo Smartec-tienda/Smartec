@@ -320,10 +320,35 @@ async function loadAll() {
     return s.docs.map(d => ({id:d.id, ...d.data()}));
   });
 
-  users = await C.wrap('users', async () => {
-    const s = await getDocs(collection(db,'users'));
-    return s.docs.map(d => ({id:d.id, ...d.data()}));
-  });
+   // ============================================================
+  // Cargar usuarios
+  // ⚠️ Reglas de Firestore:
+  //    - superadmin → puede leer todos
+  //    - admin      → solo los de su tienda
+  //    - vendedor   → solo su propio perfil
+  // Por eso la query DEBE incluir el filtro correcto.
+  // ============================================================
+  if (isSuper) {
+    users = await C.wrap('users_all', async () => {
+      const s = await getDocs(collection(db,'users'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+  } else if (currentUserData.role === 'admin') {
+    users = await C.wrap(`users_store_${myStoreId}`, async () => {
+      const q = query(
+        collection(db, 'users'),
+        where('storeId', '==', myStoreId)
+      );
+      const s = await getDocs(q);
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+  } else {
+    // Vendedor: solo su propio perfil
+    users = [{
+      id: currentUser.uid,
+      ...currentUserData
+    }];
+  }
 
   // Configurar tienda y selector
   if (isSuper) {
@@ -368,17 +393,56 @@ async function loadAll() {
 async function loadCustomersAndSales() {
   const C = window.SmartecCache;
 
-  // Cargar TODOS los clientes (global) porque un cliente puede comprar en varias tiendas
-  customers = await C.wrap('customers_all', async () => {
+  const isSuper = currentUserData.role === 'superadmin';
+  const myStoreId = currentStore?.storeId || currentUserData.storeId;
+
+  // 1. Cargar clientes (todos, se filtran después)
+  const allCustomers = await C.wrap('customers_all', async () => {
     const s = await getDocs(collection(db,'customers'));
     return s.docs.map(d => ({id:d.id, ...d.data()}));
   });
 
-  // Cargar TODAS las ventas para calcular stats y mostrar historial
-  sales = await C.wrap('sales_all_for_customers', async () => {
-    const s = await getDocs(collection(db,'sales'));
-    return s.docs.map(d => ({id:d.id, ...d.data()})).filter(x => x.status !== 'anulada');
-  });
+  // 2. Cargar ventas (con filtro si NO es superadmin)
+  let allSales;
+
+  if (isSuper) {
+    allSales = await C.wrap('sales_all_for_customers', async () => {
+      const s = await getDocs(collection(db,'sales'));
+      return s.docs.map(d => ({id:d.id, ...d.data()})).filter(x => x.status !== 'anulada');
+    });
+  } else {
+    if (!myStoreId) {
+      console.error('⛔ No hay tienda asignada');
+      customers = [];
+      sales = [];
+      return;
+    }
+    allSales = await C.wrap(`sales_${myStoreId}_for_customers`, async () => {
+      const q = query(
+        collection(db,'sales'),
+        where('storeId', '==', myStoreId)
+      );
+      const s = await getDocs(q);
+      return s.docs.map(d => ({id:d.id, ...d.data()})).filter(x => x.status !== 'anulada');
+    });
+  }
+
+  // 3. Filtrar clientes por rol
+  if (isSuper) {
+    customers = allCustomers;
+    sales = allSales;
+  } else {
+    const myPhones = new Set();
+    allSales.forEach(s => {
+      const raw = s.customer?.phone;
+      if (!raw) return;
+      let p = String(raw).replace(/\D/g, '');
+      if (p.length === 10) p = '57' + p;
+      myPhones.add(p);
+    });
+    customers = allCustomers.filter(c => myPhones.has(c.id));
+    sales = allSales;
+  }
 }
 
 /* ============ FILTROS ============ */

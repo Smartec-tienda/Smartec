@@ -190,27 +190,83 @@ async function init() {
 
   document.title = `Imprimir | Smartec`;
 
-   try {
-    // 1. Intentar por ID del documento
-    let saleSnap = await getDoc(doc(db,'sales',saleId));
+  try {
+    // Importar helpers que podríamos necesitar
+    const { collection, query, where, getDocs } = await import(
+      "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js"
+    );
 
-    // 2. Si no existe, buscar por documentNumber
     let sale = null;
-    if (saleSnap.exists()) {
-      sale = { id: saleSnap.id, ...saleSnap.data() };
-    } else {
-      const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js");
-      const q = query(collection(db,'sales'), where('documentNumber','==',saleId));
-      const results = await getDocs(q);
-      if (results.empty) {
-        return showError('La venta no existe');
+
+    // ============================================================
+    // 1. Intentar por ID del documento (getDoc directo, rápido)
+    // ============================================================
+    try {
+      const saleSnap = await getDoc(doc(db, 'sales', saleId));
+      if (saleSnap.exists()) {
+        sale = { id: saleSnap.id, ...saleSnap.data() };
+        console.log('📄 Venta cargada por ID:', saleId);
       }
-      const first = results.docs[0];
-      sale = { id: first.id, ...first.data() };
+    } catch (e) {
+      console.warn('getDoc por ID falló (probablemente no es un ID real):', e.message);
     }
 
-    // Cargar settings (para datos de empresa)
-    const setSnap = await getDoc(doc(db,'settings','general'));
+    // ============================================================
+    // 2. Si no se encontró, buscar por documentNumber
+    //    → OBLIGATORIO filtrar por storeId (por las rules de seguridad)
+    // ============================================================
+    if (!sale) {
+      // Necesitamos saber de qué tienda es la venta
+      // Primero leemos el perfil del usuario autenticado
+      const authUser = auth.currentUser;
+      if (!authUser) {
+        return showError('No hay sesión activa. Inicia sesión de nuevo.');
+      }
+
+      // Leemos el perfil del usuario actual
+      const userSnap = await getDoc(doc(db, 'users', authUser.uid));
+      if (!userSnap.exists()) {
+        return showError('No se encontró el perfil del usuario.');
+      }
+      const userData = userSnap.data();
+      const isSuper = userData.role === 'superadmin';
+      const myStoreId = userData.storeId;
+
+      let results;
+
+      if (isSuper) {
+        // Superadmin: query sin filtro de tienda (rules lo permiten)
+        const q = query(
+          collection(db, 'sales'),
+          where('documentNumber', '==', saleId)
+        );
+        results = await getDocs(q);
+      } else {
+        // Admin/Vendedor: query CON filtro de tienda (rules lo exigen)
+        if (!myStoreId) {
+          return showError('No tienes una tienda asignada.');
+        }
+        const q = query(
+          collection(db, 'sales'),
+          where('documentNumber', '==', saleId),
+          where('storeId', '==', myStoreId)
+        );
+        results = await getDocs(q);
+      }
+
+      if (results.empty) {
+        return showError('La venta no existe o no pertenece a tu tienda.');
+      }
+
+      const first = results.docs[0];
+      sale = { id: first.id, ...first.data() };
+      console.log('📄 Venta cargada por documentNumber:', saleId, '· store:', sale.storeId);
+    }
+
+    // ============================================================
+    // 3. Cargar settings (para datos de empresa)
+    // ============================================================
+    const setSnap = await getDoc(doc(db, 'settings', 'general'));
     const settings = setSnap.exists() ? setSnap.data() : {};
 
     // Render según formato

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec · Bot Compras</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+
+  /* Robot flotante */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-12px); }
+  }
+  .robot-float { animation: float 3s ease-in-out infinite; }
+
+  /* Radar girando */
+  @keyframes radar {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  .robot-spin { animation: radar 2s linear infinite; }
+
+  /* Puntos suspensivos */
+  @keyframes dots {
+    0%, 20% { content: ''; }
+    40%     { content: '.'; }
+    60%     { content: '..'; }
+    80%,100%{ content: '...'; }
+  }
+  .dots::after {
+    content: '';
+    animation: dots 1.5s infinite;
+  }
+
+  /* Aparición suave de resultados */
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .result-enter { animation: slideUp 0.4s ease-out; }
+</style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-blue-50 font-sans min-h-screen">
+
+<!-- ============ HEADER ============ -->
+<header class="bg-sd text-white px-4 py-4 flex justify-between items-center shadow-lg">
+  <div class="flex items-center gap-3">
+    <h1 class="text-lg md:text-xl font-bold">SMART<span class="text-sl">EC</span></h1>
+    <div class="hidden md:block w-px h-6 bg-white/20"></div>
+    <p class="hidden md:block text-sm opacity-80">Bot Compras</p>
+  </div>
+  <a href="home.html" class="text-xs hover:text-sl transition">← Volver al inicio</a>
+</header>
+
+<!-- ============ CONTENIDO PRINCIPAL ============ -->
+<main class="container mx-auto px-4 py-10 max-w-3xl">
+
+  <!-- ROBOT Y SALUDO -->
+  <div class="text-center mb-8">
+    <div class="robot-float inline-block text-7xl md:text-8xl mb-4 select-none">🤖</div>
+    <h1 class="text-3xl md:text-4xl font-bold text-sd mb-2">¡Hola! Soy tu bot de compras</h1>
+    <p class="text-gray-500 text-sm md:text-base">Busco el mejor precio en 7 tiendas colombianas por ti</p>
+  </div>
+
+  <!-- FORMULARIO DE BÚSQUEDA -->
+  <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-6">
+    <label class="block text-xs font-semibold text-sd uppercase tracking-wide mb-2">
+      🔍 ¿Qué producto buscas?
+    </label>
+    <input
+      id="input-sku"
+      type="text"
+      placeholder="Ej: TV 43 Smart, nevera 300L, lavadora..."
+      class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-sl text-base mb-4"
+      autofocus
+    >
+    <button
+      id="btn-buscar"
+      class="w-full bg-sd hover:bg-sl text-white py-3.5 rounded-xl font-bold text-base transition flex items-center justify-center gap-2">
+      <span>🚀</span>
+      <span>Buscar mejor precio</span>
+    </button>
+    <p class="text-[10px] text-gray-400 text-center mt-3">
+      ⚡ Búsqueda en vivo · 7 tiendas · ~40 segundos
+    </p>
+  </div>
+
+  <!-- BÚSQUEDAS RECIENTES (opcional) -->
+  <div id="historial-container" class="hidden">
+    <p class="text-xs font-semibold text-gray-500 uppercase mb-2">📜 Búsquedas recientes</p>
+    <div id="historial-list" class="flex flex-wrap gap-2"></div>
+  </div>
+
+</main>
+
+<!-- ============ MODAL DE BÚSQUEDA / RESULTADOS ============ -->
+<div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8">
+    <button id="btn-close" class="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100 transition">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+
+    <!-- Estado 1: buscando -->
+    <div id="estado-buscando" class="text-center py-4">
+      <div class="text-6xl mb-4 robot-spin inline-block">🤖</div>
+      <h3 class="text-2xl font-bold text-sd mb-2">Buscando tu producto<span class="dots"></span></h3>
+      <p class="text-gray-500 text-sm mb-6">Rastreando 7 tiendas en paralelo</p>
+
+      <div id="progreso-lista" class="space-y-2 text-left max-w-md mx-auto"></div>
+
+      <p class="text-[10px] text-gray-400 mt-6">
+        ⏳ Tiempo estimado: 40-90 segundos
+      </p>
+    </div>
+
+    <!-- Estado 2: resultados -->
+    <div id="estado-resultados" class="hidden">
+      <!-- Ganador -->
+      <div id="ganador-box"></div>
+
+      <!-- Otras opciones -->
+      <div id="otras-box" class="hidden mt-6">
+        <p class="text-xs font-semibold text-gray-500 uppercase mb-3">📊 Otras opciones</p>
+        <div id="otras-lista" class="space-y-2"></div>
+      </div>
+
+      <!-- Sin resultados -->
+      <div id="sin-resultados" class="hidden text-center py-8">
+        <p class="text-6xl mb-3">😕</p>
+        <p class="text-lg font-semibold text-sd mb-1">Sin resultados</p>
+        <p class="text-sm text-gray-500">Intenta con otra palabra o revisa la ortografía</p>
+      </div>
+
+      <button
+        id="btn-nueva-busqueda"
+        class="w-full bg-gray-100 hover:bg-gray-200 text-sd py-3 rounded-xl font-semibold mt-6 transition">
+        🔄 Buscar otro producto
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG
+============================================================ */
+const API_URL = 'http://localhost:8000';
+
+/* Iconos por tienda */
+const TIENDA_ICONS = {
+  jumbo:      '🟡',
+  exito:      '🔵',
+  olimpica:   '🟢',
+  easy:       '🟠',
+  homecenter: '🟠',
+  alkosto:    '🔴',
+  falabella:  '🟢'
+};
+const TIENDA_NAMES = {
+  jumbo:      'Jumbo',
+  exito:      'Éxito',
+  olimpica:   'Olímpica',
+  easy:       'Easy',
+  homecenter: 'Homecenter',
+  alkosto:    'Alkosto',
+  falabella:  'Falabella'
+};
+
+/* ============================================================
+   HELPERS
+============================================================ */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+
+let busquedaActual = null;
+let pollingInterval = null;
+
+/* ============================================================
+   BUSCAR
+============================================================ */
+async function buscar() {
+  const term = $('input-sku').value.trim();
+  if (!term) {
+    alert('⚠️ Escribe qué producto quieres buscar');
+    return;
+  }
+
+  const terminos = term.split(/\s+/).filter(Boolean);
+
+  // Mostrar modal en estado "buscando"
+  abrirModal();
+  mostrarEstadoBuscando();
+
+  try {
+    const resp = await fetch(`${API_URL}/buscar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ terminos })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.detail || 'Error del servidor');
+    }
+
+    const data = await resp.json();
+    busquedaActual = data.id;
+
+    // Empezar a chequear el estado
+    iniciarPolling();
+
+  } catch (e) {
+    console.error(e);
+    alert(
+      '❌ No se pudo conectar con el bot.\n\n' +
+      '¿Está corriendo el servidor?\n' +
+      'Ejecuta: python bot_compras_server.py'
+    );
+    cerrarModal();
+  }
+}
+
+/* ============================================================
+   POLLING (chequear estado cada 2 seg)
+============================================================ */
+function iniciarPolling() {
+  if (pollingInterval) clearInterval(pollingInterval);
+
+  pollingInterval = setInterval(async () => {
+    if (!busquedaActual) return;
+
+    try {
+      const resp = await fetch(`${API_URL}/buscar/${busquedaActual}`);
+      if (!resp.ok) return;
+
+      const data = await resp.json();
+      actualizarProgreso(data.progreso || []);
+
+      if (data.status === 'completado') {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+        mostrarResultados(data.resultados || []);
+      }
+    } catch (e) {
+      console.warn('Polling error:', e);
+    }
+  }, 2000);
+}
+
+/* ============================================================
+   UI — PROGRESO
+============================================================ */
+function actualizarProgreso(progreso) {
+  const el = $('progreso-lista');
+  if (!progreso.length) {
+    el.innerHTML = '<p class="text-center text-gray-400 text-sm">Iniciando...</p>';
+    return;
+  }
+
+  el.innerHTML = progreso.map(p => {
+    const icon = TIENDA_ICONS[p.tienda] || '🏪';
+    const name = TIENDA_NAMES[p.tienda] || p.tienda;
+
+    let emoji, cls;
+    if (p.status === 'ok') {
+      emoji = '✅'; cls = 'text-green-600';
+    } else if (p.status === 'buscando') {
+      emoji = '🔎'; cls = 'text-sl font-semibold';
+    } else if (p.status === 'error') {
+      emoji = '❌'; cls = 'text-red-500';
+    } else {
+      emoji = '⏳'; cls = 'text-gray-400';
+    }
+
+    return `
+      <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 ${cls}">
+        <span class="flex items-center gap-2 text-sm">
+          <span>${icon}</span>
+          <span>${name}</span>
+        </span>
+        <span class="text-sm">${emoji}${p.count ? ` (${p.count})` : ''}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   UI — RESULTADOS
+============================================================ */
+function mostrarResultados(resultados) {
+  $('estado-buscando').classList.add('hidden');
+  $('estado-resultados').classList.remove('hidden');
+
+  if (!resultados.length) {
+    $('ganador-box').innerHTML = '';
+    $('otras-box').classList.add('hidden');
+    $('sin-resultados').classList.remove('hidden');
+    return;
+  }
+
+  $('sin-resultados').classList.add('hidden');
+
+  const ganador = resultados[0];
+  const otras = resultados.slice(1);
+
+  // GANADOR
+  $('ganador-box').innerHTML = `
+    <div class="result-enter text-center">
+      <p class="text-xs font-bold text-yellow-600 uppercase tracking-widest mb-3">🏆 Mejor opción</p>
+
+      <div class="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-2xl p-6 mb-3">
+        <div class="text-5xl mb-3">${TIENDA_ICONS[ganador.tienda] || '🏪'}</div>
+        <p class="text-xl font-bold text-sd mb-1">${TIENDA_NAMES[ganador.tienda] || ganador.tienda}</p>
+        <p class="text-4xl font-extrabold text-green-600 mb-3">${fmt(ganador.precio)}</p>
+        <p class="text-sm text-gray-600 mb-4 line-clamp-2">${ganador.titulo}</p>
+
+        ${ganador.tarjeta_requerida
+          ? `<p class="text-xs text-orange-600 bg-orange-100 inline-block px-3 py-1 rounded-full mb-3">
+               💳 Requiere: ${ganador.tarjeta_requerida}
+             </p>`
+          : `<p class="text-xs text-green-600 bg-green-100 inline-block px-3 py-1 rounded-full mb-3">
+               ✅ Sin tarjeta requerida
+             </p>`
+        }
+
+        <a href="${ganador.url}" target="_blank"
+           class="block bg-sd hover:bg-sl text-white py-3 rounded-xl font-bold transition">
+          🔗 Ver producto
+        </a>
+      </div>
+    </div>
+  `;
+
+  // OTRAS
+  if (otras.length) {
+    $('otras-box').classList.remove('hidden');
+    $('otras-lista').innerHTML = otras.map((r, i) => `
+      <div class="result-enter flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-3 hover:shadow transition"
+           style="animation-delay: ${i * 0.05}s">
+        <span class="text-2xl">${TIENDA_ICONS[r.tienda] || '🏪'}</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-sd">${TIENDA_NAMES[r.tienda] || r.tienda}</p>
+          <p class="text-[10px] text-gray-400 truncate">${r.titulo}</p>
+          ${r.tarjeta_requerida ? `<p class="text-[10px] text-orange-500">💳 ${r.tarjeta_requerida}</p>` : ''}
+        </div>
+        <div class="text-right">
+          <p class="font-bold text-sl">${fmt(r.precio)}</p>
+          <a href="${r.url}" target="_blank" class="text-[10px] text-sl hover:underline">Ver →</a>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    $('otras-box').classList.add('hidden');
+  }
+}
+
+/* ============================================================
+   MODAL
+============================================================ */
+function abrirModal() {
+  const m = $('modal');
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarModal() {
+  const m = $('modal');
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+  document.body.style.overflow = '';
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+  busquedaActual = null;
+}
+
+function mostrarEstadoBuscando() {
+  $('estado-buscando').classList.remove('hidden');
+  $('estado-resultados').classList.add('hidden');
+  $('progreso-lista').innerHTML = '<p class="text-center text-gray-400 text-sm">Conectando con el bot...</p>';
+}
+
+/* ============================================================
+   NUEVA BÚSQUEDA
+============================================================ */
+function nuevaBusqueda() {
+  cerrarModal();
+  $('input-sku').value = '';
+  $('input-sku').focus();
+}
+
+/* ============================================================
+   EVENTOS
+============================================================ */
+$('btn-buscar').onclick = buscar;
+$('btn-close').onclick = cerrarModal;
+$('btn-nueva-busqueda').onclick = nuevaBusqueda;
+
+$('input-sku').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') buscar();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') cerrarModal();
+});
+
+</script>
+</body>
+</html>
