@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Smartec · Clientes</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="common.js"></script>
 <script src="cache.js"></script>
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
@@ -222,6 +223,7 @@ let users = [];
 /* ============ HELPERS ============ */
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const escapeHtml = window.Smartec.escapeHtml;   // 🆕
 const fmtDate = ts => {
   if (!ts) return '-';
   const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
@@ -555,9 +557,9 @@ function renderTable() {
     }).join(' ');
 
     return `<tr class="border-b hover:bg-gray-50">
-      <td class="p-3 text-xs font-semibold text-sd">${c.name || '-'}</td>
+      <td class="p-3 text-xs font-semibold text-sd">${escapeHtml(c.name) || '-'}</td>
       <td class="p-3 text-xs">${c.phone || '-'}</td>
-      <td class="p-3 text-xs">${c.city || '-'}</td>
+      <td class="p-3 text-xs">${escapeHtml(c.city) || '-'}</td>
       <td class="p-3 text-center">${tagsHtml || '—'}</td>
       <td class="p-3 text-center text-xs font-semibold">${Number(c.purchaseCount||0)}</td>
       <td class="p-3 text-right text-xs font-bold text-sl">${fmt(c.totalSpent)}</td>
@@ -750,14 +752,14 @@ window.viewDetail = (id) => {
   }).join('');
 
   $('detail-body').innerHTML = `
-    <h3 class="text-2xl font-bold text-sd mb-2">${c.name}</h3>
+    <h3 class="text-2xl font-bold text-sd mb-2">${escapeHtml(c.name)}</h3>
     <div class="mb-4">${tagsHtml}</div>
 
     <div class="grid grid-cols-2 gap-3 text-sm mb-4">
       <div><p class="text-xs text-gray-400">Teléfono</p><p class="font-semibold">${c.phone}</p></div>
-      <div><p class="text-xs text-gray-400">Email</p><p class="font-semibold text-xs">${c.email || '—'}</p></div>
-      <div><p class="text-xs text-gray-400">Ciudad</p><p class="font-semibold">${c.city || '—'}</p></div>
-      <div><p class="text-xs text-gray-400">Dirección</p><p class="font-semibold text-xs">${c.address || '—'}</p></div>
+      <div><p class="text-xs text-gray-400">Email</p><p class="font-semibold text-xs">${escapeHtml(c.email) || '—'}</p></div>
+      <div><p class="text-xs text-gray-400">Ciudad</p><p class="font-semibold">${escapeHtml(c.city) || '—'}</p></div>
+      <div><p class="text-xs text-gray-400">Dirección</p><p class="font-semibold text-xs">${escapeHtml(c.address) || '—'}</p></div>
     </div>
 
     <div class="grid grid-cols-3 gap-3 mb-5">
@@ -778,7 +780,7 @@ window.viewDetail = (id) => {
     ${c.notes ? `
       <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-5 text-sm">
         <p class="text-xs text-yellow-700 font-semibold mb-1">Notas</p>
-        <p>${c.notes}</p>
+        <p>${escapeHtml(c.notes)}</p>
       </div>
     ` : ''}
 
@@ -790,8 +792,8 @@ window.viewDetail = (id) => {
           return `
             <div class="border rounded-lg p-3 text-sm flex justify-between items-center">
               <div class="min-w-0 flex-1">
-                <p class="font-semibold text-sd text-xs">${s.documentNumber || s.id.slice(-6)}</p>
-                <p class="text-[10px] text-gray-400">${fmtDate(s.createdAt)} · ${items} item(s) · ${s.storeName || ''}</p>
+                <p class="font-semibold text-sd text-xs">${escapeHtml(s.documentNumber) || s.id.slice(-6)}</p>
+                <p class="text-[10px] text-gray-400">${fmtDate(s.createdAt)} · ${items} item(s) · ${escapeHtml(s.storeName) || ''}</p>
               </div>
               <p class="font-bold text-sl ml-3">${fmt((s.commissionBase !== undefined) ? s.commissionBase : (Number(s.subtotal||0) - Number(s.discount||0)))}</p>
             </div>
