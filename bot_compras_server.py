@@ -561,56 +561,78 @@ async def buscar_scraping(page, tienda, url, terminos):
 # ORQUESTADOR
 # ============================================================
 
+async def ejecutar_tienda_vtex(browser, tienda, base_url, terminos, estado):
+    """Busca en una tienda VTEX usando su propia página."""
+    prog = next(p for p in estado["progreso"] if p["tienda"] == tienda)
+    prog["status"] = "buscando"
+    page = await browser.new_page()
+    try:
+        r = await buscar_vtex(page, tienda, base_url, terminos)
+        prog["status"] = "ok"
+        prog["count"] = len(r)
+        return r
+    except Exception as e:
+        prog["status"] = "error"
+        prog["error"] = str(e)
+        return []
+    finally:
+        await page.close()
+
+
+async def ejecutar_tienda_scraping(browser, tienda, plantilla, terminos, estado):
+    """Busca en una tienda por scraping usando su propia página."""
+    prog = next(p for p in estado["progreso"] if p["tienda"] == tienda)
+    prog["status"] = "buscando"
+    page = await browser.new_page()
+    try:
+        url = plantilla.format(query=" ".join(terminos).replace(" ", "%20"))
+        r = await buscar_scraping(page, tienda, url, terminos)
+        prog["status"] = "ok"
+        prog["count"] = len(r)
+        return r
+    except Exception as e:
+        prog["status"] = "error"
+        prog["error"] = str(e)
+        return []
+    finally:
+        await page.close()
+
+
 async def ejecutar_busqueda(busqueda_id: str, terminos: list):
-    """Corre todos los scrapers y actualiza BUSQUEDAS[busqueda_id] en tiempo real."""
+    """Corre TODAS las tiendas en paralelo (cada una con su propia página)."""
     estado = BUSQUEDAS[busqueda_id]
     estado["status"] = "buscando"
-    estado["progreso"] = []   # lista de {tienda, status, count}
+    estado["progreso"] = []
 
     todas_tiendas = list(TIENDAS_VTEX.keys()) + list(TIENDAS_SCRAPING.keys())
     for t in todas_tiendas:
         estado["progreso"].append({"tienda": t, "status": "pendiente", "count": 0})
 
-    resultados = []
-
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)   # ← SIN VENTANA
-        ctx = await browser.new_context(
-            locale="es-CO",
-            user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/122.0 Safari/537.36"),
-            viewport={"width": 1366, "height": 900},
-            extra_http_headers={"Accept-Language": "es-CO,es;q=0.9"},
-        )
-        page = await ctx.new_page()
+        browser = await p.chromium.launch(headless=True)
 
-        # VTEX
+        # ============================================================
+        # Crear una tarea por cada tienda (VTEX + Scraping)
+        # ============================================================
+        tareas = []
+
         for tienda, base_url in TIENDAS_VTEX.items():
-            prog = next(p for p in estado["progreso"] if p["tienda"] == tienda)
-            prog["status"] = "buscando"
-            try:
-                r = await buscar_vtex(page, tienda, base_url, terminos)
-                prog["status"] = "ok"
-                prog["count"] = len(r)
-                resultados.extend(r)
-            except Exception as e:
-                prog["status"] = "error"
-                prog["error"] = str(e)
+            tareas.append(
+                ejecutar_tienda_vtex(browser, tienda, base_url, terminos, estado)
+            )
 
-        # Scraping
         for tienda, plantilla in TIENDAS_SCRAPING.items():
-            prog = next(p for p in estado["progreso"] if p["tienda"] == tienda)
-            prog["status"] = "buscando"
-            try:
-                url = plantilla.format(query=" ".join(terminos).replace(" ", "%20"))
-                r = await buscar_scraping(page, tienda, url, terminos)
-                prog["status"] = "ok"
-                prog["count"] = len(r)
-                resultados.extend(r)
-            except Exception as e:
-                prog["status"] = "error"
-                prog["error"] = str(e)
+            tareas.append(
+                ejecutar_tienda_scraping(browser, tienda, plantilla, terminos, estado)
+            )
+
+        # Ejecutar TODAS en paralelo y esperar a que terminen
+        listas_resultados = await asyncio.gather(*tareas)
+
+        # Aplanar la lista de listas en una sola lista
+        resultados = []
+        for lst in listas_resultados:
+            resultados.extend(lst)
 
         await browser.close()
 
