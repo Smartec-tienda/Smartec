@@ -908,6 +908,27 @@
           <p class="text-xs text-gray-500 mb-3">El sistema queda listo. Se activará cuando tengas el proveedor configurado.</p>
           <button id="save-dian-settings" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm">Guardar</button>
         </div>
+        <!-- 🆕 MÉTODOS DE PAGO -->
+        <div class="bg-white p-6 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4">💳 Métodos de pago</h3>
+          <p class="text-xs text-gray-500 mb-4">Administra las cuentas y entidades que aparecerán en el POS.</p>
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="openChannelsModal('transferencia')" class="bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 rounded-xl p-4 text-center transition">
+              <p class="text-3xl mb-2">🔄</p>
+              <p class="font-bold text-sd text-sm">Transferencias</p>
+              <p class="text-[10px] text-gray-500 mt-1" id="channels-count-transferencia">Cargando...</p>
+            </button>
+            <button onclick="openChannelsModal('credito')" class="bg-purple-50 hover:bg-purple-100 border-2 border-purple-200 rounded-xl p-4 text-center transition">
+              <p class="text-3xl mb-2">🛍️</p>
+              <p class="font-bold text-sd text-sm">Crédito</p>
+              <p class="text-[10px] text-gray-500 mt-1" id="channels-count-credito">Cargando...</p>
+            </button>
+          </div>
+          <button onclick="seedDefaultPlatforms()" class="mt-3 w-full text-xs text-sl hover:underline text-center">
+            🔧 Inicializar plataformas por defecto
+          </button>
+        </div>
+
         <div class="bg-white p-6 rounded-xl shadow">
           <h3 class="font-bold text-sd mb-4">Categorías estacionales</h3>
           <div id="seasonal-categories" class="space-y-3 text-sm"></div>
@@ -1021,6 +1042,44 @@
     <div id="arq-modal-body"></div>
   </div>
 </div>
+<!-- ============ MODAL LISTA DE CANALES ============ -->
+<div id="channels-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeChannelsModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeChannelsModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <div class="flex justify-between items-start mb-5 pr-10">
+      <div>
+        <h3 id="channels-modal-title" class="text-xl font-bold text-sd">Canales de pago</h3>
+        <p id="channels-modal-subtitle" class="text-xs text-gray-400 mt-1"></p>
+      </div>
+      <button onclick="openChannelForm(null)" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold whitespace-nowrap">
+        + Nuevo canal
+      </button>
+    </div>
+    <div id="channels-modal-list" class="space-y-2">
+      <!-- Se llena dinámicamente -->
+    </div>
+    <p id="channels-modal-empty" class="hidden text-center py-8 text-gray-400 text-sm">
+      Aún no hay canales configurados. Haz clic en "+ Nuevo canal" para crear el primero.
+    </p>
+  </div>
+</div>
+
+<!-- ============ MODAL FORM DE CANAL (crear/editar) ============ -->
+<div id="channel-form-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeChannelForm()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeChannelForm()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="channel-form-title" class="text-xl font-bold text-sd mb-5 pr-10">Nuevo canal</h3>
+    <div id="channel-form-body">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
@@ -1057,6 +1116,8 @@ let stores = [], users = [], products = [], inventory = [],
     sales = [], promos = [], auditLogs = [], settings = {},
     storeGoals = [], cashRegisters = [], expensesAll = [],
     transferRequestsAll = [];
+let paymentChannels = [];      // 🆕 cuentas/canales de pago
+let paymentPlatforms = [];     // 🆕 catálogo de bancos/plataformas
 
 /* ============================================================
    HELPERS
@@ -1289,7 +1350,17 @@ async function loadAll() {
     C.wrap('expenses_all', async () => {
       const s = await getDocs(collection(db,'expenses'));
       return s.docs.map(d => ({id:d.id,...d.data()}));
-    }).then(v => expensesAll = v)
+    }).then(v => expensesAll = v),
+
+    C.wrap('paymentChannels', async () => {
+      const s = await getDocs(collection(db,'paymentChannels'));
+      return s.docs.map(d => ({id:d.id,...d.data()}));
+    }).then(v => paymentChannels = v),
+
+    C.wrap('paymentPlatforms', async () => {
+      const s = await getDocs(collection(db,'paymentPlatforms'));
+      return s.docs.map(d => ({id:d.id,...d.data()}));
+    }).then(v => paymentPlatforms = v)
   ]);
 
   // Filtros para admin de tienda
@@ -2804,9 +2875,731 @@ window.viewAudit = (id) => {
 window.closeAuditModal = () => { const m=$('audit-modal'); m.classList.add('hidden'); m.classList.remove('flex'); };
 
 /* ============================================================
+   MÉTODOS DE PAGO — PLATAFORMAS POR DEFECTO
+============================================================ */
+
+const DEFAULT_PLATFORMS = [
+  // ===== BANCOS TRADICIONALES =====
+  { name: 'Bancolombia',       category: 'banco',   icon: '🏦', color: '#FDDA24', order: 1 },
+  { name: 'Banco de Bogotá',   category: 'banco',   icon: '🏦', color: '#0057B7', order: 2 },
+  { name: 'Davivienda',        category: 'banco',   icon: '🏦', color: '#E30613', order: 3 },
+  { name: 'BBVA Colombia',     category: 'banco',   icon: '🏦', color: '#072146', order: 4 },
+  { name: 'Banco de Occidente',category: 'banco',   icon: '🏦', color: '#ED1C24', order: 5 },
+  { name: 'Banco Popular',     category: 'banco',   icon: '🏦', color: '#00843D', order: 6 },
+  { name: 'Banco Caja Social', category: 'banco',   icon: '🏦', color: '#0033A0', order: 7 },
+  { name: 'Scotiabank Colpatria', category: 'banco',icon: '🏦', color: '#ED1C24', order: 8 },
+  { name: 'Banco GNB Sudameris',  category: 'banco',icon: '🏦', color: '#003F7D', order: 9 },
+  { name: 'Banco AV Villas',   category: 'banco',   icon: '🏦', color: '#E4002B', order: 10 },
+  { name: 'Banco Pichincha',   category: 'banco',   icon: '🏦', color: '#FFD100', order: 11 },
+  { name: 'Bancoomeva',        category: 'banco',   icon: '🏦', color: '#003A70', order: 12 },
+  { name: 'Banco Agrario',     category: 'banco',   icon: '🏦', color: '#006633', order: 13 },
+  { name: 'Banco Falabella',   category: 'banco',   icon: '🏦', color: '#78BE20', order: 14 },
+  { name: 'Banco Finandina',   category: 'banco',   icon: '🏦', color: '#003E7E', order: 15 },
+  { name: 'Banco W',           category: 'banco',   icon: '🏦', color: '#F7941D', order: 16 },
+  { name: 'Banco Mundo Mujer', category: 'banco',   icon: '🏦', color: '#8B2E8A', order: 17 },
+  { name: 'Bancamía',          category: 'banco',   icon: '🏦', color: '#00A0DF', order: 18 },
+  { name: 'Lulo Bank',         category: 'banco',   icon: '🏦', color: '#F2FF00', order: 19 },
+  { name: 'Nu Bank',           category: 'banco',   icon: '💜', color: '#820AD1', order: 20 },
+  { name: 'Ualá',              category: 'banco',   icon: '🏦', color: '#FF007A', order: 21 },
+  { name: 'RappiPay',          category: 'banco',   icon: '🏦', color: '#FF441F', order: 22 },
+
+  // ===== BILLETERAS DIGITALES =====
+  { name: 'Nequi',             category: 'billetera', icon: '📱', color: '#200020', order: 30 },
+  { name: 'Daviplata',         category: 'billetera', icon: '📱', color: '#E30613', order: 31 },
+  { name: 'Dale!',             category: 'billetera', icon: '📱', color: '#F5A623', order: 32 },
+  { name: 'Movii',             category: 'billetera', icon: '📱', color: '#F5A623', order: 33 },
+  { name: 'BICO',              category: 'billetera', icon: '📱', color: '#006633', order: 34 },
+
+  // ===== ENTIDADES DE CRÉDITO =====
+  { name: 'Addi',              category: 'credito', icon: '🛍️', color: '#6C00FF', order: 50 },
+  { name: 'Sistecrédito',      category: 'credito', icon: '🛍️', color: '#00A859', order: 51 },
+  { name: 'Cupo Brilla',       category: 'credito', icon: '✨', color: '#FF6B00', order: 52 },
+  { name: 'Sumas Pay',         category: 'credito', icon: '🛍️', color: '#1E40AF', order: 53 },
+  { name: 'Credinet',          category: 'credito', icon: '🛍️', color: '#0A7C4E', order: 54 },
+  { name: 'Effi',              category: 'credito', icon: '🛍️', color: '#F59E0B', order: 55 },
+
+  // ===== OTRAS FINANCIERAS =====
+  { name: 'Credifamilia',      category: 'credito', icon: '💳', color: '#F7941D', order: 60 },
+  { name: 'Financiera Juriscoop', category: 'credito', icon: '💳', color: '#003876', order: 61 },
+  { name: 'Tuya S.A.',         category: 'credito', icon: '💳', color: '#E4002B', order: 62 },
+  { name: 'Serfinansa',        category: 'credito', icon: '💳', color: '#F7941D', order: 63 }
+];
+
+window.seedDefaultPlatforms = async () => {
+  // Solo superadmin
+  if (currentUserData?.role !== 'superadmin') {
+    alert('⛔ Solo el superadmin puede inicializar plataformas.');
+    return;
+  }
+
+  if (!confirm(
+    `Esto agregará ${DEFAULT_PLATFORMS.length} plataformas por defecto a Firestore.\n\n` +
+    `Las que ya existan (mismo nombre) no se sobreescribirán.\n\n` +
+    `¿Continuar?`
+  )) return;
+
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.innerText = '⏳ Cargando...'; }
+
+  try {
+    // Leer todas las plataformas existentes
+    const existing = await getDocs(collection(db, 'paymentPlatforms'));
+    const existingNames = new Set(existing.docs.map(d => d.data().name));
+
+    let added = 0;
+    let skipped = 0;
+
+    for (const p of DEFAULT_PLATFORMS) {
+      if (existingNames.has(p.name)) {
+        skipped++;
+        continue;
+      }
+
+      // Crear con ID auto
+      await addDoc(collection(db, 'paymentPlatforms'), {
+        ...p,
+        active: true,
+        createdAt: serverTimestamp(),
+        createdBy: currentUser.email
+      });
+      added++;
+    }
+
+    await audit({
+      action: 'seed',
+      collection: 'paymentPlatforms',
+      after: { added, skipped, total: DEFAULT_PLATFORMS.length },
+      note: `Plataformas inicializadas: ${added} nuevas, ${skipped} existentes`
+    });
+
+    window.SmartecCache.invalidate('paymentPlatforms');
+
+    alert(
+      `✅ Plataformas inicializadas\n\n` +
+      `• Agregadas: ${added}\n` +
+      `• Ya existían: ${skipped}\n` +
+      `• Total: ${DEFAULT_PLATFORMS.length}`
+    );
+
+    // Recargar datos
+    await loadPaymentPlatforms();
+
+  } catch(e) {
+    console.error('Error en seedDefaultPlatforms:', e);
+    alert('Error: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = '🔧 Inicializar plataformas por defecto'; }
+  }
+};
+
+/* ============================================================
+   MÉTODOS DE PAGO — CARGA Y RENDER
+============================================================ */
+
+window.loadPaymentPlatforms = async () => {
+  try {
+    const s = await getDocs(collection(db,'paymentPlatforms'));
+    paymentPlatforms = s.docs.map(d => ({id:d.id, ...d.data()}))
+      .sort((a,b) => (a.order||0) - (b.order||0));
+    window.SmartecCache.set('paymentPlatforms', paymentPlatforms);
+    renderPaymentStats();
+  } catch(e) {
+    console.warn('Error cargando plataformas:', e);
+  }
+};
+
+function renderPaymentStats() {
+  // Transferencias activas
+  const transferCount = paymentChannels.filter(c =>
+    c.type === 'transferencia' && c.active !== false
+  ).length;
+
+  // Crédito activas
+  const creditCount = paymentChannels.filter(c =>
+    c.type === 'credito' && c.active !== false
+  ).length;
+
+  const tEl = $('channels-count-transferencia');
+  const cEl = $('channels-count-credito');
+
+  if (tEl) tEl.innerText = transferCount === 0
+    ? 'Sin cuentas configuradas'
+    : `${transferCount} canal${transferCount !== 1 ? 'es' : ''} activo${transferCount !== 1 ? 's' : ''}`;
+
+  if (cEl) cEl.innerText = creditCount === 0
+    ? 'Sin entidades configuradas'
+    : `${creditCount} entidad${creditCount !== 1 ? 'es' : ''} activa${creditCount !== 1 ? 's' : ''}`;
+}
+
+window.openChannelsModal = (type) => {
+  const modal = $('channels-modal');
+  const list = $('channels-modal-list');
+  const empty = $('channels-modal-empty');
+  const title = $('channels-modal-title');
+  const subtitle = $('channels-modal-subtitle');
+
+  if (!modal) return;
+
+  // Configurar textos según tipo
+  if (type === 'transferencia') {
+    title.innerText = '🔄 Canales de transferencia';
+    subtitle.innerText = 'Cuentas donde los clientes pueden hacer transferencias';
+  } else {
+    title.innerText = '🛍️ Entidades de crédito';
+    subtitle.innerText = 'Entidades que ofrecen financiación al cliente';
+  }
+
+  // Filtrar por tipo
+  const channels = paymentChannels.filter(c => c.type === type);
+
+  // Ordenar alfabéticamente por bank, luego por customName
+  channels.sort((a, b) => {
+    const bk = (a.bank || '').localeCompare(b.bank || '');
+    if (bk !== 0) return bk;
+    return (a.customName || '').localeCompare(b.customName || '');
+  });
+
+  if (!channels.length) {
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
+    list.innerHTML = channels.map(c => renderChannelCard(c)).join('');
+  }
+
+  // Guardar tipo actual para el botón "+ Nuevo canal"
+  modal.dataset.currentType = type;
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+window.closeChannelsModal = () => {
+  const modal = $('channels-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+window.openChannelForm = (channelId = null) => {
+  const modal = $('channel-form-modal');
+  const titleEl = $('channel-form-title');
+  const bodyEl = $('channel-form-body');
+  if (!modal || !bodyEl) return;
+
+  // Determinar tipo (nuevo → del modal abierto; editar → del canal)
+  let type = 'transferencia';
+  if (channelId) {
+    const c = paymentChannels.find(x => x.id === channelId);
+    if (!c) return;
+    type = c.type;
+  } else {
+    type = $('channels-modal')?.dataset.currentType || 'transferencia';
+  }
+
+  // Determinar código autogenerado (solo si es nuevo)
+  let code = '';
+  if (channelId) {
+    code = paymentChannels.find(x => x.id === channelId)?.code || '';
+  } else {
+    code = generateNextChannelCode(type);
+  }
+
+  // Datos actuales (o vacíos)
+  const existing = channelId ? paymentChannels.find(x => x.id === channelId) : null;
+  const channel = existing || {
+    type,
+    code,
+    bank: '',
+    customName: '',
+    accountNumber: '',
+    icon: type === 'transferencia' ? '🏦' : '🛍️',
+    color: '#0A2A4A',
+    active: true,
+    notes: ''
+  };
+
+  titleEl.innerText = existing ? 'Editar canal' : 'Nuevo canal';
+
+  // Filtrar plataformas según el tipo
+  const relevantPlatforms = paymentPlatforms.filter(p => {
+    if (type === 'transferencia') return p.category === 'banco' || p.category === 'billetera';
+    return p.category === 'credito';
+  });
+
+  // Agrupar por categoría para el optgroup
+  const groups = {
+    banco: [],
+    billetera: [],
+    credito: []
+  };
+  relevantPlatforms.forEach(p => {
+    const cat = p.category || 'banco';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(p);
+  });
+
+  const groupLabels = {
+    banco: '🏦 Bancos',
+    billetera: '📱 Billeteras digitales',
+    credito: '🛍️ Entidades de crédito'
+  };
+
+  // Construir los <optgroup>
+  let platformOptions = '';
+  ['banco','billetera','credito'].forEach(cat => {
+    if (!groups[cat] || !groups[cat].length) return;
+    platformOptions += `<optgroup label="${groupLabels[cat]}">`;
+    groups[cat].forEach(p => {
+      platformOptions += `<option value="${escapeHtml(p.name)}" data-icon="${p.icon||''}" data-color="${p.color||''}">${escapeHtml(p.name)}</option>`;
+    });
+    platformOptions += `</optgroup>`;
+  });
+
+  // Opción "Otro"
+  platformOptions += `<optgroup label="Otros"><option value="__otro__" data-icon="⚪" data-color="#6b7280">Otro (personalizado)</option></optgroup>`;
+
+  bodyEl.innerHTML = `
+    <div class="space-y-4">
+
+      <!-- Código -->
+      <div>
+        <label class="text-xs font-semibold text-sd">Código</label>
+        <input id="cf-code" type="text" value="${escapeHtml(channel.code || '')}"
+               ${existing ? 'disabled' : 'readonly'}
+               class="w-full px-3 py-2 border rounded-lg mt-1 font-mono text-sm bg-gray-50 text-gray-600">
+        <p class="text-[10px] text-gray-400 mt-1">Autogenerado. Se usa como referencia interna.</p>
+      </div>
+
+      <!-- Banco/Plataforma -->
+      <div>
+        <label class="text-xs font-semibold text-sd">Banco / Plataforma *</label>
+        <select id="cf-bank" class="w-full px-3 py-2 border rounded-lg mt-1" onchange="onBankChange()">
+          <option value="">— Selecciona —</option>
+          ${platformOptions}
+        </select>
+      </div>
+
+      <!-- Campo custom (solo si "Otro") -->
+      <div id="cf-custom-bank-wrap" class="hidden">
+        <label class="text-xs font-semibold text-sd">Nombre personalizado del banco/plataforma *</label>
+        <input id="cf-custom-bank" type="text" placeholder="Ej: Banco XYZ" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+
+      <!-- Nombre descriptivo -->
+      <div>
+        <label class="text-xs font-semibold text-sd">Nombre descriptivo *</label>
+        <input id="cf-custom-name" type="text" value="${escapeHtml(channel.customName || '')}"
+               placeholder="Ej: Andrea, Principal, Cobros"
+               class="w-full px-3 py-2 border rounded-lg mt-1">
+        <p class="text-[10px] text-gray-400 mt-1">Para diferenciar varias cuentas del mismo banco.</p>
+      </div>
+
+      <!-- Número de cuenta -->
+      <div>
+        <label class="text-xs font-semibold text-sd">Número de cuenta / teléfono</label>
+        <input id="cf-account" type="text" value="${escapeHtml(channel.accountNumber || '')}"
+               placeholder="Ej: 3001234567 o ····1234"
+               class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+
+      <!-- Vista previa + personalización -->
+      <div class="border-t pt-4">
+        <p class="text-xs font-semibold text-sd mb-2">Vista previa</p>
+        <div id="cf-preview" class="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
+          <!-- Se llena con JS -->
+        </div>
+      </div>
+
+      <!-- Personalizar apariencia -->
+      <details class="border-t pt-3">
+        <summary class="text-xs font-semibold text-sd cursor-pointer">🎨 Personalizar apariencia</summary>
+        <div class="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Emoji / ícono</label>
+            <input id="cf-icon" type="text" maxlength="2" value="${escapeHtml(channel.icon || '🏦')}"
+                   class="w-full px-3 py-2 border rounded-lg mt-1 text-center text-2xl">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Color</label>
+            <input id="cf-color" type="color" value="${channel.color || '#0A2A4A'}"
+                   class="w-full h-10 border rounded-lg mt-1 cursor-pointer" onchange="updatePreview()">
+          </div>
+        </div>
+      </details>
+
+      <!-- Notas -->
+      <div>
+        <label class="text-xs font-semibold text-sd">Notas</label>
+        <textarea id="cf-notes" rows="2" class="w-full px-3 py-2 border rounded-lg mt-1 text-sm"
+                  placeholder="Observaciones opcionales">${escapeHtml(channel.notes || '')}</textarea>
+      </div>
+
+      <!-- Estado -->
+      <label class="flex items-center gap-2 text-sm">
+        <input id="cf-active" type="checkbox" ${channel.active !== false ? 'checked' : ''} class="w-4 h-4">
+        Canal activo (aparecerá en el POS)
+      </label>
+
+      <!-- Botones -->
+      <div class="flex gap-3 pt-2">
+        <button onclick="closeChannelForm()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">
+          Cancelar
+        </button>
+        <button onclick="saveChannel('${channelId || ''}')" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold">
+          💾 Guardar
+        </button>
+      </div>
+
+    </div>
+  `;
+
+  // Preseleccionar banco si es edición
+  if (existing && existing.bank) {
+    const sel = $('cf-bank');
+    // Buscar opción que coincida
+    const opt = Array.from(sel.options).find(o => o.value === existing.bank);
+    if (opt) {
+      sel.value = existing.bank;
+    } else {
+      // No está en la lista → es "Otro"
+      sel.value = '__otro__';
+      $('cf-custom-bank-wrap').classList.remove('hidden');
+      $('cf-custom-bank').value = existing.bank;
+    }
+  }
+
+  // Listeners para actualizar vista previa
+  ['cf-bank', 'cf-custom-name', 'cf-account', 'cf-icon', 'cf-custom-bank'].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('input', updatePreview);
+  });
+
+  updatePreview();  
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+window.closeChannelForm = () => {
+  const modal = $('channel-form-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+window.saveChannel = async (channelId = '') => {
+  // Determinar tipo según el canal existente o el modal abierto
+  let type = 'transferencia';
+  if (channelId) {
+    const c = paymentChannels.find(x => x.id === channelId);
+    if (!c) return alert('Canal no encontrado');
+    type = c.type;
+  } else {
+    type = $('channels-modal')?.dataset.currentType || 'transferencia';
+  }
+
+  // Recolectar datos del formulario
+  const code = $('cf-code').value.trim();
+  const bankSelect = $('cf-bank').value;
+  const customBank = $('cf-custom-bank')?.value.trim() || '';
+  const customName = $('cf-custom-name').value.trim();
+  const accountNumber = $('cf-account').value.trim();
+  const icon = $('cf-icon').value.trim() || '🏦';
+  const color = $('cf-color').value || '#0A2A4A';
+  const notes = $('cf-notes').value.trim();
+  const active = $('cf-active').checked;
+
+  // Determinar el nombre real del banco
+  let bank = '';
+  if (bankSelect === '__otro__') {
+    bank = customBank;
+  } else {
+    bank = bankSelect;
+  }
+
+  // Validaciones
+  if (!bank) return alert('⚠️ Debes seleccionar o escribir un banco/plataforma');
+  if (!customName) return alert('⚠️ El nombre descriptivo es obligatorio');
+  if (!code) return alert('⚠️ El código no se pudo generar. Recarga el modal.');
+
+  // Verificar duplicados (solo en creación)
+  if (!channelId) {
+    const existing = paymentChannels.find(c => c.code === code);
+    if (existing) {
+      return alert(`⚠️ Ya existe un canal con el código ${code}. Recarga y vuelve a intentar.`);
+    }
+  }
+
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.innerText = '⏳ Guardando...'; }
+
+  const data = {
+    code,
+    type,
+    bank,
+    customName,
+    accountNumber,
+    icon,
+    color,
+    notes,
+    active,
+    updatedAt: serverTimestamp()
+  };
+
+  try {
+    if (channelId) {
+      // Editar
+      const before = paymentChannels.find(c => c.id === channelId);
+      await updateDoc(doc(db, 'paymentChannels', channelId), data);
+
+      await audit({
+        action: 'update',
+        collection: 'paymentChannels',
+        docId: channelId,
+        before: { code: before.code, bank: before.bank, customName: before.customName, active: before.active },
+        after: data,
+        note: `Canal editado: ${code} · ${bank} — ${customName}`
+      });
+    } else {
+      // Crear
+      const ref = await addDoc(collection(db, 'paymentChannels'), {
+        ...data,
+        createdAt: serverTimestamp(),
+        createdBy: currentUser.email
+      });
+
+      await audit({
+        action: 'create',
+        collection: 'paymentChannels',
+        docId: ref.id,
+        after: data,
+        note: `Canal creado: ${code} · ${bank} — ${customName}`
+      });
+    }
+
+    // Recargar canales y refrescar UI
+    await reloadPaymentChannels();
+
+    closeChannelForm();
+    // Reabrir el modal de lista (ya actualizado)
+    openChannelsModal(type);
+
+    alert(channelId ? '✅ Canal actualizado' : '✅ Canal creado');
+  } catch(e) {
+    console.error('Error en saveChannel:', e);
+    alert('Error: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = '💾 Guardar'; }
+  }
+};
+
+function generateNextChannelCode(type) {
+  const prefix = type === 'transferencia' ? 'CH' : 'CR';
+  const allCodes = paymentChannels
+    .filter(c => c.type === type)
+    .map(c => c.code || '')
+    .filter(Boolean);
+
+  let maxNum = 0;
+  allCodes.forEach(code => {
+    const m = code.match(/(\d+)$/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > maxNum) maxNum = n;
+    }
+  });
+
+  const next = maxNum + 1;
+  return `${prefix}_${String(next).padStart(3, '0')}`;
+}
+
+window.onBankChange = () => {
+  const sel = $('cf-bank');
+  const value = sel.value;
+  const wrap = $('cf-custom-bank-wrap');
+  const customBankInput = $('cf-custom-bank');
+
+  if (value === '__otro__') {
+    wrap.classList.remove('hidden');
+    // No sobreescribir si ya había un valor
+    if (!customBankInput.value) customBankInput.value = '';
+  } else {
+    wrap.classList.add('hidden');
+    // Autocompletar icono/color según el banco seleccionado
+    const opt = sel.options[sel.selectedIndex];
+    const icon = opt.dataset.icon || '';
+    const color = opt.dataset.color || '';
+    if (icon) $('cf-icon').value = icon;
+    if (color) $('cf-color').value = color;
+  }
+
+  updatePreview();
+};
+
+window.updatePreview = () => {
+  const el = $('cf-preview');
+  if (!el) return;
+
+  const bank = $('cf-bank')?.value === '__otro__'
+    ? ($('cf-custom-bank')?.value || 'Otro')
+    : ($('cf-bank')?.value || 'Banco');
+
+  const customName = $('cf-custom-name')?.value || '';
+  const account = $('cf-account')?.value || '';
+  const icon = $('cf-icon')?.value || '🏦';
+  const color = $('cf-color')?.value || '#0A2A4A';
+
+  const displayName = customName ? `${bank} — ${customName}` : bank;
+
+  el.innerHTML = `
+    <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-2xl"
+         style="background:${color}20; border:2px solid ${color}40">
+      ${icon}
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="font-semibold text-sd text-sm truncate">${escapeHtml(displayName)}</p>
+      ${account ? `<p class="text-xs text-gray-500 mt-0.5">Cuenta: <span class="font-mono">${escapeHtml(account)}</span></p>` : ''}
+    </div>
+  `;
+};
+
+async function reloadPaymentChannels() {
+  try {
+    const s = await getDocs(collection(db,'paymentChannels'));
+    paymentChannels = s.docs.map(d => ({id:d.id, ...d.data()}));
+    window.SmartecCache.set('paymentChannels', paymentChannels);
+    renderPaymentStats();
+  } catch(e) {
+    console.warn('Error recargando paymentChannels:', e);
+  }
+}
+
+window.toggleChannel = async (channelId) => {
+  const c = paymentChannels.find(x => x.id === channelId);
+  if (!c) return;
+
+  const willActivate = c.active === false;
+  if (!confirm(`¿${willActivate ? 'Activar' : 'Desactivar'} el canal "${c.bank} — ${c.customName}"?`)) return;
+
+  try {
+    await updateDoc(doc(db, 'paymentChannels', channelId), {
+      active: willActivate,
+      updatedAt: serverTimestamp()
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'paymentChannels',
+      docId: channelId,
+      before: { active: c.active },
+      after: { active: willActivate },
+      note: `Canal ${willActivate ? 'activado' : 'desactivado'}: ${c.code} · ${c.bank} — ${c.customName}`
+    });
+
+    await reloadPaymentChannels();
+    openChannelsModal(c.type);
+  } catch(e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  }
+};
+
+window.deleteChannel = async (channelId) => {
+  const c = paymentChannels.find(x => x.id === channelId);
+  if (!c) return;
+
+  // Verificar si el canal tiene ventas asociadas
+  // Por ahora revisamos en el estado `sales` en memoria.
+  // (En FASE 2 las ventas guardarán `paymentChannelId`)
+  const salesWithChannel = sales.filter(s => s.paymentChannelId === channelId);
+
+  if (salesWithChannel.length > 0) {
+    alert(
+      `⛔ Este canal tiene ${salesWithChannel.length} venta(s) asociada(s).\n\n` +
+      `No se puede eliminar porque afectaría la trazabilidad.\n\n` +
+      `En su lugar, usa "Desactivar" para ocultarlo del POS sin perder el historial.`
+    );
+    return;
+  }
+
+  if (!confirm(`⚠️ ¿Eliminar definitivamente el canal "${c.bank} — ${c.customName}"?\n\nEsta acción no se puede deshacer.`)) return;
+
+  try {
+    await deleteDoc(doc(db, 'paymentChannels', channelId));
+
+    await audit({
+      action: 'delete',
+      collection: 'paymentChannels',
+      docId: channelId,
+      before: { code: c.code, bank: c.bank, customName: c.customName, type: c.type },
+      note: `Canal eliminado: ${c.code} · ${c.bank} — ${c.customName}`
+    });
+
+    await reloadPaymentChannels();
+    openChannelsModal(c.type);
+
+    alert('✅ Canal eliminado');
+  } catch(e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  }
+};
+
+function renderChannelCard(c) {
+  const icon = c.icon || (c.type === 'transferencia' ? '🏦' : '🛍️');
+  const bank = escapeHtml(c.bank || '');
+  const customName = escapeHtml(c.customName || '');
+  const account = escapeHtml(c.accountNumber || '');
+  const active = c.active !== false;
+
+  const displayName = customName ? `${bank} — ${customName}` : bank;
+
+  // Badge de estado
+  const badge = active
+    ? '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Activo</span>'
+    : '<span class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-semibold">Inactivo</span>';
+
+  // Color de fondo del ícono
+  const colorBg = c.color || '#e5e7eb';
+
+  return `
+    <div class="border rounded-lg p-4 flex items-center gap-3 ${active ? 'bg-white' : 'bg-gray-50 opacity-70'}">
+      <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-2xl"
+           style="background:${colorBg}20; border:2px solid ${colorBg}40">
+        ${icon}
+      </div>
+
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <p class="font-semibold text-sd text-sm truncate">${displayName}</p>
+          ${badge}
+        </div>
+        ${account ? `<p class="text-xs text-gray-500 mt-0.5">Cuenta: <span class="font-mono">${account}</span></p>` : ''}
+      </div>
+
+      <div class="flex gap-2 shrink-0">
+        <button onclick="openChannelForm('${c.id}')" class="text-sl hover:text-sd text-xs font-semibold px-2 py-1" title="Editar">
+          ✏️ Editar
+        </button>
+        <button onclick="toggleChannel('${c.id}')" class="text-xs font-semibold px-2 py-1 ${active ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800'}" title="${active ? 'Desactivar' : 'Activar'}">
+          ${active ? '⏸ Desactivar' : '▶ Activar'}
+        </button>
+        <button onclick="deleteChannel('${c.id}')" class="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1" title="Eliminar">
+          🗑
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
    CONFIGURACIÓN
 ============================================================ */
 function renderSettings() {
+  // 🆕 Actualizar contadores de métodos de pago
+  renderPaymentStats();
+
   $('set-whatsapp').value = settings.whatsapp || '';
   $('set-minstock').value = settings.minStock || 5;
   $('set-taxEnabled').checked = !!settings.taxEnabled;
@@ -5009,6 +5802,8 @@ window.closeForm = () => { const m=$('form-modal'); m.classList.add('hidden'); m
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    if (!$('channel-form-modal').classList.contains('hidden')) return closeChannelForm();
+    if (!$('channels-modal').classList.contains('hidden')) return closeChannelsModal();
     if (!$('form-modal').classList.contains('hidden')) return closeForm();
     if (!$('sale-modal').classList.contains('hidden')) return closeSaleModal();
     if (!$('audit-modal').classList.contains('hidden')) return closeAuditModal();
