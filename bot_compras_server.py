@@ -704,11 +704,11 @@ async def historial():
 # ============================================================
 
 if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 8000))
     print("=" * 60)
     print("  🤖 SMARTEC · BOT COMPRAS")
     print("=" * 60)
-    print("  Servidor corriendo en: http://localhost:8000")
-    print("  Documentación API:     http://localhost:8000/docs")
-    print("  Presiona Ctrl+C para detener")
+    print(f"  Servidor corriendo en puerto: {port}")
     print("=" * 60)
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")
