@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smartec · Punto de Venta</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="common.js"></script>
   <script src="cache.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
@@ -1591,38 +1592,100 @@
       });
 
 
-      // Descontar inventario y registrar movimientos
-      for (const it of cart) {
-        const invId = `${currentStore.storeId}_${it.variantId}`;
-        const invRef = doc(db,'inventory',invId);
-        const invSnap = await getDoc(invRef);
-        if (!invSnap.exists()) {
-          console.warn('Inventario no existe para', invId);
-          continue;
-        }
-        const inv = invSnap.data();
-        const stockBefore = Number(inv.stock||0);
-        const stockAfter = Math.max(0, stockBefore - it.qty);
+              // ============================================================
+      // 🆕 DESCONTAR INVENTARIO CON TRANSACCIÓN ATÓMICA
+      // Esto evita condiciones de carrera: si dos vendedores
+      // venden al mismo tiempo, uno gana y el otro recibe error.
+      // ============================================================
+      const { runTransaction } = await import(
+        "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js"
+      );
 
-        await updateDoc(invRef, { stock: stockAfter, updatedAt: serverTimestamp() });
+      const movimientosParaRegistrar = []; // guardamos aquí para registrar después
 
-        // Movimiento
-        await addDoc(collection(db,'inventoryMovements'), {
-          storeId: currentStore.storeId,
-          productId: it.productId,
-          variantId: it.variantId,
-          sku: it.sku,
-          productName: it.name,
-          type: 'salida',
-          qtyBefore: stockBefore,
-          qtyAfter: stockAfter,
-          delta: -it.qty,
-          reason: `Venta #${saleRef.id.slice(-6)}`,
-          saleId: saleRef.id,
-          userId: currentUser.uid,
-          userEmail: currentUser.email,
-          createdAt: serverTimestamp()
+      try {
+        await runTransaction(db, async (transaction) => {
+          // PASO 1: LEER TODOS los inventarios primero (obligatorio en transacciones)
+          const invDocs = [];
+          for (const it of cart) {
+            const invId = `${currentStore.storeId}_${it.variantId}`;
+            const invRef = doc(db,'inventory',invId);
+            const invSnap = await transaction.get(invRef);
+
+            if (!invSnap.exists()) {
+              throw new Error(`Inventario no encontrado para ${it.name}. Contacta al administrador.`);
+            }
+
+            const stockActual = Number(invSnap.data().stock || 0);
+
+            // ✅ VALIDACIÓN CRÍTICA: si no hay suficiente stock, abortar
+            if (stockActual < it.qty) {
+              throw new Error(
+                `⚠️ Stock insuficiente para "${it.name}":\n` +
+                `Disponible: ${stockActual} · Solicitado: ${it.qty}\n\n` +
+                `Alguien más pudo haber vendido este producto hace un momento. ` +
+                `Actualiza el catálogo y vuelve a intentar.`
+              );
+            }
+
+            invDocs.push({
+              ref: invRef,
+              stockBefore: stockActual,
+              stockAfter: stockActual - it.qty,
+              item: it
+            });
+          }
+
+          // PASO 2: ESCRIBIR los nuevos stocks (solo si todas las lecturas pasaron)
+          for (const d of invDocs) {
+            transaction.update(d.ref, {
+              stock: d.stockAfter,
+              updatedAt: serverTimestamp()
+            });
+            movimientosParaRegistrar.push({
+              storeId: currentStore.storeId,
+              productId: d.item.productId,
+              variantId: d.item.variantId,
+              sku: d.item.sku,
+              productName: d.item.name,
+              type: 'salida',
+              qtyBefore: d.stockBefore,
+              qtyAfter: d.stockAfter,
+              delta: -d.item.qty,
+              reason: `Venta #${saleRef.id.slice(-6)}`,
+              saleId: saleRef.id,
+              userId: currentUser.uid,
+              userEmail: currentUser.email,
+              createdAt: serverTimestamp()
+            });
+          }
         });
+      } catch (txError) {
+        console.error('❌ Transacción abortada:', txError);
+
+        // 🆕 Revertir la venta creada (porque el stock no se pudo descontar)
+        try {
+          const { deleteDoc } = await import(
+            "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js"
+          );
+          await deleteDoc(doc(db, 'sales', saleRef.id));
+          console.log('↩️ Venta revertida por falta de stock');
+        } catch (revErr) {
+          console.error('Error revirtiendo venta:', revErr);
+        }
+
+        alert(txError.message || 'Error al descontar stock. Intenta de nuevo.');
+        btn.disabled = false;
+        btn.innerText = '💾 Registrar venta';
+        return;
+      }
+
+      // ============================================================
+      // PASO 3: Registrar los movimientos de inventario
+      // (fuera de la transacción, porque son solo auditoría)
+      // ============================================================
+      for (const mov of movimientosParaRegistrar) {
+        await addDoc(collection(db,'inventoryMovements'), mov);
       }
 
       // Auditoría

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Smartec · Inventario</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="common.js"></script>
 <script src="cache.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
@@ -800,34 +801,75 @@ function askConteoQty(p, v, existing) {
   const stockActual = getStockForVariant(v.variantId);
   const currentQty = existing ? existing.stockDespues : stockActual;
 
-  const qty = prompt(
-    `Conteo para:\n${p.name}\n${[colorName(v.color, v.colorName), v.size].filter(Boolean).join(' · ') || 'Estándar'}\n\nStock actual: ${stockActual}\nIngresa la cantidad REAL contada:`,
-    currentQty
-  );
+  $('quick-mov-title').innerText = '📊 Conteo rápido';
+  const variantLabel = [colorName(v.color, v.colorName), v.size].filter(Boolean).join(' · ') || 'Estándar';
+  $('quick-mov-subtitle').innerText = `${p.name} · ${variantLabel}`;
 
-  if (qty === null) return;
-  const qtyNum = Number(qty);
-  if (isNaN(qtyNum) || qtyNum < 0) return alert('Cantidad inválida');
+  $('quick-mov-body').innerHTML = `
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm">
+      <div class="flex justify-between">
+        <span class="text-gray-600">Stock actual en sistema:</span>
+        <span class="font-bold text-sd">${stockActual} und</span>
+      </div>
+    </div>
 
-  if (existing) {
-    existing.stockDespues = qtyNum;
-  } else {
-    conteoBuffer.push({
-      productId: p.id,
-      variantId: v.variantId,
-      sku: v.sku,
-      productName: p.name,
-      colorName: v.colorName,
-      size: v.size,
-      color: v.color,
-      stockAntes: stockActual,
-      stockDespues: qtyNum
-    });
-  }
+    <label class="text-xs font-semibold text-sd block mb-1">
+      Cantidad REAL contada físicamente
+    </label>
+    <input id="conteo-qty" type="number" min="0" value="${currentQty}"
+           class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-2xl font-bold text-center mb-3 focus:outline-none focus:border-sl"
+           autofocus>
 
-  renderConteo();
-  $('search').value = '';
-  alert(`✅ ${p.name} agregado al conteo`);
+    <p class="text-xs text-gray-400 text-center mb-4">
+      Ingresa el número de unidades que contaste en la tienda.
+    </p>
+
+    <div class="flex gap-2">
+      <button onclick="closeQuickMov()" class="flex-1 bg-gray-100 text-sd py-3 rounded-lg hover:bg-gray-200 font-semibold">
+        Cancelar
+      </button>
+      <button id="conteo-confirm-btn" class="flex-1 bg-sd text-white py-3 rounded-lg hover:bg-sl font-bold">
+        Agregar al conteo
+      </button>
+    </div>
+  `;
+
+  $('conteo-confirm-btn').onclick = () => {
+    const qtyNum = Number($('conteo-qty').value);
+    if (isNaN(qtyNum) || qtyNum < 0) {
+      alert('⚠️ Cantidad inválida');
+      return;
+    }
+
+    if (existing) {
+      existing.stockDespues = qtyNum;
+    } else {
+      conteoBuffer.push({
+        productId: p.id,
+        variantId: v.variantId,
+        sku: v.sku,
+        productName: p.name,
+        colorName: v.colorName,
+        size: v.size,
+        color: v.color,
+        stockAntes: stockActual,
+        stockDespues: qtyNum
+      });
+    }
+
+    closeQuickMov();
+    renderConteo();
+    $('search').value = '';
+  };
+
+  const m = $('quick-mov-modal');
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+
+  setTimeout(() => {
+    const input = $('conteo-qty');
+    if (input) { input.focus(); input.select(); }
+  }, 100);
 }
 
 function renderConteo() {
@@ -1228,6 +1270,13 @@ function renderAll() {
   renderConteo();
   renderRecepcion();
 }
+
+// 🆕 Permitir Enter en el input de conteo
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && $('conteo-confirm-btn') && !$('quick-mov-modal').classList.contains('hidden')) {
+    $('conteo-confirm-btn').click();
+  }
+});
 
 /* Cerrar con ESC */
 document.addEventListener('keydown', (e) => {

@@ -542,6 +542,9 @@ function renderKPIs() {
   let total = 0, cost = 0, expense = 0, tax = 0, retention = 0;
 
   list.forEach(e => {
+    // ✅ Los gastos anulados se excluyen de todos los totales
+    if (e.status === 'anulado') return;
+
     total += Number(e.total || 0);
     if (e.type === 'costo') cost += Number(e.total || 0);
     else expense += Number(e.total || 0);
@@ -569,14 +572,16 @@ function renderTable() {
   }
   empty.classList.add('hidden');
 
-  tb.innerHTML = list.map(e => {
+    tb.innerHTML = list.map(e => {
     const cat = categories.find(c => c.slug === e.category);
+    const isAnulado = e.status === 'anulado';
+    const rowClass = isAnulado ? 'bg-gray-50 opacity-60' : '';
     const store = stores.find(s => s.storeId === e.storeId);
     const typeBadge = e.type === 'costo'
       ? '<span class="text-[10px] px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-semibold">Costo</span>'
       : '<span class="text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-700 font-semibold">Gasto</span>';
 
-      return `<tr class="border-b hover:bg-gray-50">
+      return `<tr class="border-b hover:bg-gray-50 ${rowClass}">
       <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${e.date || '-'}</td>
       <td class="p-3">${typeBadge}</td>
       <td class="p-3 text-xs">${cat?.name || e.category || '-'}</td>
@@ -592,10 +597,12 @@ function renderTable() {
           ? `<a href="${e.supportUrl}" target="_blank" class="text-sl hover:underline text-xs">📎 Ver</a>`
           : '<span class="text-gray-300 text-xs">—</span>'}
       </td>
-      <td class="p-3 text-right whitespace-nowrap">
+        <td class="p-3 text-right whitespace-nowrap">
         <button onclick='viewDetail("${e.id}")' class="text-sl hover:underline text-xs mr-2">Ver</button>
-        <button onclick='editExpense("${e.id}")' class="text-sl hover:underline text-xs mr-2">Editar</button>
-        <button onclick='deleteExpense("${e.id}")' class="text-red-500 hover:underline text-xs">Borrar</button>
+        ${e.status !== 'anulado' ? `
+          <button onclick='editExpense("${e.id}")' class="text-sl hover:underline text-xs mr-2">Editar</button>
+          <button onclick='anularExpense("${e.id}")' class="text-orange-500 hover:underline text-xs">Anular</button>
+        ` : '<span class="text-[10px] text-gray-400 italic">Anulado</span>'}
       </td>
     </tr>`;
   }).join('');
@@ -893,10 +900,53 @@ window.closeDetail = () => {
   m.classList.add('hidden'); m.classList.remove('flex');
 };
 
+window.anularExpense = async (id) => {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+
+  const motivo = prompt(
+    `Anular el movimiento:\n"${e.concept}" · ${fmt(e.total)}\n\n` +
+    `El movimiento NO se borra (queda en auditoría), pero se excluye de los totales.\n\n` +
+    `Motivo de la anulación (obligatorio):`
+  );
+
+  if (!motivo || !motivo.trim()) {
+    return alert('⚠️ Debes escribir el motivo de la anulación.');
+  }
+
+  try {
+    await updateDoc(doc(db,'expenses',id), {
+      status: 'anulado',
+      anuladoPor: currentUser.email,
+      anuladoAt: serverTimestamp(),
+      motivoAnulacion: motivo.trim(),
+      updatedAt: serverTimestamp()
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'expenses',
+      docId: id,
+      before: { status: e.status || 'activo' },
+      after: { status: 'anulado', motivoAnulacion: motivo.trim() },
+      note: `Gasto anulado: ${e.concept} · ${fmt(e.total)} · Motivo: ${motivo.trim()}`
+    });
+
+    window.SmartecCache.invalidate('expenses_all');
+    await loadExpenses();
+    renderAll();
+    alert('✅ Movimiento anulado correctamente (queda registrado en auditoría).');
+  } catch(err) {
+    console.error(err);
+    alert('Error al anular: ' + err.message);
+  }
+};
+
+// Mantengo deleteExpense (por si algo lo llama) pero ya no está en la UI
 window.deleteExpense = async (id) => {
   const e = expenses.find(x => x.id === id);
   if (!e) return;
-  if (!confirm(`¿Eliminar el movimiento "${e.concept}" por ${fmt(e.total)}?\n\nEsta acción no se puede deshacer.`)) return;
+  if (!confirm(`⚠️ BORRAR definitivamente el movimiento "${e.concept}" por ${fmt(e.total)}?\n\nEsta acción NO se puede deshacer y solo está disponible para superadmin.`)) return;
 
   try {
     if (e.supportUrl) {
@@ -976,7 +1026,7 @@ window.exportPDF = () => {
   });
   y = doc.lastAutoTable.finalY + 10;
 
-  const rows = list.map(e => {
+    const rows = list.map(e => {
     const cat = categories.find(c => c.slug === e.category);
     const store = stores.find(s => s.storeId === e.storeId);
     return [
@@ -984,6 +1034,7 @@ window.exportPDF = () => {
       e.type === 'costo' ? 'Costo' : 'Gasto',
       cat?.name || e.category,
       e.provider || '',
+      e.responsible || '',                                   // 🆕 Responsable
       (e.concept || '').substring(0, 40),
       e.storeId === 'general' ? 'General' : (store?.name || e.storeId),
       '$' + Number(e.amount||0).toLocaleString('es-CO'),
@@ -997,12 +1048,16 @@ window.exportPDF = () => {
 
   doc.autoTable({
     startY: y,
-    head: [['Fecha','Tipo','Categoría','Proveedor','Concepto','Tienda','Base','IVA','Total']],
+    head: [['Fecha','Tipo','Categoría','Proveedor','Responsable','Concepto','Tienda','Base','IVA','Total']],
     body: rows,
     theme: 'striped',
     headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 8 },
     bodyStyles: { fontSize: 8 },
-    margin: { left: 14, right: 14 }
+    margin: { left: 14, right: 14 },
+    columnStyles: {
+      4: { cellWidth: 32 },  // Responsable
+      5: { cellWidth: 45 }   // Concepto (se ajusta para que no se desborde)
+    }
   });
 
   const pages = doc.internal.getNumberOfPages();
