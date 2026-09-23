@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Smartec · Centro Contable</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="common.js"></script>
 <script src="cache.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -278,6 +279,7 @@ const DEFAULT_CATEGORIES = [
 ============================================================ */
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const escapeHtml = window.Smartec.escapeHtml;   // 🆕
 const fmtDate = ts => {
   if (!ts) return '-';
   const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
@@ -584,11 +586,11 @@ function renderTable() {
       return `<tr class="border-b hover:bg-gray-50 ${rowClass}">
       <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${e.date || '-'}</td>
       <td class="p-3">${typeBadge}</td>
-      <td class="p-3 text-xs">${cat?.name || e.category || '-'}</td>
-      <td class="p-3 text-xs">${e.provider || '-'}</td>
-      <td class="p-3 text-xs">${e.responsible || '-'}</td>
-      <td class="p-3 text-xs max-w-xs truncate">${e.concept || '-'}</td>
-      <td class="p-3 text-xs">${e.storeId === 'general' ? 'General' : (store?.name || e.storeId || '-')}</td>
+      <td class="p-3 text-xs">${escapeHtml(cat?.name || e.category) || '-'}</td>
+      <td class="p-3 text-xs">${escapeHtml(e.provider) || '-'}</td>
+      <td class="p-3 text-xs">${escapeHtml(e.responsible) || '-'}</td>
+      <td class="p-3 text-xs max-w-xs truncate">${escapeHtml(e.concept) || '-'}</td>
+      <td class="p-3 text-xs">${e.storeId === 'general' ? 'General' : escapeHtml(store?.name) || e.storeId || '-'}</td>
       <td class="p-3 text-right text-xs">${fmt(e.amount)}</td>
       <td class="p-3 text-right text-xs text-gray-500">${fmt(e.taxAmount)}</td>
       <td class="p-3 text-right text-xs font-bold text-sd">${fmt(e.total)}</td>
@@ -745,7 +747,7 @@ function renderForm(v) {
 
   // Cargar info del soporte si ya existe
   if (v.supportUrl) {
-    $('x-file-info').innerHTML = `Soporte actual: <a href="${v.supportUrl}" target="_blank" class="text-sl hover:underline">📎 Ver archivo</a>`;
+    $('x-file-info').innerHTML = `Soporte actual: <a href="${v.supportUrl}" target="_blank" class="text-sl hover:underline">📎 ${escapeHtml(v.supportName) || 'Ver archivo'}</a>`;
   }
 }
 
@@ -863,15 +865,15 @@ window.viewDetail = (id) => {
     <div class="grid grid-cols-2 gap-3 text-sm mb-4">
       <div><p class="text-xs text-gray-400">Fecha</p><p class="font-semibold">${e.date}</p></div>
       <div><p class="text-xs text-gray-400">Tipo</p><p class="font-semibold capitalize">${e.type}</p></div>
-      <div><p class="text-xs text-gray-400">Categoría</p><p class="font-semibold">${cat?.name || e.category}</p></div>
-      <div><p class="text-xs text-gray-400">Tienda</p><p class="font-semibold">${e.storeId === 'general' ? 'General' : (store?.name || e.storeId)}</p></div>
-      <div><p class="text-xs text-gray-400">Proveedor</p><p class="font-semibold">${e.provider || '—'}</p></div>
-      <div><p class="text-xs text-gray-400">NIT</p><p class="font-semibold">${e.providerNit || '—'}</p></div>
-      <div class="col-span-2"><p class="text-xs text-gray-400">Responsable</p><p class="font-semibold">${e.responsible || '—'}</p></div>
+      <div><p class="text-xs text-gray-400">Categoría</p><p class="font-semibold">${escapeHtml(cat?.name || e.category)}</p></div>
+      <div><p class="text-xs text-gray-400">Tienda</p><p class="font-semibold">${e.storeId === 'general' ? 'General' : escapeHtml(store?.name) || e.storeId}</p></div>
+      <div><p class="text-xs text-gray-400">Proveedor</p><p class="font-semibold">${escapeHtml(e.provider) || '—'}</p></div>
+      <div><p class="text-xs text-gray-400">NIT</p><p class="font-semibold">${escapeHtml(e.providerNit) || '—'}</p></div>
+      <div class="col-span-2"><p class="text-xs text-gray-400">Responsable</p><p class="font-semibold">${escapeHtml(e.responsible) || '—'}</p></div>
     </div>
     <div class="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
       <p class="text-xs text-gray-400 mb-1">Concepto</p>
-      <p>${e.concept}</p>
+      <p>${escapeHtml(e.concept)}</p>
     </div>
     <div class="bg-gray-50 p-3 rounded-lg mb-4 text-sm space-y-1">
       <div class="flex justify-between"><span class="text-gray-500">Base</span><span>${fmt(e.amount)}</span></div>
@@ -883,10 +885,10 @@ window.viewDetail = (id) => {
       <div><p class="text-xs text-gray-400">Forma de pago</p><p class="font-semibold capitalize">${e.paymentMethod || '-'}</p></div>
       <div><p class="text-xs text-gray-400">Registró</p><p class="font-semibold text-xs">${e.createdBy || '-'}</p></div>
     </div>
-    ${e.notes ? `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm mb-4"><p class="text-xs text-yellow-700 font-semibold mb-1">Notas</p><p>${e.notes}</p></div>` : ''}
+    ${e.notes ? `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm mb-4"><p class="text-xs text-yellow-700 font-semibold mb-1">Notas</p><p>${escapeHtml(e.notes)}</p></div>` : ''}
     ${e.supportUrl ? `
       <a href="${e.supportUrl}" target="_blank" class="block text-center bg-sl text-white py-2 rounded-lg hover:bg-sd font-semibold text-sm">
-        📎 Ver soporte adjunto
+        📎 Ver soporte adjunto (${escapeHtml(e.supportName) || 'ver'})
       </a>
     ` : '<p class="text-xs text-gray-400 text-center">Sin soporte adjunto</p>'}
   `;
