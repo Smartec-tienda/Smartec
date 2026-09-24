@@ -44,6 +44,13 @@
     background-color: #4A7A9A;
     color: #ffffff;
   }
+
+  /* Radio buttons de método de pago */
+  .payment-method-btn input:checked + span {
+    background-color: #0A2A4A;
+    color: #ffffff;
+    border-color: #0A2A4A;
+  }
   </style>
   </head>
   <body class="bg-gray-100 font-sans">
@@ -146,14 +153,54 @@
             <p id="c-phone-status" class="col-span-2 text-[10px] text-gray-400 -mt-1"></p>
             <input id="c-address" placeholder="Dirección" class="col-span-2 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl">
             <input id="c-city" placeholder="Ciudad" class="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl">
-            <select id="c-payment" class="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl">
-              <option value="efectivo">Efectivo</option>
-              <option value="nequi">Nequi</option>
-              <option value="transferencia">Transferencia</option>
-              <option value="tarjeta">Tarjeta</option>
-              <option value="contraentrega">Contra entrega</option>
-              <option value="credito">Crédito</option>
-            </select>
+            <div class="col-span-2">
+              <label class="text-xs font-semibold text-sd">Método de pago *</label>
+              <div id="payment-methods" class="flex flex-wrap gap-2 mt-1">
+                <label class="payment-method-btn cursor-pointer">
+                  <input type="radio" name="c-payment" value="efectivo" class="hidden" checked>
+                  <span class="inline-block px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:border-sl transition">💵 Efectivo</span>
+                </label>
+                <label class="payment-method-btn cursor-pointer">
+                  <input type="radio" name="c-payment" value="transferencia" class="hidden">
+                  <span class="inline-block px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:border-sl transition">🔄 Transferencia</span>
+                </label>
+                <label class="payment-method-btn cursor-pointer">
+                  <input type="radio" name="c-payment" value="tarjeta" class="hidden">
+                  <span class="inline-block px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:border-sl transition">💳 Tarjeta</span>
+                </label>
+                <label class="payment-method-btn cursor-pointer">
+                  <input type="radio" name="c-payment" value="contraentrega" class="hidden">
+                  <span class="inline-block px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:border-sl transition">📦 Contra entrega</span>
+                </label>
+                <label class="payment-method-btn cursor-pointer">
+                  <input type="radio" name="c-payment" value="credito" class="hidden">
+                  <span class="inline-block px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:border-sl transition">🛍️ Crédito</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Selector de canal de transferencia -->
+            <div id="payment-channel-wrap" class="col-span-2 hidden">
+              <label class="text-xs font-semibold text-sd">Cuenta destino *</label>
+              <select id="payment-channel" class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl mt-1">
+                <option value="">— Selecciona una cuenta —</option>
+              </select>
+            </div>
+
+            <!-- Selector de entidad de crédito -->
+            <div id="payment-entity-wrap" class="col-span-2 hidden">
+              <label class="text-xs font-semibold text-sd">Entidad de crédito *</label>
+              <select id="payment-entity" class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl mt-1">
+                <option value="">— Selecciona una entidad —</option>
+              </select>
+            </div>
+
+            <!-- Aviso de contra entrega -->
+            <div id="payment-cta-note" class="col-span-2 hidden">
+              <div class="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-700">
+                ⚠️ <b>Contra entrega:</b> la venta quedará como <b>PAGO PENDIENTE</b> hasta confirmar el cobro.
+              </div>
+            </div>
             <input id="c-notes" placeholder="Notas / observaciones" class="col-span-2 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl">
           </div>
         </div>
@@ -542,6 +589,130 @@
     }
   });
 
+  /* ============================================================
+   MÉTODOS DE PAGO — Carga y manejo
+============================================================ */
+let paymentChannelsList = [];  // canales activos (transferencia + credito)
+
+async function loadPaymentChannels() {
+  try {
+    const C = window.SmartecCache;
+    const allChannels = await C.wrap('paymentChannels', async () => {
+      const s = await getDocs(collection(db, 'paymentChannels'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+    // Solo activos
+    paymentChannelsList = allChannels.filter(c => c.active !== false);
+    renderPaymentSelectors();
+  } catch(e) {
+    console.warn('Error cargando paymentChannels:', e);
+    paymentChannelsList = [];
+  }
+}
+
+function renderPaymentSelectors() {
+  // Transferencias
+  const transfers = paymentChannelsList
+    .filter(c => c.type === 'transferencia')
+    .sort((a, b) => {
+      const bk = (a.bank || '').localeCompare(b.bank || '');
+      if (bk !== 0) return bk;
+      return (a.customName || '').localeCompare(b.customName || '');
+    });
+
+  const channelSel = $('payment-channel');
+  if (channelSel) {
+    channelSel.innerHTML = '<option value="">— Selecciona una cuenta —</option>' +
+      transfers.map(c => {
+        const icon = c.icon || '🏦';
+        const label = c.customName ? `${c.bank} — ${c.customName}` : c.bank;
+        const account = c.accountNumber ? ` (${c.accountNumber})` : '';
+        return `<option value="${c.id}">${icon} ${escapeHtml(label)}${escapeHtml(account)}</option>`;
+      }).join('');
+  }
+
+  // Créditos
+  const credits = paymentChannelsList
+    .filter(c => c.type === 'credito')
+    .sort((a, b) => (a.bank || '').localeCompare(b.bank || ''));
+
+  const entitySel = $('payment-entity');
+  if (entitySel) {
+    entitySel.innerHTML = '<option value="">— Selecciona una entidad —</option>' +
+      credits.map(c => {
+        const icon = c.icon || '🛍️';
+        const label = c.customName ? `${c.bank} — ${c.customName}` : c.bank;
+        return `<option value="${c.id}">${icon} ${escapeHtml(label)}</option>`;
+      }).join('');
+  }
+}
+
+function updatePaymentUI() {
+  const selected = document.querySelector('input[name="c-payment"]:checked')?.value || 'efectivo';
+
+  const channelWrap = $('payment-channel-wrap');
+  const entityWrap = $('payment-entity-wrap');
+  const ctaNote = $('payment-cta-note');
+  const channelSel = $('payment-channel');
+  const entitySel = $('payment-entity');
+
+  // Ocultar todo por defecto
+  channelWrap?.classList.add('hidden');
+  entityWrap?.classList.add('hidden');
+  ctaNote?.classList.add('hidden');
+
+  if (selected === 'transferencia') {
+    channelWrap?.classList.remove('hidden');
+    if (channelSel) channelSel.value = '';
+  } else if (selected === 'credito') {
+    entityWrap?.classList.remove('hidden');
+    if (entitySel) entitySel.value = '';
+  } else if (selected === 'contraentrega') {
+    ctaNote?.classList.remove('hidden');
+  }
+
+  // Revalidar formulario
+  validatePaymentForm();
+}
+
+function validatePaymentForm() {
+  const selected = document.querySelector('input[name="c-payment"]:checked')?.value || 'efectivo';
+  const btn = $('save-btn');
+
+  // Validación de canal
+  if (selected === 'transferencia') {
+    const channelId = $('payment-channel')?.value;
+    if (!channelId) {
+      btn.disabled = true;
+      return;
+    }
+  }
+
+  // Validación de entidad de crédito
+  if (selected === 'credito') {
+    const entityId = $('payment-entity')?.value;
+    if (!entityId) {
+      btn.disabled = true;
+      return;
+    }
+  }
+
+  // Si tiene carrito, habilitar
+  btn.disabled = cart.length === 0;
+}
+
+// Listener: cambio de método de pago
+document.querySelectorAll('input[name="c-payment"]').forEach(radio => {
+  radio.addEventListener('change', updatePaymentUI);
+});
+
+// Listener: cambio de canal
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'payment-channel' || e.target.id === 'payment-entity') {
+    validatePaymentForm();
+  }
+});
+
   /* ============ CARGA DE DATOS ============ */
   async function loadData() {
     try {
@@ -690,7 +861,8 @@
       renderCategoryFilters();
       renderProducts();
       renderCart();
-      
+      await loadPaymentChannels();
+      updatePaymentUI();
 
     } catch(e) {
       console.error('Error en loadData:', e);
@@ -1528,7 +1700,47 @@
       const sellerCommissionAmount = poolAmount + bonusAmount;
       const storeCommissionAmount = 0;
 
-    const paymentMethod = $('c-payment').value;
+    // ============ MÉTODO DE PAGO (nuevo) ============
+    const paymentMethod = document.querySelector('input[name="c-payment"]:checked')?.value || 'efectivo';
+    const paymentChannelId = paymentMethod === 'transferencia'
+      ? ($('payment-channel')?.value || null)
+      : null;
+    const paymentEntityId = paymentMethod === 'credito'
+      ? ($('payment-entity')?.value || null)
+      : null;
+
+    // Obtener snapshot del canal/entidad elegido
+    let paymentChannelData = null;
+    if (paymentChannelId || paymentEntityId) {
+      const selectedChannel = paymentChannelsList.find(c =>
+        c.id === (paymentChannelId || paymentEntityId)
+      );
+      if (selectedChannel) {
+        paymentChannelData = {
+          id: selectedChannel.id,
+          code: selectedChannel.code || null,
+          type: selectedChannel.type,
+          bank: selectedChannel.bank || null,
+          name: selectedChannel.customName || null,
+          accountNumber: selectedChannel.accountNumber || null,
+          icon: selectedChannel.icon || null,
+          color: selectedChannel.color || null
+        };
+      }
+    }
+
+    // Estado del pago
+    const paymentStatus = paymentMethod === 'contraentrega' ? 'pending' : 'completed';
+
+    // Validación final: si es transferencia y no hay canal, bloquear
+    if (paymentMethod === 'transferencia' && !paymentChannelData) {
+      alert('⚠️ Debes seleccionar la cuenta de transferencia.');
+      return;
+    }
+    if (paymentMethod === 'credito' && !paymentChannelData) {
+      alert('⚠️ Debes seleccionar la entidad de crédito.');
+      return;
+    }
 
     const btn = $('save-btn');
     btn.disabled = true; btn.innerText = '⏳ Guardando...';
@@ -1579,6 +1791,15 @@
         accumulatedBefore,
         accumulatedAfter,
         paymentMethod,
+        paymentStatus,                                       // 🆕 'completed' | 'pending'
+        paymentChannelId: paymentChannelData?.id || null,    // 🆕
+        paymentChannelCode: paymentChannelData?.code || null, // 🆕
+        paymentChannelType: paymentChannelData?.type || null, // 🆕
+        paymentChannelBank: paymentChannelData?.bank || null, // 🆕
+        paymentChannelName: paymentChannelData?.name || null, // 🆕
+        paymentChannelAccount: paymentChannelData?.accountNumber || null, // 🆕
+        paymentChannelIcon: paymentChannelData?.icon || null, // 🆕
+        paymentChannelColor: paymentChannelData?.color || null, // 🆕
         status: 'completada',
         sellerUid: currentUser.uid,
         sellerEmail: currentUser.email,
@@ -1711,6 +1932,8 @@
         sellerCommissionAmount, storeCommissionAmount,
         accumulatedBefore, accumulatedAfter,
         paymentMethod,
+        paymentStatus,                                       // 🆕
+        paymentChannelData,                                  // 🆕
         storeName: currentStore.name,
         sellerName: currentUserData.name || currentUser.email,
         createdAt: new Date()
@@ -1755,6 +1978,16 @@
     ['c-name','c-phone','c-email','c-address','c-city','c-notes'].forEach(id => $(id).value = '');
     $('t-discount').value = 0;
     $('t-shipping').value = 0;
+
+    // 🆕 Resetear método de pago
+    const defaultRadio = document.querySelector('input[name="c-payment"][value="efectivo"]');
+    if (defaultRadio) defaultRadio.checked = true;
+    const channelSel = $('payment-channel');
+    if (channelSel) channelSel.value = '';
+    const entitySel = $('payment-entity');
+    if (entitySel) entitySel.value = '';
+    updatePaymentUI();
+
     lastAutocompletedPhone = '';
     const status = $('c-phone-status');
     if (status) {
