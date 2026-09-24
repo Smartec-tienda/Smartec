@@ -395,13 +395,28 @@
         <span class="text-sm font-medium text-sd">📦 Top productos</span>
       </label>
       <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
+        <input type="checkbox" class="report-toggle w-4 h-4" data-report="byMethod" checked>
+        <span class="text-sm font-medium text-sd">💳 Por método y canal</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
+        <input type="checkbox" class="report-toggle w-4 h-4" data-report="pending" checked>
+        <span class="text-sm font-medium text-sd">⏳ Cobros pendientes</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
+        <input type="checkbox" class="report-toggle w-4 h-4" data-report="reconciliation" checked>
+        <span class="text-sm font-medium text-sd">🏦 Conciliación bancaria</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
         <input type="checkbox" class="report-toggle w-4 h-4" data-report="byCategory" checked>
         <span class="text-sm font-medium text-sd">📂 Por categoría</span>
       </label>
+      <!-- ❌ ELIMINADO: reemplazado por "Por método y canal" -->
+      <!--
       <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
         <input type="checkbox" class="report-toggle w-4 h-4" data-report="byPayment" checked>
         <span class="text-sm font-medium text-sd">💳 Por método pago</span>
       </label>
+      -->
       <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
         <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartSales" checked>
         <span class="text-sm font-medium text-sd">📈 Gráfico de ventas</span>
@@ -432,7 +447,7 @@
 
   <!-- Filtros -->
   <div class="bg-white rounded-xl shadow p-4 mb-6">
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
       <div>
         <label class="text-[10px] font-semibold text-sd">Desde</label>
         <input id="rep-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
@@ -465,6 +480,31 @@
           <option value="all">Todas</option>
         </select>
       </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Método de pago</label>
+        <select id="rep-payment-method" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="all">Todos</option>
+          <option value="efectivo">💵 Efectivo</option>
+          <option value="transferencia">🔄 Transferencia</option>
+          <option value="tarjeta">💳 Tarjeta</option>
+          <option value="contraentrega">📦 Contra entrega</option>
+          <option value="credito">🛍️ Crédito</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Canal / Cuenta</label>
+        <select id="rep-payment-channel" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="all">Todos</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Estado de pago</label>
+        <select id="rep-payment-status" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="all">Todos</option>
+          <option value="completed">✅ Pagados</option>
+          <option value="pending">⏳ Pendientes</option>
+        </select>
+      </div>
     </div>
     <div class="flex justify-between items-center mt-4 pt-4 border-t flex-wrap gap-2">
       <div class="flex gap-2 flex-wrap">
@@ -479,7 +519,7 @@
   </div>
 
     <!-- ========== KPIs ========== -->
-  <div id="report-block-kpis" class="report-block grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div id="report-block-kpis" class="report-block grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
     <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
       <p class="text-xs text-gray-500">Total vendido</p>
       <p id="rep-kpi-sales" class="text-2xl font-bold text-sl mt-1">$0</p>
@@ -490,7 +530,17 @@
       <p id="rep-kpi-profit" class="text-2xl font-bold text-green-600 mt-1">$0</p>
       <p id="rep-kpi-margin" class="text-[10px] text-gray-400 mt-1">Margen 0%</p>
     </div>
-      <div class="bg-white p-5 rounded-xl shadow border-l-4 border-orange-500">
+    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-emerald-500">
+      <p class="text-xs text-gray-500">✅ Cobrado</p>
+      <p id="rep-kpi-collected" class="text-2xl font-bold text-emerald-600 mt-1">$0</p>
+      <p id="rep-kpi-collected-pct" class="text-[10px] text-gray-400 mt-1">0% del total</p>
+    </div>
+    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-amber-500">
+      <p class="text-xs text-gray-500">⏳ Pendiente de cobro</p>
+      <p id="rep-kpi-pending" class="text-2xl font-bold text-amber-600 mt-1">$0</p>
+      <p id="rep-kpi-pending-pct" class="text-[10px] text-gray-400 mt-1">0% del total</p>
+    </div>
+    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-orange-500">
       <p class="text-xs text-gray-500">Comisiones totales</p>
       <p id="rep-kpi-commission" class="text-2xl font-bold text-orange-500 mt-1">$0</p>
       <div class="text-[10px] text-gray-500 mt-1 flex flex-wrap gap-x-2">
@@ -498,18 +548,87 @@
         <span>Bonus: <b id="rep-kpi-bonus" class="text-green-600">$0</b></span>
       </div>
     </div>
-    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-blue-500">
-      <p class="text-xs text-gray-500">Ticket promedio</p>
-      <p id="rep-kpi-ticket" class="text-2xl font-bold text-sd mt-1">$0</p>
-      <p id="rep-kpi-units" class="text-[10px] text-gray-400 mt-1">0 unidades</p>
+  </div>
+
+  <!-- Bloque: Desglose por método y canal -->
+  <div id="report-block-byMethod" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-bold text-sd flex items-center gap-2">💳 Desglose por método y canal</h3>
+        <p class="text-[10px] text-gray-400 mt-0.5">Permite conciliación bancaria y control por cuenta</p>
+      </div>
+      <div id="rep-method-total" class="text-right">
+        <p class="text-[10px] text-gray-400">Total período</p>
+        <p class="text-lg font-bold text-sl">$0</p>
+      </div>
+    </div>
+    <div id="rep-by-method" class="space-y-3">
+      <!-- Se llena dinámicamente -->
     </div>
   </div>
 
+    <!-- ========== Bloque: Cobros pendientes ========== -->
+  <div id="report-block-pending" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-bold text-sd flex items-center gap-2">⏳ Cobros pendientes de confirmar</h3>
+        <p class="text-[10px] text-gray-400 mt-0.5">Ventas contra entrega u otras que aún no se han cobrado</p>
+      </div>
+      <div class="text-right">
+        <p class="text-[10px] text-gray-400">Total pendiente</p>
+        <p id="rep-pending-total" class="text-lg font-bold text-amber-600">$0</p>
+      </div>
+    </div>
+
+    <!-- Lista de pendientes -->
+    <div id="rep-pending-list" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
+      <!-- Se llena dinámicamente -->
+    </div>
+
+    <p id="rep-pending-empty" class="text-center py-8 text-gray-400 text-sm">
+      🎉 No hay cobros pendientes en este período
+    </p>
+  </div>
+
+  <!-- ========== Bloque: Conciliación bancaria ========== -->
+  <div id="report-block-reconciliation" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-bold text-sd flex items-center gap-2">🏦 Conciliación por cuenta</h3>
+        <p class="text-[10px] text-gray-400 mt-0.5">Cuánto ingresó a cada cuenta/canal en el período</p>
+      </div>
+      <button onclick="exportReconciliationPDF()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-xs font-semibold flex items-center gap-1">
+        📄 Exportar conciliación
+      </button>
+    </div>
+
+    <div id="rep-reconciliation-list" class="space-y-3">
+      <!-- Se llena dinámicamente -->
+    </div>
+
+    <p id="rep-reconciliation-empty" class="text-center py-8 text-gray-400 text-sm">
+      Sin movimientos por cuenta en el período
+    </p>
+  </div>
+
+
   <!-- ========== Gráfico: Ventas por día ========== -->
   <div id="report-block-chartSales" class="report-block bg-white p-5 rounded-xl shadow mb-6">
-    <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
-      📈 Ventas en el tiempo
-    </h3>
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <h3 id="chart-sales-title" class="font-bold text-sd flex items-center gap-2">
+        📈 Ventas en el tiempo
+      </h3>
+      <select id="chart-sales-groupby" class="text-xs border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-sl">
+        <option value="day" selected>📅 Por día</option>
+        <option value="week">📆 Por semana</option>
+        <option value="month">🗓 Por mes</option>
+        <option value="paymentMethod">💳 Por método de pago</option>
+        <option value="paymentChannel">🏦 Por canal/cuenta</option>
+        <option value="store">🏪 Por tienda</option>
+        <option value="seller">👤 Por vendedor</option>
+        <option value="category">📂 Por categoría</option>
+      </select>
+    </div>
     <div class="h-64">
       <canvas id="chart-sales"></canvas>
     </div>
@@ -577,11 +696,13 @@
   </div>
 
   <!-- ========== Desglose por método de pago (detallado) ========== -->
+  <!-- ❌ ELIMINADO: reemplazado por "Desglose por método y canal" que es más completo -->
+  <!--
   <div id="report-block-byPayment" class="report-block bg-white p-5 rounded-xl shadow mb-6">
     <h3 class="font-bold text-sd mb-4">💳 Detalle por método de pago</h3>
     <div id="rep-by-payment-detail" class="grid grid-cols-2 md:grid-cols-5 gap-3"></div>
   </div>
-
+  -->
   <!-- ========== Detalle de ventas ========== -->
   <div id="report-block-detail" class="report-block bg-white rounded-xl shadow overflow-hidden">
     <div class="p-5 border-b flex justify-between items-center">
@@ -1092,6 +1213,21 @@
     </button>
     <h3 id="channel-form-title" class="text-xl font-bold text-sd mb-5 pr-10">Nuevo canal</h3>
     <div id="channel-form-body">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL CONFIRMAR COBRO ============ -->
+<div id="confirm-payment-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeConfirmPaymentModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeConfirmPaymentModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-1 pr-10">✅ Confirmar cobro</h3>
+    <p id="confirm-payment-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="confirm-payment-body">
       <!-- Se llena dinámicamente -->
     </div>
   </div>
@@ -3421,6 +3557,254 @@ window.closeChannelForm = () => {
   modal.classList.remove('flex');
 };
 
+/* ============================================================
+   MODAL DE CONFIRMAR COBRO
+============================================================ */
+window.openConfirmPaymentModal = (saleId) => {
+  const sale = sales.find(x => x.id === saleId);
+  if (!sale) return alert('Venta no encontrada');
+
+  const modal = $('confirm-payment-modal');
+  const subtitle = $('confirm-payment-subtitle');
+  const body = $('confirm-payment-body');
+  if (!modal || !body) return;
+
+  const store = stores.find(s => s.storeId === sale.storeId);
+  const base = (sale.commissionBase !== undefined)
+    ? Number(sale.commissionBase)
+    : (Number(sale.subtotal||0) - Number(sale.discount||0));
+
+  // Guardar el id de la venta en el dataset del modal
+  modal.dataset.saleId = saleId;
+
+  subtitle.innerText = `Venta de ${sale.customer?.name || 'Cliente'} · ${store?.name || sale.storeId}`;
+
+  // Opciones de canal de transferencia (solo activos)
+  const transferChannels = paymentChannels
+    .filter(c => c.type === 'transferencia' && c.active !== false)
+    .sort((a, b) => {
+      const bk = (a.bank || '').localeCompare(b.bank || '');
+      if (bk !== 0) return bk;
+      return (a.customName || '').localeCompare(b.customName || '');
+    });
+
+  const transferOptions = transferChannels.map(c => {
+    const icon = c.icon || '🏦';
+    const label = c.customName ? `${c.bank} — ${c.customName}` : c.bank;
+    const account = c.accountNumber ? ` (${c.accountNumber})` : '';
+    return `<option value="${c.id}">${icon} ${escapeHtml(label)}${escapeHtml(account)}</option>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-5">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-xs text-gray-600">Monto a cobrar:</p>
+        <p class="text-2xl font-bold text-amber-700">${fmt(base)}</p>
+      </div>
+      <p class="text-[10px] text-gray-500">
+        Venta registrada como <b>${sale.paymentMethod === 'contraentrega' ? '📦 Contra entrega' : sale.paymentMethod}</b>
+      </p>
+    </div>
+
+    <label class="text-xs font-semibold text-sd block mb-2">¿Cómo pagó el cliente? *</label>
+    <div class="grid grid-cols-3 gap-2 mb-4">
+      <button type="button" onclick="selectConfirmMethod('efectivo')" data-method="efectivo" class="confirm-method-btn flex flex-col items-center gap-1 p-3 border-2 border-gray-300 rounded-lg hover:border-sl transition">
+        <span class="text-2xl">💵</span>
+        <span class="text-xs font-semibold">Efectivo</span>
+      </button>
+      <button type="button" onclick="selectConfirmMethod('transferencia')" data-method="transferencia" class="confirm-method-btn flex flex-col items-center gap-1 p-3 border-2 border-gray-300 rounded-lg hover:border-sl transition">
+        <span class="text-2xl">🔄</span>
+        <span class="text-xs font-semibold">Transferencia</span>
+      </button>
+      <button type="button" onclick="selectConfirmMethod('tarjeta')" data-method="tarjeta" class="confirm-method-btn flex flex-col items-center gap-1 p-3 border-2 border-gray-300 rounded-lg hover:border-sl transition">
+        <span class="text-2xl">💳</span>
+        <span class="text-xs font-semibold">Tarjeta</span>
+      </button>
+    </div>
+
+    <!-- Selector de canal (solo para transferencia) -->
+    <div id="confirm-channel-wrap" class="hidden mb-4">
+      <label class="text-xs font-semibold text-sd block mb-1">Cuenta destino *</label>
+      <select id="confirm-channel" class="w-full px-3 py-2 border rounded-lg text-sm">
+        <option value="">— Selecciona una cuenta —</option>
+        ${transferOptions}
+      </select>
+    </div>
+
+    <label class="text-xs font-semibold text-sd block mb-1">Nota (opcional)</label>
+    <textarea id="confirm-notes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Ej: Cobrado al entregar a las 3pm..."></textarea>
+
+    <input type="hidden" id="confirm-method-value" value="">
+
+    <div class="flex gap-3 mt-5">
+      <button onclick="closeConfirmPaymentModal()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">
+        Cancelar
+      </button>
+      <button id="confirm-payment-btn" onclick="submitConfirmPayment()" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-semibold disabled:opacity-40" disabled>
+        ✅ Confirmar cobro
+      </button>
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+window.closeConfirmPaymentModal = () => {
+  const modal = $('confirm-payment-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  delete modal.dataset.saleId;
+};
+
+window.selectConfirmMethod = (method) => {
+  // Actualizar UI de los botones
+  document.querySelectorAll('.confirm-method-btn').forEach(btn => {
+    if (btn.dataset.method === method) {
+      btn.classList.remove('border-gray-300');
+      btn.classList.add('border-sl', 'bg-sl/10');
+    } else {
+      btn.classList.remove('border-sl', 'bg-sl/10');
+      btn.classList.add('border-gray-300');
+    }
+  });
+
+  const valueInput = $('confirm-method-value');
+  if (valueInput) valueInput.value = method;
+
+  // Mostrar/ocultar selector de canal
+  const channelWrap = $('confirm-channel-wrap');
+  if (channelWrap) {
+    if (method === 'transferencia') {
+      channelWrap.classList.remove('hidden');
+    } else {
+      channelWrap.classList.add('hidden');
+      const sel = $('confirm-channel');
+      if (sel) sel.value = '';
+    }
+  }
+
+  validateConfirmPayment();
+};
+
+function validateConfirmPayment() {
+  const method = $('confirm-method-value')?.value || '';
+  const btn = $('confirm-payment-btn');
+  if (!btn) return;
+
+  if (!method) {
+    btn.disabled = true;
+    return;
+  }
+
+  if (method === 'transferencia') {
+    const channelId = $('confirm-channel')?.value;
+    if (!channelId) {
+      btn.disabled = true;
+      return;
+    }
+  }
+
+  btn.disabled = false;
+}
+
+// Listener: al cambiar el canal, revalidar
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'confirm-channel') {
+    validateConfirmPayment();
+  }
+});
+
+window.submitConfirmPayment = async () => {
+  const modal = $('confirm-payment-modal');
+  const saleId = modal?.dataset.saleId;
+  if (!saleId) return;
+
+  const sale = sales.find(x => x.id === saleId);
+  if (!sale) return alert('Venta no encontrada');
+
+  const method = $('confirm-method-value')?.value;
+  const notes = $('confirm-notes')?.value.trim() || '';
+
+  if (!method) return alert('Debes seleccionar cómo pagó el cliente');
+
+  // Datos del canal si es transferencia
+  let channelData = null;
+  if (method === 'transferencia') {
+    const channelId = $('confirm-channel')?.value;
+    if (!channelId) return alert('Debes seleccionar la cuenta destino');
+
+    const selectedChannel = paymentChannels.find(c => c.id === channelId);
+    if (!selectedChannel) return alert('Canal no encontrado');
+
+    channelData = {
+      id: selectedChannel.id,
+      code: selectedChannel.code || null,
+      type: 'transferencia',
+      bank: selectedChannel.bank || null,
+      name: selectedChannel.customName || null,
+      accountNumber: selectedChannel.accountNumber || null,
+      icon: selectedChannel.icon || null,
+      color: selectedChannel.color || null
+    };
+  }
+
+  const btn = $('confirm-payment-btn');
+  if (btn) { btn.disabled = true; btn.innerText = '⏳ Guardando...'; }
+
+  try {
+    const before = {
+      paymentStatus: sale.paymentStatus || 'pending',
+      paymentMethod: sale.paymentMethod
+    };
+
+    const updateData = {
+      paymentStatus: 'completed',
+      finalPaymentMethod: method,
+      finalPaymentAt: serverTimestamp(),
+      finalPaymentBy: currentUser.email,
+      finalPaymentNotes: notes || null,
+      updatedAt: serverTimestamp()
+    };
+
+    if (channelData) {
+      updateData.finalPaymentChannelId = channelData.id;
+      updateData.finalPaymentChannelCode = channelData.code;
+      updateData.finalPaymentChannelBank = channelData.bank;
+      updateData.finalPaymentChannelName = channelData.name;
+      updateData.finalPaymentChannelAccount = channelData.accountNumber;
+      updateData.finalPaymentChannelIcon = channelData.icon;
+      updateData.finalPaymentChannelColor = channelData.color;
+    }
+
+    await updateDoc(doc(db, 'sales', saleId), updateData);
+
+    await audit({
+      action: 'update',
+      collection: 'sales',
+      docId: saleId,
+      before,
+      after: updateData,
+      note: `Cobro confirmado: ${method}${channelData ? ' (' + channelData.bank + ' - ' + channelData.name + ')' : ''} · ${fmt(sale.commissionBase || sale.total)}`
+    });
+
+    window.SmartecCache.invalidate('sales');
+
+    closeConfirmPaymentModal();
+
+    // Refrescar UI
+    await loadAll();
+    renderReports();
+
+    alert(`✅ Cobro confirmado como ${method}${channelData ? ' a ' + channelData.bank : ''}`);
+  } catch(e) {
+    console.error('Error confirmando cobro:', e);
+    alert('Error: ' + e.message);
+    if (btn) { btn.disabled = false; btn.innerText = '✅ Confirmar cobro'; }
+  }
+};
+
 window.saveChannel = async (channelId = '') => {
   // Determinar tipo según el canal existente o el modal abierto
   let type = 'transferencia';
@@ -4870,12 +5254,16 @@ let reportFilters = {
   storeId: 'all',
   sellerUid: 'all',
   category: 'all',
-  brand: 'all'
+  brand: 'all',
+  paymentMethod: 'all',       // 🆕
+  paymentChannelId: 'all',    // 🆕
+  paymentStatus: 'all'        // 🆕
 };
 
 let reportVisibility = {
   kpis: true, byStore: true, topSellers: true, topProducts: true,
-  byCategory: true, byPayment: true,
+  byCategory: true, byPayment: true, byMethod: true, pending: true,
+  reconciliation: true,
   chartSales: true, chartCategory: true, chartPayment: true, chartTopSellers: true,
   detail: true
 };
@@ -4883,6 +5271,8 @@ let reportVisibility = {
 let charts = {
   sales: null, category: null, payment: null, topsellers: null
 };
+
+let salesChartGroupBy = 'day';   // 🆕 modo de agrupación del gráfico de ventas
 
 /* ============ TOGGLE DEL PANEL ============ */
 window.toggleReportCustomizer = () => {
@@ -4895,7 +5285,7 @@ window.selectAllReports = (value) => {
 };
 
 window.resetReportsDefault = () => {
-  const defaults = ['kpis','byStore','topSellers','topProducts','byCategory','byPayment','chartSales','chartCategory','chartPayment','chartTopSellers','detail'];
+  const defaults = ['kpis','byStore','topSellers','topProducts','byCategory','byPayment','byMethod','pending','reconciliation','chartSales','chartCategory','chartPayment','chartTopSellers','detail'];
   document.querySelectorAll('.report-toggle').forEach(cb => {
     cb.checked = defaults.includes(cb.dataset.report);
   });
@@ -4957,10 +5347,55 @@ function populateReportFilters() {
     brandSel.onchange = renderReports;
   }
 
+  // Método de pago
+  const payMethodSel = $('rep-payment-method');
+  if (payMethodSel) {
+    const prev = payMethodSel.value;
+    payMethodSel.value = prev || 'all';
+    payMethodSel.onchange = () => {
+      reportFilters.paymentMethod = payMethodSel.value;
+      // Repoblar canales según el método
+      populatePaymentChannelsFilter();
+      renderReports();
+    };
+  }
+
+  // Canal/cuenta
+  const channelSel = $('rep-payment-channel');
+  if (channelSel) {
+    channelSel.value = 'all';
+    channelSel.onchange = () => {
+      reportFilters.paymentChannelId = channelSel.value;
+      renderReports();
+    };
+    populatePaymentChannelsFilter();
+  }
+
+  // Estado de pago
+  const payStatusSel = $('rep-payment-status');
+  if (payStatusSel) {
+    const prev = payStatusSel.value;
+    payStatusSel.value = prev || 'all';
+    payStatusSel.onchange = () => {
+      reportFilters.paymentStatus = payStatusSel.value;
+      renderReports();
+    };
+  }
+
   const dateFrom = $('rep-date-from');
   const dateTo = $('rep-date-to');
   if (dateFrom) dateFrom.onchange = () => { reportFilters.dateFrom = dateFrom.value || null; renderReports(); };
   if (dateTo) dateTo.onchange = () => { reportFilters.dateTo = dateTo.value || null; renderReports(); };
+
+  // 🆕 Listener del dropdown "Agrupar por"
+  const groupBySel = $('chart-sales-groupby');
+  if (groupBySel && !groupBySel.dataset.listeners) {
+    groupBySel.dataset.listeners = '1';
+    groupBySel.onchange = () => {
+      salesChartGroupBy = groupBySel.value;
+      renderCharts(getFilteredSales());
+    };
+  }
 
   // Listeners de los toggles
   document.querySelectorAll('.report-toggle').forEach(cb => {
@@ -4971,6 +5406,80 @@ function populateReportFilters() {
   if (!dateFrom.value) setReportRange('month');
 }
 
+function populatePaymentChannelsFilter() {
+  const sel = $('rep-payment-channel');
+  if (!sel) return;
+
+  const method = $('rep-payment-method')?.value || 'all';
+
+  // Obtener canales de las ventas existentes (agrupados por id de canal)
+  // Combinamos con paymentChannels global para tener nombres actualizados
+  const channelsMap = new Map();
+
+  // 1. De las ventas que tienen canal asignado
+  (sales || []).forEach(s => {
+    if (!s.paymentChannelId) return;
+    if (method !== 'all' && s.paymentMethod !== method) return;
+
+    if (!channelsMap.has(s.paymentChannelId)) {
+      channelsMap.set(s.paymentChannelId, {
+        id: s.paymentChannelId,
+        code: s.paymentChannelCode || '',
+        bank: s.paymentChannelBank || '',
+        name: s.paymentChannelName || '',
+        icon: s.paymentChannelIcon || '',
+        type: s.paymentChannelType || ''
+      });
+    }
+  });
+
+  // 2. De la lista de canales configurados (para el caso de que aún no haya ventas)
+  if (typeof paymentChannels !== 'undefined' && paymentChannels.length) {
+    paymentChannels.forEach(c => {
+      if (c.active === false) return;
+      if (method !== 'all' && c.type !== method) return;
+
+      if (!channelsMap.has(c.id)) {
+        channelsMap.set(c.id, {
+          id: c.id,
+          code: c.code || '',
+          bank: c.bank || '',
+          name: c.customName || '',
+          icon: c.icon || '',
+          type: c.type || ''
+        });
+      }
+    });
+  }
+
+  // Ordenar alfabéticamente
+  const list = Array.from(channelsMap.values()).sort((a, b) => {
+    const bk = (a.bank || '').localeCompare(b.bank || '');
+    if (bk !== 0) return bk;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  // Preservar valor anterior si sigue existiendo
+  const prevValue = sel.value;
+
+  sel.innerHTML = '<option value="all">Todos</option>' +
+    list.map(c => {
+      const icon = c.icon || '';
+      const label = c.name ? `${c.bank} — ${c.name}` : c.bank;
+      return `<option value="${c.id}">${icon} ${escapeHtml(label)}</option>`;
+    }).join('');
+
+  // Restaurar valor si existe
+  if (prevValue && prevValue !== 'all') {
+    const exists = Array.from(sel.options).some(o => o.value === prevValue);
+    if (exists) sel.value = prevValue;
+    else {
+      sel.value = 'all';
+      reportFilters.paymentChannelId = 'all';
+    }
+  }
+}
+ 
 window.setReportRange = (range) => {
   const now = new Date();
   let from, to;
@@ -5015,15 +5524,24 @@ window.setReportRange = (range) => {
 };
 
 window.clearReportFilters = () => {
-  reportFilters = { dateFrom: null, dateTo: null, storeId: 'all', sellerUid: 'all', category: 'all', brand: 'all' };
+  reportFilters = {
+    dateFrom: null, dateTo: null,
+    storeId: 'all', sellerUid: 'all',
+    category: 'all', brand: 'all',
+    paymentMethod: 'all', paymentChannelId: 'all', paymentStatus: 'all'
+  };
   $('rep-date-from').value = '';
   $('rep-date-to').value = '';
   $('rep-store').value = 'all';
   $('rep-seller').value = 'all';
   $('rep-category').value = 'all';
   $('rep-brand').value = 'all';
+  $('rep-payment-method').value = 'all';
+  $('rep-payment-channel').value = 'all';
+  $('rep-payment-status').value = 'all';
+  populatePaymentChannelsFilter();
   renderReports();
-};
+};  
 
 /* ============ FILTRADO ============ */
 function getFilteredSales() {
@@ -5055,6 +5573,22 @@ function getFilteredSales() {
       return prod && prod.brand === reportFilters.brand;
     }));
   }
+
+  // 🆕 Filtro por método de pago
+  if (reportFilters.paymentMethod !== 'all') {
+    list = list.filter(s => s.paymentMethod === reportFilters.paymentMethod);
+  }
+
+  // 🆕 Filtro por canal/cuenta específico
+  if (reportFilters.paymentChannelId !== 'all') {
+    list = list.filter(s => s.paymentChannelId === reportFilters.paymentChannelId);
+  }
+
+  // 🆕 Filtro por estado de pago
+  if (reportFilters.paymentStatus !== 'all') {
+    list = list.filter(s => (s.paymentStatus || 'completed') === reportFilters.paymentStatus);
+  }
+
   return list;
 }
 
@@ -5064,6 +5598,9 @@ function renderReports() {
   reportFilters.sellerUid = $('rep-seller')?.value || 'all';
   reportFilters.category = $('rep-category')?.value || 'all';
   reportFilters.brand = $('rep-brand')?.value || 'all';
+  reportFilters.paymentMethod = $('rep-payment-method')?.value || 'all';
+  reportFilters.paymentChannelId = $('rep-payment-channel')?.value || 'all';
+  reportFilters.paymentStatus = $('rep-payment-status')?.value || 'all';
   reportFilters.dateFrom = $('rep-date-from')?.value || null;
   reportFilters.dateTo = $('rep-date-to')?.value || null;
 
@@ -5098,15 +5635,51 @@ function renderReports() {
     s + (x.items || []).reduce((y, it) => y + Number(it.qty || 0), 0), 0);
   const ticket = filtered.length > 0 ? totalSales / filtered.length : 0;
 
+  // 🆕 Calcular cobrado vs pendiente
+  let totalCollected = 0;
+  let totalPending = 0;
+  let countPending = 0;
+
+  filtered.forEach(s => {
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+    const ps = s.paymentStatus || 'completed';
+    if (ps === 'pending') {
+      totalPending += base;
+      countPending++;
+    } else {
+      totalCollected += base;
+    }
+  });
+
+  const collectedPct = totalSales > 0 ? (totalCollected / totalSales) * 100 : 0;
+  const pendingPct = totalSales > 0 ? (totalPending / totalSales) * 100 : 0;
+
   $('rep-kpi-sales').innerText = fmt(totalSales);
   $('rep-kpi-count').innerText = `${filtered.length} transacciones · +${fmt(totalShippingRep)} envíos · +${fmt(totalSurchargeRep)} recargos`;
   $('rep-kpi-profit').innerText = fmt(totalProfit);
   $('rep-kpi-margin').innerText = `Margen ${totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : 0}%`;
+  $('rep-kpi-collected').innerText = fmt(totalCollected);
+  $('rep-kpi-collected-pct').innerText = `${collectedPct.toFixed(1)}% del total`;
+  $('rep-kpi-pending').innerText = fmt(totalPending);
+  $('rep-kpi-pending-pct').innerText = countPending > 0
+    ? `${pendingPct.toFixed(1)}% · ${countPending} venta${countPending !== 1 ? 's' : ''}`
+    : 'Sin pendientes';
   $('rep-kpi-commission').innerText = fmt(totalCommission);
   $('rep-kpi-pool').innerText = fmt(totalPool);
   $('rep-kpi-bonus').innerText = fmt(totalBonus);
-  $('rep-kpi-ticket').innerText = fmt(ticket);
-  $('rep-kpi-units').innerText = `${totalUnits} unidades`;
+  // Los KPIs "Ticket promedio" y "Unidades" ya no están en el HTML (fueron reemplazados por Cobrado/Pendiente)
+  // Si quieres volver a mostrarlos, agrega los elementos con id="rep-kpi-ticket" y "rep-kpi-units" al HTML.
+  // $('rep-kpi-ticket').innerText = fmt(ticket);
+  // $('rep-kpi-units').innerText = `${totalUnits} unidades`;
+
+  // 🆕 Desglose por método y canal
+  renderReportByMethod(filtered);
+
+  // 🆕 Cobros pendientes
+  renderReportPending(filtered);
+
+  // 🆕 Conciliación bancaria
+  renderReportReconciliation(filtered);
 
   renderReportByStore(filtered);
   renderReportTopSellers(filtered);
@@ -5119,6 +5692,156 @@ function renderReports() {
   renderCharts(filtered);
 }
 
+/* ============================================================
+   COMPUTE DATA PARA EL GRÁFICO DE VENTAS (agrupación dinámica)
+============================================================ */
+function computeSalesChartData(filtered, mode) {
+  const palette = ['#4A7A9A','#0A2A4A','#22c55e','#f97316','#a855f7','#ef4444','#eab308','#06b6d4','#ec4899','#84cc16'];
+
+  // Helper: obtener la fecha de la venta
+  const getDate = s => s.createdAt?.seconds ? new Date(s.createdAt.seconds * 1000) : null;
+
+  // Helper: obtener el lunes de una semana ISO
+  const getWeekKey = (d) => {
+    const temp = new Date(d.getTime());
+    const day = temp.getDay() || 7;
+    temp.setDate(temp.getDate() - day + 1);
+    return `${temp.getFullYear()}-W${String(Math.ceil((((temp - new Date(temp.getFullYear(), 0, 1)) / 86400000) + 1) / 7)).padStart(2, '0')}`;
+  };
+
+  if (mode === 'day' || mode === 'week' || mode === 'month') {
+    // ===== Serie temporal (línea) =====
+    const byKey = {};
+    filtered.forEach(s => {
+      const d = getDate(s);
+      if (!d) return;
+      let key;
+      if (mode === 'day') {
+        key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      } else if (mode === 'week') {
+        key = getWeekKey(d);
+      } else {
+        key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      }
+      if (!byKey[key]) byKey[key] = 0;
+      byKey[key] += Number(s.total || 0);
+    });
+
+    const keys = Object.keys(byKey).sort();
+
+    // Formatear labels
+    const labels = keys.map(k => {
+      if (mode === 'day') {
+        const [y, m, day] = k.split('-');
+        return `${day}/${m}`;
+      } else if (mode === 'week') {
+        const [y, w] = k.split('-W');
+        return `Sem ${w}`;
+      } else {
+        const [y, m] = k.split('-');
+        const monthNames = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        return `${monthNames[parseInt(m)-1]} ${y.slice(2)}`;
+      }
+    });
+
+    return {
+      labels,
+      values: keys.map(k => byKey[k]),
+      chartType: 'line',
+      chartTitle: mode === 'day' ? '📈 Ventas por día'
+                 : mode === 'week' ? '📈 Ventas por semana'
+                 : '📈 Ventas por mes',
+      colors: palette[0]
+    };
+  }
+
+  // ===== Agrupaciones categóricas =====
+  const byCat = {};
+
+  filtered.forEach(s => {
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+    let key = 'Sin categoría';
+
+    if (mode === 'paymentMethod') {
+      const labels = {
+        efectivo: '💵 Efectivo',
+        transferencia: '🔄 Transferencia',
+        tarjeta: '💳 Tarjeta',
+        contraentrega: '📦 Contra entrega',
+        credito: '🛍️ Crédito',
+        nequi: '📱 Nequi (legacy)'
+      };
+      key = labels[s.paymentMethod] || s.paymentMethod || 'Sin método';
+    } else if (mode === 'paymentChannel') {
+      if (s.finalPaymentChannelId || s.paymentChannelId) {
+        const icon = s.finalPaymentChannelIcon || s.paymentChannelIcon || '🏦';
+        const bank = s.finalPaymentChannelBank || s.paymentChannelBank || '';
+        const name = s.finalPaymentChannelName || s.paymentChannelName || '';
+        key = `${icon} ${bank}${name ? ' — ' + name : ''}`;
+      } else {
+        // Sin canal → agrupar por método final
+        const fm = s.finalPaymentMethod || s.paymentMethod || 'efectivo';
+        const labels = {
+          efectivo: '💵 Efectivo',
+          transferencia: '🔄 Transferencia (genérica)',
+          tarjeta: '💳 Tarjeta',
+          contraentrega: '📦 Contra entrega sin confirmar',
+          credito: '🛍️ Crédito'
+        };
+        key = labels[fm] || fm;
+      }
+    } else if (mode === 'store') {
+      const st = stores.find(x => x.storeId === s.storeId);
+      key = st?.name || s.storeId || 'Sin tienda';
+    } else if (mode === 'seller') {
+      key = s.sellerName || s.sellerEmail || 'Sin vendedor';
+    } else if (mode === 'category') {
+      // Suma por categorías de los items
+      const cats = {};
+      (s.items || []).forEach(it => {
+        const prod = products.find(p => p.id === it.productId);
+        const cat = prod?.categoryGroupName || 'Sin categoría';
+        const itemTotal = Number(it.qty || 0) * Number(it.unitPrice || 0);
+        cats[cat] = (cats[cat] || 0) + itemTotal;
+      });
+      // Tomar la categoría principal (la de mayor valor) o "Múltiples"
+      const catEntries = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+      if (catEntries.length === 1) {
+        key = catEntries[0][0];
+        byCat[key] = (byCat[key] || 0) + base;
+      } else if (catEntries.length > 1) {
+        key = 'Múltiples categorías';
+        byCat[key] = (byCat[key] || 0) + base;
+      }
+      return; // ya sumamos arriba
+    }
+
+    byCat[key] = (byCat[key] || 0) + base;
+  });
+
+  // Ordenar de mayor a menor
+  const sorted = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+
+  // Limitar a los top 10 si hay muchos
+  const top = sorted.slice(0, 10);
+
+  const chartTitles = {
+    paymentMethod: '💳 Ventas por método de pago',
+    paymentChannel: '🏦 Ventas por canal/cuenta',
+    store: '🏪 Ventas por tienda',
+    seller: '👤 Ventas por vendedor',
+    category: '📂 Ventas por categoría'
+  };
+
+  return {
+    labels: top.map(([k]) => k.length > 25 ? k.slice(0, 22) + '…' : k),
+    values: top.map(([,v]) => v),
+    chartType: 'bar',
+    chartTitle: chartTitles[mode] || '📊 Ventas',
+    colors: palette
+  };
+}
+
 /* ============ GRÁFICOS ============ */
 function renderCharts(filtered) {
   // Destruir anteriores
@@ -5126,59 +5849,85 @@ function renderCharts(filtered) {
 
   const palette = ['#4A7A9A','#0A2A4A','#22c55e','#f97316','#a855f7','#ef4444','#eab308','#06b6d4','#ec4899','#84cc16'];
 
-  // ===== Ventas por día (línea) =====
-  const salesByDay = {};
-  filtered.forEach(s => {
-    if (!s.createdAt?.seconds) return;
-    const d = new Date(s.createdAt.seconds * 1000);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if (!salesByDay[key]) salesByDay[key] = 0;
-    salesByDay[key] += Number(s.total || 0);
-  });
-
-  const days = Object.keys(salesByDay).sort();
-  const dayValues = days.map(d => salesByDay[d]);
-
+  // ============================================================
+  // GRÁFICO DE VENTAS — Agrupación dinámica
+  // ============================================================
   const ctxSales = $('chart-sales');
+  const titleEl = $('chart-sales-title');
+
   if (ctxSales && reportVisibility.chartSales) {
-    charts.sales = new Chart(ctxSales, {
-      type: 'line',
-      data: {
-        labels: days.map(d => {
-          const [y, m, day] = d.split('-');
-          return `${day}/${m}`;
-        }),
-        datasets: [{
+    // Calcular datos según el modo
+    const { labels, values, chartType, chartTitle, colors } = computeSalesChartData(filtered, salesChartGroupBy);
+
+    // Actualizar el título
+    if (titleEl) titleEl.innerText = chartTitle;
+
+    // Configuración base
+    const isBar = chartType === 'bar';
+    const isDoughnut = chartType === 'doughnut';
+
+    const dataset = isDoughnut
+      ? {
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: '#fff'
+        }
+      : {
           label: 'Ventas ($)',
-          data: dayValues,
+          data: values,
           borderColor: '#4A7A9A',
-          backgroundColor: 'rgba(74,122,154,0.15)',
+          backgroundColor: isBar ? colors : 'rgba(74,122,154,0.15)',
           tension: 0.35,
-          fill: true,
+          fill: !isBar,
           pointBackgroundColor: '#0A2A4A',
-          pointRadius: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => '$' + Number(ctx.parsed.y).toLocaleString('es-CO')
-            }
-          }
+          pointRadius: isBar ? 0 : 4,
+          borderRadius: isBar ? 6 : 0
+        };
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: isDoughnut,
+          position: 'bottom',
+          labels: { font: { size: 11 }, padding: 10 }
         },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (v) => '$' + (v/1000).toFixed(0) + 'k'
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const value = isDoughnut ? ctx.parsed : (isBar ? ctx.parsed.y : ctx.parsed.y);
+              return '$' + Number(value).toLocaleString('es-CO');
             }
           }
         }
       }
+    };
+
+    // Escalas solo para line/bar
+    if (!isDoughnut) {
+      options.scales = {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: (v) => '$' + (v/1000).toFixed(0) + 'k' }
+        }
+      };
+      if (isBar) {
+        options.indexAxis = 'y';
+        options.scales = {
+          x: {
+            beginAtZero: true,
+            ticks: { callback: (v) => '$' + (v/1000).toFixed(0) + 'k' }
+          }
+        };
+      }
+    }
+
+    charts.sales = new Chart(ctxSales, {
+      type: chartType,
+      data: { labels, datasets: [dataset] },
+      options
     });
   }
 
@@ -5265,10 +6014,10 @@ function renderCharts(filtered) {
   }
 
   // ===== Métodos de pago (doughnut) =====
-    const payLabels = ['Efectivo','Nequi','Transferencia','Tarjeta','Contra entrega','Crédito'];
-  const payKeys = ['efectivo','nequi','transferencia','tarjeta','contraentrega','credito'];
+  const payLabels = ['Efectivo','Transferencia','Tarjeta','Contra entrega','Crédito'];
+  const payKeys = ['efectivo','transferencia','tarjeta','contraentrega','credito'];
   const payValues = payKeys.map(k => filtered.filter(s => s.paymentMethod === k).reduce((sum, s) => sum + Number(s.total||0), 0));
-  const payColors = ['#22c55e','#a855f7','#3b82f6','#8b5cf6','#f97316','#6b7280'];
+  const payColors = ['#22c55e','#3b82f6','#a855f7','#f97316','#6b7280'];
 
   const ctxPay = $('chart-payment');
   if (ctxPay && reportVisibility.chartPayment) {
@@ -5290,6 +6039,600 @@ function renderCharts(filtered) {
       }
     });
   }
+}
+
+/* ============================================================
+   DESGLOSE POR MÉTODO Y CANAL
+============================================================ */
+function renderReportByMethod(filtered) {
+  const el = $('rep-by-method');
+  const totalEl = $('rep-method-total');
+  if (!el) return;
+
+  // Definir orden y estilo de métodos
+  const methodMeta = {
+    efectivo:       { label: 'Efectivo',       icon: '💵', color: 'green',   order: 1 },
+    transferencia:  { label: 'Transferencia',  icon: '🔄', color: 'blue',    order: 2 },
+    tarjeta:        { label: 'Tarjeta',        icon: '💳', color: 'purple',  order: 3 },
+    contraentrega:  { label: 'Contra entrega', icon: '📦', color: 'orange',  order: 4 },
+    credito:        { label: 'Crédito',        icon: '🛍️', color: 'amber',   order: 5 },
+    nequi:          { label: 'Nequi (legacy)', icon: '📱', color: 'gray',    order: 99 }
+  };
+
+  // Agrupar por método
+  const byMethod = {};
+  filtered.forEach(s => {
+    const method = s.paymentMethod || 'efectivo';
+    if (!byMethod[method]) {
+      byMethod[method] = {
+        method,
+        total: 0,
+        count: 0,
+        pending: 0,
+        pendingCount: 0,
+        channels: {}  // id → { bank, name, icon, total, count }
+      };
+    }
+
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+    const ps = s.paymentStatus || 'completed';
+
+    byMethod[method].total += base;
+    byMethod[method].count += 1;
+
+    if (ps === 'pending') {
+      byMethod[method].pending += base;
+      byMethod[method].pendingCount += 1;
+    }
+
+    // Canal específico (solo si tiene channelId)
+    if (s.paymentChannelId) {
+      const cid = s.paymentChannelId;
+      if (!byMethod[method].channels[cid]) {
+        byMethod[method].channels[cid] = {
+          id: cid,
+          bank: s.paymentChannelBank || '',
+          name: s.paymentChannelName || '',
+          icon: s.paymentChannelIcon || '',
+          color: s.paymentChannelColor || '',
+          total: 0,
+          count: 0,
+          pending: 0,
+          pendingCount: 0
+        };
+      }
+      byMethod[method].channels[cid].total += base;
+      byMethod[method].channels[cid].count += 1;
+      if (ps === 'pending') {
+        byMethod[method].channels[cid].pending += base;
+        byMethod[method].channels[cid].pendingCount += 1;
+      }
+    }
+  });
+
+  // Calcular total general
+  const totalGeneral = Object.values(byMethod).reduce((s, m) => s + m.total, 0);
+
+  if (totalEl) totalEl.querySelector('p:last-child').innerText = fmt(totalGeneral);
+
+  // Si no hay datos
+  if (!Object.keys(byMethod).length) {
+    el.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Sin ventas en el período</p>';
+    return;
+  }
+
+  // Ordenar métodos según `order`
+  const methodsSorted = Object.values(byMethod).sort((a, b) => {
+    const oa = methodMeta[a.method]?.order ?? 50;
+    const ob = methodMeta[b.method]?.order ?? 50;
+    return oa - ob;
+  });
+
+  // Render
+  el.innerHTML = methodsSorted.map(m => {
+    const meta = methodMeta[m.method] || { label: m.method, icon: '●', color: 'gray' };
+    const pct = totalGeneral > 0 ? (m.total / totalGeneral) * 100 : 0;
+
+    // Colores de fondo del bloque del método
+    const bgMap = {
+      green:  'bg-green-50 border-green-200',
+      blue:   'bg-blue-50 border-blue-200',
+      purple: 'bg-purple-50 border-purple-200',
+      orange: 'bg-orange-50 border-orange-200',
+      amber:  'bg-amber-50 border-amber-200',
+      gray:   'bg-gray-50 border-gray-200'
+    };
+    const textMap = {
+      green:  'text-green-700',
+      blue:   'text-blue-700',
+      purple: 'text-purple-700',
+      orange: 'text-orange-700',
+      amber:  'text-amber-700',
+      gray:   'text-gray-700'
+    };
+    const bg = bgMap[meta.color] || bgMap.gray;
+    const txt = textMap[meta.color] || textMap.gray;
+
+    // Sub-canales ordenados
+    const channels = Object.values(m.channels).sort((a, b) => b.total - a.total);
+
+    const channelsHtml = channels.length
+      ? channels.map(c => {
+          const icon = c.icon || '●';
+          const label = c.name ? `${c.bank} — ${c.name}` : c.bank;
+          const cPct = m.total > 0 ? (c.total / m.total) * 100 : 0;
+          const pendingBadge = c.pendingCount > 0
+            ? `<span class="ml-2 text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold">⏳ ${c.pendingCount}</span>`
+            : '';
+          return `
+            <div class="flex items-center justify-between py-1.5 pl-6 border-t border-gray-100 first:border-t-0">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <span class="text-sm">${icon}</span>
+                <span class="text-xs text-gray-600 truncate">${escapeHtml(label)}</span>
+                ${pendingBadge}
+              </div>
+              <div class="text-right ml-3 flex-shrink-0">
+                <p class="text-xs font-semibold text-sd">${fmt(c.total)}</p>
+                <p class="text-[10px] text-gray-400">${c.count} venta${c.count !== 1 ? 's' : ''} · ${cPct.toFixed(1)}%</p>
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '';
+
+    const pendingInfo = m.pendingCount > 0
+      ? `<p class="text-[10px] text-amber-600 font-semibold mt-1 pl-6">⏳ ${m.pendingCount} pendiente${m.pendingCount !== 1 ? 's' : ''} · ${fmt(m.pending)}</p>`
+      : '';
+
+    return `
+      <div class="border rounded-lg p-3 ${bg}">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            <span class="text-lg">${meta.icon}</span>
+            <span class="font-semibold ${txt} text-sm">${meta.label}</span>
+          </div>
+          <div class="text-right">
+            <p class="text-base font-bold ${txt}">${fmt(m.total)}</p>
+            <p class="text-[10px] text-gray-500">${m.count} venta${m.count !== 1 ? 's' : ''} · ${pct.toFixed(1)}% del total</p>
+          </div>
+        </div>
+        ${pendingInfo}
+        ${channelsHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   CONCILIACIÓN BANCARIA
+============================================================ */
+function renderReportReconciliation(filtered) {
+  const listEl = $('rep-reconciliation-list');
+  const emptyEl = $('rep-reconciliation-empty');
+  if (!listEl) return;
+
+  // Agrupar por canal específico
+  // - transferencia con canal → agrupar por canal
+  // - credito con canal → agrupar por canal
+  // - efectivo → agrupar todos en un solo bloque "Efectivo"
+  // - tarjeta → agrupar todos en un solo bloque "Tarjeta"
+  // - contra entrega SIN confirmar → agrupar en "Por cobrar"
+  // - contra entrega CONFIRMADO → agrupar por su canal final (o efectivo/tarjeta genérico)
+
+  const groups = {};
+
+  filtered.forEach(s => {
+    const base = (s.commissionBase !== undefined)
+      ? Number(s.commissionBase)
+      : (Number(s.subtotal||0) - Number(s.discount||0));
+    const ps = s.paymentStatus || 'completed';
+
+    // Determinar la "cuenta destino" final
+    let accountKey, accountData;
+
+    if (ps === 'pending') {
+      // Pendiente de cobro
+      accountKey = 'pending_contraentrega';
+      accountData = {
+        type: 'pending',
+        bank: 'Por cobrar',
+        name: 'Contra entrega pendiente',
+        account: '',
+        icon: '⏳',
+        color: '#f59e0b'
+      };
+    } else {
+      // Cobrado → usar el método FINAL si existe, sino el original
+      const finalMethod = s.finalPaymentMethod || s.paymentMethod;
+
+      if (finalMethod === 'efectivo') {
+        accountKey = 'efectivo';
+        accountData = {
+          type: 'efectivo',
+          bank: 'Efectivo',
+          name: 'Caja física',
+          account: '',
+          icon: '💵',
+          color: '#22c55e'
+        };
+      } else if (finalMethod === 'tarjeta') {
+        accountKey = 'tarjeta';
+        accountData = {
+          type: 'tarjeta',
+          bank: 'Tarjeta',
+          name: 'Datáfono / Terminal',
+          account: '',
+          icon: '💳',
+          color: '#a855f7'
+        };
+      } else if (finalMethod === 'transferencia' || finalMethod === 'credito') {
+        // Canal específico (del cobro final si existe, sino del original)
+        const cid = s.finalPaymentChannelId || s.paymentChannelId;
+        const cBank = s.finalPaymentChannelBank || s.paymentChannelBank;
+        const cName = s.finalPaymentChannelName || s.paymentChannelName;
+        const cAccount = s.finalPaymentChannelAccount || s.paymentChannelAccount;
+        const cIcon = s.finalPaymentChannelIcon || s.paymentChannelIcon;
+        const cColor = s.finalPaymentChannelColor || s.paymentChannelColor;
+
+        if (cid) {
+          accountKey = cid;
+          accountData = {
+            type: finalMethod,
+            bank: cBank || 'Cuenta',
+            name: cName || '',
+            account: cAccount || '',
+            icon: cIcon || (finalMethod === 'credito' ? '🛍️' : '🏦'),
+            color: cColor || '#0A2A4A'
+          };
+        } else {
+          // Sin canal específico → agrupación genérica
+          accountKey = 'transferencia_generica';
+          accountData = {
+            type: 'transferencia',
+            bank: 'Transferencia',
+            name: 'Sin especificar',
+            account: '',
+            icon: '🔄',
+            color: '#3b82f6'
+          };
+        }
+      } else {
+        accountKey = 'otros';
+        accountData = {
+          type: 'otros',
+          bank: 'Otros',
+          name: '',
+          account: '',
+          icon: '●',
+          color: '#6b7280'
+        };
+      }
+    }
+
+    if (!groups[accountKey]) {
+      groups[accountKey] = {
+        ...accountData,
+        total: 0,
+        count: 0
+      };
+    }
+    groups[accountKey].total += base;
+    groups[accountKey].count += 1;
+  });
+
+  // Si no hay datos
+  if (!Object.keys(groups).length) {
+    listEl.innerHTML = '';
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+
+  // Ordenar: primero los cobrados (mayor a menor total), al final los pendientes
+  const sortedGroups = Object.values(groups).sort((a, b) => {
+    if (a.type === 'pending' && b.type !== 'pending') return 1;
+    if (a.type !== 'pending' && b.type === 'pending') return -1;
+    return b.total - a.total;
+  });
+
+  const totalAll = sortedGroups.reduce((s, g) => s + g.total, 0);
+
+  listEl.innerHTML = sortedGroups.map(g => {
+    const pct = totalAll > 0 ? (g.total / totalAll) * 100 : 0;
+    const isPending = g.type === 'pending';
+
+    const bgClass = isPending ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200';
+
+    return `
+      <div class="border rounded-lg p-4 ${bgClass} flex flex-wrap items-center gap-3">
+        <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-2xl"
+             style="background:${g.color}20; border:2px solid ${g.color}40">
+          ${g.icon}
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-sd text-sm truncate">
+            ${g.bank}${g.name ? ' — ' + g.name : ''}
+          </p>
+          <p class="text-[10px] text-gray-500 mt-0.5">
+            ${g.account ? 'Cuenta: <span class="font-mono">' + escapeHtml(g.account) + '</span> · ' : ''}
+            ${g.count} venta${g.count !== 1 ? 's' : ''}
+            ${isPending ? ' · ⏳ pendiente de cobro' : ''}
+          </p>
+        </div>
+
+        <div class="text-right">
+          <p class="text-lg font-bold ${isPending ? 'text-amber-700' : 'text-sl'}">${fmt(g.total)}</p>
+          <p class="text-[10px] text-gray-400">${pct.toFixed(1)}% del total</p>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.exportReconciliationPDF = () => {
+  const { jsPDF } = window.jspdf;
+  const filtered = getFilteredSales();
+
+  if (!filtered.length) {
+    alert('No hay ventas para exportar con estos filtros.');
+    return;
+  }
+
+  // Recolectar la misma data que muestra la UI
+  const groups = {};
+
+  filtered.forEach(s => {
+    const base = (s.commissionBase !== undefined)
+      ? Number(s.commissionBase)
+      : (Number(s.subtotal||0) - Number(s.discount||0));
+    const ps = s.paymentStatus || 'completed';
+
+    let accountKey, accountData;
+
+    if (ps === 'pending') {
+      accountKey = 'pending_contraentrega';
+      accountData = {
+        type: 'pending',
+        bank: 'Por cobrar',
+        name: 'Contra entrega pendiente',
+        account: '',
+        icon: '⏳'
+      };
+    } else {
+      const finalMethod = s.finalPaymentMethod || s.paymentMethod;
+
+      if (finalMethod === 'efectivo') {
+        accountKey = 'efectivo';
+        accountData = { type: 'efectivo', bank: 'Efectivo', name: 'Caja física', account: '', icon: '💵' };
+      } else if (finalMethod === 'tarjeta') {
+        accountKey = 'tarjeta';
+        accountData = { type: 'tarjeta', bank: 'Tarjeta', name: 'Datáfono / Terminal', account: '', icon: '💳' };
+      } else if (finalMethod === 'transferencia' || finalMethod === 'credito') {
+        const cid = s.finalPaymentChannelId || s.paymentChannelId;
+        const cBank = s.finalPaymentChannelBank || s.paymentChannelBank;
+        const cName = s.finalPaymentChannelName || s.paymentChannelName;
+        const cAccount = s.finalPaymentChannelAccount || s.paymentChannelAccount;
+        const cIcon = s.finalPaymentChannelIcon || s.paymentChannelIcon;
+
+        if (cid) {
+          accountKey = cid;
+          accountData = {
+            type: finalMethod,
+            bank: cBank || 'Cuenta',
+            name: cName || '',
+            account: cAccount || '',
+            icon: cIcon || (finalMethod === 'credito' ? '🛍️' : '🏦')
+          };
+        } else {
+          accountKey = 'transferencia_generica';
+          accountData = { type: 'transferencia', bank: 'Transferencia', name: 'Sin especificar', account: '', icon: '🔄' };
+        }
+      } else {
+        accountKey = 'otros';
+        accountData = { type: 'otros', bank: 'Otros', name: '', account: '', icon: '●' };
+      }
+    }
+
+    if (!groups[accountKey]) {
+      groups[accountKey] = { ...accountData, total: 0, count: 0 };
+    }
+    groups[accountKey].total += base;
+    groups[accountKey].count += 1;
+  });
+
+  const sortedGroups = Object.values(groups).sort((a, b) => {
+    if (a.type === 'pending' && b.type !== 'pending') return 1;
+    if (a.type !== 'pending' && b.type === 'pending') return -1;
+    return b.total - a.total;
+  });
+
+  const totalGeneral = sortedGroups.reduce((s, g) => s + g.total, 0);
+
+  // Crear el PDF
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  let y = 15;
+
+  // Encabezado
+  doc.setFillColor(10, 42, 74);
+  doc.rect(0, 0, pageW, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SMARTEC', 14, 13);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Conciliación por cuenta', pageW - 14, 13, { align: 'right' });
+
+  y = 28;
+
+  // Filtros aplicados
+  doc.setTextColor(60, 60, 60);
+  doc.setFontSize(9);
+  doc.text(`Período: ${reportFilters.dateFrom || 'todo'} — ${reportFilters.dateTo || 'hoy'}`, 14, y); y += 5;
+  doc.text(`Tienda: ${reportFilters.storeId === 'all' ? 'Todas' : (stores.find(s => s.storeId === reportFilters.storeId)?.name || reportFilters.storeId)}`, 14, y); y += 5;
+  doc.text(`Generado: ${new Date().toLocaleString('es-CO')}`, 14, y); y += 8;
+
+  // Total general
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(10, 42, 74);
+  doc.text('Total del período', 14, y); y += 3;
+
+  doc.autoTable({
+    startY: y,
+    head: [['Total', 'Ventas', 'Cuentas']],
+    body: [[
+      '$' + totalGeneral.toLocaleString('es-CO'),
+      String(filtered.length),
+      String(sortedGroups.length)
+    ]],
+    theme: 'grid',
+    headStyles: { fillColor: [74, 122, 154], textColor: 255, halign: 'center', fontStyle: 'bold' },
+    bodyStyles: { halign: 'center', fontSize: 10 },
+    margin: { left: 14, right: 14 }
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // Detalle por cuenta
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(10, 42, 74);
+  doc.text('Detalle por cuenta/canal', 14, y); y += 3;
+
+  const rows = sortedGroups.map(g => [
+    stripEmojis(`${g.icon} ${g.bank}${g.name ? ' — ' + g.name : ''}`),
+    g.account || '-',
+    String(g.count),
+    '$' + g.total.toLocaleString('es-CO'),
+    totalGeneral > 0 ? ((g.total / totalGeneral) * 100).toFixed(1) + '%' : '0%'
+  ]);
+
+  doc.autoTable({
+    startY: y,
+    head: [['Cuenta / Canal', 'Nº cuenta', 'Ventas', 'Total', '%']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 80 },
+      1: { cellWidth: 30, font: 'courier' },
+      2: { cellWidth: 20, halign: 'center' },
+      3: { cellWidth: 30, halign: 'right', fontStyle: 'bold' },
+      4: { cellWidth: 20, halign: 'right' }
+    },
+    margin: { left: 14, right: 14 }
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // Pie de página
+  const pages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `Smartec · Conciliación bancaria · Página ${i} de ${pages}`,
+      pageW / 2,
+      pageH - 8,
+      { align: 'center' }
+    );
+  }
+
+  const filename = `smartec_conciliacion_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(filename);
+};
+
+/* ============================================================
+   COBROS PENDIENTES
+============================================================ */
+function renderReportPending(filtered) {
+
+  const listEl = $('rep-pending-list');
+  const emptyEl = $('rep-pending-empty');
+  const totalEl = $('rep-pending-total');
+  if (!listEl) return;
+
+  // Filtrar solo pendientes
+  const pending = filtered.filter(s => (s.paymentStatus || 'completed') === 'pending');
+
+  // Calcular total
+  const totalPending = pending.reduce((sum, s) => {
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+    return sum + base;
+  }, 0);
+
+  if (totalEl) totalEl.innerText = fmt(totalPending);
+
+  // Si no hay pendientes
+  if (!pending.length) {
+    listEl.innerHTML = '';
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+
+  // Ordenar por fecha ascendente (los más antiguos primero para priorizar cobro)
+  pending.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+
+  listEl.innerHTML = pending.slice(0, 100).map(s => {
+    const store = stores.find(x => x.storeId === s.storeId);
+    const seller = users.find(u => u.id === s.sellerUid);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+    const itemsCount = (s.items||[]).reduce((sum,i) => sum + (i.qty||0), 0);
+
+    // Días transcurridos
+    const daysAgo = s.createdAt?.seconds
+      ? Math.floor((Date.now() - new Date(s.createdAt.seconds * 1000).getTime()) / (24*60*60*1000))
+      : 0;
+    const daysLabel = daysAgo === 0 ? 'Hoy'
+      : daysAgo === 1 ? 'Ayer'
+      : `Hace ${daysAgo} días`;
+    const urgencyClass = daysAgo >= 7 ? 'text-red-600 font-bold'
+                       : daysAgo >= 3 ? 'text-orange-500 font-semibold'
+                       : 'text-gray-500';
+
+    // Método original
+    const method = s.paymentMethod || 'efectivo';
+    const methodLabels = {
+      efectivo: '💵 Efectivo',
+      transferencia: '🔄 Transferencia',
+      tarjeta: '💳 Tarjeta',
+      contraentrega: '📦 Contra entrega',
+      credito: '🛍️ Crédito'
+    };
+    const methodLabel = methodLabels[method] || method;
+
+    return `
+      <div class="border-l-4 border-amber-400 bg-amber-50 rounded-lg p-3 flex flex-wrap items-center gap-3">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <p class="font-semibold text-sd text-sm">${escapeHtml(s.customer?.name) || 'Cliente'}</p>
+            <span class="text-[10px] bg-white text-amber-700 px-2 py-0.5 rounded-full font-semibold">${methodLabel}</span>
+          </div>
+          <p class="text-[10px] text-gray-500 mt-0.5">
+            ${fmtDate(s.createdAt)} · ${store?.name || s.storeId} · ${seller?.name || s.sellerEmail || ''}
+          </p>
+          <p class="text-[10px] text-gray-400">${itemsCount} item(s) · ${escapeHtml(s.customer?.phone) || 'sin teléfono'}</p>
+        </div>
+
+        <div class="text-right">
+          <p class="text-lg font-bold text-amber-700">${fmt(base)}</p>
+          <p class="text-[10px] ${urgencyClass}">⏱ ${daysLabel}</p>
+        </div>
+
+        <div class="shrink-0">
+          <button onclick='openConfirmPaymentModal("${s.id}")'
+                  class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition">
+            ✅ Confirmar cobro
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 /* ============ BLOQUES DE RENDERIZADO ============ */
@@ -5446,13 +6789,12 @@ function renderReportByCategory(filtered) {
 
 function renderReportByPayment(filtered) {
   const el = $('rep-by-payment');
-    const methods = {
-    efectivo: { label: '💵 Efectivo', color: 'green', sales: 0, count: 0 },
-    nequi: { label: '📱 Nequi', color: 'purple', sales: 0, count: 0 },
-    transferencia: { label: '🏦 Transferencia', color: 'blue', sales: 0, count: 0 },
-    tarjeta: { label: '💳 Tarjeta', color: 'purple', sales: 0, count: 0 },
+  const methods = {
+    efectivo:      { label: '💵 Efectivo',       color: 'green',  sales: 0, count: 0 },
+    transferencia: { label: '🔄 Transferencia',  color: 'blue',   sales: 0, count: 0 },
+    tarjeta:       { label: '💳 Tarjeta',        color: 'purple', sales: 0, count: 0 },
     contraentrega: { label: '📦 Contra entrega', color: 'orange', sales: 0, count: 0 },
-    credito: { label: '📝 Crédito', color: 'gray', sales: 0, count: 0 }
+    credito:       { label: '🛍️ Crédito',        color: 'gray',   sales: 0, count: 0 }
   };
 
   filtered.forEach(s => {
@@ -5475,22 +6817,6 @@ function renderReportByPayment(filtered) {
     `;
   }).join('');
 
-  // También el bloque detalle
-  const el2 = $('rep-by-payment-detail');
-  if (el2) {
-    el2.innerHTML = Object.entries(methods).map(([k, m]) => {
-      const pct = total > 0 ? (m.sales / total) * 100 : 0;
-      const colorMap = { green:'green', blue:'blue', purple:'purple', orange:'orange', gray:'gray', pink:'pink', indigo:'indigo' };
-      const c = colorMap[m.color];
-      return `
-        <div class="bg-${c}-50 border border-${c}-200 rounded-lg p-3">
-          <p class="text-[10px] text-${c}-700 font-semibold uppercase">${m.label}</p>
-          <p class="text-base font-bold text-${c}-700 mt-1">${fmt(m.sales)}</p>
-          <p class="text-[10px] text-${c}-600 mt-0.5">${pct.toFixed(1)}% · ${m.count} ventas</p>
-        </div>
-      `;
-    }).join('');
-  }
 }
 
 function renderReportDetail(filtered) {
@@ -5528,6 +6854,20 @@ function renderReportDetail(filtered) {
       <td class="p-3 text-right"><button onclick='viewSale("${s.id}")' class="text-sl hover:underline text-xs">Ver</button></td>
     </tr>`;
   }).join('');
+}
+
+/* Helper: limpiar emojis de un texto para el PDF (jsPDF no los soporta) */
+function stripEmojis(text) {
+  if (!text) return '';
+  // Eliminar emojis y símbolos unicode que jsPDF no soporta
+  return String(text)
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')      // emojis principales
+    .replace(/[\u{2600}-\u{27BF}]/gu, '')        // símbolos varios
+    .replace(/[\u{1F000}-\u{1F02F}]/gu, '')      // mahjong/dominó
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')        // variation selectors
+    .replace(/[\u{200D}]/gu, '')                 // zero-width joiner
+    .replace(/\s+/g, ' ')                        // espacios múltiples
+    .trim();
 }
 
 /* ============ EXPORTAR PDF ============ */
@@ -5719,8 +7059,196 @@ window.exportReportsPDF = () => {
     y = doc.lastAutoTable.finalY + 10;
   }
   
+  // ============================================================
+  // SECCIÓN NUEVA: Desglose por método de pago
+  // ============================================================
+  ensureSpace(80);
 
-    // ===== Detalle de ventas ULTRA detallado (una fila por producto) =====
+  const byMethod = {};
+  filtered.forEach(s => {
+    const method = s.paymentMethod || 'efectivo';
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+    if (!byMethod[method]) byMethod[method] = { total: 0, count: 0 };
+    byMethod[method].total += base;
+    byMethod[method].count += 1;
+  });
+
+  const methodLabelsPDF = {
+    efectivo: 'Efectivo',
+    transferencia: 'Transferencia',
+    tarjeta: 'Tarjeta',
+    contraentrega: 'Contra entrega',
+    credito: 'Crédito',
+    nequi: 'Nequi (legacy)'
+  };
+
+  const totalMethodPDF = Object.values(byMethod).reduce((s, m) => s + m.total, 0);
+
+  const methodRows = Object.entries(byMethod)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([k, v]) => [
+      methodLabelsPDF[k] || k,
+      String(v.count),
+      '$' + v.total.toLocaleString('es-CO'),
+      totalMethodPDF > 0 ? ((v.total / totalMethodPDF) * 100).toFixed(1) + '%' : '0%'
+    ]);
+
+  if (methodRows.length) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(10, 42, 74);
+    doc.text('Desglose por método de pago', 14, y);
+    y += 3;
+
+    doc.autoTable({
+      startY: y,
+      head: [['Método', 'Ventas', 'Total', '%']],
+      body: methodRows,
+      theme: 'grid',
+      headStyles: { fillColor: [74, 122, 154], textColor: 255, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9 },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 40, halign: 'right', fontStyle: 'bold' },
+        3: { cellWidth: 25, halign: 'right' }
+      },
+      margin: { left: 14, right: 14 }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ============================================================
+  // SECCIÓN NUEVA: Conciliación por cuenta
+  // ============================================================
+  ensureSpace(80);
+
+  const reconcGroups = {};
+  filtered.forEach(s => {
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+    const ps = s.paymentStatus || 'completed';
+
+    let key, data;
+    if (ps === 'pending') {
+      key = 'pending';
+      data = { bank: 'Por cobrar', name: 'Contra entrega pendiente', account: '', icon: '⏳' };
+    } else {
+      const fm = s.finalPaymentMethod || s.paymentMethod;
+      if (fm === 'efectivo') {
+        key = 'efectivo';
+        data = { bank: 'Efectivo', name: 'Caja física', account: '', icon: '💵' };
+      } else if (fm === 'tarjeta') {
+        key = 'tarjeta';
+        data = { bank: 'Tarjeta', name: '', account: '', icon: '💳' };
+      } else if (fm === 'transferencia' || fm === 'credito') {
+        const cid = s.finalPaymentChannelId || s.paymentChannelId;
+        if (cid) {
+          key = cid;
+          data = {
+            bank: s.finalPaymentChannelBank || s.paymentChannelBank || '',
+            name: s.finalPaymentChannelName || s.paymentChannelName || '',
+            account: s.finalPaymentChannelAccount || s.paymentChannelAccount || '',
+            icon: s.finalPaymentChannelIcon || s.paymentChannelIcon || '🏦'
+          };
+        } else {
+          key = 'transferencia_generica';
+          data = { bank: 'Transferencia', name: 'Sin especificar', account: '', icon: '🔄' };
+        }
+      } else {
+        key = 'otros';
+        data = { bank: 'Otros', name: '', account: '', icon: '●' };
+      }
+    }
+    if (!reconcGroups[key]) reconcGroups[key] = { ...data, total: 0, count: 0 };
+    reconcGroups[key].total += base;
+    reconcGroups[key].count += 1;
+  });
+
+  const reconcRows = Object.values(reconcGroups)
+    .sort((a, b) => b.total - a.total)
+    .map(g => [
+      stripEmojis(`${g.icon} ${g.bank}${g.name ? ' — ' + g.name : ''}`),
+      g.account || '-',
+      String(g.count),
+      '$' + g.total.toLocaleString('es-CO')
+    ]);
+
+  if (reconcRows.length) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(10, 42, 74);
+    doc.text('Conciliación por cuenta', 14, y);
+    y += 3;
+
+    doc.autoTable({
+      startY: y,
+      head: [['Cuenta / Canal', 'Nº cuenta', 'Ventas', 'Total']],
+      body: reconcRows,
+      theme: 'striped',
+      headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 9 },
+      columnStyles: {
+        0: { cellWidth: 90 },
+        1: { cellWidth: 35, font: 'courier' },
+        2: { cellWidth: 25, halign: 'center' },
+        3: { cellWidth: 35, halign: 'right', fontStyle: 'bold' }
+      },
+      margin: { left: 14, right: 14 }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ============================================================
+  // SECCIÓN NUEVA: Cobros pendientes
+  // ============================================================
+  const pendingSales = filtered.filter(s => (s.paymentStatus || 'completed') === 'pending');
+
+  if (pendingSales.length) {
+    ensureSpace(80);
+
+    const totalPendingPDF = pendingSales.reduce((sum, s) => {
+      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+      return sum + base;
+    }, 0);
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(10, 42, 74);
+    doc.text(`Cobros pendientes (${pendingSales.length} · Total $${totalPendingPDF.toLocaleString('es-CO')})`, 14, y);
+    y += 3;
+
+    const pendingRows = pendingSales
+      .sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
+      .slice(0, 50)
+      .map(s => {
+        const store = stores.find(x => x.storeId === s.storeId);
+        const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+        const date = s.createdAt?.seconds
+          ? new Date(s.createdAt.seconds * 1000).toLocaleDateString('es-CO')
+          : '-';
+        return [
+          date,
+          s.customer?.name || '',
+          s.customer?.phone || '',
+          store?.name || s.storeId,
+          s.sellerName || s.sellerEmail || '',
+          '$' + base.toLocaleString('es-CO')
+        ];
+      });
+
+    doc.autoTable({
+      startY: y,
+      head: [['Fecha', 'Cliente', 'Teléfono', 'Tienda', 'Vendedor', 'Monto']],
+      body: pendingRows,
+      theme: 'striped',
+      headStyles: { fillColor: [217, 119, 6], textColor: 255, fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      margin: { left: 14, right: 14 }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ===== Detalle de ventas ULTRA detallado (una fila por producto) =====
   const detailRows = [];
   filtered.forEach(s => {
     const store = stores.find(x => x.storeId === s.storeId);

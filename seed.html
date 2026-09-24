@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smartec · Migración inicial</title>
+<title>Smartec · Seed de Ventas (Temporal)</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="common.js"></script>
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
   .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
 </style>
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
@@ -17,65 +20,104 @@
 <div id="login-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
   <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
     <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
-    <p class="text-center text-sm text-gray-500 mb-6">Migración inicial · Superadmin</p>
-    <input id="email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3">
-    <input id="pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4">
+    <p class="text-center text-sm text-gray-500 mb-6">🌱 Seed de Ventas (Temporal)</p>
+    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3">
+    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4">
     <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl font-semibold">Ingresar</button>
-    <p id="login-msg" class="text-sm mt-3"></p>
+    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
   </div>
 </div>
 
-<!-- SEED -->
-<div id="seed-screen" class="hidden min-h-screen p-4 md:p-8">
-  <div class="max-w-3xl mx-auto">
-    <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-6">
-      <h1 class="text-2xl font-bold text-sd mb-1">🌱 Migración inicial del sistema</h1>
-      <p class="text-sm text-gray-500 mb-6">
-        Esta operación creará la estructura base para el sistema multi-tienda.
-        Es <strong>segura de re-ejecutar</strong>: si algo ya existe, no lo duplica.
-      </p>
-
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm">
-        <p class="font-semibold text-sd mb-2">Se ejecutará en este orden:</p>
-        <ol class="list-decimal list-inside space-y-1 text-gray-700">
-          <li>Actualizar tu usuario con campos nuevos (name, email, active)</li>
-          <li>Crear <b>Tienda Alameda</b> (tienda-alameda)</li>
-          <li>Crear <b>Tienda Mallorquín</b> (tienda-mallorquin)</li>
-          <li>Crear <b>settings/general</b> (config global + categorías + estacionalidad)</li>
-          <li>Migrar los productos existentes a la nueva estructura (variantes)</li>
-          <li>Crear inventario por tienda para cada variante</li>
-          <li>Registrar todo en <b>auditLog</b></li>
-        </ol>
-      </div>
-
-      <div class="flex gap-3 mb-4">
-        <label class="flex items-center gap-2 text-sm">
-          <input id="reset-inventory" type="checkbox" checked class="w-4 h-4">
-          Resetear inventario existente (recomendado en la primera corrida)
-        </label>
-      </div>
-
-      <button id="run-btn" class="w-full bg-sl text-white py-3 rounded-lg hover:bg-sd transition font-bold">
-        🚀 Ejecutar migración
-      </button>
-
-      <div id="log" class="mt-6 bg-gray-900 text-green-400 p-4 rounded-lg text-xs font-mono max-h-96 overflow-y-auto hidden"></div>
-
-      <a href="index.html" class="block text-center text-sm text-sl hover:underline mt-6">← Volver a la tienda</a>
+<!-- PANEL -->
+<div id="panel-screen" class="hidden min-h-screen">
+  <header class="bg-sd text-white p-4 flex justify-between items-center">
+    <div>
+      <h1 class="text-xl font-bold">🌱 Seed de Ventas</h1>
+      <p class="text-xs opacity-70">Herramienta temporal · Solo superadmin</p>
     </div>
-  </div>
+    <div class="flex gap-3 text-sm">
+      <span id="user-info" class="opacity-80"></span>
+      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600">Salir</button>
+    </div>
+  </header>
+
+  <main class="container mx-auto p-6 max-w-4xl">
+
+    <!-- Verificación previa -->
+    <div class="bg-white rounded-xl shadow p-6 mb-6">
+      <h2 class="text-xl font-bold text-sd mb-4">📋 Verificación previa</h2>
+      <div id="precheck-list" class="space-y-2 text-sm">
+        <p class="text-gray-500">Verificando datos existentes...</p>
+      </div>
+    </div>
+
+    <!-- Panel de configuración -->
+    <div class="bg-white rounded-xl shadow p-6 mb-6">
+      <h2 class="text-xl font-bold text-sd mb-4">⚙️ Configuración del seed</h2>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="text-xs font-semibold text-sd">Cantidad de ventas</label>
+          <input id="cfg-count" type="number" value="50" min="1" max="500" class="w-full px-3 py-2 border rounded-lg mt-1">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-sd">Rango de días atrás</label>
+          <input id="cfg-days" type="number" value="30" min="1" max="365" class="w-full px-3 py-2 border rounded-lg mt-1">
+        </div>
+      </div>
+      <div class="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 space-y-1">
+        <p>📊 <b>Distribución de métodos:</b></p>
+        <p>· 💵 Efectivo: 30%</p>
+        <p>· 🔄 Transferencia: 40%</p>
+        <p>· 🛍️ Crédito: 10%</p>
+        <p>· 💳 Tarjeta: 10%</p>
+        <p>· 📦 Contra entrega: 10% (60% confirmadas, 40% pendientes)</p>
+      </div>
+    </div>
+
+    <!-- Botón principal -->
+    <div class="bg-white rounded-xl shadow p-6 mb-6 text-center">
+      <button id="run-btn" class="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 font-bold text-lg disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+        🚀 Generar ventas
+      </button>
+      <p id="run-hint" class="text-xs text-gray-400 mt-2">Esperando verificaciones...</p>
+    </div>
+
+    <!-- Progreso -->
+    <div id="progress-box" class="hidden bg-white rounded-xl shadow p-6 mb-6">
+      <h2 class="text-xl font-bold text-sd mb-4">⏳ Progreso</h2>
+      <div class="w-full bg-gray-100 rounded-full h-4 mb-3">
+        <div id="progress-bar" class="h-4 rounded-full bg-sl transition-all" style="width:0%"></div>
+      </div>
+      <p id="progress-text" class="text-sm text-gray-600 mb-4">0 / 0</p>
+
+      <div class="border rounded-lg p-3 bg-gray-50 max-h-64 overflow-y-auto scrollbar-thin">
+        <pre id="log-output" class="text-xs font-mono text-gray-700 whitespace-pre-wrap"></pre>
+      </div>
+    </div>
+
+    <!-- Resumen final -->
+    <div id="summary-box" class="hidden bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
+      <h2 class="text-xl font-bold text-green-700 mb-3">✅ Seed completado</h2>
+      <div id="summary-content" class="text-sm text-gray-700 space-y-1"></div>
+    </div>
+
+    <!-- Advertencia -->
+    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-xs text-yellow-800">
+      ⚠️ <b>Este archivo es temporal.</b> Bórralo cuando ya no lo necesites (o quítalo del deploy).
+    </div>
+
+  </main>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, doc, setDoc, updateDoc,
-  addDoc, getDoc, serverTimestamp, query, where
+  getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
+  updateDoc, serverTimestamp, runTransaction, query, where
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
-/* ============ CONFIG ============ */
 const firebaseConfig = {
   apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
   authDomain: "smartec-8fc19.firebaseapp.com",
@@ -89,349 +131,541 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-/* ============ DATOS BASE ============ */
+let currentUser = null;
+let currentUserData = null;
+let stores = [];
+let sellers = [];
+let products = [];
+let inventory = [];
+let transferChannels = [];
+let creditEntities = [];
 
-const STORES = [
-  {
-    storeId: "tienda-alameda",
-    name: "Tienda Alameda",
-    address: "",
-    phone: "",
-    email: "",
-    commissionRate: 0.03,
-    active: true
-  },
-  {
-    storeId: "tienda-mallorquin",
-    name: "Tienda Mallorquín",
-    address: "",
-    phone: "",
-    email: "",
-    commissionRate: 0.03,
-    active: true
-  }
-];
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const randomFrom = arr => arr[Math.floor(Math.random() * arr.length)];
+const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const randomFloat = (min, max) => Math.random() * (max - min) + min;
 
-const CATEGORIES = {
-  "electrodomesticos": {
-    name: "Electrodomésticos",
-    description: "Productos para el hogar, cocina, limpieza y climatización.",
-    order: 1,
-    seasonal: false,
-    subcategories: {
-      "refrigeracion":      { name: "Refrigeración", order: 1 },
-      "lavado-ropa":        { name: "Lavado y cuidado de ropa", order: 2 },
-      "climatizacion":      { name: "Climatización", order: 3 },
-      "cocina-preparacion": { name: "Cocina y preparación de alimentos", order: 4 },
-      "limpieza-hogar":     { name: "Limpieza del hogar", order: 5 }
-    }
-  },
-  "belleza-cuidado": {
-    name: "Belleza y cuidado personal",
-    description: "Productos eléctricos y accesorios para cuidado personal y peinado.",
-    order: 2,
-    seasonal: false,
-    subcategories: {
-      "cuidado-cabello":         { name: "Cuidado y peinado del cabello", order: 1 },
-      "cuidado-facial-corporal": { name: "Cuidado facial y corporal", order: 2 },
-      "accesorios-belleza":      { name: "Accesorios de belleza", order: 3 }
-    }
-  },
-  "tecnologia-entretenimiento": {
-    name: "Tecnología y entretenimiento",
-    description: "Productos de imagen, sonido y dispositivos inteligentes.",
-    order: 3,
-    seasonal: false,
-    subcategories: {
-      "televisores":       { name: "Televisores", order: 1 },
-      "audio-sonido":      { name: "Audio y sonido", order: 2 },
-      "hogar-inteligente": { name: "Hogar inteligente", order: 3 }
-    }
-  },
-  "accesorios-complementos": {
-    name: "Accesorios y complementos",
-    description: "Productos complementarios para el hogar, dispositivos electrónicos y uso diario.",
-    order: 4,
-    seasonal: false,
-    subcategories: {
-      "hidratacion-termos":   { name: "Hidratación y termos", order: 1 },
-      "accesorios-celulares": { name: "Accesorios para celulares y dispositivos", order: 2 },
-      "energia-conexiones":   { name: "Energía y conexiones eléctricas", order: 3 },
-      "accesorios-audio":     { name: "Accesorios de audio", order: 4 }
-    }
-  },
-  "jugueteria-movilidad": {
-    name: "Juguetería y movilidad infantil",
-    description: "Categoría estacional (diciembre).",
-    order: 5,
-    seasonal: true,
-    subcategories: {
-      "munecas-figuras":        { name: "Muñecas y figuras", order: 1 },
-      "vehiculos-juguete":      { name: "Vehículos de juguete", order: 2 },
-      "movilidad-infantil":     { name: "Movilidad infantil", order: 3 },
-      "juguetes-electronicos":  { name: "Juguetes electrónicos", order: 4 },
-      "juegos-entretenimiento": { name: "Juegos y entretenimiento", order: 5 },
-      "productos-temporada":    { name: "Productos de temporada", order: 6 }
-    }
-  }
-};
-
-/* Mapa de categoría antigua → nueva */
-const CATEGORY_MAP = {
-  "refrigeracion": { group: "electrodomesticos", sub: "refrigeracion" },
-  "lavado":        { group: "electrodomesticos", sub: "lavado-ropa" },
-  "cocina":        { group: "electrodomesticos", sub: "cocina-preparacion" },
-  "televisores":   { group: "tecnologia-entretenimiento", sub: "televisores" },
-  "audio":         { group: "tecnologia-entretenimiento", sub: "audio-sonido" },
-  "computacion":   { group: "tecnologia-entretenimiento", sub: "hogar-inteligente" },
-  "otros":         { group: "electrodomesticos", sub: "limpieza-hogar" }
-};
-
-/* ============ AUTENTICACIÓN ============ */
-document.getElementById('login-btn').onclick = async () => {
-  const msg = document.getElementById('login-msg');
-  msg.textContent = 'Ingresando...'; msg.className = 'text-sm mt-3 text-gray-500';
+// ============ AUTH ============
+$('login-btn').onclick = async () => {
+  const err = $('login-error');
+  err.classList.add('hidden');
   try {
-    await signInWithEmailAndPassword(auth,
-      document.getElementById('email').value.trim(),
-      document.getElementById('pass').value);
+    await signInWithEmailAndPassword(auth, $('login-email').value.trim(), $('login-pass').value);
   } catch(e) {
-    msg.textContent = '❌ ' + e.message;
-    msg.className = 'text-sm mt-3 text-red-500';
+    err.innerText = 'Error: ' + e.message;
+    err.classList.remove('hidden');
   }
 };
 
-onAuthStateChanged(auth, user => {
-  if (user) {
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('seed-screen').classList.remove('hidden');
-  } else {
-    document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('seed-screen').classList.add('hidden');
+$('logout-btn').onclick = async () => {
+  await signOut(auth);
+  window.location.reload();
+};
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    $('login-screen').classList.remove('hidden');
+    $('panel-screen').classList.add('hidden');
+    return;
   }
+  currentUser = user;
+
+  try {
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    currentUserData = snap.exists() ? snap.data() : null;
+  } catch(e) { currentUserData = null; }
+
+  if (!currentUserData || currentUserData.role !== 'superadmin') {
+    alert('⛔ Solo superadmin puede usar esta herramienta.');
+    await signOut(auth);
+    return;
+  }
+
+  $('login-screen').classList.add('hidden');
+  $('panel-screen').classList.remove('hidden');
+  $('user-info').innerText = '👤 ' + user.email;
+
+  await precheck();
 });
 
-/* ============ LOG VISUAL ============ */
-const logBox = document.getElementById('log');
-function log(msg, type='info') {
-  logBox.classList.remove('hidden');
-  const colors = { info:'text-green-400', warn:'text-yellow-400', error:'text-red-400', ok:'text-cyan-300' };
-  logBox.innerHTML += `<div class="${colors[type]||colors.info}">${msg}</div>`;
-  logBox.scrollTop = logBox.scrollHeight;
-}
+// ============ PRECHECK ============
+async function precheck() {
+  const list = $('precheck-list');
+  list.innerHTML = '<p class="text-gray-500">Verificando datos existentes...</p>';
 
-/* ============ HELPERS ============ */
-async function audit(entry) {
+  const checks = [];
+
+  // 1. Tiendas activas
   try {
-    await addDoc(collection(db,'auditLog'), {
-      ...entry,
-      timestamp: serverTimestamp()
+    const s = await getDocs(collection(db, 'stores'));
+    stores = s.docs.map(d => ({id:d.id, ...d.data()})).filter(x => x.active !== false);
+    checks.push({
+      label: 'Tiendas activas',
+      value: stores.length,
+      ok: stores.length > 0,
+      detail: stores.length ? stores.map(s => s.name).join(', ') : 'No hay tiendas activas'
     });
-  } catch(e) { console.warn('audit error', e); }
+  } catch(e) {
+    checks.push({ label: 'Tiendas', value: 'ERROR', ok: false, detail: e.message });
+  }
+
+  // 2. Vendedores
+  try {
+    const s = await getDocs(collection(db, 'users'));
+    const allUsers = s.docs.map(d => ({id:d.id, ...d.data()}));
+    sellers = allUsers.filter(u => ['vendedor','admin','superadmin'].includes(u.role) && u.active !== false);
+    checks.push({
+      label: 'Vendedores/Admins activos',
+      value: sellers.length,
+      ok: sellers.length > 0,
+      detail: sellers.map(u => u.name || u.email).join(', ')
+    });
+  } catch(e) {
+    checks.push({ label: 'Usuarios', value: 'ERROR', ok: false, detail: e.message });
+  }
+
+  // 3. Productos activos con variantes
+  try {
+    const s = await getDocs(collection(db, 'products'));
+    products = s.docs.map(d => ({id:d.id, ...d.data()})).filter(p => p.active !== false && (p.variants||[]).length);
+    checks.push({
+      label: 'Productos con variantes',
+      value: products.length,
+      ok: products.length > 0,
+      detail: products.length + ' productos disponibles'
+    });
+  } catch(e) {
+    checks.push({ label: 'Productos', value: 'ERROR', ok: false, detail: e.message });
+  }
+
+  // 4. Inventario
+  try {
+    const s = await getDocs(collection(db, 'inventory'));
+    inventory = s.docs.map(d => ({id:d.id, ...d.data()}));
+    const withStock = inventory.filter(i => Number(i.stock||0) > 0);
+    checks.push({
+      label: 'Variantes con stock',
+      value: withStock.length,
+      ok: withStock.length >= 5,
+      detail: withStock.length + ' variantes con stock > 0'
+    });
+  } catch(e) {
+    checks.push({ label: 'Inventario', value: 'ERROR', ok: false, detail: e.message });
+  }
+
+  // 5. Canales de transferencia
+  try {
+    const s = await getDocs(collection(db, 'paymentChannels'));
+    const all = s.docs.map(d => ({id:d.id, ...d.data()}));
+    transferChannels = all.filter(c => c.type === 'transferencia' && c.active !== false);
+    checks.push({
+      label: 'Canales de transferencia activos',
+      value: transferChannels.length,
+      ok: transferChannels.length > 0,
+      detail: transferChannels.length ? transferChannels.map(c => `${c.bank} — ${c.customName}`).join(', ') : 'No hay canales activos'
+    });
+  } catch(e) {
+    checks.push({ label: 'Canales transferencia', value: 'ERROR', ok: false, detail: e.message });
+  }
+
+  // 6. Entidades de crédito
+  try {
+    const s = await getDocs(collection(db, 'paymentChannels'));
+    const all = s.docs.map(d => ({id:d.id, ...d.data()}));
+    creditEntities = all.filter(c => c.type === 'credito' && c.active !== false);
+    checks.push({
+      label: 'Entidades de crédito activas',
+      value: creditEntities.length,
+      ok: creditEntities.length > 0,
+      detail: creditEntities.length ? creditEntities.map(c => c.bank).join(', ') : 'No hay entidades activas'
+    });
+  } catch(e) {
+    checks.push({ label: 'Entidades crédito', value: 'ERROR', ok: false, detail: e.message });
+  }
+
+  // Render
+  list.innerHTML = checks.map(c => `
+    <div class="flex items-start gap-3 border-b border-gray-100 pb-2">
+      <span class="text-lg">${c.ok ? '✅' : '❌'}</span>
+      <div class="flex-1 min-w-0">
+        <p class="font-semibold text-sd text-sm">${c.label}</p>
+        <p class="text-xs text-gray-500">${c.detail}</p>
+      </div>
+      <span class="text-sm font-bold ${c.ok ? 'text-green-600' : 'text-red-500'}">${c.value}</span>
+    </div>
+  `).join('');
+
+  const allOk = checks.every(c => c.ok);
+  const btn = $('run-btn');
+  const hint = $('run-hint');
+
+  if (allOk) {
+    btn.disabled = false;
+    hint.innerText = '✅ Todo listo. Puedes generar las ventas.';
+    hint.className = 'text-xs text-green-600 mt-2';
+  } else {
+    btn.disabled = true;
+    hint.innerText = '⚠️ Corrige los errores marcados en rojo antes de continuar.';
+    hint.className = 'text-xs text-red-500 mt-2';
+  }
 }
 
-function slugVariants(product) {
-  const colors = Array.isArray(product.colors) ? product.colors : [];
-  const sizes  = Array.isArray(product.sizes) ? product.sizes : [];
-  const variants = [];
-  const baseSku = (product.sku || 'SKU').toUpperCase();
+// ============ SEED ============
+$('run-btn').onclick = async () => {
+  const count = Number($('cfg-count').value) || 50;
+  const days = Number($('cfg-days').value) || 30;
 
-  const colorList = colors.length ? colors : [null];
-  const sizeList  = sizes.length  ? sizes  : [null];
+  if (!confirm(`¿Generar ${count} ventas aleatorias en los últimos ${days} días?\n\nSe descontará stock real y se registrarán movimientos.`)) return;
 
-  for (const c of colorList) {
-    for (const s of sizeList) {
-      const parts = [baseSku];
-      if (c) parts.push(String(c).replace('#','').slice(0,6).toUpperCase());
-      if (s) parts.push(String(s).replace(/\s+/g,'').toUpperCase());
-      const variantSku = parts.join('-');
-      variants.push({
-        variantId: variantSku,
-        sku: variantSku,
-        color: c,
-        colorName: c ? c : '',
-        size: s,
-        priceDelta: 0,
-        active: true
+  $('run-btn').disabled = true;
+  $('progress-box').classList.remove('hidden');
+  $('summary-box').classList.add('hidden');
+  $('log-output').innerText = '';
+  $('progress-bar').style.width = '0%';
+  $('progress-text').innerText = `0 / ${count}`;
+
+  const results = {
+    created: 0,
+    failed: 0,
+    byMethod: { efectivo: 0, transferencia: 0, credito: 0, tarjeta: 0, contraentrega: 0 },
+    byContraentrega: { confirmadas: 0, pendientes: 0 },
+    errors: []
+  };
+
+  const cities = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga', 'Pereira', 'Manizales'];
+
+  for (let i = 1; i <= count; i++) {
+    try {
+      await createOneSale(i, days, cities);
+      results.created++;
+      const method = results._lastMethod;
+      results.byMethod[method] = (results.byMethod[method] || 0) + 1;
+      if (method === 'contraentrega') {
+        if (results._lastPaymentStatus === 'pending') results.byContraentrega.pendientes++;
+        else results.byContraentrega.confirmadas++;
+      }
+      log(`✅ [${i}/${count}] Venta creada · ${results._lastSummary}`);
+    } catch(e) {
+      results.failed++;
+      results.errors.push(`Venta ${i}: ${e.message}`);
+      log(`❌ [${i}/${count}] Error: ${e.message}`);
+    }
+
+    const pct = (i / count) * 100;
+    $('progress-bar').style.width = pct + '%';
+    $('progress-text').innerText = `${i} / ${count}`;
+  }
+
+  // Resumen
+  const summary = $('summary-content');
+  summary.innerHTML = `
+    <p>✅ <b>${results.created}</b> ventas creadas exitosamente</p>
+    ${results.failed ? `<p class="text-red-600">❌ <b>${results.failed}</b> ventas fallaron</p>` : ''}
+    <hr class="my-2">
+    <p class="font-semibold">Distribución por método:</p>
+    <p>· 💵 Efectivo: ${results.byMethod.efectivo || 0}</p>
+    <p>· 🔄 Transferencia: ${results.byMethod.transferencia || 0}</p>
+    <p>· 🛍️ Crédito: ${results.byMethod.credito || 0}</p>
+    <p>· 💳 Tarjeta: ${results.byMethod.tarjeta || 0}</p>
+    <p>· 📦 Contra entrega: ${results.byMethod.contraentrega || 0} (${results.byContraentrega.confirmadas} confirmadas + ${results.byContraentrega.pendientes} pendientes)</p>
+    ${results.errors.length ? `<hr class="my-2"><p class="font-semibold text-red-600">Errores:</p><ul class="text-xs">${results.errors.map(e => `<li>· ${e}</li>`).join('')}</ul>` : ''}
+    <p class="mt-3 text-xs text-gray-500">Revisa Firestore → colección <code>sales</code> para verificar.</p>
+  `;
+  $('summary-box').classList.remove('hidden');
+  $('run-btn').disabled = false;
+};
+
+async function createOneSale(index, days, cities) {
+  // 1. Determinar método de pago (probabilidades)
+  const r = Math.random();
+  let method;
+  if (r < 0.30) method = 'efectivo';
+  else if (r < 0.70) method = 'transferencia';
+  else if (r < 0.80) method = 'credito';
+  else if (r < 0.90) method = 'tarjeta';
+  else method = 'contraentrega';
+
+  // 2. Seleccionar tienda, vendedor
+  const store = randomFrom(stores);
+  const seller = randomFrom(sellers);
+
+  // 3. Cliente
+  const customer = {
+    name: `Cliente Test ${index}`,
+    phone: `300${String(1000000 + index).slice(-7)}`, // 10 dígitos únicos
+    email: `test${index}@smartec-test.com`,
+    address: `Dirección Test ${randomInt(1, 999)}`,
+    city: randomFrom(cities),
+    notes: ''
+  };
+
+  // 4. Items: 1-3 productos con variantes que tengan stock en esta tienda
+  const itemsCount = randomInt(1, 3);
+  const items = [];
+  const usedProducts = new Set();
+
+  for (let j = 0; j < itemsCount; j++) {
+    // Buscar un producto con stock en esta tienda
+    let product = null;
+    let variant = null;
+    let invRecord = null;
+
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const p = randomFrom(products);
+      if (usedProducts.has(p.id)) continue;
+
+      const v = randomFrom(p.variants || []);
+      if (!v) continue;
+
+      // Buscar inventario en esta tienda
+      const invId = `${store.storeId}_${v.variantId}`;
+      const inv = inventory.find(x =>
+        x.id === invId ||
+        (x.storeId === store.storeId && x.variantId === v.variantId)
+      );
+
+      if (inv && Number(inv.stock || 0) >= 1) {
+        product = p;
+        variant = v;
+        invRecord = inv;
+        break;
+      }
+    }
+
+    if (!product) continue; // no se encontró producto con stock, saltar
+    usedProducts.add(product.id);
+
+    const qty = Math.min(randomInt(1, 2), Number(invRecord.stock));
+    const unitPrice = (product.onSale && product.salePrice ? product.salePrice : product.price) + (variant.priceDelta || 0);
+    const unitCost = Number(product.cost || 0);
+
+    items.push({
+      productId: product.id,
+      variantId: variant.variantId,
+      name: product.name,
+      sku: variant.sku,
+      qty,
+      unitPrice,
+      unitCost,
+      color: variant.color,
+      colorName: variant.colorName,
+      size: variant.size,
+      subtotal: qty * unitPrice,
+      _invRecord: invRecord // guardar referencia para descontar después
+    });
+  }
+
+  if (!items.length) throw new Error('No se encontraron productos con stock suficiente');
+
+  // 5. Totales
+  const subtotal = items.reduce((s, it) => s + it.subtotal, 0);
+  const discount = Math.random() < 0.2 ? Math.round(subtotal * 0.05) : 0;
+  const shipping = Math.random() < 0.3 ? randomFrom([0, 5000, 10000, 15000]) : 0;
+  const surchargeRate = method === 'tarjeta' ? randomFrom([0, 0.03, 0.04]) : 0;
+  const surchargeAmount = Math.round((subtotal - discount + shipping) * surchargeRate);
+  const total = subtotal - discount + shipping + surchargeAmount;
+  const totalCost = items.reduce((s, it) => s + (it.unitCost * it.qty), 0);
+  const commissionBase = subtotal - discount;
+  const profit = total - surchargeAmount - totalCost;
+
+  // 6. Comisiones
+  const poolRate = Number(store.commissionRate || 0);
+  const goalAmount = Number(seller.goalAmount || 0);
+  const bonusRate = Number(seller.bonusRate || 0);
+  const poolAmount = Math.round(commissionBase * poolRate);
+  const bonusAmount = 0; // simplificamos, no calculamos acumulado histórico
+  const sellerCommissionAmount = poolAmount + bonusAmount;
+
+  // 7. Canal de transferencia o entidad de crédito
+  let paymentChannelData = null;
+  if (method === 'transferencia') {
+    const ch = randomFrom(transferChannels);
+    if (ch) paymentChannelData = ch;
+  } else if (method === 'credito') {
+    const ch = randomFrom(creditEntities);
+    if (ch) paymentChannelData = ch;
+  }
+
+  // 8. Estado de pago y método final
+  const paymentStatus = method === 'contraentrega' ? 'pending' : 'completed';
+  let finalPaymentMethod = null;
+  let finalChannelData = null;
+  let finalPaymentAt = null;
+  let finalPaymentBy = null;
+
+  if (method === 'contraentrega') {
+    // 60% confirmadas, 40% pendientes
+    if (Math.random() < 0.6) {
+      // Confirmar el cobro
+      const confirmMethods = ['efectivo', 'transferencia', 'tarjeta'];
+      finalPaymentMethod = randomFrom(confirmMethods);
+      if (finalPaymentMethod === 'transferencia') {
+        finalChannelData = randomFrom(transferChannels);
+      }
+      finalPaymentAt = new Date();
+      finalPaymentBy = seller.email;
+    }
+  }
+
+  // 9. Fecha (aleatoria en los últimos N días)
+  const createdAt = new Date();
+  createdAt.setDate(createdAt.getDate() - randomInt(0, days));
+  createdAt.setHours(randomInt(8, 20), randomInt(0, 59), randomInt(0, 59));
+
+  // 10. Número de documento (usar contador real de la tienda)
+  let documentNumber = null;
+  try {
+    const year = new Date().getFullYear();
+    const counterId = `${store.storeId}_remision_${year}`;
+    const counterRef = doc(db, 'counters', counterId);
+
+    const counterResult = await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(counterRef);
+      if (!snap.exists()) {
+        const prefix = store.storeId.slice(0, 3).toUpperCase() + '-REM-' + year + '-';
+        transaction.set(counterRef, {
+          prefix, lastNumber: 1, type: 'remision', storeId: store.storeId, year,
+          createdAt: serverTimestamp()
+        });
+        return { fullNumber: prefix + '0001' };
+      }
+      const data = snap.data();
+      const next = (Number(data.lastNumber) || 0) + 1;
+      transaction.update(counterRef, { lastNumber: next, updatedAt: serverTimestamp() });
+      return { fullNumber: data.prefix + String(next).padStart(4, '0') };
+    });
+    documentNumber = counterResult.fullNumber;
+  } catch(e) {
+    documentNumber = 'TEST-' + Date.now() + '-' + index;
+  }
+
+  // 11. Crear el documento de venta
+  const saleData = {
+    documentNumber,
+    storeId: store.storeId,
+    storeName: store.name,
+    customer,
+    items: items.map(it => ({
+      productId: it.productId,
+      variantId: it.variantId,
+      name: it.name,
+      sku: it.sku,
+      qty: it.qty,
+      unitPrice: it.unitPrice,
+      unitCost: it.unitCost,
+      color: it.color,
+      colorName: it.colorName,
+      size: it.size,
+      subtotal: it.subtotal
+    })),
+    subtotal, discount, shipping,
+    surchargeRate, surchargeAmount,
+    total, totalCost, profit, commissionBase,
+    poolRate, poolAmount,
+    goalAmount, bonusRate, bonusAmount,
+    bonusPortion: 0,
+    sellerCommissionAmount,
+    storeCommissionAmount: 0,
+    accumulatedBefore: 0, accumulatedAfter: commissionBase,
+    paymentMethod: method,
+    paymentStatus,
+    paymentChannelId: paymentChannelData?.id || null,
+    paymentChannelCode: paymentChannelData?.code || null,
+    paymentChannelType: paymentChannelData?.type || null,
+    paymentChannelBank: paymentChannelData?.bank || null,
+    paymentChannelName: paymentChannelData?.customName || paymentChannelData?.name || null,
+    paymentChannelAccount: paymentChannelData?.accountNumber || null,
+    paymentChannelIcon: paymentChannelData?.icon || null,
+    paymentChannelColor: paymentChannelData?.color || null,
+    // Contra entrega confirmada
+    ...(finalPaymentMethod ? {
+      finalPaymentMethod,
+      finalPaymentAt,
+      finalPaymentBy,
+      finalPaymentChannelId: finalChannelData?.id || null,
+      finalPaymentChannelBank: finalChannelData?.bank || null,
+      finalPaymentChannelName: finalChannelData?.customName || finalChannelData?.name || null,
+      finalPaymentChannelAccount: finalChannelData?.accountNumber || null,
+      finalPaymentChannelIcon: finalChannelData?.icon || null,
+      status: 'completada',
+      sellerUid: seller.id,
+      sellerEmail: seller.email,
+      sellerName: seller.name || seller.email,
+      createdAt,
+      seedSimulated: true,
+      updatedAt: serverTimestamp()
+    } : {
+      status: 'completada',
+      sellerUid: seller.id,
+      sellerEmail: seller.email,
+      sellerName: seller.name || seller.email,
+      createdAt,
+      seedSimulated: true,
+      updatedAt: serverTimestamp()
+    })
+  };
+
+  const saleRef = await addDoc(collection(db, 'sales'), {
+    ...saleData,
+    createdAt: serverTimestamp() // sobreescribimos con serverTimestamp
+  });
+
+  // 12. Descontar stock (por cada item)
+  for (const it of items) {
+    const invId = `${store.storeId}_${it.variantId}`;
+    const invRef = doc(db, 'inventory', invId);
+    const invSnap = await getDoc(invRef);
+
+    if (invSnap.exists()) {
+      const stockBefore = Number(invSnap.data().stock || 0);
+      const stockAfter = Math.max(0, stockBefore - it.qty);
+
+      await updateDoc(invRef, {
+        stock: stockAfter,
+        updatedAt: serverTimestamp()
+      });
+
+      // Movimiento de inventario
+      await addDoc(collection(db, 'inventoryMovements'), {
+        storeId: store.storeId,
+        productId: it.productId,
+        variantId: it.variantId,
+        sku: it.sku,
+        productName: it.name,
+        type: 'salida',
+        qtyBefore: stockBefore,
+        qtyAfter: stockAfter,
+        delta: -it.qty,
+        reason: `Venta simulada #${documentNumber}`,
+        saleId: saleRef.id,
+        userId: currentUser.uid,
+        userEmail: currentUser.email,
+        createdAt: serverTimestamp()
       });
     }
   }
-  return variants;
+
+  // 13. Guardar referencia para el resumen
+  results._lastMethod = method;
+  results._lastPaymentStatus = paymentStatus;
+  results._lastSummary = `${store.name} · ${method} · ${fmt(total)} · ${documentNumber}`;
+
+  return saleRef.id;
 }
 
-/* ============ SEED PRINCIPAL ============ */
-document.getElementById('run-btn').onclick = async () => {
-  const btn = document.getElementById('run-btn');
-  btn.disabled = true; btn.textContent = '⏳ Ejecutando...';
-  logBox.innerHTML = '';
-  logBox.classList.remove('hidden');
-
-  const user = auth.currentUser;
-  if (!user) { log('❌ No hay sesión activa', 'error'); btn.disabled = false; return; }
-
-  const userEmail = user.email;
-  const userId = user.uid;
-  const resetInv = document.getElementById('reset-inventory').checked;
-
-  try {
-    // ---------------------------------------------------------
-    // 1. Actualizar usuario
-    // ---------------------------------------------------------
-    log('▶ 1. Actualizando usuario…');
-    await updateDoc(doc(db,'users',userId), {
-      email: userEmail,
-      name: 'Super Admin',
-      storeId: null,
-      active: true,
-      commissionRate: 0,
-      updatedAt: serverTimestamp()
-    });
-    log('  ✔ Usuario actualizado', 'ok');
-
-    // ---------------------------------------------------------
-    // 2. Crear tiendas (idempotente)
-    // ---------------------------------------------------------
-    log('▶ 2. Creando tiendas…');
-    for (const s of STORES) {
-      const ref = doc(db,'stores', s.storeId);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        log(`  ℹ ${s.name} ya existía, se omite`, 'warn');
-      } else {
-        await setDoc(ref, { ...s, createdAt: serverTimestamp(), createdBy: userId });
-        log(`  ✔ Creada: ${s.name} (${s.storeId})`, 'ok');
-      }
-    }
-
-    // ---------------------------------------------------------
-    // 3. settings/general
-    // ---------------------------------------------------------
-    log('▶ 3. Creando settings/general…');
-    await setDoc(doc(db,'settings','general'), {
-      whatsapp: "573104304428",
-      minStock: 5,
-      taxEnabled: false,
-      taxRate: 0.19,
-      dianEnabled: false,
-      dianProvider: null,
-      categories: CATEGORIES,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-    log('  ✔ Configuración global guardada', 'ok');
-
-    // ---------------------------------------------------------
-    // 4. Migrar productos existentes
-    // ---------------------------------------------------------
-    log('▶ 4. Migrando productos existentes…');
-    const productsSnap = await getDocs(collection(db,'products'));
-    log(`  ℹ Encontrados ${productsSnap.size} productos`, 'info');
-
-    const migratedProducts = [];
-    for (const d of productsSnap.docs) {
-      const p = d.data();
-      const map = CATEGORY_MAP[p.category] || { group:'electrodomesticos', sub:'limpieza-hogar' };
-
-      // Construir variantes si no existen
-      let variants = Array.isArray(p.variants) && p.variants.length ? p.variants : slugVariants(p);
-
-      const newDoc = {
-        sku: p.sku || '',
-        name: p.name || '',
-        brand: p.brand || '',
-        description: p.description || '',
-        categoryGroup: map.group,
-        categoryGroupName: CATEGORIES[map.group].name,
-        category: map.sub,
-        categoryName: CATEGORIES[map.group].subcategories[map.sub].name,
-        price: Number(p.price || 0),
-        cost: Number(p.cost || 0),
-        storePrices: p.storePrices || {},
-        taxRate: 0,
-        warrantyMonths: 12,
-        serialRequired: false,
-        onSale: !!p.onSale,
-        salePrice: Number(p.salePrice || 0),
-        active: true,
-        images: Array.isArray(p.images) ? p.images : [],
-        variants,
-        updatedAt: serverTimestamp()
-      };
-
-      await updateDoc(doc(db,'products',d.id), newDoc);
-      migratedProducts.push({ id: d.id, ...newDoc });
-      log(`  ✔ ${newDoc.name} → ${variants.length} variante(s)`, 'ok');
-    }
-
-    // ---------------------------------------------------------
-    // 5. Inventario por tienda (idempotente)
-    // ---------------------------------------------------------
-    log('▶ 5. Generando inventario por tienda…');
-    let invCount = 0;
-    for (const p of migratedProducts) {
-      for (const v of p.variants) {
-        for (const store of STORES) {
-          const invId = `${store.storeId}_${v.variantId}`;
-          const ref = doc(db,'inventory', invId);
-          const snap = await getDoc(ref);
-          if (snap.exists() && !resetInv) continue;
-
-          // Stock inicial: 6 para Alameda, 3 para Mallorquín (para probar)
-          const initialStock = store.storeId === 'tienda-alameda' ? 6 : 3;
-
-          await setDoc(ref, {
-            storeId: store.storeId,
-            productId: p.id,
-            variantId: v.variantId,
-            productName: p.name,
-            sku: v.sku,
-            color: v.color || null,
-            colorName: v.colorName || '',
-            size: v.size || null,
-            stock: initialStock,
-            minStock: 5,
-            serials: [],
-            updatedAt: serverTimestamp()
-          });
-          invCount++;
-        }
-      }
-    }
-    log(`  ✔ ${invCount} registros de inventario procesados`, 'ok');
-
-    // ---------------------------------------------------------
-    // 6. Auditoría
-    // ---------------------------------------------------------
-    log('▶ 6. Registrando auditoría…');
-    await audit({
-      action: 'seed',
-      collection: 'system',
-      userId, userEmail, userRole: 'superadmin',
-      storeId: null,
-      note: `Migración inicial ejecutada. ${migratedProducts.length} productos, ${invCount} inventarios.`
-    });
-    log('  ✔ Auditoría registrada', 'ok');
-
-    log('');
-    log('═══════════════════════════════════════', 'ok');
-    log('🎉 MIGRACIÓN COMPLETADA', 'ok');
-    log('═══════════════════════════════════════', 'ok');
-    log('');
-    log('Ahora puedes:');
-    log('• Abrir admin.html (cuando lo actualicemos en FASE 2)', 'info');
-    log('• Abrir venta.html (verás el selector de tienda)', 'info');
-    log('• Abrir index.html (catálogo con las nuevas categorías)', 'info');
-    log('');
-    log('Recarga la página si quieres volver a ejecutar.', 'warn');
-
-  } catch(e) {
-    console.error(e);
-    log('❌ ERROR: ' + e.message, 'error');
-    log('   Revisa la consola del navegador para más detalle.', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '🚀 Ejecutar migración';
-  }
+// Variable global accesible desde createOneSale
+const results = {
+  _lastMethod: null,
+  _lastPaymentStatus: null,
+  _lastSummary: ''
 };
+
+function log(msg) {
+  const el = $('log-output');
+  el.innerText += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
 </script>
 </body>
 </html>
