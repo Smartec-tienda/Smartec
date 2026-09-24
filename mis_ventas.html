@@ -210,12 +210,13 @@
     </div>
 
     <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
-      <table class="w-full text-sm min-w-[900px]">
+      <table class="w-full text-sm min-w-[1000px]">
         <thead class="bg-gray-100 text-sd">
           <tr>
             <th class="p-3 text-left">Fecha</th>
             <th class="p-3 text-left">Cliente</th>
             <th class="p-3 text-left">Vendedor</th>
+            <th class="p-3 text-left">Pago</th>
             <th class="p-3 text-center">Items</th>
             <th class="p-3 text-right">Total</th>
             <th class="p-3 text-right">Comisión</th>
@@ -669,6 +670,41 @@ function renderPaymentBreakdown() {
   }).join('');
 }
 
+/* Helper: celda de pago reutilizable */
+function renderPaymentCell(s) {
+  const method = s.paymentMethod || 'efectivo';
+  const status = s.paymentStatus || 'completed';
+
+  const methodLabels = {
+    efectivo: '💵 Efectivo',
+    transferencia: '🔄 Transferencia',
+    tarjeta: '💳 Tarjeta',
+    contraentrega: '📦 Contra entrega',
+    credito: '🛍️ Crédito',
+    nequi: '📱 Nequi (legacy)'
+  };
+  const methodLabel = methodLabels[method] || method;
+
+  let channelLine = '';
+  if ((method === 'transferencia' || method === 'credito') && s.paymentChannelBank) {
+    const icon = s.paymentChannelIcon || (method === 'credito' ? '🛍️' : '🏦');
+    const name = s.paymentChannelName ? ` — ${s.paymentChannelName}` : '';
+    channelLine = `<div class="text-[10px] text-gray-500 mt-0.5">${icon} ${escapeHtml(s.paymentChannelBank)}${escapeHtml(name)}</div>`;
+  }
+
+  let statusBadge = '';
+  if (status === 'pending') {
+    statusBadge = '<span class="inline-block text-[9px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold mt-1">⏳ PENDIENTE</span>';
+  }
+
+  return `<div>
+    <div class="font-medium text-sd text-xs">${methodLabel}</div>
+    ${channelLine}
+    ${statusBadge}
+  </div>`;
+}
+
+
 function renderTable() {
   const tb = $('sales-tbody');
   const empty = $('sales-empty');
@@ -690,10 +726,17 @@ function renderTable() {
     const statusLbl = s.status === 'anulada' ? 'Anulada' : 'Completada';
     const total = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
 
-    return `<tr class="border-b hover:bg-gray-50">
+    // 🆕 Celda de pago
+    const paymentCell = renderPaymentCell(s);
+
+    // 🆕 Fondo amarillo si es pendiente de pago
+    const rowClass = s.paymentStatus === 'pending' ? 'bg-amber-50/40' : '';
+
+    return `<tr class="border-b hover:bg-gray-50 ${rowClass}">
       <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${fmtDate(s.createdAt)}</td>
       <td class="p-3 text-xs font-medium text-sd">${escapeHtml(s.customer?.name) || '-'}<br><span class="text-[10px] text-gray-400">${s.customer?.phone || ''}</span></td>
       <td class="p-3 text-xs">${escapeHtml(s.sellerName) || s.sellerEmail || '-'}</td>
+      <td class="p-3 text-xs">${paymentCell}</td>
       <td class="p-3 text-center text-xs">${itemsCount}</td>
       <td class="p-3 text-right text-xs font-semibold">${fmt(total)}</td>
       <td class="p-3 text-right text-xs text-orange-500 font-semibold">${fmt(commission)}</td>
@@ -762,6 +805,7 @@ window.viewSale = (id) => {
       ${s.profit ? `<div class="flex justify-between text-xs text-green-600 font-semibold"><span>Utilidad</span><span>${fmt(s.profit)}</span></div>` : ''}
     </div>
 
+      ${renderPaymentDetail(s)}
     <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm">
       <p class="font-bold text-orange-700 mb-2">💰 Comisiones</p>
       <div class="flex justify-between text-xs">
@@ -787,9 +831,68 @@ window.viewSale = (id) => {
   m.classList.remove('hidden'); m.classList.add('flex');
 };
 
+/* Helper: sección de detalle de pago para el modal */
+function renderPaymentDetail(s) {
+  const method = s.paymentMethod || 'efectivo';
+  const status = s.paymentStatus || 'completed';
+
+  const methodLabels = {
+    efectivo: '💵 Efectivo',
+    transferencia: '🔄 Transferencia',
+    tarjeta: '💳 Tarjeta',
+    contraentrega: '📦 Contra entrega',
+    credito: '🛍️ Crédito',
+    nequi: '📱 Nequi (legacy)'
+  };
+  const methodLabel = methodLabels[method] || method;
+
+  const statusBadge = status === 'pending'
+    ? '<span class="bg-amber-100 text-amber-700 text-xs px-3 py-1 rounded-full font-bold">⏳ PAGO PENDIENTE</span>'
+    : '<span class="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-semibold">✅ Pagado</span>';
+
+  let channelSection = '';
+
+  if (method === 'transferencia' && s.paymentChannelBank) {
+    const icon = s.paymentChannelIcon || '🏦';
+    channelSection = `
+      <div class="grid grid-cols-2 gap-2 text-xs mt-2">
+        <div><p class="text-gray-400">Banco/Plataforma</p><p class="font-semibold">${icon} ${escapeHtml(s.paymentChannelBank)}</p></div>
+        ${s.paymentChannelName ? `<div><p class="text-gray-400">Nombre</p><p class="font-semibold">${escapeHtml(s.paymentChannelName)}</p></div>` : ''}
+        ${s.paymentChannelAccount ? `<div><p class="text-gray-400">Cuenta</p><p class="font-mono font-semibold">${escapeHtml(s.paymentChannelAccount)}</p></div>` : ''}
+      </div>
+    `;
+  } else if (method === 'credito' && s.paymentChannelBank) {
+    const icon = s.paymentChannelIcon || '🛍️';
+    channelSection = `
+      <div class="grid grid-cols-2 gap-2 text-xs mt-2">
+        <div><p class="text-gray-400">Entidad</p><p class="font-semibold">${icon} ${escapeHtml(s.paymentChannelBank)}</p></div>
+      </div>
+    `;
+  } else if (method === 'contraentrega') {
+    channelSection = `
+      <p class="text-xs text-amber-700 mt-2">
+        Esta venta se registró como <b>contra entrega</b>.
+        El cobro se debe confirmar al momento de la entrega.
+      </p>
+    `;
+  }
+
+  return `
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm mb-4">
+      <div class="flex justify-between items-start mb-2">
+        <p class="font-bold text-blue-700">💳 Información de pago</p>
+        ${statusBadge}
+      </div>
+      <p class="text-sm font-semibold text-sd">${methodLabel}</p>
+      ${channelSection}
+    </div>
+  `;
+}
+
 window.closeSaleModal = () => {
   const m = $('sale-modal');
-  m.classList.add('hidden'); m.classList.remove('flex');
+  m.classList.add('hidden');
+  m.classList.remove('flex');
 };
 
 /* ============ REFRESCAR ============ */

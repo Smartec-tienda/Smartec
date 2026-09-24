@@ -309,18 +309,34 @@
     <section id="tab-sales" class="tab-content hidden">
       <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
         <h2 class="text-2xl font-bold text-sd">Ventas</h2>
-        <select id="sales-store-filter" class="px-3 py-2 border rounded-lg text-sm">
-          <option value="all">Todas las tiendas</option>
-        </select>
+        <div class="flex gap-2 flex-wrap">
+          <select id="sales-store-filter" class="px-3 py-2 border rounded-lg text-sm">
+            <option value="all">Todas las tiendas</option>
+          </select>
+          <select id="sales-payment-method-filter" class="px-3 py-2 border rounded-lg text-sm">
+            <option value="all">Todos los métodos</option>
+            <option value="efectivo">💵 Efectivo</option>
+            <option value="transferencia">🔄 Transferencia</option>
+            <option value="tarjeta">💳 Tarjeta</option>
+            <option value="contraentrega">📦 Contra entrega</option>
+            <option value="credito">🛍️ Crédito</option>
+          </select>
+          <select id="sales-payment-status-filter" class="px-3 py-2 border rounded-lg text-sm">
+            <option value="all">Todos los pagos</option>
+            <option value="completed">✅ Pagados</option>
+            <option value="pending">⏳ Pendientes de pago</option>
+          </select>
+        </div>
       </div>
       <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
-        <table class="w-full text-sm min-w-[900px]">
+        <table class="w-full text-sm min-w-[1100px]">
           <thead class="bg-gray-100 text-sd">
             <tr>
               <th class="p-3 text-left">Fecha</th>
               <th class="p-3 text-left">Cliente</th>
               <th class="p-3 text-left">Tienda</th>
               <th class="p-3 text-left">Vendedor</th>
+              <th class="p-3 text-left">Pago</th>
               <th class="p-3 text-center">Items</th>
               <th class="p-3 text-right">Venta neta</th>
               <th class="p-3 text-center">Estado</th>
@@ -328,7 +344,7 @@
             </tr>
           </thead>
           <tbody id="sales-tbody"></tbody>
-        </table>
+        </table>s
       </div>
     </section>
 <!-- ============ REPORTES ============ -->
@@ -2667,10 +2683,22 @@ window.delPromo = async id => {
    VENTAS
 ============================================================ */
 function renderSales() {
-  const filter = $('sales-store-filter').value;
+  const storeF = $('sales-store-filter')?.value || 'all';
+  const methodF = $('sales-payment-method-filter')?.value || 'all';
+  const statusF = $('sales-payment-status-filter')?.value || 'all';
+
   const tb = $('sales-tbody');
   let list = sales.slice();
-  if (filter !== 'all') list = list.filter(s => s.storeId === filter);
+
+  if (storeF !== 'all') list = list.filter(s => s.storeId === storeF);
+  if (methodF !== 'all') list = list.filter(s => s.paymentMethod === methodF);
+  if (statusF !== 'all') {
+    list = list.filter(s => {
+      const ps = s.paymentStatus || 'completed';
+      return ps === statusF;
+    });
+  }
+
   list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
 
   tb.innerHTML = list.length ? list.slice(0,200).map(s => {
@@ -2679,11 +2707,15 @@ function renderSales() {
     const seller = users.find(u => u.id === s.sellerUid);
     const statusCls = s.status==='anulada'?'bg-red-100 text-red-700':
                      s.status==='completada'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700';
-    return `<tr class="border-b hover:bg-gray-50">
+
+    const paymentCell = renderPaymentCell(s);
+
+    return `<tr class="border-b hover:bg-gray-50 ${s.paymentStatus==='pending'?'bg-amber-50/40':''}">
       <td class="p-3 text-xs text-gray-500">${fmtDate(s.createdAt)}</td>
       <td class="p-3 font-medium text-sd">${escapeHtml(s.customer?.name)||'-'}<br><span class="text-[10px] text-gray-400">${s.customer?.phone||''}</span></td>
       <td class="p-3 text-xs">${escapeHtml(store?.name)||s.storeId}</td>
       <td class="p-3 text-xs">${escapeHtml(seller?.name)||s.sellerEmail||'-'}</td>
+      <td class="p-3 text-xs">${paymentCell}</td>
       <td class="p-3 text-center">${itemsCount}</td>
       <td class="p-3 text-right font-semibold">${fmt(s.total)}</td>
       <td class="p-3 text-center"><span class="text-xs px-2 py-1 rounded ${statusCls}">${s.status||'pendiente'}</span></td>
@@ -2691,7 +2723,46 @@ function renderSales() {
         <button onclick='viewSale("${s.id}")' class="text-sl hover:underline text-xs">Ver</button>
       </td>
     </tr>`;
-  }).join('') : '<tr><td colspan="8" class="p-6 text-center text-gray-400">Sin ventas</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="p-6 text-center text-gray-400">Sin ventas</td></tr>';
+}
+
+/* Helper: celda de pago reutilizable */
+function renderPaymentCell(s) {
+  const method = s.paymentMethod || 'efectivo';
+  const status = s.paymentStatus || 'completed';
+
+  const methodLabels = {
+    efectivo: '💵 Efectivo',
+    transferencia: '🔄 Transferencia',
+    tarjeta: '💳 Tarjeta',
+    contraentrega: '📦 Contra entrega',
+    credito: '🛍️ Crédito',
+    nequi: '📱 Nequi'  // legacy
+  };
+  const methodLabel = methodLabels[method] || method;
+
+  // Canal (si aplica)
+  let channelLine = '';
+  if (method === 'transferencia' && s.paymentChannelBank) {
+    const icon = s.paymentChannelIcon || '🏦';
+    const name = s.paymentChannelName ? ` — ${s.paymentChannelName}` : '';
+    channelLine = `<div class="text-[10px] text-gray-500 mt-0.5">${icon} ${escapeHtml(s.paymentChannelBank)}${escapeHtml(name)}</div>`;
+  } else if (method === 'credito' && s.paymentChannelBank) {
+    const icon = s.paymentChannelIcon || '🛍️';
+    channelLine = `<div class="text-[10px] text-gray-500 mt-0.5">${icon} ${escapeHtml(s.paymentChannelBank)}</div>`;
+  }
+
+  // Badge de estado
+  let statusBadge = '';
+  if (status === 'pending') {
+    statusBadge = '<span class="inline-block text-[9px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold mt-1">⏳ PENDIENTE</span>';
+  }
+
+  return `<div>
+    <div class="font-medium text-sd text-xs">${methodLabel}</div>
+    ${channelLine}
+    ${statusBadge}
+  </div>`;
 }
 
 window.viewSale = async (id) => {
@@ -2739,7 +2810,7 @@ window.viewSale = async (id) => {
       <div class="flex justify-between text-xs text-gray-500"><span>Costo</span><span>${fmt(s.totalCost)}</span></div>
       <div class="flex justify-between text-xs text-green-600 font-semibold"><span>Utilidad</span><span>${fmt(s.profit)}</span></div>
     </div>
-
+    ${renderPaymentDetail(s)}
     <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm mb-4">
       <p class="font-bold text-orange-700 mb-2">💰 Comisiones generadas</p>
       <div class="flex justify-between text-xs">
@@ -2773,6 +2844,68 @@ window.viewSale = async (id) => {
   const m = $('sale-modal');
   m.classList.remove('hidden'); m.classList.add('flex');
 };
+
+/* Helper: sección de detalle de pago para el modal */
+function renderPaymentDetail(s) {
+  const method = s.paymentMethod || 'efectivo';
+  const status = s.paymentStatus || 'completed';
+
+  const methodLabels = {
+    efectivo: '💵 Efectivo',
+    transferencia: '🔄 Transferencia',
+    tarjeta: '💳 Tarjeta',
+    contraentrega: '📦 Contra entrega',
+    credito: '🛍️ Crédito',
+    nequi: '📱 Nequi (legacy)'
+  };
+  const methodLabel = methodLabels[method] || method;
+
+  const statusBadge = status === 'pending'
+    ? '<span class="bg-amber-100 text-amber-700 text-xs px-3 py-1 rounded-full font-bold">⏳ PAGO PENDIENTE</span>'
+    : '<span class="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-semibold">✅ Pagado</span>';
+
+  let channelSection = '';
+
+  if (method === 'transferencia' && s.paymentChannelBank) {
+    const icon = s.paymentChannelIcon || '🏦';
+    channelSection = `
+      <div class="grid grid-cols-2 gap-2 text-xs mt-2">
+        <div><p class="text-gray-400">Banco/Plataforma</p><p class="font-semibold">${icon} ${escapeHtml(s.paymentChannelBank)}</p></div>
+        ${s.paymentChannelName ? `<div><p class="text-gray-400">Nombre</p><p class="font-semibold">${escapeHtml(s.paymentChannelName)}</p></div>` : ''}
+        ${s.paymentChannelAccount ? `<div><p class="text-gray-400">Cuenta</p><p class="font-mono font-semibold">${escapeHtml(s.paymentChannelAccount)}</p></div>` : ''}
+        ${s.paymentChannelCode ? `<div><p class="text-gray-400">Código</p><p class="font-mono font-semibold">${escapeHtml(s.paymentChannelCode)}</p></div>` : ''}
+      </div>
+    `;
+  } else if (method === 'credito' && s.paymentChannelBank) {
+    const icon = s.paymentChannelIcon || '🛍️';
+    channelSection = `
+      <div class="grid grid-cols-2 gap-2 text-xs mt-2">
+        <div><p class="text-gray-400">Entidad</p><p class="font-semibold">${icon} ${escapeHtml(s.paymentChannelBank)}</p></div>
+        ${s.paymentChannelName ? `<div><p class="text-gray-400">Notas</p><p class="font-semibold">${escapeHtml(s.paymentChannelName)}</p></div>` : ''}
+        ${s.paymentChannelCode ? `<div><p class="text-gray-400">Código</p><p class="font-mono font-semibold">${escapeHtml(s.paymentChannelCode)}</p></div>` : ''}
+      </div>
+    `;
+  } else if (method === 'contraentrega') {
+    channelSection = `
+      <p class="text-xs text-amber-700 mt-2">
+        Esta venta se registró como <b>contra entrega</b>.
+        El cobro se debe confirmar al momento de la entrega.
+      </p>
+    `;
+  }
+
+  return `
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm mb-4">
+      <div class="flex justify-between items-start mb-2">
+        <p class="font-bold text-blue-700">💳 Información de pago</p>
+        ${statusBadge}
+      </div>
+      <p class="text-sm font-semibold text-sd">${methodLabel}</p>
+      ${channelSection}
+    </div>
+  `;
+}
+
 window.closeSaleModal = () => { const m=$('sale-modal'); m.classList.add('hidden'); m.classList.remove('flex'); };
 
 window.cancelSale = async (id) => {
@@ -3705,6 +3838,11 @@ function populateStoreSelects() {
   $('dash-store').onchange = renderDashboard;
   $('sellers-store-filter').onchange = renderSellers;
   $('sales-store-filter').onchange = renderSales;
+  // 🆕 Nuevos filtros de pago
+  const pmf = $('sales-payment-method-filter');
+  const psf = $('sales-payment-status-filter');
+  if (pmf) pmf.onchange = renderSales;
+  if (psf) psf.onchange = renderSales;
 }
 /* ============================================================
    INVENTARIO POR PRODUCTO (modal Ver/Editar)
