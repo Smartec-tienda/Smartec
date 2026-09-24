@@ -1506,14 +1506,6 @@ document.addEventListener('change', (e) => {
 
       closePicker();
     renderCart();
-
-    // 🆕 Si el carrito estaba cerrado y es mobile o el usuario no ha abierto, abrirlo sutilmente
-    // Solo auto-abrir si estaba cerrado y ya hay items
-    if (!cartOpen && cart.length > 0) {
-      // No abrir automáticamente en desktop para no interrumpir
-      // En mobile sí, porque no hay otra forma de ver el carrito
-      if (window.innerWidth < 1024) toggleCart();
-    }
   };
 
   function renderCart() {
@@ -2237,9 +2229,6 @@ document.addEventListener('change', (e) => {
       // Feedback visual y cierre
     closeScanner();
     renderCart();
-
-    // 🆕 Auto-abrir carrito en mobile si estaba cerrado
-    if (!cartOpen && window.innerWidth < 1024) toggleCart();
 
     // Toast de confirmación
     showToast(`✅ ${foundProduct.name} agregado`);
