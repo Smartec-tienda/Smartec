@@ -3,107 +3,169 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smartec · Seed de Ventas (Temporal)</title>
+<title>Smartec · Seed de datos (solo dev)</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
+<script src="cache.js"></script>
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
   .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
   .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
   .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
 </style>
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
 
-<!-- LOGIN -->
-<div id="login-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+<!-- ============ LOGIN ============ -->
+<div id="login-screen" class="hidden min-h-screen items-center justify-center bg-sd p-4">
   <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
     <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
-    <p class="text-center text-sm text-gray-500 mb-6">🌱 Seed de Ventas (Temporal)</p>
-    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3">
-    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4">
-    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl font-semibold">Ingresar</button>
+    <p class="text-center text-sm text-gray-500 mb-1">Seed de datos</p>
+    <p class="text-center text-[10px] text-red-500 mb-6">⚠️ Solo para desarrollo</p>
+    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
+    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
+    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
     <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
   </div>
 </div>
 
-<!-- PANEL -->
-<div id="panel-screen" class="hidden min-h-screen">
-  <header class="bg-sd text-white p-4 flex justify-between items-center">
-    <div>
-      <h1 class="text-xl font-bold">🌱 Seed de Ventas</h1>
-      <p class="text-xs opacity-70">Herramienta temporal · Solo superadmin</p>
+<!-- ============ VERIFICANDO ============ -->
+<div id="loading-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+  <div class="text-center">
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
+    <p class="text-white font-semibold text-sm">Verificando sesión...</p>
+  </div>
+</div>
+
+<!-- ============ BLOQUEADO ============ -->
+<div id="blocked-screen" class="hidden min-h-screen flex items-center justify-center bg-gray-100 p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <span class="text-3xl">⛔</span>
     </div>
-    <div class="flex gap-3 text-sm">
-      <span id="user-info" class="opacity-80"></span>
-      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600">Salir</button>
+    <h2 class="text-xl font-bold text-sd mb-2">Acceso denegado</h2>
+    <p class="text-sm text-gray-600 mb-6">Este seed solo puede ejecutarlo el superadmin.</p>
+    <button onclick="window.location.href='home.html'" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl font-semibold">Volver al inicio</button>
+  </div>
+</div>
+
+<!-- ============ PANEL ============ -->
+<div id="panel-screen" class="hidden min-h-screen flex flex-col">
+
+  <header class="bg-sd text-white px-4 py-4 flex justify-between items-center shrink-0">
+    <div class="flex items-center gap-3 min-w-0">
+      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap">SMART<span class="text-sl">EC</span></h1>
+      <div class="hidden md:block w-px h-6 bg-white/20"></div>
+      <div class="min-w-0">
+        <p class="text-sm md:text-base font-semibold truncate">Seed de datos</p>
+        <p class="text-[10px] opacity-70">Solo superadmin · marcado con _seed: true</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 text-sm shrink-0">
+      <span id="user-info" class="hidden lg:inline opacity-80 text-xs"></span>
+      <a href="home.html" class="hover:text-sl transition text-xs">← Inicio</a>
+      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
     </div>
   </header>
 
-  <main class="container mx-auto p-6 max-w-4xl">
+  <main class="flex-1 container mx-auto p-4 md:p-6 max-w-4xl">
 
-    <!-- Verificación previa -->
-    <div class="bg-white rounded-xl shadow p-6 mb-6">
-      <h2 class="text-xl font-bold text-sd mb-4">📋 Verificación previa</h2>
-      <div id="precheck-list" class="space-y-2 text-sm">
-        <p class="text-gray-500">Verificando datos existentes...</p>
-      </div>
+    <!-- Aviso -->
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4 mb-6">
+      <p class="font-semibold text-yellow-800 text-sm">⚠️ Herramienta de desarrollo</p>
+      <p class="text-xs text-yellow-700 mt-1">
+        Este seed crea datos de prueba en Firestore. Todos los documentos llevan el campo
+        <code class="bg-yellow-100 px-1 rounded">_seed: true</code> para poder limpiarlos sin afectar datos reales.
+        El botón "Limpiar seed" solo borra documentos con esa marca.
+      </p>
     </div>
 
-    <!-- Panel de configuración -->
-    <div class="bg-white rounded-xl shadow p-6 mb-6">
-      <h2 class="text-xl font-bold text-sd mb-4">⚙️ Configuración del seed</h2>
-      <div class="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <label class="text-xs font-semibold text-sd">Cantidad de ventas</label>
-          <input id="cfg-count" type="number" value="50" min="1" max="500" class="w-full px-3 py-2 border rounded-lg mt-1">
+    <!-- Estado actual -->
+    <div class="bg-white rounded-xl shadow p-5 mb-6">
+      <h2 class="font-bold text-sd mb-3">📊 Estado actual</h2>
+      <div id="status-grid" class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div class="bg-gray-50 rounded-lg p-3">
+          <p class="text-[10px] text-gray-500 uppercase font-semibold">Proveedores seed</p>
+          <p id="count-suppliers" class="text-2xl font-bold text-sd mt-1">—</p>
         </div>
-        <div>
-          <label class="text-xs font-semibold text-sd">Rango de días atrás</label>
-          <input id="cfg-days" type="number" value="30" min="1" max="365" class="w-full px-3 py-2 border rounded-lg mt-1">
+        <div class="bg-gray-50 rounded-lg p-3">
+          <p class="text-[10px] text-gray-500 uppercase font-semibold">Gastos / Costos seed</p>
+          <p id="count-expenses" class="text-2xl font-bold text-sd mt-1">—</p>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-3">
+          <p class="text-[10px] text-gray-500 uppercase font-semibold">Ventas seed</p>
+          <p id="count-sales" class="text-2xl font-bold text-sd mt-1">—</p>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-3">
+          <p class="text-[10px] text-gray-500 uppercase font-semibold">Tiendas activas</p>
+          <p id="count-stores" class="text-2xl font-bold text-sd mt-1">—</p>
         </div>
       </div>
-      <div class="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 space-y-1">
-        <p>📊 <b>Distribución de métodos:</b></p>
-        <p>· 💵 Efectivo: 30%</p>
-        <p>· 🔄 Transferencia: 40%</p>
-        <p>· 🛍️ Crédito: 10%</p>
-        <p>· 💳 Tarjeta: 10%</p>
-        <p>· 📦 Contra entrega: 10% (60% confirmadas, 40% pendientes)</p>
-      </div>
-    </div>
-
-    <!-- Botón principal -->
-    <div class="bg-white rounded-xl shadow p-6 mb-6 text-center">
-      <button id="run-btn" class="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 font-bold text-lg disabled:opacity-40 disabled:cursor-not-allowed" disabled>
-        🚀 Generar ventas
+      <button id="refresh-stats-btn" class="mt-4 text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">
+        🔄 Refrescar conteos
       </button>
-      <p id="run-hint" class="text-xs text-gray-400 mt-2">Esperando verificaciones...</p>
     </div>
 
-    <!-- Progreso -->
-    <div id="progress-box" class="hidden bg-white rounded-xl shadow p-6 mb-6">
-      <h2 class="text-xl font-bold text-sd mb-4">⏳ Progreso</h2>
-      <div class="w-full bg-gray-100 rounded-full h-4 mb-3">
-        <div id="progress-bar" class="h-4 rounded-full bg-sl transition-all" style="width:0%"></div>
+    <!-- Acciones -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+
+      <!-- Sembrar -->
+      <div class="bg-white rounded-xl shadow p-5 border-2 border-green-200">
+        <h2 class="font-bold text-green-700 mb-2">🌱 Sembrar datos</h2>
+        <p class="text-xs text-gray-500 mb-4">
+          Crea proveedores, gastos, costos, CxP y ventas de prueba repartidos entre las tiendas activas.
+          Si un documento ya existe con el mismo ID del seed, se salta.
+        </p>
+        <div class="flex flex-col gap-2">
+          <button id="seed-all-btn" class="w-full bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-bold text-sm disabled:opacity-40">
+            🚀 Sembrar todo (proveedores + movimientos + ventas)
+          </button>
+          <button id="seed-only-expenses-btn" class="w-full bg-green-100 text-green-700 py-2 rounded-lg hover:bg-green-200 font-semibold text-xs disabled:opacity-40">
+            Solo movimientos (proveedores + gastos)
+          </button>
+          <button id="seed-only-sales-btn" class="w-full bg-green-100 text-green-700 py-2 rounded-lg hover:bg-green-200 font-semibold text-xs disabled:opacity-40">
+            Solo ventas
+          </button>
+        </div>
       </div>
-      <p id="progress-text" class="text-sm text-gray-600 mb-4">0 / 0</p>
 
-      <div class="border rounded-lg p-3 bg-gray-50 max-h-64 overflow-y-auto scrollbar-thin">
-        <pre id="log-output" class="text-xs font-mono text-gray-700 whitespace-pre-wrap"></pre>
+      <!-- Limpiar -->
+      <div class="bg-white rounded-xl shadow p-5 border-2 border-red-200">
+        <h2 class="font-bold text-red-700 mb-2">🧹 Limpiar seed</h2>
+        <p class="text-xs text-gray-500 mb-4">
+          Borra TODOS los documentos con <code class="bg-red-100 px-1 rounded">_seed: true</code> de
+          proveedores, gastos y ventas. <b>No toca datos reales.</b>
+        </p>
+        <div class="flex flex-col gap-2">
+          <button id="clean-all-btn" class="w-full bg-red-500 text-white py-2.5 rounded-lg hover:bg-red-600 font-bold text-sm disabled:opacity-40">
+            🗑️ Limpiar todo el seed
+          </button>
+          <p class="text-[10px] text-red-600 text-center mt-2">
+            ⚠️ Acción irreversible · usa solo si ya no necesitas los datos de prueba
+          </p>
+        </div>
       </div>
     </div>
 
-    <!-- Resumen final -->
-    <div id="summary-box" class="hidden bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
-      <h2 class="text-xl font-bold text-green-700 mb-3">✅ Seed completado</h2>
-      <div id="summary-content" class="text-sm text-gray-700 space-y-1"></div>
-    </div>
+    <!-- Log de progreso -->
+    <div class="bg-white rounded-xl shadow p-5">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="font-bold text-sd">📋 Log de progreso</h2>
+        <button id="clear-log-btn" class="text-xs text-gray-500 hover:underline">Limpiar log</button>
+      </div>
 
-    <!-- Advertencia -->
-    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-xs text-yellow-800">
-      ⚠️ <b>Este archivo es temporal.</b> Bórralo cuando ya no lo necesites (o quítalo del deploy).
+      <!-- Barra de progreso -->
+      <div class="w-full bg-gray-100 rounded-full h-3 mb-4">
+        <div id="progress-bar" class="h-3 rounded-full bg-sl transition-all" style="width:0%"></div>
+      </div>
+      <p id="progress-text" class="text-xs text-gray-500 mb-3">Listo para comenzar</p>
+
+      <!-- Log -->
+      <div id="log" class="bg-gray-900 text-green-400 font-mono text-[11px] rounded-lg p-3 max-h-80 overflow-y-auto scrollbar-thin space-y-0.5">
+        <p class="text-gray-500">// Los mensajes aparecerán aquí</p>
+      </div>
     </div>
 
   </main>
@@ -113,11 +175,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
-  updateDoc, serverTimestamp, runTransaction, query, where
+  deleteDoc, serverTimestamp, query, where
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
+/* ============ CONFIG ============ */
 const firebaseConfig = {
   apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
   authDomain: "smartec-8fc19.firebaseapp.com",
@@ -131,22 +194,55 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+/* ============ ESTADO ============ */
 let currentUser = null;
 let currentUserData = null;
 let stores = [];
-let sellers = [];
-let products = [];
-let inventory = [];
-let transferChannels = [];
-let creditEntities = [];
 
+/* ============ HELPERS ============ */
 const $ = id => document.getElementById(id);
-const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
-const randomFrom = arr => arr[Math.floor(Math.random() * arr.length)];
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const randomFloat = (min, max) => Math.random() * (max - min) + min;
 
-// ============ AUTH ============
+function log(msg, type = 'info') {
+  const el = $('log');
+  const colorMap = {
+    info: 'text-green-400',
+    warn: 'text-yellow-400',
+    error: 'text-red-400',
+    success: 'text-cyan-400',
+    step: 'text-white font-bold'
+  };
+  const time = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const p = document.createElement('p');
+  p.className = colorMap[type] || 'text-green-400';
+  p.textContent = `[${time}] ${msg}`;
+  el.appendChild(p);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setProgress(pct, text) {
+  $('progress-bar').style.width = pct + '%';
+  if (text) $('progress-text').textContent = text;
+}
+
+function disableButtons(disabled) {
+  ['seed-all-btn','seed-only-expenses-btn','seed-only-sales-btn','clean-all-btn']
+    .forEach(id => { const el = $(id); if (el) el.disabled = disabled; });
+}
+
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+
+/* Fecha helper: YYYY-MM-DD */
+function dateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function addDays(dateString, days) {
+  const d = new Date(dateString + 'T12:00:00');
+  d.setDate(d.getDate() + Number(days || 0));
+  return dateStr(d);
+}
+
+/* ============ AUTH ============ */
 $('login-btn').onclick = async () => {
   const err = $('login-error');
   err.classList.add('hidden');
@@ -160,512 +256,738 @@ $('login-btn').onclick = async () => {
 
 $('logout-btn').onclick = async () => {
   await signOut(auth);
-  window.location.reload();
+  window.location.href = 'home.html';
 };
 
 onAuthStateChanged(auth, async user => {
+  document.getElementById('loading-screen').classList.add('hidden');
+
   if (!user) {
     $('login-screen').classList.remove('hidden');
-    $('panel-screen').classList.add('hidden');
+    $('login-screen').classList.add('flex');
     return;
   }
-  currentUser = user;
 
+  currentUser = user;
   try {
-    const snap = await getDoc(doc(db, 'users', user.uid));
+    const snap = await getDoc(doc(db,'users',user.uid));
     currentUserData = snap.exists() ? snap.data() : null;
   } catch(e) { currentUserData = null; }
 
   if (!currentUserData || currentUserData.role !== 'superadmin') {
-    alert('⛔ Solo superadmin puede usar esta herramienta.');
-    await signOut(auth);
+    $('blocked-screen').classList.remove('hidden');
+    $('blocked-screen').classList.add('flex');
     return;
   }
 
-  $('login-screen').classList.add('hidden');
   $('panel-screen').classList.remove('hidden');
   $('user-info').innerText = '👤 ' + user.email;
 
-  await precheck();
+  try {
+    const s = await getDocs(collection(db,'stores'));
+    stores = s.docs.map(d => ({id:d.id, ...d.data()})).filter(x => x.active !== false);
+    log(`✅ Sesión iniciada como superadmin`, 'success');
+    log(`📦 ${stores.length} tienda(s) activa(s) detectada(s)`, 'info');
+    stores.forEach(st => log(`   · ${st.name} (${st.storeId})`, 'info'));
+    await refreshStats();
+  } catch(e) {
+    log('Error cargando tiendas: ' + e.message, 'error');
+  }
 });
 
-// ============ PRECHECK ============
-async function precheck() {
-  const list = $('precheck-list');
-  list.innerHTML = '<p class="text-gray-500">Verificando datos existentes...</p>';
-
-  const checks = [];
-
-  // 1. Tiendas activas
+/* ============ CONTAR DOCUMENTOS SEED ============ */
+async function countSeedDocs(collectionName) {
   try {
-    const s = await getDocs(collection(db, 'stores'));
-    stores = s.docs.map(d => ({id:d.id, ...d.data()})).filter(x => x.active !== false);
-    checks.push({
-      label: 'Tiendas activas',
-      value: stores.length,
-      ok: stores.length > 0,
-      detail: stores.length ? stores.map(s => s.name).join(', ') : 'No hay tiendas activas'
-    });
+    const s = await getDocs(collection(db, collectionName));
+    return s.docs.filter(d => d.data()._seed === true).length;
   } catch(e) {
-    checks.push({ label: 'Tiendas', value: 'ERROR', ok: false, detail: e.message });
-  }
-
-  // 2. Vendedores
-  try {
-    const s = await getDocs(collection(db, 'users'));
-    const allUsers = s.docs.map(d => ({id:d.id, ...d.data()}));
-    sellers = allUsers.filter(u => ['vendedor','admin','superadmin'].includes(u.role) && u.active !== false);
-    checks.push({
-      label: 'Vendedores/Admins activos',
-      value: sellers.length,
-      ok: sellers.length > 0,
-      detail: sellers.map(u => u.name || u.email).join(', ')
-    });
-  } catch(e) {
-    checks.push({ label: 'Usuarios', value: 'ERROR', ok: false, detail: e.message });
-  }
-
-  // 3. Productos activos con variantes
-  try {
-    const s = await getDocs(collection(db, 'products'));
-    products = s.docs.map(d => ({id:d.id, ...d.data()})).filter(p => p.active !== false && (p.variants||[]).length);
-    checks.push({
-      label: 'Productos con variantes',
-      value: products.length,
-      ok: products.length > 0,
-      detail: products.length + ' productos disponibles'
-    });
-  } catch(e) {
-    checks.push({ label: 'Productos', value: 'ERROR', ok: false, detail: e.message });
-  }
-
-  // 4. Inventario
-  try {
-    const s = await getDocs(collection(db, 'inventory'));
-    inventory = s.docs.map(d => ({id:d.id, ...d.data()}));
-    const withStock = inventory.filter(i => Number(i.stock||0) > 0);
-    checks.push({
-      label: 'Variantes con stock',
-      value: withStock.length,
-      ok: withStock.length >= 5,
-      detail: withStock.length + ' variantes con stock > 0'
-    });
-  } catch(e) {
-    checks.push({ label: 'Inventario', value: 'ERROR', ok: false, detail: e.message });
-  }
-
-  // 5. Canales de transferencia
-  try {
-    const s = await getDocs(collection(db, 'paymentChannels'));
-    const all = s.docs.map(d => ({id:d.id, ...d.data()}));
-    transferChannels = all.filter(c => c.type === 'transferencia' && c.active !== false);
-    checks.push({
-      label: 'Canales de transferencia activos',
-      value: transferChannels.length,
-      ok: transferChannels.length > 0,
-      detail: transferChannels.length ? transferChannels.map(c => `${c.bank} — ${c.customName}`).join(', ') : 'No hay canales activos'
-    });
-  } catch(e) {
-    checks.push({ label: 'Canales transferencia', value: 'ERROR', ok: false, detail: e.message });
-  }
-
-  // 6. Entidades de crédito
-  try {
-    const s = await getDocs(collection(db, 'paymentChannels'));
-    const all = s.docs.map(d => ({id:d.id, ...d.data()}));
-    creditEntities = all.filter(c => c.type === 'credito' && c.active !== false);
-    checks.push({
-      label: 'Entidades de crédito activas',
-      value: creditEntities.length,
-      ok: creditEntities.length > 0,
-      detail: creditEntities.length ? creditEntities.map(c => c.bank).join(', ') : 'No hay entidades activas'
-    });
-  } catch(e) {
-    checks.push({ label: 'Entidades crédito', value: 'ERROR', ok: false, detail: e.message });
-  }
-
-  // Render
-  list.innerHTML = checks.map(c => `
-    <div class="flex items-start gap-3 border-b border-gray-100 pb-2">
-      <span class="text-lg">${c.ok ? '✅' : '❌'}</span>
-      <div class="flex-1 min-w-0">
-        <p class="font-semibold text-sd text-sm">${c.label}</p>
-        <p class="text-xs text-gray-500">${c.detail}</p>
-      </div>
-      <span class="text-sm font-bold ${c.ok ? 'text-green-600' : 'text-red-500'}">${c.value}</span>
-    </div>
-  `).join('');
-
-  const allOk = checks.every(c => c.ok);
-  const btn = $('run-btn');
-  const hint = $('run-hint');
-
-  if (allOk) {
-    btn.disabled = false;
-    hint.innerText = '✅ Todo listo. Puedes generar las ventas.';
-    hint.className = 'text-xs text-green-600 mt-2';
-  } else {
-    btn.disabled = true;
-    hint.innerText = '⚠️ Corrige los errores marcados en rojo antes de continuar.';
-    hint.className = 'text-xs text-red-500 mt-2';
+    return -1;
   }
 }
 
-// ============ SEED ============
-$('run-btn').onclick = async () => {
-  const count = Number($('cfg-count').value) || 50;
-  const days = Number($('cfg-days').value) || 30;
+async function refreshStats() {
+  $('count-suppliers').textContent = '...';
+  $('count-expenses').textContent = '...';
+  $('count-sales').textContent = '...';
 
-  if (!confirm(`¿Generar ${count} ventas aleatorias en los últimos ${days} días?\n\nSe descontará stock real y se registrarán movimientos.`)) return;
+  const [sup, exp, sal] = await Promise.all([
+    countSeedDocs('suppliers'),
+    countSeedDocs('expenses'),
+    countSeedDocs('sales')
+  ]);
 
-  $('run-btn').disabled = true;
-  $('progress-box').classList.remove('hidden');
-  $('summary-box').classList.add('hidden');
-  $('log-output').innerText = '';
-  $('progress-bar').style.width = '0%';
-  $('progress-text').innerText = `0 / ${count}`;
+  $('count-suppliers').textContent = sup >= 0 ? sup : '—';
+  $('count-expenses').textContent = exp >= 0 ? exp : '—';
+  $('count-sales').textContent = sal >= 0 ? sal : '—';
+  $('count-stores').textContent = stores.length;
+}
 
-  const results = {
-    created: 0,
-    failed: 0,
-    byMethod: { efectivo: 0, transferencia: 0, credito: 0, tarjeta: 0, contraentrega: 0 },
-    byContraentrega: { confirmadas: 0, pendientes: 0 },
-    errors: []
-  };
-
-  const cities = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga', 'Pereira', 'Manizales'];
-
-  for (let i = 1; i <= count; i++) {
-    try {
-      await createOneSale(i, days, cities);
-      results.created++;
-      const method = results._lastMethod;
-      results.byMethod[method] = (results.byMethod[method] || 0) + 1;
-      if (method === 'contraentrega') {
-        if (results._lastPaymentStatus === 'pending') results.byContraentrega.pendientes++;
-        else results.byContraentrega.confirmadas++;
-      }
-      log(`✅ [${i}/${count}] Venta creada · ${results._lastSummary}`);
-    } catch(e) {
-      results.failed++;
-      results.errors.push(`Venta ${i}: ${e.message}`);
-      log(`❌ [${i}/${count}] Error: ${e.message}`);
-    }
-
-    const pct = (i / count) * 100;
-    $('progress-bar').style.width = pct + '%';
-    $('progress-text').innerText = `${i} / ${count}`;
-  }
-
-  // Resumen
-  const summary = $('summary-content');
-  summary.innerHTML = `
-    <p>✅ <b>${results.created}</b> ventas creadas exitosamente</p>
-    ${results.failed ? `<p class="text-red-600">❌ <b>${results.failed}</b> ventas fallaron</p>` : ''}
-    <hr class="my-2">
-    <p class="font-semibold">Distribución por método:</p>
-    <p>· 💵 Efectivo: ${results.byMethod.efectivo || 0}</p>
-    <p>· 🔄 Transferencia: ${results.byMethod.transferencia || 0}</p>
-    <p>· 🛍️ Crédito: ${results.byMethod.credito || 0}</p>
-    <p>· 💳 Tarjeta: ${results.byMethod.tarjeta || 0}</p>
-    <p>· 📦 Contra entrega: ${results.byMethod.contraentrega || 0} (${results.byContraentrega.confirmadas} confirmadas + ${results.byContraentrega.pendientes} pendientes)</p>
-    ${results.errors.length ? `<hr class="my-2"><p class="font-semibold text-red-600">Errores:</p><ul class="text-xs">${results.errors.map(e => `<li>· ${e}</li>`).join('')}</ul>` : ''}
-    <p class="mt-3 text-xs text-gray-500">Revisa Firestore → colección <code>sales</code> para verificar.</p>
-  `;
-  $('summary-box').classList.remove('hidden');
-  $('run-btn').disabled = false;
+$('refresh-stats-btn').onclick = refreshStats;
+$('clear-log-btn').onclick = () => {
+  $('log').innerHTML = '<p class="text-gray-500">// Los mensajes aparecerán aquí</p>';
 };
 
-async function createOneSale(index, days, cities) {
-  // 1. Determinar método de pago (probabilidades)
-  const r = Math.random();
-  let method;
-  if (r < 0.30) method = 'efectivo';
-  else if (r < 0.70) method = 'transferencia';
-  else if (r < 0.80) method = 'credito';
-  else if (r < 0.90) method = 'tarjeta';
-  else method = 'contraentrega';
+/* ============================================================
+   DATA DEL SEED — PROVEEDORES
+============================================================ */
+const SEED_SUPPLIERS = [
+  {
+    code: 'SUP-001',
+    name: 'Distribuidora El Éxito S.A.S.',
+    nit: '900123456-1',
+    phone: '3105551001',
+    email: 'ventas@distrielexito.com',
+    address: 'Calle 45 #12-34, Bogotá',
+    contactName: 'Carlos Ramírez',
+    defaultPaymentTerms: 'net_30',
+    defaultAlertDaysBefore: 5,
+    notes: 'Proveedor principal de electrodomésticos'
+  },
+  {
+    code: 'SUP-002',
+    name: 'Importaciones Tecnológicas del Caribe',
+    nit: '900234567-2',
+    phone: '3105551002',
+    email: 'compras@importecaribe.com',
+    address: 'Carrera 53 #79-45, Barranquilla',
+    contactName: 'María Fernández',
+    defaultPaymentTerms: 'net_45',
+    defaultAlertDaysBefore: 7,
+    notes: 'Importación de electrónica'
+  },
+  {
+    code: 'SUP-003',
+    name: 'Muebles y Electrodomésticos del Valle',
+    nit: '900345678-3',
+    phone: '3105551003',
+    email: 'info@mevalle.com',
+    address: 'Av 6N #23-10, Cali',
+    contactName: 'Jorge Ospina',
+    defaultPaymentTerms: 'net_30',
+    defaultAlertDaysBefore: 5,
+    notes: 'Línea blanca'
+  },
+  {
+    code: 'SUP-004',
+    name: 'Suministros Industriales Antioquia',
+    nit: '900456789-4',
+    phone: '3105551004',
+    email: 'pedidos@sia.com.co',
+    address: 'Calle 30 #45-67, Medellín',
+    contactName: 'Ana Gómez',
+    defaultPaymentTerms: 'net_60',
+    defaultAlertDaysBefore: 10,
+    notes: 'Suministros para bodega'
+  },
+  {
+    code: 'SUP-005',
+    name: 'Tecnología Global Express',
+    nit: '900567890-5',
+    phone: '3105551005',
+    email: 'ventas@tecglobal.co',
+    address: 'Calle 100 #19-54, Bogotá',
+    contactName: 'Diego Mora',
+    defaultPaymentTerms: 'contado',
+    defaultAlertDaysBefore: 2,
+    notes: 'Pagos de contado con descuento'
+  },
+  {
+    code: 'SUP-006',
+    name: 'Refrigeración y Climatización S.A.S.',
+    nit: '900678901-6',
+    phone: '3105551006',
+    email: 'contacto@refriclima.co',
+    address: 'Carrera 43A #1-50, Medellín',
+    contactName: 'Luisa Restrepo',
+    defaultPaymentTerms: 'net_15',
+    defaultAlertDaysBefore: 3,
+    notes: 'Especialistas en neveras y aires'
+  },
+  {
+    code: 'SUP-007',
+    name: 'Papelería y Suministros Office Plus',
+    nit: '900789012-7',
+    phone: '3105551007',
+    email: 'pedidos@officeplus.co',
+    address: 'Calle 72 #10-34, Bogotá',
+    contactName: 'Andrés Silva',
+    defaultPaymentTerms: 'net_30',
+    defaultAlertDaysBefore: 5,
+    notes: 'Papelería y aseo'
+  },
+  {
+    code: 'SUP-008',
+    name: 'Transportes y Logística Nacional',
+    nit: '900890123-8',
+    phone: '3105551008',
+    email: 'servicio@translog.co',
+    address: 'Av Boyacá #80-20, Bogotá',
+    contactName: 'Patricia Rojas',
+    defaultPaymentTerms: 'net_15',
+    defaultAlertDaysBefore: 3,
+    notes: 'Servicios de transporte'
+  }
+];
 
-  // 2. Seleccionar tienda, vendedor
-  const store = randomFrom(stores);
-  const seller = randomFrom(sellers);
+/* ============================================================
+   DATA DEL SEED — PLANTILLAS DE GASTOS
+============================================================ */
+const SEED_EXPENSES_TEMPLATES = [
+  // Costos (compra mercancía)
+  { type:'costo', category:'mercancia', concept:'Compra de mercancía - Línea blanca', baseAmount: 8500000, supplierCode:'SUP-001' },
+  { type:'costo', category:'mercancia', concept:'Compra de mercancía - TV y audio', baseAmount: 6200000, supplierCode:'SUP-002' },
+  { type:'costo', category:'mercancia', concept:'Compra de mercancía - Neveras', baseAmount: 9800000, supplierCode:'SUP-003' },
+  { type:'costo', category:'mercancia', concept:'Compra de mercancía - Repuestos', baseAmount: 2300000, supplierCode:'SUP-006' },
+  { type:'costo', category:'mercancia', concept:'Compra de mercancía - Electrodomésticos', baseAmount: 4500000, supplierCode:'SUP-001' },
 
-  // 3. Cliente
-  const customer = {
-    name: `Cliente Test ${index}`,
-    phone: `300${String(1000000 + index).slice(-7)}`, // 10 dígitos únicos
-    email: `test${index}@smartec-test.com`,
-    address: `Dirección Test ${randomInt(1, 999)}`,
-    city: randomFrom(cities),
-    notes: ''
-  };
+  // Gastos operativos
+  { type:'gasto', category:'arriendo', concept:'Arriendo local comercial mes actual', baseAmount: 3200000, supplierCode:null },
+  { type:'gasto', category:'servicios', concept:'Servicios públicos - Energía', baseAmount: 780000, supplierCode:null },
+  { type:'gasto', category:'servicios', concept:'Servicios públicos - Agua', baseAmount: 210000, supplierCode:null },
+  { type:'gasto', category:'nomina', concept:'Nómina personal administrativo', baseAmount: 5400000, supplierCode:null },
+  { type:'gasto', category:'nomina', concept:'Nómina personal de bodega', baseAmount: 3200000, supplierCode:null },
+  { type:'gasto', category:'papeleria', concept:'Papelería y útiles de oficina', baseAmount: 340000, supplierCode:'SUP-007' },
+  { type:'gasto', category:'transporte', concept:'Fletes y transporte de mercancía', baseAmount: 980000, supplierCode:'SUP-008' },
+  { type:'gasto', category:'publicidad', concept:'Publicidad en redes sociales', baseAmount: 1200000, supplierCode:null },
+  { type:'gasto', category:'mantenimiento', concept:'Mantenimiento de instalaciones', baseAmount: 620000, supplierCode:null },
+  { type:'gasto', category:'mantenimiento', concept:'Mantenimiento equipos de cómputo', baseAmount: 450000, supplierCode:null },
+  { type:'gasto', category:'servicios', concept:'Internet y telefonía', baseAmount: 280000, supplierCode:null },
+  { type:'gasto', category:'impuestos', concept:'Impuesto predial', baseAmount: 540000, supplierCode:null },
+  { type:'gasto', category:'otros', concept:'Gastos bancarios y comisiones', baseAmount: 180000, supplierCode:null },
+  { type:'gasto', category:'otros', concept:'Dotación y aseo', baseAmount: 320000, supplierCode:null },
+  { type:'gasto', category:'servicios', concept:'Vigilancia y seguridad', baseAmount: 890000, supplierCode:null }
+];
 
-  // 4. Items: 1-3 productos con variantes que tengan stock en esta tienda
-  const itemsCount = randomInt(1, 3);
-  const items = [];
-  const usedProducts = new Set();
+/* ============================================================
+   SEED — PROVEEDORES
+============================================================ */
+async function seedSuppliers() {
+  log('🌱 Sembrando proveedores...', 'step');
+  let created = 0, skipped = 0;
 
-  for (let j = 0; j < itemsCount; j++) {
-    // Buscar un producto con stock en esta tienda
-    let product = null;
-    let variant = null;
-    let invRecord = null;
+  for (const sup of SEED_SUPPLIERS) {
+    const docId = 'seed_' + sup.code.toLowerCase();
+    const ref = doc(db, 'suppliers', docId);
+    const snap = await getDoc(ref);
 
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const p = randomFrom(products);
-      if (usedProducts.has(p.id)) continue;
-
-      const v = randomFrom(p.variants || []);
-      if (!v) continue;
-
-      // Buscar inventario en esta tienda
-      const invId = `${store.storeId}_${v.variantId}`;
-      const inv = inventory.find(x =>
-        x.id === invId ||
-        (x.storeId === store.storeId && x.variantId === v.variantId)
-      );
-
-      if (inv && Number(inv.stock || 0) >= 1) {
-        product = p;
-        variant = v;
-        invRecord = inv;
-        break;
-      }
+    if (snap.exists()) {
+      skipped++;
+      continue;
     }
 
-    if (!product) continue; // no se encontró producto con stock, saltar
-    usedProducts.add(product.id);
-
-    const qty = Math.min(randomInt(1, 2), Number(invRecord.stock));
-    const unitPrice = (product.onSale && product.salePrice ? product.salePrice : product.price) + (variant.priceDelta || 0);
-    const unitCost = Number(product.cost || 0);
-
-    items.push({
-      productId: product.id,
-      variantId: variant.variantId,
-      name: product.name,
-      sku: variant.sku,
-      qty,
-      unitPrice,
-      unitCost,
-      color: variant.color,
-      colorName: variant.colorName,
-      size: variant.size,
-      subtotal: qty * unitPrice,
-      _invRecord: invRecord // guardar referencia para descontar después
+    await setDoc(ref, {
+      name: sup.name,
+      nit: sup.nit,
+      phone: sup.phone,
+      email: sup.email,
+      address: sup.address,
+      contactName: sup.contactName,
+      defaultPaymentTerms: sup.defaultPaymentTerms,
+      customTermsDays: null,
+      defaultAlertDaysBefore: sup.defaultAlertDaysBefore,
+      notes: sup.notes,
+      active: true,
+      _seed: true,
+      _seedCode: sup.code,
+      createdAt: serverTimestamp(),
+      createdBy: currentUser.email
     });
+    created++;
   }
 
-  if (!items.length) throw new Error('No se encontraron productos con stock suficiente');
+  log(`   ✅ Proveedores: ${created} creados, ${skipped} ya existían`, 'success');
+  return created;
+}
 
-  // 5. Totales
-  const subtotal = items.reduce((s, it) => s + it.subtotal, 0);
-  const discount = Math.random() < 0.2 ? Math.round(subtotal * 0.05) : 0;
-  const shipping = Math.random() < 0.3 ? randomFrom([0, 5000, 10000, 15000]) : 0;
-  const surchargeRate = method === 'tarjeta' ? randomFrom([0, 0.03, 0.04]) : 0;
-  const surchargeAmount = Math.round((subtotal - discount + shipping) * surchargeRate);
-  const total = subtotal - discount + shipping + surchargeAmount;
-  const totalCost = items.reduce((s, it) => s + (it.unitCost * it.qty), 0);
-  const commissionBase = subtotal - discount;
-  const profit = total - surchargeAmount - totalCost;
+/* ============================================================
+   SEED — GASTOS + COSTOS
+============================================================ */
+async function seedExpenses() {
+  log('🌱 Sembrando gastos y costos...', 'step');
 
-  // 6. Comisiones
-  const poolRate = Number(store.commissionRate || 0);
-  const goalAmount = Number(seller.goalAmount || 0);
-  const bonusRate = Number(seller.bonusRate || 0);
-  const poolAmount = Math.round(commissionBase * poolRate);
-  const bonusAmount = 0; // simplificamos, no calculamos acumulado histórico
-  const sellerCommissionAmount = poolAmount + bonusAmount;
-
-  // 7. Canal de transferencia o entidad de crédito
-  let paymentChannelData = null;
-  if (method === 'transferencia') {
-    const ch = randomFrom(transferChannels);
-    if (ch) paymentChannelData = ch;
-  } else if (method === 'credito') {
-    const ch = randomFrom(creditEntities);
-    if (ch) paymentChannelData = ch;
+  if (!stores.length) {
+    log('   ⛔ No hay tiendas activas', 'error');
+    return 0;
   }
 
-  // 8. Estado de pago y método final
-  const paymentStatus = method === 'contraentrega' ? 'pending' : 'completed';
-  let finalPaymentMethod = null;
-  let finalChannelData = null;
-  let finalPaymentAt = null;
-  let finalPaymentBy = null;
+  // Cargar suppliers del seed
+  const supSnap = await getDocs(collection(db,'suppliers'));
+  const seedSuppliers = supSnap.docs
+    .map(d => ({id:d.id, ...d.data()}))
+    .filter(s => s._seed === true);
+  const supplierMap = {};
+  seedSuppliers.forEach(s => { supplierMap[s._seedCode] = s; });
 
-  if (method === 'contraentrega') {
-    // 60% confirmadas, 40% pendientes
-    if (Math.random() < 0.6) {
-      // Confirmar el cobro
-      const confirmMethods = ['efectivo', 'transferencia', 'tarjeta'];
-      finalPaymentMethod = randomFrom(confirmMethods);
-      if (finalPaymentMethod === 'transferencia') {
-        finalChannelData = randomFrom(transferChannels);
+  const today = new Date();
+  const todayS = dateStr(today);
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+
+  let created = 0, skipped = 0;
+  let storeIdx = 0;
+  let expenseCounter = 1;
+
+  // Generar fechas: 60 días hacia atrás
+  const totalTemplates = SEED_EXPENSES_TEMPLATES.length;
+  const totalToGenerate = totalTemplates * 2; // 2 ciclos → ~40 gastos
+
+  for (let cycle = 0; cycle < 2; cycle++) {
+    for (let tIdx = 0; tIdx < totalTemplates; tIdx++) {
+      const tpl = SEED_EXPENSES_TEMPLATES[tIdx];
+
+      // Repartir entre tiendas
+      const store = stores[storeIdx % stores.length];
+      storeIdx++;
+
+      // Fecha: retroceder según ciclo + variación
+      const daysAgo = cycle === 0
+        ? Math.floor(Math.random() * 30)                // mes actual
+        : 30 + Math.floor(Math.random() * 30);          // mes anterior
+
+      const dateObj = new Date(today);
+      dateObj.setDate(dateObj.getDate() - daysAgo);
+      const date = dateStr(dateObj);
+
+      // Variación de monto ±20%
+      const variation = 0.8 + Math.random() * 0.4;
+      const amount = Math.round(tpl.baseAmount * variation);
+
+      // IVA 19%
+      const taxRate = 0.19;
+      const taxAmount = Math.round(amount * taxRate);
+      const total = amount + taxAmount;
+
+      // Vencimiento
+      const supplier = tpl.supplierCode ? supplierMap[tpl.supplierCode] : null;
+      const termsDays = supplier
+        ? (supplier.defaultPaymentTerms === 'contado' ? 0
+          : Number((supplier.defaultPaymentTerms || '').replace('net_','')) || 30)
+        : 30;
+      const dueDate = addDays(date, termsDays);
+
+      // Estado del pago
+      const todayTime = new Date(todayS + 'T12:00:00').getTime();
+      const dueTime = new Date(dueDate + 'T12:00:00').getTime();
+      const isOverdue = dueTime < todayTime;
+
+      // Distribuir estados: ~50% pagados, ~25% vencidos, ~25% pendientes
+      const roll = Math.random();
+      let paidAt = null;
+      if (roll < 0.5) {
+        // Pagado
+        const paidDays = Math.floor(Math.random() * Math.max(1, termsDays));
+        paidAt = addDays(date, paidDays);
+      } else if (roll < 0.75 && isOverdue) {
+        // Vencido (no pagado y ya venció)
+        paidAt = null;
       }
-      finalPaymentAt = new Date();
-      finalPaymentBy = seller.email;
-    }
-  }
+      // else: pendiente con vencimiento futuro
 
-  // 9. Fecha (aleatoria en los últimos N días)
-  const createdAt = new Date();
-  createdAt.setDate(createdAt.getDate() - randomInt(0, days));
-  createdAt.setHours(randomInt(8, 20), randomInt(0, 59), randomInt(0, 59));
+      const docId = `seed_exp_${cycle}_${tIdx}_${store.storeId}`;
+      const ref = doc(db, 'expenses', docId);
+      const snap = await getDoc(ref);
 
-  // 10. Número de documento (usar contador real de la tienda)
-  let documentNumber = null;
-  try {
-    const year = new Date().getFullYear();
-    const counterId = `${store.storeId}_remision_${year}`;
-    const counterRef = doc(db, 'counters', counterId);
-
-    const counterResult = await runTransaction(db, async (transaction) => {
-      const snap = await transaction.get(counterRef);
-      if (!snap.exists()) {
-        const prefix = store.storeId.slice(0, 3).toUpperCase() + '-REM-' + year + '-';
-        transaction.set(counterRef, {
-          prefix, lastNumber: 1, type: 'remision', storeId: store.storeId, year,
-          createdAt: serverTimestamp()
-        });
-        return { fullNumber: prefix + '0001' };
+      if (snap.exists()) {
+        skipped++;
+        continue;
       }
-      const data = snap.data();
-      const next = (Number(data.lastNumber) || 0) + 1;
-      transaction.update(counterRef, { lastNumber: next, updatedAt: serverTimestamp() });
-      return { fullNumber: data.prefix + String(next).padStart(4, '0') };
-    });
-    documentNumber = counterResult.fullNumber;
-  } catch(e) {
-    documentNumber = 'TEST-' + Date.now() + '-' + index;
-  }
 
-  // 11. Crear el documento de venta
-  const saleData = {
-    documentNumber,
-    storeId: store.storeId,
-    storeName: store.name,
-    customer,
-    items: items.map(it => ({
-      productId: it.productId,
-      variantId: it.variantId,
-      name: it.name,
-      sku: it.sku,
-      qty: it.qty,
-      unitPrice: it.unitPrice,
-      unitCost: it.unitCost,
-      color: it.color,
-      colorName: it.colorName,
-      size: it.size,
-      subtotal: it.subtotal
-    })),
-    subtotal, discount, shipping,
-    surchargeRate, surchargeAmount,
-    total, totalCost, profit, commissionBase,
-    poolRate, poolAmount,
-    goalAmount, bonusRate, bonusAmount,
-    bonusPortion: 0,
-    sellerCommissionAmount,
-    storeCommissionAmount: 0,
-    accumulatedBefore: 0, accumulatedAfter: commissionBase,
-    paymentMethod: method,
-    paymentStatus,
-    paymentChannelId: paymentChannelData?.id || null,
-    paymentChannelCode: paymentChannelData?.code || null,
-    paymentChannelType: paymentChannelData?.type || null,
-    paymentChannelBank: paymentChannelData?.bank || null,
-    paymentChannelName: paymentChannelData?.customName || paymentChannelData?.name || null,
-    paymentChannelAccount: paymentChannelData?.accountNumber || null,
-    paymentChannelIcon: paymentChannelData?.icon || null,
-    paymentChannelColor: paymentChannelData?.color || null,
-    // Contra entrega confirmada
-    ...(finalPaymentMethod ? {
-      finalPaymentMethod,
-      finalPaymentAt,
-      finalPaymentBy,
-      finalPaymentChannelId: finalChannelData?.id || null,
-      finalPaymentChannelBank: finalChannelData?.bank || null,
-      finalPaymentChannelName: finalChannelData?.customName || finalChannelData?.name || null,
-      finalPaymentChannelAccount: finalChannelData?.accountNumber || null,
-      finalPaymentChannelIcon: finalChannelData?.icon || null,
-      status: 'completada',
-      sellerUid: seller.id,
-      sellerEmail: seller.email,
-      sellerName: seller.name || seller.email,
-      createdAt,
-      seedSimulated: true,
-      updatedAt: serverTimestamp()
-    } : {
-      status: 'completada',
-      sellerUid: seller.id,
-      sellerEmail: seller.email,
-      sellerName: seller.name || seller.email,
-      createdAt,
-      seedSimulated: true,
-      updatedAt: serverTimestamp()
-    })
-  };
+      const paymentTermsLabel = supplier ? (supplier.defaultPaymentTerms || 'net_30') : 'net_30';
 
-  const saleRef = await addDoc(collection(db, 'sales'), {
-    ...saleData,
-    createdAt: serverTimestamp() // sobreescribimos con serverTimestamp
-  });
-
-  // 12. Descontar stock (por cada item)
-  for (const it of items) {
-    const invId = `${store.storeId}_${it.variantId}`;
-    const invRef = doc(db, 'inventory', invId);
-    const invSnap = await getDoc(invRef);
-
-    if (invSnap.exists()) {
-      const stockBefore = Number(invSnap.data().stock || 0);
-      const stockAfter = Math.max(0, stockBefore - it.qty);
-
-      await updateDoc(invRef, {
-        stock: stockAfter,
-        updatedAt: serverTimestamp()
-      });
-
-      // Movimiento de inventario
-      await addDoc(collection(db, 'inventoryMovements'), {
+      await setDoc(ref, {
+        date,
+        type: tpl.type,
+        category: tpl.category,
         storeId: store.storeId,
-        productId: it.productId,
-        variantId: it.variantId,
-        sku: it.sku,
-        productName: it.name,
-        type: 'salida',
-        qtyBefore: stockBefore,
-        qtyAfter: stockAfter,
-        delta: -it.qty,
-        reason: `Venta simulada #${documentNumber}`,
-        saleId: saleRef.id,
-        userId: currentUser.uid,
-        userEmail: currentUser.email,
-        createdAt: serverTimestamp()
+        supplierId: supplier?.id || null,
+        supplierName: supplier?.name || null,
+        supplierNit: supplier?.nit || null,
+        provider: supplier?.name || '',
+        providerNit: supplier?.nit || '',
+        invoiceNumber: `SEED-${String(expenseCounter).padStart(4,'0')}`,
+        concept: tpl.concept,
+        amount,
+        taxRate,
+        taxAmount,
+        retentionRate: 0,
+        retentionAmount: 0,
+        total,
+        paymentTerms: paymentTermsLabel,
+        paymentTermsLabel,
+        customTermsDays: null,
+        dueDate,
+        alertDaysBefore: supplier?.defaultAlertDaysBefore ?? 5,
+        supports: [],
+        supportUrl: null,
+        supportName: null,
+        notes: 'Generado por seed de prueba',
+        paidAt,
+        paidBy: paidAt ? 'seed@smartec.dev' : null,
+        paymentNotes: paidAt ? 'Pago simulado en seed' : null,
+        _seed: true,
+        createdAt: serverTimestamp(),
+        createdBy: currentUser.email
       });
+
+      created++;
+      expenseCounter++;
     }
   }
 
-  // 13. Guardar referencia para el resumen
-  results._lastMethod = method;
-  results._lastPaymentStatus = paymentStatus;
-  results._lastSummary = `${store.name} · ${method} · ${fmt(total)} · ${documentNumber}`;
-
-  return saleRef.id;
+  log(`   ✅ Gastos y costos: ${created} creados, ${skipped} ya existían`, 'success');
+  return created;
 }
 
-// Variable global accesible desde createOneSale
-const results = {
-  _lastMethod: null,
-  _lastPaymentStatus: null,
-  _lastSummary: ''
-};
+/* ============================================================
+   SEED — VENTAS
+============================================================ */
+async function seedSales() {
+  log('🌱 Sembrando ventas de prueba...', 'step');
 
-function log(msg) {
-  const el = $('log-output');
-  el.innerText += msg + '\n';
-  el.scrollTop = el.scrollHeight;
+  if (!stores.length) {
+    log('   ⛔ No hay tiendas activas', 'error');
+    return 0;
+  }
+
+  // Cargar productos reales
+  const prodSnap = await getDocs(collection(db,'products'));
+  const products = prodSnap.docs
+    .map(d => ({id:d.id, ...d.data()}))
+    .filter(p => p.active !== false && p.variants && p.variants.length);
+
+  if (!products.length) {
+    log('   ⚠️ No hay productos en el catálogo. Salta ventas.', 'warn');
+    return 0;
+  }
+
+  const customers = [
+    { name: 'Juan Pérez', phone: '3001234001', city: 'Bogotá' },
+    { name: 'María López', phone: '3001234002', city: 'Medellín' },
+    { name: 'Carlos Rodríguez', phone: '3001234003', city: 'Cali' },
+    { name: 'Ana Martínez', phone: '3001234004', city: 'Barranquilla' },
+    { name: 'Diego Sánchez', phone: '3001234005', city: 'Cartagena' },
+    { name: 'Laura Gómez', phone: '3001234006', city: 'Bogotá' },
+    { name: 'Pedro Ramírez', phone: '3001234007', city: 'Medellín' },
+    { name: 'Sofía Torres', phone: '3001234008', city: 'Bucaramanga' }
+  ];
+
+  const paymentMethods = ['efectivo','transferencia','tarjeta','contraentrega','credito'];
+
+  const today = new Date();
+  let created = 0, skipped = 0;
+  let saleCounter = 1;
+  const TOTAL_SALES = 25;
+
+  for (let i = 0; i < TOTAL_SALES; i++) {
+    const store = stores[i % stores.length];
+
+    // Fecha: últimos 45 días
+    const daysAgo = Math.floor(Math.random() * 45);
+    const dateObj = new Date(today);
+    dateObj.setDate(dateObj.getDate() - daysAgo);
+    dateObj.setHours(9 + Math.floor(Math.random() * 9), Math.floor(Math.random() * 60), 0, 0);
+
+    // 1-3 productos
+    const numItems = 1 + Math.floor(Math.random() * 3);
+    const items = [];
+    let subtotal = 0, totalCost = 0;
+
+    for (let k = 0; k < numItems; k++) {
+      const p = products[Math.floor(Math.random() * products.length)];
+      const v = p.variants[Math.floor(Math.random() * p.variants.length)];
+      const qty = 1 + Math.floor(Math.random() * 2);
+      const unitPrice = (p.onSale && p.salePrice) ? Number(p.salePrice) : Number(p.price || 0);
+      const unitCost = Number(p.cost || 0);
+
+      items.push({
+        productId: p.id,
+        variantId: v.variantId,
+        name: p.name,
+        sku: v.sku,
+        qty,
+        unitPrice,
+        unitCost,
+        color: v.color || null,
+        colorName: v.colorName || '',
+        size: v.size || null,
+        subtotal: qty * unitPrice
+      });
+
+      subtotal += qty * unitPrice;
+      totalCost += qty * unitCost;
+    }
+
+    const discount = Math.random() < 0.2 ? Math.round(subtotal * 0.05) : 0;
+    const shipping = Math.random() < 0.3 ? 15000 + Math.floor(Math.random() * 25000) : 0;
+    const surchargeRate = 0;
+    const surchargeAmount = 0;
+    const total = subtotal - discount + shipping + surchargeAmount;
+    const commissionBase = subtotal - discount;
+    const profit = total - surchargeAmount - totalCost;
+
+    // Comisiones
+    const poolRate = 0.05;
+    const poolAmount = Math.round(commissionBase * poolRate);
+    const bonusRate = 0;
+    const bonusAmount = 0;
+    const sellerCommissionAmount = poolAmount + bonusAmount;
+
+    const customer = customers[Math.floor(Math.random() * customers.length)];
+    const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
+    const paymentStatus = paymentMethod === 'contraentrega' ? 'pending' : 'completed';
+
+    const docId = `seed_sale_${String(saleCounter).padStart(4,'0')}`;
+    const ref = doc(db, 'sales', docId);
+    const snap = await getDoc(ref);
+
+    if (snap.exists()) {
+      skipped++;
+      saleCounter++;
+      continue;
+    }
+
+    await setDoc(ref, {
+      documentNumber: `SEED-${String(saleCounter).padStart(4,'0')}`,
+      storeId: store.storeId,
+      storeName: store.name,
+      customer: {
+        name: customer.name,
+        phone: customer.phone,
+        email: '',
+        address: '',
+        city: customer.city,
+        notes: ''
+      },
+      items,
+      subtotal,
+      discount,
+      shipping,
+      surchargeRate,
+      surchargeAmount,
+      total,
+      totalCost,
+      profit,
+      commissionBase,
+      poolRate,
+      poolAmount,
+      goalAmount: 0,
+      bonusRate,
+      bonusPortion: 0,
+      bonusAmount,
+      sellerCommissionAmount,
+      storeCommissionAmount: 0,
+      accumulatedBefore: 0,
+      accumulatedAfter: commissionBase,
+      paymentMethod,
+      paymentStatus,
+      paymentChannelId: null,
+      status: 'completada',
+      sellerUid: currentUser.uid,
+      sellerEmail: currentUser.email,
+      sellerName: 'Seed Bot',
+      createdAt: { seconds: Math.floor(dateObj.getTime() / 1000), nanoseconds: 0 },
+      _seed: true,
+      createdBy: currentUser.email
+    });
+
+    created++;
+    saleCounter++;
+  }
+
+  log(`   ✅ Ventas: ${created} creadas, ${skipped} ya existían`, 'success');
+  return created;
 }
+
+/* ============================================================
+   ORQUESTADOR — SEMBRAR TODO
+============================================================ */
+async function seedAll() {
+  if (!confirm('¿Sembrar TODOS los datos de prueba?\n\n· 8 proveedores\n· ~40 gastos y costos\n· 25 ventas\n\nEsto se puede limpiar después con "Limpiar seed".')) {
+    return;
+  }
+
+  disableButtons(true);
+  setProgress(0, 'Iniciando...');
+  log('═══════════════════════════════════', 'step');
+  log('🚀 INICIANDO SEED COMPLETO', 'step');
+  log('═══════════════════════════════════', 'step');
+
+  try {
+    setProgress(10, 'Sembrando proveedores...');
+    const s1 = await seedSuppliers();
+
+    setProgress(40, 'Sembrando gastos y costos...');
+    const s2 = await seedExpenses();
+
+    setProgress(75, 'Sembrando ventas...');
+    const s3 = await seedSales();
+
+    setProgress(100, '✅ Completado');
+    log('═══════════════════════════════════', 'step');
+    log(`✅ SEED COMPLETO: ${s1} proveedores, ${s2} movimientos, ${s3} ventas`, 'success');
+    log('═══════════════════════════════════', 'step');
+
+    await refreshStats();
+
+    // Invalidar cache
+    if (window.SmartecCache) {
+      window.SmartecCache.invalidate('suppliers_all');
+      window.SmartecCache.invalidate('expenses_all');
+      window.SmartecCache.invalidate('sales');
+      window.SmartecCache.clear();
+    }
+
+    alert('✅ Seed completo\n\nRecarga admin.html para ver los datos.');
+  } catch(e) {
+    console.error(e);
+    log('❌ ERROR: ' + e.message, 'error');
+    alert('Error en el seed: ' + e.message);
+  } finally {
+    disableButtons(false);
+  }
+}
+
+/* ============================================================
+   ORQUESTADOR — SOLO GASTOS
+============================================================ */
+async function seedOnlyExpenses() {
+  if (!confirm('¿Sembrar solo proveedores + gastos y costos?\n\n· 8 proveedores\n· ~40 gastos y costos\n\n(No crea ventas)')) {
+    return;
+  }
+
+  disableButtons(true);
+  setProgress(0, 'Iniciando...');
+  log('═══════════════════════════════════', 'step');
+  log('🚀 SEED: SOLO MOVIMIENTOS', 'step');
+  log('═══════════════════════════════════', 'step');
+
+  try {
+    setProgress(20, 'Sembrando proveedores...');
+    const s1 = await seedSuppliers();
+
+    setProgress(60, 'Sembrando gastos y costos...');
+    const s2 = await seedExpenses();
+
+    setProgress(100, '✅ Completado');
+    log(`✅ SEED: ${s1} proveedores, ${s2} movimientos`, 'success');
+
+    await refreshStats();
+
+    if (window.SmartecCache) {
+      window.SmartecCache.invalidate('suppliers_all');
+      window.SmartecCache.invalidate('expenses_all');
+    }
+
+    alert('✅ Movimientos creados\n\nRecarga admin.html → Contabilidad.');
+  } catch(e) {
+    console.error(e);
+    log('❌ ERROR: ' + e.message, 'error');
+    alert('Error: ' + e.message);
+  } finally {
+    disableButtons(false);
+  }
+}
+
+/* ============================================================
+   ORQUESTADOR — SOLO VENTAS
+============================================================ */
+async function seedOnlySales() {
+  if (!confirm('¿Sembrar solo ventas de prueba?\n\n· 25 ventas repartidas entre tiendas')) {
+    return;
+  }
+
+  disableButtons(true);
+  setProgress(0, 'Iniciando...');
+  log('═══════════════════════════════════', 'step');
+  log('🚀 SEED: SOLO VENTAS', 'step');
+  log('═══════════════════════════════════', 'step');
+
+  try {
+    setProgress(50, 'Sembrando ventas...');
+    const s = await seedSales();
+
+    setProgress(100, '✅ Completado');
+    log(`✅ SEED: ${s} ventas creadas`, 'success');
+
+    await refreshStats();
+
+    if (window.SmartecCache) {
+      window.SmartecCache.clear();
+    }
+
+    alert('✅ Ventas creadas\n\nRecarga admin.html → Reportes.');
+  } catch(e) {
+    console.error(e);
+    log('❌ ERROR: ' + e.message, 'error');
+    alert('Error: ' + e.message);
+  } finally {
+    disableButtons(false);
+  }
+}
+
+/* ============================================================
+   ORQUESTADOR — LIMPIAR SEED
+============================================================ */
+async function cleanSeed() {
+  if (!confirm('⚠️ ¿Borrar TODOS los documentos con _seed: true?\n\nSe eliminarán:\n· Proveedores seed\n· Gastos seed\n· Ventas seed\n\nEsto NO afecta datos reales.')) {
+    return;
+  }
+
+  disableButtons(true);
+  setProgress(0, 'Iniciando limpieza...');
+  log('═══════════════════════════════════', 'step');
+  log('🧹 LIMPIANDO SEED', 'step');
+  log('═══════════════════════════════════', 'step');
+
+  const collections = ['suppliers','expenses','sales'];
+  let totalDeleted = 0;
+
+  try {
+    for (let ci = 0; ci < collections.length; ci++) {
+      const coll = collections[ci];
+      log(`🔍 Buscando en ${coll}...`, 'info');
+
+      const snap = await getDocs(collection(db, coll));
+      const toDelete = snap.docs.filter(d => d.data()._seed === true);
+
+      log(`   Encontrados ${toDelete.length} documentos`, 'info');
+
+      for (const d of toDelete) {
+        await deleteDoc(doc(db, coll, d.id));
+        totalDeleted++;
+      }
+
+      const progress = Math.round(((ci + 1) / collections.length) * 100);
+      setProgress(progress, `Limpiando ${coll}...`);
+    }
+
+    setProgress(100, '✅ Limpieza completa');
+    log('═══════════════════════════════════', 'step');
+    log(`✅ SEED LIMPIADO: ${totalDeleted} documentos borrados`, 'success');
+    log('═══════════════════════════════════', 'step');
+
+    await refreshStats();
+
+    if (window.SmartecCache) {
+      window.SmartecCache.clear();
+    }
+
+    alert(`✅ Limpieza completa\n\n${totalDeleted} documentos borrados.`);
+  } catch(e) {
+    console.error(e);
+    log('❌ ERROR: ' + e.message, 'error');
+    alert('Error: ' + e.message);
+  } finally {
+    disableButtons(false);
+  }
+}
+
+/* ============ WIRE-UP DE BOTONES ============ */
+$('seed-all-btn').onclick = seedAll;
+$('seed-only-expenses-btn').onclick = seedOnlyExpenses;
+$('seed-only-sales-btn').onclick = seedOnlySales;
+$('clean-all-btn').onclick = cleanSeed;
+
 </script>
 </body>
 </html>

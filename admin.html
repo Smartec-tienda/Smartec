@@ -806,7 +806,7 @@
 
       <!-- Filtros de fecha + estado -->
       <div class="bg-white rounded-xl shadow p-4 mb-6">
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-3">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-3">
           <div>
             <label class="text-[10px] font-semibold text-sd">Desde</label>
             <input id="acc-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
@@ -829,6 +829,22 @@
             <label class="text-[10px] font-semibold text-sd">Proveedor</label>
             <select id="acc-supplier-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
               <option value="all">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Categoría</label>
+            <select id="acc-category-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas</option>
+              <option value="arriendo">Arriendo</option>
+              <option value="servicios">Servicios públicos</option>
+              <option value="nomina">Nómina</option>
+              <option value="papeleria">Papelería</option>
+              <option value="transporte">Transporte</option>
+              <option value="publicidad">Publicidad</option>
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="impuestos">Impuestos</option>
+              <option value="mercancia">Compra de mercancía</option>
+              <option value="otros">Otros</option>
             </select>
           </div>
           <div>
@@ -1002,13 +1018,14 @@
       </div>
 
       <!-- ========== VISTA: POR FACTURA ========== -->
+      <!-- ========== VISTA: POR FACTURA ========== -->
       <div id="acc-view-invoices" class="acc-view-content hidden">
         <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
           <div class="p-5 border-b flex justify-between items-center flex-wrap gap-2">
             <h3 class="font-bold text-sd">Facturas del período</h3>
             <p id="acc-invoices-count" class="text-xs text-gray-400">0 facturas</p>
           </div>
-          <table class="w-full text-sm min-w-[1200px]">
+          <table class="w-full text-sm min-w-[1300px]">
             <thead class="bg-gray-100 text-sd">
               <tr>
                 <th class="p-3 text-left">Fecha</th>
@@ -1016,6 +1033,7 @@
                 <th class="p-3 text-left">Tipo</th>
                 <th class="p-3 text-left">Proveedor</th>
                 <th class="p-3 text-left">Concepto</th>
+                <th class="p-3 text-left">Categoría</th>
                 <th class="p-3 text-left">Tienda</th>
                 <th class="p-3 text-right">Total</th>
                 <th class="p-3 text-center">Vence</th>
@@ -7776,9 +7794,13 @@ window.setAccView = (view) => {
 
   // Renderizar según la vista (con protección)
   try {
-    if (view === 'summary') renderAccSummary();
+    // Siempre actualizar los KPIs superiores
+    renderAccSummary();
+
+    // Y renderizar la vista específica si no es la de resumen
     if (view === 'invoices') renderAccInvoices();
     if (view === 'suppliers') renderAccSuppliers();
+
   } catch(e) {
     console.error('Error renderizando vista contable:', view, e);
   }
@@ -7855,9 +7877,9 @@ window.setAccRange = (range) => {
   if (fromEl) fromEl.value = fmtD(from);
   if (toEl) toEl.value = fmtD(to);
 
-  // Re-renderizar la vista activa (sin depender de renderAccounting)
+  // Re-renderizar SIEMPRE los KPIs + la vista activa
   try {
-    if (currentAccView === 'summary') renderAccSummary();
+    renderAccSummary();
     if (currentAccView === 'invoices') renderAccInvoices();
     if (currentAccView === 'suppliers') renderAccSuppliers();
   } catch(e) {
@@ -7934,25 +7956,31 @@ function getFilteredExpenses() {
   if (from) list = list.filter(e => e.date >= from);
   if (to) list = list.filter(e => e.date <= to);
 
-  // 🆕 Filtro por estado de pago
+  // Filtro por estado de pago
   const statusF = $('acc-status-filter')?.value || 'all';
   if (statusF !== 'all') {
     list = list.filter(e => computeAccPaymentStatus(e) === statusF);
   }
 
-  // 🆕 Filtro por proveedor
+  // Filtro por proveedor
   const supplierF = $('acc-supplier-filter')?.value || 'all';
   if (supplierF !== 'all') {
     list = list.filter(e => e.supplierId === supplierF);
   }
 
-  // 🆕 Filtro por condición de pago
+  // 🆕 Filtro por categoría
+  const categoryF = $('acc-category-filter')?.value || 'all';
+  if (categoryF !== 'all') {
+    list = list.filter(e => (e.category || 'otros') === categoryF);
+  }
+
+  // Filtro por condición de pago
   const termsF = $('acc-terms-filter')?.value || 'all';
   if (termsF !== 'all') {
     list = list.filter(e => e.paymentTerms === termsF);
   }
 
-  // 🆕 Búsqueda libre (concepto o factura)
+  // Búsqueda libre (concepto o factura)
   const searchF = ($('acc-search')?.value || '').toLowerCase().trim();
   if (searchF) {
     list = list.filter(e =>
@@ -7962,7 +7990,7 @@ function getFilteredExpenses() {
       (e.provider||'').toLowerCase().includes(searchF)
     );
   }
-
+  window.__debugList = list;
   return list.sort((a,b) => (b.date||'').localeCompare(a.date||''));
 }
 
@@ -7975,20 +8003,19 @@ window.renderAccounting = () => {
 
   // Conectar listeners (solo una vez)
   ['acc-status-filter','acc-supplier-filter','acc-terms-filter','acc-search',
-   'acc-date-from','acc-date-to'].forEach(id => {
+   'acc-date-from','acc-date-to','acc-category-filter'].forEach(id => {
     const el = $(id);
     if (el && !el.dataset.listeners) {
       el.dataset.listeners = '1';
-      el.addEventListener('input', () => {
-        if (currentAccView === 'summary') renderAccSummary();
+      const refreshAll = () => {
+        // 🆕 SIEMPRE actualizar los KPIs superiores
+        renderAccSummary();
+        // Y renderizar la vista activa
         if (currentAccView === 'invoices') renderAccInvoices();
         if (currentAccView === 'suppliers') renderAccSuppliers();
-      });
-      el.addEventListener('change', () => {
-        if (currentAccView === 'summary') renderAccSummary();
-        if (currentAccView === 'invoices') renderAccInvoices();
-        if (currentAccView === 'suppliers') renderAccSuppliers();
-      });
+      };
+      el.addEventListener('input', refreshAll);
+      el.addEventListener('change', refreshAll);
     }
   });
 
@@ -8335,12 +8362,44 @@ function renderAccInvoices() {
   }
   if (empty) empty.classList.add('hidden');
 
+  // Mapa de nombres de categoría
+  const catNames = {
+    arriendo: 'Arriendo',
+    servicios: 'Servicios públicos',
+    nomina: 'Nómina',
+    papeleria: 'Papelería',
+    transporte: 'Transporte',
+    publicidad: 'Publicidad',
+    mantenimiento: 'Mantenimiento',
+    impuestos: 'Impuestos',
+    mercancia: 'Compra de mercancía',
+    otros: 'Otros'
+  };
+
+  // Colores de badge por categoría
+  const catColors = {
+    arriendo: 'bg-purple-100 text-purple-700',
+    servicios: 'bg-cyan-100 text-cyan-700',
+    nomina: 'bg-blue-100 text-blue-700',
+    papeleria: 'bg-pink-100 text-pink-700',
+    transporte: 'bg-amber-100 text-amber-700',
+    publicidad: 'bg-fuchsia-100 text-fuchsia-700',
+    mantenimiento: 'bg-slate-100 text-slate-700',
+    impuestos: 'bg-red-100 text-red-700',
+    mercancia: 'bg-orange-100 text-orange-700',
+    otros: 'bg-gray-100 text-gray-700'
+  };
+
   tb.innerHTML = list.slice(0, 500).map(e => {
     const st = stores.find(s => s.storeId === e.storeId);
     const status = computeAccPaymentStatus(e);
     const typeBadge = e.type === 'costo'
       ? '<span class="text-[10px] px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-semibold">Costo</span>'
       : '<span class="text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-700 font-semibold">Gasto</span>';
+
+    const catSlug = e.category || 'otros';
+    const catLabel = catNames[catSlug] || catSlug;
+    const catCls = catColors[catSlug] || catColors.otros;
 
     const adjCount = (e.supports || []).length + (e.supportUrl && !(e.supports||[]).length ? 1 : 0);
 
@@ -8350,6 +8409,11 @@ function renderAccInvoices() {
       <td class="p-3">${typeBadge}</td>
       <td class="p-3 text-xs">${escapeHtml(e.supplierName || e.provider) || '-'}</td>
       <td class="p-3 text-xs max-w-xs truncate">${escapeHtml(e.concept) || '-'}</td>
+      <td class="p-3">
+        <span class="text-[10px] px-2 py-0.5 rounded ${catCls} font-semibold whitespace-nowrap">
+          ${escapeHtml(catLabel)}
+        </span>
+      </td>
       <td class="p-3 text-xs">${e.storeId === 'general' ? 'General' : escapeHtml(st?.name) || e.storeId || '-'}</td>
       <td class="p-3 text-right text-xs font-bold">${fmt(e.total)}</td>
       <td class="p-3 text-center text-xs">${e.dueDate || '-'}</td>
@@ -8603,10 +8667,10 @@ window.exportAccountingPDF = () => {
     head: [['Concepto', 'Valor', '% sobre ventas']],
     body: [
       ['Ingresos por ventas', fmtMoney(totalSales), '100.0%'],
-      ['(−) Costo de mercancía vendida', '-' + fmtMoney(totalCogs),
+      ['(-) Costo de mercancía vendida', '-' + fmtMoney(totalCogs),
         totalSales > 0 ? '-' + ((totalCogs / totalSales) * 100).toFixed(1) + '%' : '0%'],
       ['= Utilidad bruta', fmtMoney(grossProfit), grossMargin.toFixed(1) + '%'],
-      ['(−) Gastos operativos', '-' + fmtMoney(operatingExpenses),
+      ['(-) Gastos operativos', '-' + fmtMoney(operatingExpenses),
         totalSales > 0 ? '-' + ((operatingExpenses / totalSales) * 100).toFixed(1) + '%' : '0%'],
       ['= Utilidad neta', fmtMoney(netProfit), netMargin.toFixed(1) + '%']
     ],
@@ -8847,18 +8911,19 @@ window.exportAccountingPDF = () => {
     head: [['Fecha','Factura','Tipo','Proveedor','Concepto','Vence','Estado','Total']],
     body: detailRows,
     theme: 'striped',
-    headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 8 },
-    bodyStyles: { fontSize: 8 },
-    margin: { left: 10, right: 10 },
+    headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 7, cellPadding: 1.5 },
+    bodyStyles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak' },
+    margin: { left: 8, right: 8 },
+    tableWidth: 'wrap',
     columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 25 },
-      2: { cellWidth: 15 },
-      3: { cellWidth: 35 },
-      4: { cellWidth: 50 },
-      5: { cellWidth: 20 },
-      6: { cellWidth: 20 },
-      7: { cellWidth: 25, halign: 'right', fontStyle: 'bold' }
+      0: { cellWidth: 16, overflow: 'hidden' },
+      1: { cellWidth: 20, overflow: 'hidden' },
+      2: { cellWidth: 12, overflow: 'hidden' },
+      3: { cellWidth: 30, overflow: 'hidden' },
+      4: { cellWidth: 38, overflow: 'hidden' },
+      5: { cellWidth: 16, overflow: 'hidden' },
+      6: { cellWidth: 16, overflow: 'hidden' },
+      7: { cellWidth: 22, halign: 'right', fontStyle: 'bold', overflow: 'hidden' }
     },
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 6) {
@@ -8869,7 +8934,6 @@ window.exportAccountingPDF = () => {
       }
     }
   });
-
   // ============================================================
   // Pie de página
   // ============================================================

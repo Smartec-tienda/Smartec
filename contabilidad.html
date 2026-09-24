@@ -564,20 +564,31 @@ async function loadAll() {
       alert('⛔ No hay tiendas activas.');
       return;
     }
-    const saved = sessionStorage.getItem('smartec_contab_store');
-    currentStore = activeStores.find(s => s.storeId === saved) || activeStores[0];
+    const saved = sessionStorage.getItem('smartec_contab_store') || 'all';
+    if (saved === 'all') {
+      currentStore = { storeId: 'all', name: 'Todas las tiendas' };
+    } else {
+      currentStore = activeStores.find(s => s.storeId === saved) || { storeId: 'all', name: 'Todas las tiendas' };
+    }
     sessionStorage.setItem('smartec_contab_store', currentStore.storeId);
 
     const sel = $('store-selector');
     sel.classList.remove('hidden');
-    sel.innerHTML = activeStores.map(s =>
-      `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
-    ).join('');
+    sel.innerHTML =
+      `<option value="all" ${currentStore.storeId === 'all' ? 'selected' : ''}>🏪 Todas las tiendas</option>` +
+      activeStores.map(s =>
+        `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
+      ).join('');
     $('header-title').classList.add('hidden');
 
     sel.onchange = async () => {
-      currentStore = stores.find(s => s.storeId === sel.value);
-      sessionStorage.setItem('smartec_contab_store', sel.value);
+      const val = sel.value;
+      if (val === 'all') {
+        currentStore = { storeId: 'all', name: 'Todas las tiendas' };
+      } else {
+        currentStore = stores.find(s => s.storeId === val);
+      }
+      sessionStorage.setItem('smartec_contab_store', val);
       await loadExpenses();
       await loadSuppliers();
       renderAll();
@@ -631,10 +642,14 @@ async function loadExpenses() {
     return s.docs.map(d => ({id:d.id, ...d.data()}));
   });
 
-  if (isSuper) {
-    expenses = all.filter(e => e.storeId === currentStore.storeId || e.storeId === 'general');
+  if (isSuper && currentStore.storeId === 'all') {
+    // Superadmin viendo TODAS las tiendas
+    expenses = all.slice();
   } else {
-    expenses = all.filter(e => e.storeId === currentStore.storeId || e.storeId === 'general');
+    // Tienda específica (superadmin o admin)
+    expenses = all.filter(e =>
+      e.storeId === currentStore.storeId || e.storeId === 'general'
+    );
   }
 }
 
@@ -2007,7 +2022,10 @@ window.exportPDF = () => {
   doc.setTextColor(60, 60, 60);
   doc.setFontSize(9);
   doc.text(`Período: ${$('f-date-from').value || 'todo'} — ${$('f-date-to').value || 'hoy'}`, 14, y); y += 5;
-  doc.text(`Tienda: ${currentStore?.name || 'General'}`, 14, y); y += 5;
+  const storeLabelPDF = currentStore?.storeId === 'all'
+    ? 'Todas las tiendas'
+    : (currentStore?.name || 'General');
+  doc.text(`Tienda: ${storeLabelPDF}`, 14, y); y += 5;
   doc.text(`Generado: ${new Date().toLocaleString('es-CO')}`, 14, y); y += 8;
 
   const total = list.filter(e => e.status !== 'anulado').reduce((s,e) => s + Number(e.total||0), 0);
