@@ -16,6 +16,7 @@
   .border-sl{border-color:#4A7A9A}
   .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
   .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  .tab-active{border-color:#4A7A9A;color:#4A7A9A;font-weight:600;border-bottom-width:2px}
   #store-selector {
     background-color: rgba(255,255,255,0.15);
     color: #ffffff;
@@ -82,35 +83,50 @@
     </div>
   </header>
 
-  <main class="flex-1 container mx-auto p-4 md:p-6">
+  <!-- TABS -->
+  <nav class="bg-white shadow-sm border-b sticky top-[72px] z-30">
+    <div class="container mx-auto px-4 flex gap-1">
+      <button class="tab-btn-con py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="movements">📊 Movimientos</button>
+      <button class="tab-btn-con py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="suppliers">👥 Proveedores</button>
+      <button class="tab-btn-con py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="settings">⚙️ Configuración</button>
+    </div>
+  </nav>
+
+  <!-- ============================================================
+       TAB: MOVIMIENTOS
+  ============================================================ -->
+  <main id="tab-movements" class="flex-1 container mx-auto p-4 md:p-6 tab-con-content">
+
+    <!-- PANEL DE ALERTAS -->
+    <div id="alerts-panel" class="mb-6"></div>
 
     <!-- KPIs -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div class="bg-white p-5 rounded-xl shadow">
+      <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
         <p class="text-xs text-gray-500">Total del período</p>
         <p id="kpi-total" class="text-2xl font-bold text-sd mt-1">$0</p>
         <p id="kpi-count" class="text-[10px] text-gray-400 mt-1">0 movimientos</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Costos</p>
-        <p id="kpi-cost" class="text-2xl font-bold text-orange-500 mt-1">$0</p>
-        <p class="text-[10px] text-gray-400 mt-1">Compra de mercancía</p>
+      <div class="bg-white p-5 rounded-xl shadow border-l-4 border-amber-500">
+        <p class="text-xs text-gray-500">Cuentas por pagar</p>
+        <p id="kpi-payable" class="text-2xl font-bold text-amber-600 mt-1">$0</p>
+        <p id="kpi-payable-count" class="text-[10px] text-gray-400 mt-1">0 facturas pendientes</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Gastos</p>
-        <p id="kpi-expense" class="text-2xl font-bold text-red-500 mt-1">$0</p>
-        <p class="text-[10px] text-gray-400 mt-1">Operativos</p>
+      <div class="bg-white p-5 rounded-xl shadow border-l-4 border-green-500">
+        <p class="text-xs text-gray-500">Pagado del período</p>
+        <p id="kpi-paid" class="text-2xl font-bold text-green-600 mt-1">$0</p>
+        <p id="kpi-paid-count" class="text-[10px] text-gray-400 mt-1">0 pagos registrados</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">IVA / Retenciones</p>
-        <p id="kpi-tax" class="text-2xl font-bold text-sl mt-1">$0</p>
-        <p id="kpi-retention" class="text-[10px] text-gray-400 mt-1">Retenciones: $0</p>
+      <div class="bg-white p-5 rounded-xl shadow border-l-4 border-red-500">
+        <p class="text-xs text-gray-500">Vencidas</p>
+        <p id="kpi-overdue" class="text-2xl font-bold text-red-600 mt-1">$0</p>
+        <p id="kpi-overdue-count" class="text-[10px] text-gray-400 mt-1">0 facturas vencidas</p>
       </div>
     </div>
 
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow p-4 mb-4">
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 mb-3">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
         <div>
           <label class="text-[10px] font-semibold text-sd">Desde</label>
           <input id="f-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
@@ -134,16 +150,31 @@
           </select>
         </div>
         <div>
+          <label class="text-[10px] font-semibold text-sd">Estado de pago</label>
+          <select id="f-payment-status" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+            <option value="pending">⏳ Pendientes</option>
+            <option value="paid">✅ Pagados</option>
+            <option value="overdue">🔴 Vencidos</option>
+            <option value="anulado">⚪ Anulados</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Vencimiento</label>
+          <select id="f-due-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+            <option value="next7">Vencen en 7 días</option>
+            <option value="next30">Vencen en 30 días</option>
+            <option value="overdue">Vencidos</option>
+          </select>
+        </div>
+        <div>
           <label class="text-[10px] font-semibold text-sd">Proveedor</label>
           <input id="f-provider" type="text" placeholder="Buscar..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
         </div>
         <div>
-          <label class="text-[10px] font-semibold text-sd">Concepto</label>
+          <label class="text-[10px] font-semibold text-sd">Concepto / Factura</label>
           <input id="f-search" type="text" placeholder="Buscar..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
-        </div>
-        <div>
-          <label class="text-[10px] font-semibold text-sd">Responsable</label>
-          <input id="f-responsible" type="text" placeholder="Buscar..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
         </div>
       </div>
       <div class="flex justify-between items-center flex-wrap gap-2 pt-3 border-t">
@@ -169,20 +200,19 @@
 
     <!-- Tabla -->
     <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
-      <table class="w-full text-sm min-w-[1000px]">
+      <table class="w-full text-sm min-w-[1200px]">
         <thead class="bg-gray-100 text-sd">
           <tr>
             <th class="p-3 text-left">Fecha</th>
+            <th class="p-3 text-left">Factura</th>
             <th class="p-3 text-left">Tipo</th>
-            <th class="p-3 text-left">Categoría</th>
             <th class="p-3 text-left">Proveedor</th>
-            <th class="p-3 text-left">Responsable</th>
             <th class="p-3 text-left">Concepto</th>
             <th class="p-3 text-left">Tienda</th>
-            <th class="p-3 text-right">Base</th>
-            <th class="p-3 text-right">IVA</th>
             <th class="p-3 text-right">Total</th>
-            <th class="p-3 text-center">Soporte</th>
+            <th class="p-3 text-center">Vence</th>
+            <th class="p-3 text-center">Estado</th>
+            <th class="p-3 text-center">Adjuntos</th>
             <th class="p-3"></th>
           </tr>
         </thead>
@@ -192,6 +222,67 @@
     <p id="expenses-empty" class="hidden text-center py-8 text-gray-400">Sin movimientos con esos filtros.</p>
 
   </main>
+
+  <!-- ============================================================
+       TAB: PROVEEDORES
+  ============================================================ -->
+  <main id="tab-suppliers" class="hidden flex-1 container mx-auto p-4 md:p-6 tab-con-content">
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+      <div>
+        <h2 class="text-2xl font-bold text-sd">Proveedores</h2>
+        <p class="text-xs text-gray-400">Maestro de proveedores con sus condiciones por defecto</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <input id="sup-search" type="text" placeholder="Buscar proveedor..." class="px-3 py-2 border rounded-lg text-sm">
+        <button onclick="openSupplierForm()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold">+ Nuevo proveedor</button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+      <table class="w-full text-sm min-w-[900px]">
+        <thead class="bg-gray-100 text-sd">
+          <tr>
+            <th class="p-3 text-left">Nombre</th>
+            <th class="p-3 text-left">NIT</th>
+            <th class="p-3 text-left">Contacto</th>
+            <th class="p-3 text-center">Condiciones</th>
+            <th class="p-3 text-center">Alerta</th>
+            <th class="p-3 text-center">Estado</th>
+            <th class="p-3"></th>
+          </tr>
+        </thead>
+        <tbody id="suppliers-tbody"></tbody>
+      </table>
+    </div>
+    <p id="suppliers-empty" class="hidden text-center py-8 text-gray-400">Sin proveedores. Haz clic en "+ Nuevo proveedor" para crear el primero.</p>
+  </main>
+
+  <!-- ============================================================
+       TAB: CONFIGURACIÓN
+  ============================================================ -->
+  <main id="tab-settings" class="hidden flex-1 container mx-auto p-4 md:p-6 tab-con-content">
+    <div class="max-w-2xl">
+      <h2 class="text-2xl font-bold text-sd mb-2">Configuración contable</h2>
+      <p class="text-xs text-gray-400 mb-6">Valores por defecto que se aplicarán a nuevos movimientos</p>
+
+      <div class="bg-white p-6 rounded-xl shadow">
+        <h3 class="font-bold text-sd mb-4">⏰ Vencimientos y alertas</h3>
+
+        <label class="text-xs font-semibold text-sd">Días de vencimiento por defecto</label>
+        <input id="cfg-default-terms" type="number" min="0" max="365" class="w-full px-3 py-2 border rounded-lg mb-2 mt-1">
+        <p class="text-[10px] text-gray-400 mb-4">Ej: 30 (equivalente a Net 30). Se usa si no eliges condición específica.</p>
+
+        <label class="text-xs font-semibold text-sd">Días de alerta por defecto (antes del vencimiento)</label>
+        <input id="cfg-default-alert" type="number" min="0" max="90" class="w-full px-3 py-2 border rounded-lg mb-2 mt-1">
+        <p class="text-[10px] text-gray-400 mb-4">Ej: 5 (te avisa 5 días antes de que venza la factura).</p>
+
+        <button id="save-settings-btn" class="bg-sd text-white px-6 py-2 rounded-lg hover:bg-sl font-semibold mt-4">
+          💾 Guardar configuración
+        </button>
+      </div>
+    </div>
+  </main>
+
 </div>
 
 <!-- ============================================================
@@ -209,7 +300,7 @@
 </div>
 
 <!-- ============================================================
-     MODAL DETALLE
+     MODAL DETALLE GASTO
 ============================================================ -->
 <div id="detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
   <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeDetail()"></div>
@@ -219,6 +310,35 @@
     </button>
     <h3 class="text-xl font-bold text-sd mb-4 pr-10">Detalle del movimiento</h3>
     <div id="detail-body"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL FORM PROVEEDOR
+============================================================ -->
+<div id="supplier-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeSupplierForm()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeSupplierForm()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="supplier-title" class="text-xl font-bold text-sd mb-4 pr-10">Proveedor</h3>
+    <div id="supplier-body"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL MARCAR COMO PAGADO
+============================================================ -->
+<div id="pay-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closePayModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto">
+    <button onclick="closePayModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-1 pr-10">💰 Marcar como pagado</h3>
+    <p id="pay-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="pay-body"></div>
   </div>
 </div>
 
@@ -260,6 +380,11 @@ let stores = [];
 let expenses = [];
 let categories = [];
 let users = [];
+let suppliers = [];
+let conSettings = {
+  defaultTermsDays: 30,
+  defaultAlertDays: 5
+};
 
 const DEFAULT_CATEGORIES = [
   { slug:'arriendo', name:'Arriendo', type:'gasto' },
@@ -274,21 +399,64 @@ const DEFAULT_CATEGORIES = [
   { slug:'otros', name:'Otros', type:'gasto' }
 ];
 
+const PAYMENT_TERMS = [
+  { slug:'contado', label:'Contado (pago inmediato)', days: 0 },
+  { slug:'net_15', label:'Net 15 días', days: 15 },
+  { slug:'net_30', label:'Net 30 días', days: 30 },
+  { slug:'net_45', label:'Net 45 días', days: 45 },
+  { slug:'net_60', label:'Net 60 días', days: 60 },
+  { slug:'net_90', label:'Net 90 días', days: 90 },
+  { slug:'custom', label:'Personalizado (días específicos)', days: null }
+];
+
+const MAX_SUPPORTS = 3;
+
 /* ============================================================
    HELPERS
 ============================================================ */
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
-const escapeHtml = window.Smartec.escapeHtml;   // 🆕
-const fmtDate = ts => {
-  if (!ts) return '-';
-  const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
-  return d.toLocaleDateString('es-CO', { year:'2-digit', month:'2-digit', day:'2-digit' });
-};
+const escapeHtml = window.Smartec?.escapeHtml || (s => String(s||''));
 const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
+const fmtDate = (ts) => {
+  if (!ts) return '-';
+  const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+  return d.toLocaleDateString('es-CO', { year:'2-digit', month:'2-digit', day:'2-digit' });
+};
+const addDays = (dateStr, days) => {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + Number(days || 0));
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+const daysBetween = (dateStr1, dateStr2) => {
+  const d1 = new Date(dateStr1 + 'T12:00:00');
+  const d2 = new Date(dateStr2 + 'T12:00:00');
+  return Math.round((d2 - d1) / (1000*60*60*24));
+};
+
+/* Determina el estado efectivo de un gasto al vuelo */
+function computePaymentStatus(e) {
+  if (e.status === 'anulado') return 'anulado';
+  if (e.paidAt) return 'paid';
+  if (!e.dueDate) return 'pending';
+  const today = todayStr();
+  if (e.dueDate < today) return 'overdue';
+  return 'pending';
+}
+
+function paymentStatusBadge(status) {
+  const map = {
+    pending:  { cls: 'bg-amber-100 text-amber-700', lbl: '⏳ Pendiente' },
+    paid:     { cls: 'bg-green-100 text-green-700', lbl: '✅ Pagado' },
+    overdue:  { cls: 'bg-red-100 text-red-700',    lbl: '🔴 Vencido' },
+    anulado:  { cls: 'bg-gray-200 text-gray-600',   lbl: '⚪ Anulado' }
+  };
+  const m = map[status] || map.pending;
+  return `<span class="text-[10px] px-2 py-0.5 rounded ${m.cls} font-semibold whitespace-nowrap">${m.lbl}</span>`;
+}
 
 async function audit(entry) {
   try {
@@ -326,8 +494,7 @@ $('logout-btn').onclick = async () => {
 onAuthStateChanged(auth, async user => {
   document.getElementById('loading-screen').classList.add('hidden');
 
-    if (!user) {
-    // 🆕 Sin sesión → redirigir a home
+  if (!user) {
     window.location.href = 'home.html';
     return;
   }
@@ -359,16 +526,34 @@ onAuthStateChanged(auth, async user => {
 });
 
 /* ============================================================
+   TABS
+============================================================ */
+document.querySelectorAll('.tab-btn-con').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tab-btn-con').forEach(b => {
+      b.classList.remove('tab-active');
+      b.classList.add('border-transparent','text-gray-500');
+    });
+    btn.classList.add('tab-active');
+    btn.classList.remove('border-transparent','text-gray-500');
+    document.querySelectorAll('.tab-con-content').forEach(c => c.classList.add('hidden'));
+    $('tab-' + btn.dataset.tab).classList.remove('hidden');
+
+    if (btn.dataset.tab === 'suppliers') renderSuppliers();
+    if (btn.dataset.tab === 'settings') renderSettingsTab();
+  };
+});
+
+/* ============================================================
    CARGA DE DATOS
 ============================================================ */
 async function loadAll() {
   const C = window.SmartecCache;
 
-  const storesData = await C.wrap('stores', async () => {
+  stores = await C.wrap('stores', async () => {
     const s = await getDocs(collection(db,'stores'));
     return s.docs.map(d => ({id:d.id, ...d.data()}));
   });
-  stores = storesData;
 
   const isSuper = currentUserData.role === 'superadmin';
   const myStoreId = currentUserData.storeId;
@@ -394,6 +579,7 @@ async function loadAll() {
       currentStore = stores.find(s => s.storeId === sel.value);
       sessionStorage.setItem('smartec_contab_store', sel.value);
       await loadExpenses();
+      await loadSuppliers();
       renderAll();
     };
   } else {
@@ -408,20 +594,29 @@ async function loadAll() {
     $('header-title').innerText = 'Centro Contable · ' + currentStore.name;
   }
 
-  // Categorías
   categories = await C.wrap('expenseCategories', async () => {
     const s = await getDocs(collection(db,'expenseCategories'));
     const list = s.docs.map(d => ({id:d.id, ...d.data()}));
     return list.length ? list : DEFAULT_CATEGORIES.map(c => ({id:c.slug, ...c}));
   });
 
-  // Usuarios (para mostrar quién registró)
   users = await C.wrap('users', async () => {
     const s = await getDocs(collection(db,'users'));
     return s.docs.map(d => ({id:d.id, ...d.data()}));
   });
 
+  // Config contable
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'accounting'));
+    if (snap.exists()) {
+      const data = snap.data();
+      conSettings.defaultTermsDays = Number(data.defaultTermsDays ?? 30);
+      conSettings.defaultAlertDays = Number(data.defaultAlertDays ?? 5);
+    }
+  } catch(e) { /* ignore */ }
+
   await loadExpenses();
+  await loadSuppliers();
   populateCategoryFilter();
   setRange('month');
   renderAll();
@@ -431,24 +626,25 @@ async function loadExpenses() {
   const C = window.SmartecCache;
   const isSuper = currentUserData.role === 'superadmin';
 
-  let list;
-  if (isSuper) {
-    // Superadmin: gastos de la tienda seleccionada + gastos generales
-    list = await C.wrap(`expenses_all`, async () => {
-      const s = await getDocs(collection(db,'expenses'));
-      return s.docs.map(d => ({id:d.id, ...d.data()}));
-    });
-    list = list.filter(e => e.storeId === currentStore.storeId || e.storeId === 'general');
-  } else {
-    // Admin: solo su tienda + generales
-    list = await C.wrap(`expenses_all`, async () => {
-      const s = await getDocs(collection(db,'expenses'));
-      return s.docs.map(d => ({id:d.id, ...d.data()}));
-    });
-    list = list.filter(e => e.storeId === currentStore.storeId || e.storeId === 'general');
-  }
+  const all = await C.wrap(`expenses_all`, async () => {
+    const s = await getDocs(collection(db,'expenses'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
 
-  expenses = list;
+  if (isSuper) {
+    expenses = all.filter(e => e.storeId === currentStore.storeId || e.storeId === 'general');
+  } else {
+    expenses = all.filter(e => e.storeId === currentStore.storeId || e.storeId === 'general');
+  }
+}
+
+async function loadSuppliers() {
+  const C = window.SmartecCache;
+  suppliers = await C.wrap(`suppliers_all`, async () => {
+    const s = await getDocs(collection(db,'suppliers'));
+    return s.docs.map(d => ({id:d.id, ...d.data()}));
+  });
+  suppliers.sort((a,b) => (a.name||'').localeCompare(b.name||''));
 }
 
 /* ============================================================
@@ -491,13 +687,14 @@ window.clearFilters = () => {
   $('f-date-to').value = '';
   $('f-type').value = 'all';
   $('f-category').value = 'all';
+  $('f-payment-status').value = 'all';
+  $('f-due-filter').value = 'all';
   $('f-provider').value = '';
   $('f-search').value = '';
-  $('f-responsible').value = '';
   renderAll();
 };
 
-['f-date-from','f-date-to','f-type','f-category','f-provider','f-search','f-responsible'].forEach(id => {
+['f-date-from','f-date-to','f-type','f-category','f-payment-status','f-due-filter','f-provider','f-search'].forEach(id => {
   const el = $(id);
   if (el) {
     el.addEventListener('input', renderAll);
@@ -519,14 +716,46 @@ function getFiltered() {
   const catF = $('f-category').value;
   if (catF !== 'all') list = list.filter(e => e.category === catF);
 
+  const statusF = $('f-payment-status').value;
+  if (statusF !== 'all') {
+    list = list.filter(e => computePaymentStatus(e) === statusF);
+  }
+
+  const dueF = $('f-due-filter').value;
+  if (dueF !== 'all') {
+    const today = todayStr();
+    if (dueF === 'next7') {
+      list = list.filter(e => {
+        const ps = computePaymentStatus(e);
+        if (ps === 'paid' || ps === 'anulado') return false;
+        if (!e.dueDate) return false;
+        const diff = daysBetween(today, e.dueDate);
+        return diff >= 0 && diff <= 7;
+      });
+    } else if (dueF === 'next30') {
+      list = list.filter(e => {
+        const ps = computePaymentStatus(e);
+        if (ps === 'paid' || ps === 'anulado') return false;
+        if (!e.dueDate) return false;
+        const diff = daysBetween(today, e.dueDate);
+        return diff >= 0 && diff <= 30;
+      });
+    } else if (dueF === 'overdue') {
+      list = list.filter(e => computePaymentStatus(e) === 'overdue');
+    }
+  }
+
   const provF = ($('f-provider').value || '').toLowerCase().trim();
-  if (provF) list = list.filter(e => (e.provider||'').toLowerCase().includes(provF));
+  if (provF) list = list.filter(e =>
+    (e.provider||'').toLowerCase().includes(provF) ||
+    (e.supplierName||'').toLowerCase().includes(provF)
+  );
 
   const searchF = ($('f-search').value || '').toLowerCase().trim();
-  if (searchF) list = list.filter(e => (e.concept||'').toLowerCase().includes(searchF));
-
-  const respF = ($('f-responsible').value || '').toLowerCase().trim();
-  if (respF) list = list.filter(e => (e.responsible||'').toLowerCase().includes(respF));
+  if (searchF) list = list.filter(e =>
+    (e.concept||'').toLowerCase().includes(searchF) ||
+    (e.invoiceNumber||'').toLowerCase().includes(searchF)
+  );
 
   return list.sort((a,b) => (b.date||'').localeCompare(a.date||''));
 }
@@ -535,31 +764,99 @@ function getFiltered() {
    RENDER
 ============================================================ */
 function renderAll() {
+  renderAlerts();
   renderKPIs();
   renderTable();
 }
 
+function renderAlerts() {
+  const panel = $('alerts-panel');
+  if (!panel) return;
+
+  const today = todayStr();
+  const activeExpenses = expenses.filter(e => computePaymentStatus(e) !== 'anulado' && computePaymentStatus(e) !== 'paid');
+
+  const overdue = activeExpenses.filter(e => computePaymentStatus(e) === 'overdue');
+  const soon = activeExpenses.filter(e => {
+    if (!e.dueDate) return false;
+    const diff = daysBetween(today, e.dueDate);
+    const alertDays = Number(e.alertDaysBefore ?? conSettings.defaultAlertDays);
+    return diff >= 0 && diff <= alertDays;
+  });
+
+  const totalOverdue = overdue.reduce((s, e) => s + Number(e.total||0), 0);
+  const totalSoon = soon.reduce((s, e) => s + Number(e.total||0), 0);
+
+  if (!overdue.length && !soon.length) {
+    panel.innerHTML = '';
+    return;
+  }
+
+  let html = '<div class="space-y-2">';
+
+  if (overdue.length) {
+    html += `
+      <button onclick="filterByStatus('overdue')" class="w-full text-left bg-red-50 border-l-4 border-red-500 rounded-lg p-3 hover:bg-red-100 transition flex justify-between items-center">
+        <div>
+          <p class="font-semibold text-red-700 text-sm">🔴 ${overdue.length} factura${overdue.length !== 1 ? 's' : ''} vencida${overdue.length !== 1 ? 's' : ''}</p>
+          <p class="text-[10px] text-red-600">Requieren atención inmediata</p>
+        </div>
+        <p class="text-lg font-bold text-red-700">${fmt(totalOverdue)}</p>
+      </button>
+    `;
+  }
+
+  if (soon.length) {
+    html += `
+      <button onclick="filterByDueSoon()" class="w-full text-left bg-amber-50 border-l-4 border-amber-400 rounded-lg p-3 hover:bg-amber-100 transition flex justify-between items-center">
+        <div>
+          <p class="font-semibold text-amber-700 text-sm">🟡 ${soon.length} factura${soon.length !== 1 ? 's' : ''} próxima${soon.length !== 1 ? 's' : ''} a vencer</p>
+          <p class="text-[10px] text-amber-600">Vencen en los próximos ${conSettings.defaultAlertDays} días</p>
+        </div>
+        <p class="text-lg font-bold text-amber-700">${fmt(totalSoon)}</p>
+      </button>
+    `;
+  }
+
+  html += '</div>';
+  panel.innerHTML = html;
+}
+
+window.filterByStatus = (status) => {
+  $('f-payment-status').value = status;
+  $('f-due-filter').value = 'all';
+  renderAll();
+};
+
+window.filterByDueSoon = () => {
+  $('f-payment-status').value = 'all';
+  $('f-due-filter').value = 'next7';
+  renderAll();
+};
+
 function renderKPIs() {
   const list = getFiltered();
-  let total = 0, cost = 0, expense = 0, tax = 0, retention = 0;
+  let total = 0, payable = 0, payableCount = 0, paid = 0, paidCount = 0, overdue = 0, overdueCount = 0;
 
   list.forEach(e => {
-    // ✅ Los gastos anulados se excluyen de todos los totales
     if (e.status === 'anulado') return;
 
     total += Number(e.total || 0);
-    if (e.type === 'costo') cost += Number(e.total || 0);
-    else expense += Number(e.total || 0);
-    tax += Number(e.taxAmount || 0);
-    retention += Number(e.retentionAmount || 0);
+
+    const ps = computePaymentStatus(e);
+    if (ps === 'paid') { paid += Number(e.total||0); paidCount++; }
+    else if (ps === 'overdue') { overdue += Number(e.total||0); overdueCount++; payable += Number(e.total||0); payableCount++; }
+    else if (ps === 'pending') { payable += Number(e.total||0); payableCount++; }
   });
 
   $('kpi-total').innerText = fmt(total);
   $('kpi-count').innerText = `${list.length} movimiento${list.length !== 1 ? 's' : ''}`;
-  $('kpi-cost').innerText = fmt(cost);
-  $('kpi-expense').innerText = fmt(expense);
-  $('kpi-tax').innerText = fmt(tax);
-  $('kpi-retention').innerText = `Retenciones: ${fmt(retention)}`;
+  $('kpi-payable').innerText = fmt(payable);
+  $('kpi-payable-count').innerText = `${payableCount} factura${payableCount !== 1 ? 's' : ''} pendiente${payableCount !== 1 ? 's' : ''}`;
+  $('kpi-paid').innerText = fmt(paid);
+  $('kpi-paid-count').innerText = `${paidCount} pago${paidCount !== 1 ? 's' : ''} registrado${paidCount !== 1 ? 's' : ''}`;
+  $('kpi-overdue').innerText = fmt(overdue);
+  $('kpi-overdue-count').innerText = `${overdueCount} factura${overdueCount !== 1 ? 's' : ''} vencida${overdueCount !== 1 ? 's' : ''}`;
 }
 
 function renderTable() {
@@ -574,34 +871,53 @@ function renderTable() {
   }
   empty.classList.add('hidden');
 
-    tb.innerHTML = list.map(e => {
+  const today = todayStr();
+
+  tb.innerHTML = list.map(e => {
     const cat = categories.find(c => c.slug === e.category);
-    const isAnulado = e.status === 'anulado';
-    const rowClass = isAnulado ? 'bg-gray-50 opacity-60' : '';
     const store = stores.find(s => s.storeId === e.storeId);
+    const ps = computePaymentStatus(e);
+    const rowClass = ps === 'anulado' ? 'bg-gray-50 opacity-60'
+                    : ps === 'overdue' ? 'bg-red-50/40'
+                    : ps === 'pending' && e.dueDate && daysBetween(today, e.dueDate) <= Number(e.alertDaysBefore ?? conSettings.defaultAlertDays) ? 'bg-amber-50/40'
+                    : '';
+
     const typeBadge = e.type === 'costo'
       ? '<span class="text-[10px] px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-semibold">Costo</span>'
       : '<span class="text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-700 font-semibold">Gasto</span>';
 
-      return `<tr class="border-b hover:bg-gray-50 ${rowClass}">
+    // Vencimiento
+    let dueCell = '<span class="text-gray-300 text-xs">—</span>';
+    if (e.dueDate) {
+      const diff = daysBetween(today, e.dueDate);
+      const diffLabel = ps === 'paid' ? '' : diff < 0 ? `(${Math.abs(diff)}d vencida)` : diff === 0 ? '(hoy)' : `(${diff}d)`;
+      const diffCls = ps === 'paid' ? 'text-gray-400' : diff < 0 ? 'text-red-600 font-bold' : diff <= 7 ? 'text-amber-600 font-semibold' : 'text-gray-500';
+      dueCell = `<div class="text-xs text-gray-600">${e.dueDate}</div><div class="${diffCls} text-[10px]">${diffLabel}</div>`;
+    }
+
+    const supportsCount = (e.supports || []).length + (e.supportUrl && !(e.supports||[]).length ? 1 : 0);
+
+    return `<tr class="border-b hover:bg-gray-50 ${rowClass}">
       <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${e.date || '-'}</td>
+      <td class="p-3 text-xs font-mono">${escapeHtml(e.invoiceNumber) || '<span class="text-gray-300">—</span>'}</td>
       <td class="p-3">${typeBadge}</td>
-      <td class="p-3 text-xs">${escapeHtml(cat?.name || e.category) || '-'}</td>
-      <td class="p-3 text-xs">${escapeHtml(e.provider) || '-'}</td>
-      <td class="p-3 text-xs">${escapeHtml(e.responsible) || '-'}</td>
+      <td class="p-3 text-xs">${escapeHtml(e.supplierName || e.provider) || '-'}</td>
       <td class="p-3 text-xs max-w-xs truncate">${escapeHtml(e.concept) || '-'}</td>
       <td class="p-3 text-xs">${e.storeId === 'general' ? 'General' : escapeHtml(store?.name) || e.storeId || '-'}</td>
-      <td class="p-3 text-right text-xs">${fmt(e.amount)}</td>
-      <td class="p-3 text-right text-xs text-gray-500">${fmt(e.taxAmount)}</td>
       <td class="p-3 text-right text-xs font-bold text-sd">${fmt(e.total)}</td>
-      <td class="p-3 text-center">
-        ${e.supportUrl
-          ? `<a href="${e.supportUrl}" target="_blank" class="text-sl hover:underline text-xs">📎 Ver</a>`
-          : '<span class="text-gray-300 text-xs">—</span>'}
+      <td class="p-3 text-center">${dueCell}</td>
+      <td class="p-3 text-center">${paymentStatusBadge(ps)}</td>
+      <td class="p-3 text-center text-xs">
+        ${supportsCount > 0
+          ? `<span class="text-sl">📎 ${supportsCount}</span>`
+          : '<span class="text-gray-300">—</span>'}
       </td>
-        <td class="p-3 text-right whitespace-nowrap">
+      <td class="p-3 text-right whitespace-nowrap">
         <button onclick='viewDetail("${e.id}")' class="text-sl hover:underline text-xs mr-2">Ver</button>
-        ${e.status !== 'anulado' ? `
+        ${ps === 'pending' || ps === 'overdue' ? `
+          <button onclick='openPayModal("${e.id}")' class="text-green-600 hover:underline text-xs mr-2 font-semibold">💰 Pagar</button>
+        ` : ''}
+        ${ps !== 'anulado' ? `
           <button onclick='editExpense("${e.id}")' class="text-sl hover:underline text-xs mr-2">Editar</button>
           <button onclick='anularExpense("${e.id}")' class="text-orange-500 hover:underline text-xs">Anular</button>
         ` : '<span class="text-[10px] text-gray-400 italic">Anulado</span>'}
@@ -611,7 +927,106 @@ function renderTable() {
 }
 
 /* ============================================================
-   FORMULARIO
+   RENDER PROVEEDORES
+============================================================ */
+function renderSuppliers() {
+  const tb = $('suppliers-tbody');
+  const empty = $('suppliers-empty');
+  const term = ($('sup-search')?.value || '').toLowerCase().trim();
+
+  let list = suppliers.slice();
+  if (term) {
+    list = list.filter(s =>
+      (s.name||'').toLowerCase().includes(term) ||
+      (s.nit||'').toLowerCase().includes(term) ||
+      (s.email||'').toLowerCase().includes(term)
+    );
+  }
+
+  if (!list.length) {
+    tb.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tb.innerHTML = list.map(s => {
+    const terms = PAYMENT_TERMS.find(t => t.slug === s.defaultPaymentTerms);
+    let termsLabel;
+    if (s.defaultPaymentTerms === 'custom' && s.customTermsDays) {
+      termsLabel = `Personalizado (${s.customTermsDays} días)`;
+    } else {
+      termsLabel = terms ? terms.label : (s.defaultPaymentTerms || '—');
+    }
+    const alertDays = Number(s.defaultAlertDaysBefore ?? conSettings.defaultAlertDays);
+
+    return `<tr class="border-b hover:bg-gray-50 ${s.active === false ? 'opacity-60' : ''}">
+      <td class="p-3 text-xs font-semibold text-sd">${escapeHtml(s.name)}</td>
+      <td class="p-3 text-xs font-mono">${escapeHtml(s.nit) || '—'}</td>
+      <td class="p-3 text-xs">
+        ${s.phone ? `📞 ${escapeHtml(s.phone)}<br>` : ''}
+        ${s.email ? `✉️ ${escapeHtml(s.email)}<br>` : ''}
+        ${s.contactName ? `👤 ${escapeHtml(s.contactName)}` : ''}
+      </td>
+      <td class="p-3 text-center text-xs">${termsLabel}</td>
+      <td class="p-3 text-center text-xs">${alertDays} días</td>
+      <td class="p-3 text-center">
+        <span class="text-[10px] px-2 py-0.5 rounded ${s.active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'} font-semibold">
+          ${s.active !== false ? 'Activo' : 'Inactivo'}
+        </span>
+      </td>
+      <td class="p-3 text-right whitespace-nowrap">
+        <button onclick='editSupplier("${s.id}")' class="text-sl hover:underline text-xs mr-2">Editar</button>
+        <button onclick='toggleSupplier("${s.id}")' class="text-${s.active !== false ? 'orange' : 'green'}-500 hover:underline text-xs mr-2">${s.active !== false ? 'Desactivar' : 'Activar'}</button>
+        <button onclick='deleteSupplier("${s.id}")' class="text-red-500 hover:underline text-xs">Eliminar</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+$('sup-search')?.addEventListener('input', renderSuppliers);
+
+/* ============================================================
+   RENDER CONFIG TAB
+============================================================ */
+function renderSettingsTab() {
+  $('cfg-default-terms').value = conSettings.defaultTermsDays;
+  $('cfg-default-alert').value = conSettings.defaultAlertDays;
+}
+
+$('save-settings-btn').onclick = async () => {
+  const termsDays = Number($('cfg-default-terms').value) || 30;
+  const alertDays = Number($('cfg-default-alert').value) || 5;
+
+  try {
+    await setDoc(doc(db, 'settings', 'accounting'), {
+      defaultTermsDays: termsDays,
+      defaultAlertDays: alertDays,
+      updatedAt: serverTimestamp(),
+      updatedBy: currentUser.email
+    }, { merge: true });
+
+    conSettings.defaultTermsDays = termsDays;
+    conSettings.defaultAlertDays = alertDays;
+
+    await audit({
+      action: 'update',
+      collection: 'settings',
+      docId: 'accounting',
+      after: { defaultTermsDays: termsDays, defaultAlertDays: alertDays },
+      note: `Config contable actualizada: vencimiento ${termsDays}d · alerta ${alertDays}d`
+    });
+
+    window.SmartecCache.invalidate('settings_accounting');
+    renderAlerts();
+    alert('✅ Configuración guardada');
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+};
+
+/* ============================================================
+   FORMULARIO DE GASTO
 ============================================================ */
 let editingId = null;
 
@@ -649,6 +1064,18 @@ function renderForm(v) {
     `<option value="${c.slug}" data-type="${c.type}" ${v.category === c.slug ? 'selected' : ''}>${c.name}</option>`
   ).join('');
 
+  const activeSuppliers = suppliers.filter(s => s.active !== false);
+  const supplierOpts = activeSuppliers.map(s =>
+    `<option value="${s.id}" ${v.supplierId === s.id ? 'selected' : ''}>${escapeHtml(s.name)}${s.nit ? ' · ' + s.nit : ''}</option>`
+  ).join('');
+
+  const termsOpts = PAYMENT_TERMS.map(t =>
+    `<option value="${t.slug}" ${v.paymentTerms === t.slug ? 'selected' : ''}>${t.label}</option>`
+  ).join('');
+
+  const existingSupports = (v.supports || []).length ? v.supports
+    : (v.supportUrl ? [{ url: v.supportUrl, name: v.supportName || 'soporte' }] : []);
+
   $('expense-body').innerHTML = `
     <div class="grid grid-cols-2 gap-3 mb-3">
       <div>
@@ -680,21 +1107,26 @@ function renderForm(v) {
       </div>
     </div>
 
+    <!-- Proveedor + Nº Factura -->
     <div class="grid grid-cols-2 gap-3 mb-3">
       <div>
         <label class="text-xs font-semibold text-sd">Proveedor</label>
-        <input id="x-provider" type="text" value="${v.provider || ''}" placeholder="Nombre del proveedor" class="w-full px-3 py-2 border rounded-lg mt-1">
+        <div class="flex gap-2 mt-1">
+          <select id="x-supplier" class="flex-1 px-3 py-2 border rounded-lg" onchange="onSupplierSelected()">
+            <option value="">— Selecciona o crea uno —</option>
+            ${supplierOpts}
+          </select>
+          <button type="button" onclick="quickCreateSupplier()" class="bg-sl text-white px-3 py-2 rounded-lg hover:bg-sd text-sm" title="Nuevo proveedor">➕</button>
+        </div>
       </div>
       <div>
-        <label class="text-xs font-semibold text-sd">NIT / Cédula</label>
-        <input id="x-nit" type="text" value="${v.providerNit || ''}" placeholder="900123456-7" class="w-full px-3 py-2 border rounded-lg mt-1">
+        <label class="text-xs font-semibold text-sd">Nº Factura</label>
+        <input id="x-invoice" type="text" value="${escapeHtml(v.invoiceNumber) || ''}" placeholder="Ej: FAC-001-2026" class="w-full px-3 py-2 border rounded-lg mt-1">
       </div>
     </div>
-    
-    <label class="text-xs font-semibold text-sd">Responsable (quién autoriza o gestiona)</label>
-    <input id="x-responsible" type="text" value="${v.responsible || ''}" placeholder="Ej: Juan Pérez, Área administrativa" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3">
+
     <label class="text-xs font-semibold text-sd">Concepto *</label>
-    <input id="x-concept" type="text" value="${v.concept || ''}" placeholder="Ej: Factura 001 - Compra de neveras" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3">
+    <input id="x-concept" type="text" value="${escapeHtml(v.concept) || ''}" placeholder="Ej: Compra de neveras" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3">
 
     <div class="grid grid-cols-3 gap-3 mb-3">
       <div>
@@ -717,20 +1149,69 @@ function renderForm(v) {
       <div class="flex justify-between border-t pt-1"><span class="font-semibold text-sd">Total:</span><span id="x-total" class="font-bold text-sl">$0</span></div>
     </div>
 
-    <label class="text-xs font-semibold text-sd">Forma de pago</label>
-    <select id="x-payment" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3">
-      <option value="efectivo" ${v.paymentMethod === 'efectivo' ? 'selected' : ''}>Efectivo</option>
-      <option value="transferencia" ${v.paymentMethod === 'transferencia' ? 'selected' : ''}>Transferencia</option>
-      <option value="tarjeta" ${v.paymentMethod === 'tarjeta' ? 'selected' : ''}>Tarjeta</option>
-      <option value="credito" ${v.paymentMethod === 'credito' ? 'selected' : ''}>Crédito</option>
-    </select>
+    <!-- Condiciones de pago -->
+    <div class="border border-gray-200 rounded-lg p-3 mb-3 bg-blue-50/30">
+      <p class="text-xs font-semibold text-sd mb-2">💳 Condiciones de pago</p>
+
+      <div id="x-terms-grid" class="grid grid-cols-2 gap-3 mb-2">
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Condición</label>
+          <select id="x-paymentTerms" class="w-full px-3 py-2 border rounded-lg text-sm mt-1" onchange="recalcDueDate()">
+            ${termsOpts}
+          </select>
+        </div>
+        <div id="x-custom-days-wrap" class="hidden">
+          <label class="text-[10px] font-semibold text-sd">Días personalizados *</label>
+          <input id="x-custom-days" type="number" min="1" max="365" placeholder="Ej: 20" value="${v.customTermsDays || ''}" class="w-full px-3 py-2 border rounded-lg text-sm mt-1 border-blue-400 bg-white" oninput="recalcDueDate()">
+          <p class="text-[9px] text-blue-600 mt-0.5">Escribe los días exactos de crédito</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Fecha de vencimiento</label>
+          <input id="x-dueDate" type="date" value="${v.dueDate || ''}" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+          <p class="text-[9px] text-gray-400 mt-0.5">Se calcula automáticamente. Puedes editarla.</p>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Alerta (días antes)</label>
+          <input id="x-alertDays" type="number" min="0" max="90" value="${v.alertDaysBefore ?? conSettings.defaultAlertDays}" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+        </div>
+      </div>
+
+      <label class="flex items-center gap-2 text-xs mt-3">
+        <input id="x-markPaid" type="checkbox" ${v.paidAt ? 'checked' : ''} class="w-4 h-4" onchange="togglePaidFields()">
+        Marcar como ya pagado
+      </label>
+      <div id="x-paid-fields" class="${v.paidAt ? '' : 'hidden'} mt-2 grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Fecha de pago</label>
+          <input id="x-paidAt" type="date" value="${v.paidAt || todayStr()}" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Nota de pago</label>
+          <input id="x-paymentNotes" type="text" value="${escapeHtml(v.paymentNotes) || ''}" placeholder="Ej: Transferencia Bancolombia" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+        </div>
+      </div>
+    </div>
 
     <label class="text-xs font-semibold text-sd">Notas</label>
-    <textarea id="x-notes" rows="2" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3 text-sm">${v.notes || ''}</textarea>
+    <textarea id="x-notes" rows="2" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3 text-sm">${escapeHtml(v.notes) || ''}</textarea>
 
-    <label class="text-xs font-semibold text-sd">Soporte (PDF o imagen)</label>
-    <input id="x-file" type="file" accept="image/*,application/pdf" class="w-full px-3 py-2 border rounded-lg mt-1 mb-2 text-sm">
-    <div id="x-file-info" class="text-xs text-gray-500 mb-3"></div>
+    <!-- Adjuntos -->
+    <div class="border border-gray-200 rounded-lg p-3 mb-3">
+      <p class="text-xs font-semibold text-sd mb-2">📎 Adjuntos (máx ${MAX_SUPPORTS} archivos)</p>
+      <div id="x-existing-supports" class="space-y-1 mb-2">
+        ${existingSupports.length ? existingSupports.map((s, i) => `
+          <div class="flex justify-between items-center text-xs bg-gray-50 rounded p-2">
+            <a href="${s.url}" target="_blank" class="text-sl hover:underline truncate">📎 ${escapeHtml(s.name) || 'soporte'}</a>
+            <button type="button" onclick="removeSupportField('${v.id || ''}', ${i})" class="text-red-500 hover:text-red-700 text-xs ml-2">✕</button>
+          </div>
+        `).join('') : '<p class="text-[10px] text-gray-400">Sin adjuntos aún.</p>'}
+      </div>
+      <input id="x-files" type="file" accept="image/*,application/pdf" multiple class="w-full px-3 py-2 border rounded-lg text-sm">
+      <p class="text-[10px] text-gray-400 mt-1">Puedes seleccionar varios archivos. Máximo ${MAX_SUPPORTS} en total.</p>
+    </div>
 
     <div class="flex gap-3">
       <button onclick="closeExpenseForm()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">Cancelar</button>
@@ -738,18 +1219,133 @@ function renderForm(v) {
     </div>
   `;
 
-  // Recalcular en vivo
+  // Listeners para recálculo
   ['x-amount','x-taxRate','x-retentionRate'].forEach(id => {
     const el = $(id);
     if (el) el.addEventListener('input', recalcTotals);
   });
   recalcTotals();
 
-  // Cargar info del soporte si ya existe
-  if (v.supportUrl) {
-    $('x-file-info').innerHTML = `Soporte actual: <a href="${v.supportUrl}" target="_blank" class="text-sl hover:underline">📎 ${escapeHtml(v.supportName) || 'Ver archivo'}</a>`;
+  // Ajustar UI según condiciones
+  const termsSel = $('x-paymentTerms');
+  if (termsSel) {
+    // Si ya está en custom (al editar), mostrarlo
+    if (termsSel.value === 'custom') {
+      $('x-custom-days-wrap').classList.remove('hidden');
+      // Auto-focus al input de días
+      setTimeout(() => {
+        const inp = $('x-custom-days');
+        if (inp && !inp.value) inp.focus();
+      }, 100);
+    }
+    termsSel.dataset.listeners = '1';
   }
+
+  // Recalcular vencimiento al cargar (por si viene editando)
+  recalcDueDate();
+
+  // Guardar soportes temporales en un estado
+  window.__tempSupports = existingSupports.slice();
 }
+
+window.removeSupportField = (expenseId, index) => {
+  if (!window.__tempSupports) return;
+  const removed = window.__tempSupports.splice(index, 1)[0];
+  if (removed) window.__removedSupports = window.__removedSupports || [];
+  window.__removedSupports.push(removed);
+  // Re-render quick
+  const container = $('x-existing-supports');
+  if (container) {
+    container.innerHTML = window.__tempSupports.length ? window.__tempSupports.map((s, i) => `
+      <div class="flex justify-between items-center text-xs bg-gray-50 rounded p-2">
+        <a href="${s.url}" target="_blank" class="text-sl hover:underline truncate">📎 ${escapeHtml(s.name) || 'soporte'}</a>
+        <button type="button" onclick="removeSupportField('${expenseId}', ${i})" class="text-red-500 hover:text-red-700 text-xs ml-2">✕</button>
+      </div>
+    `).join('') : '<p class="text-[10px] text-gray-400">Sin adjuntos aún.</p>';
+  }
+};
+
+window.recalcDueDate = () => {
+  const terms = $('x-paymentTerms')?.value;
+  const date = $('x-date')?.value || todayStr();
+  const customDaysRaw = $('x-custom-days')?.value;
+  const customDays = Number(customDaysRaw || 0);
+
+  const wrap = $('x-custom-days-wrap');
+  if (terms === 'custom') {
+    wrap?.classList.remove('hidden');
+  } else {
+    wrap?.classList.add('hidden');
+  }
+
+  let days = 0;
+  if (terms === 'custom') {
+    // Si es custom y aún no escribieron días, no calcular la fecha
+    if (!customDaysRaw || customDays <= 0) {
+      if ($('x-dueDate')) $('x-dueDate').value = '';
+      return;
+    }
+    days = customDays;
+  } else {
+    const t = PAYMENT_TERMS.find(x => x.slug === terms);
+    days = t ? Number(t.days || 0) : conSettings.defaultTermsDays;
+  }
+
+  const due = addDays(date, days);
+  if ($('x-dueDate')) $('x-dueDate').value = due;
+};
+
+window.togglePaidFields = () => {
+  const checked = $('x-markPaid')?.checked;
+  $('x-paid-fields')?.classList.toggle('hidden', !checked);
+};
+
+window.onSupplierTermsChange = () => {
+  const terms = $('s-terms')?.value;
+  const wrap = $('s-custom-days-wrap');
+  if (!wrap) return;
+
+  if (terms === 'custom') {
+    wrap.classList.remove('hidden');
+    setTimeout(() => {
+      const inp = $('s-custom-days');
+      if (inp && !inp.value) inp.focus();
+    }, 100);
+  } else {
+    wrap.classList.add('hidden');
+  }
+};
+
+window.onSupplierSelected = () => {
+  const supplierId = $('x-supplier')?.value;
+  if (!supplierId) return;
+
+  const sup = suppliers.find(s => s.id === supplierId);
+  if (!sup) return;
+
+  // Aplicar condición de pago por defecto
+  if (sup.defaultPaymentTerms) {
+    const sel = $('x-paymentTerms');
+    if (sel) {
+      sel.value = sup.defaultPaymentTerms;
+    }
+  }
+
+  // Aplicar días personalizados si aplica
+  if (sup.defaultPaymentTerms === 'custom' && sup.customTermsDays) {
+    const inp = $('x-custom-days');
+    if (inp) inp.value = sup.customTermsDays;
+  }
+
+  // Aplicar días de alerta por defecto
+  if (sup.defaultAlertDaysBefore !== undefined) {
+    const alertInp = $('x-alertDays');
+    if (alertInp) alertInp.value = sup.defaultAlertDaysBefore;
+  }
+
+  // Recalcular vencimiento
+  recalcDueDate();
+};
 
 function recalcTotals() {
   const amount = Number($('x-amount').value) || 0;
@@ -766,21 +1362,26 @@ function recalcTotals() {
 }
 
 /* ============================================================
-   GUARDAR
+   GUARDAR GASTO
 ============================================================ */
 window.saveExpense = async () => {
   const date = $('x-date').value;
   const type = $('x-type').value;
   const category = $('x-category').value;
   const storeId = $('x-store').value;
-  const provider = $('x-provider').value.trim();
-  const providerNit = $('x-nit').value.trim();
-  const responsible = $('x-responsible').value.trim();
+  const supplierId = $('x-supplier').value || null;
+  const invoiceNumber = $('x-invoice').value.trim();
   const concept = $('x-concept').value.trim();
   const amount = Number($('x-amount').value);
   const taxRate = (Number($('x-taxRate').value) || 0) / 100;
   const retentionRate = (Number($('x-retentionRate').value) || 0) / 100;
-  const paymentMethod = $('x-payment').value;
+  const paymentTerms = $('x-paymentTerms').value;
+  const customTermsDays = paymentTerms === 'custom' ? Number($('x-custom-days').value) : null;
+  const dueDate = $('x-dueDate').value;
+  const alertDaysBefore = Number($('x-alertDays').value) || conSettings.defaultAlertDays;
+  const markPaid = $('x-markPaid').checked;
+  const paidAt = markPaid ? $('x-paidAt').value : null;
+  const paymentNotes = $('x-paymentNotes')?.value.trim() || '';
   const notes = $('x-notes').value.trim();
 
   if (!date) return alert('La fecha es obligatoria');
@@ -791,38 +1392,96 @@ window.saveExpense = async () => {
   const retentionAmount = amount * retentionRate;
   const total = amount + taxAmount - retentionAmount;
 
+  // Resolver proveedor (nombre y NIT)
+  let supplierName = '';
+  let supplierNit = '';
+  if (supplierId) {
+    const sup = suppliers.find(s => s.id === supplierId);
+    if (sup) {
+      supplierName = sup.name || '';
+      supplierNit = sup.nit || '';
+    }
+  }
+
   const btn = event.target;
   btn.disabled = true; btn.innerText = '⏳ Guardando...';
 
   try {
-    // Subir archivo si hay
-    let supportUrl = null, supportName = null;
-    const fileInput = $('x-file');
-    if (fileInput && fileInput.files[0]) {
-      const file = fileInput.files[0];
-      const path = `expenses/${storeId}/${Date.now()}_${file.name}`;
-      const fileRef = storageRef(storage, path);
-      await uploadBytes(fileRef, file);
-      supportUrl = await getDownloadURL(fileRef);
-      supportName = file.name;
+    // 1. Subir archivos nuevos
+    const newSupports = [];
+    const fileInput = $('x-files');
+    const files = fileInput ? Array.from(fileInput.files || []) : [];
+
+    const existingSupports = (window.__tempSupports || []).slice();
+    const remainingSlots = MAX_SUPPORTS - existingSupports.length;
+
+    if (files.length > remainingSlots) {
+      alert(`⚠️ Solo puedes tener máximo ${MAX_SUPPORTS} archivos. Ya tienes ${existingSupports.length}. Se subirán solo los primeros ${remainingSlots}.`);
     }
 
+    const filesToUpload = files.slice(0, Math.max(0, remainingSlots));
+
+    for (const file of filesToUpload) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `expenses/${storeId}/${Date.now()}_${safeName}`;
+      const fileRef = storageRef(storage, path);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      newSupports.push({ url, name: file.name, type: file.type });
+    }
+
+    const allSupports = [...existingSupports, ...newSupports];
+
+    // 2. Borrar archivos removidos
+    if (window.__removedSupports && window.__removedSupports.length) {
+      for (const s of window.__removedSupports) {
+        try {
+          const fileRef = storageRef(storage, s.url);
+          await deleteObject(fileRef);
+        } catch(err) { console.warn('No se pudo borrar archivo:', err); }
+      }
+    }
+
+    // 3. Datos finales
     const data = {
       date, type, category, storeId,
-      provider, providerNit, responsible, concept,
+      supplierId: supplierId || null,
+      supplierName: supplierName || null,
+      supplierNit: supplierNit || null,
+      // Legacy
+      provider: supplierName || '',
+      providerNit: supplierNit || '',
+      invoiceNumber,
+      concept,
       amount, taxRate, taxAmount,
       retentionRate, retentionAmount,
-      total, paymentMethod, notes,
-      supportUrl, supportName,
+      total,
+      paymentTerms,
+      customTermsDays,
+      paymentTermsLabel: (PAYMENT_TERMS.find(t => t.slug === paymentTerms) || {}).label || paymentTerms,
+      dueDate: dueDate || null,
+      alertDaysBefore,
+      supports: allSupports,
+      // Legacy
+      supportUrl: allSupports[0]?.url || null,
+      supportName: allSupports[0]?.name || null,
+      notes,
       updatedAt: serverTimestamp()
     };
 
+    if (markPaid) {
+      data.paidAt = paidAt || todayStr();
+      data.paidBy = currentUser.email;
+      data.paymentNotes = paymentNotes || null;
+    } else {
+      // Si estaba pagado antes y ahora no, limpiar
+      data.paidAt = null;
+      data.paidBy = null;
+      data.paymentNotes = null;
+    }
+
     if (editingId) {
       const prev = expenses.find(e => e.id === editingId);
-      if (!supportUrl && prev?.supportUrl) {
-        data.supportUrl = prev.supportUrl;
-        data.supportName = prev.supportName;
-      }
       await updateDoc(doc(db,'expenses',editingId), data);
       await audit({
         action:'update', collection:'expenses', docId: editingId,
@@ -836,9 +1495,13 @@ window.saveExpense = async () => {
       await audit({
         action:'create', collection:'expenses', docId: ref.id,
         after: data,
-        note:`Creado ${type}: ${concept} · ${fmt(total)}`
+        note:`Creado ${type}: ${concept} · ${fmt(total)}${invoiceNumber ? ' · Factura ' + invoiceNumber : ''}`
       });
     }
+
+    // Limpiar estado temporal
+    window.__tempSupports = null;
+    window.__removedSupports = null;
 
     window.SmartecCache.invalidate('expenses_all');
     closeExpenseForm();
@@ -853,44 +1516,97 @@ window.saveExpense = async () => {
 };
 
 /* ============================================================
-   VER / BORRAR
+   DETALLE DE GASTO
 ============================================================ */
 window.viewDetail = (id) => {
   const e = expenses.find(x => x.id === id);
   if (!e) return;
   const cat = categories.find(c => c.slug === e.category);
   const store = stores.find(s => s.storeId === e.storeId);
+  const ps = computePaymentStatus(e);
+  const today = todayStr();
+
+  const supports = (e.supports && e.supports.length) ? e.supports
+    : (e.supportUrl ? [{ url: e.supportUrl, name: e.supportName || 'soporte', type: '' }] : []);
+
+  // Datos de vencimiento
+  let dueInfo = '';
+  if (e.dueDate) {
+    const diff = daysBetween(today, e.dueDate);
+    const diffLabel = ps === 'paid' ? 'Pagado a tiempo'
+      : diff < 0 ? `Venció hace ${Math.abs(diff)} días`
+      : diff === 0 ? 'Vence hoy'
+      : `Vence en ${diff} días`;
+    dueInfo = `
+      <div><p class="text-xs text-gray-400">Vencimiento</p><p class="font-semibold">${e.dueDate}</p></div>
+      <div><p class="text-xs text-gray-400">Estado</p><p class="font-semibold">${diffLabel}</p></div>
+    `;
+  }
 
   $('detail-body').innerHTML = `
+    <div class="flex justify-between items-start mb-4">
+      <div>
+        <p class="text-xs text-gray-400">${e.invoiceNumber ? 'Factura ' + escapeHtml(e.invoiceNumber) : 'Sin número de factura'}</p>
+        <p class="text-lg font-bold text-sd">${escapeHtml(e.concept)}</p>
+      </div>
+      ${paymentStatusBadge(ps)}
+    </div>
+
     <div class="grid grid-cols-2 gap-3 text-sm mb-4">
       <div><p class="text-xs text-gray-400">Fecha</p><p class="font-semibold">${e.date}</p></div>
       <div><p class="text-xs text-gray-400">Tipo</p><p class="font-semibold capitalize">${e.type}</p></div>
       <div><p class="text-xs text-gray-400">Categoría</p><p class="font-semibold">${escapeHtml(cat?.name || e.category)}</p></div>
       <div><p class="text-xs text-gray-400">Tienda</p><p class="font-semibold">${e.storeId === 'general' ? 'General' : escapeHtml(store?.name) || e.storeId}</p></div>
-      <div><p class="text-xs text-gray-400">Proveedor</p><p class="font-semibold">${escapeHtml(e.provider) || '—'}</p></div>
-      <div><p class="text-xs text-gray-400">NIT</p><p class="font-semibold">${escapeHtml(e.providerNit) || '—'}</p></div>
-      <div class="col-span-2"><p class="text-xs text-gray-400">Responsable</p><p class="font-semibold">${escapeHtml(e.responsible) || '—'}</p></div>
+      <div><p class="text-xs text-gray-400">Proveedor</p><p class="font-semibold">${escapeHtml(e.supplierName || e.provider) || '—'}</p></div>
+      <div><p class="text-xs text-gray-400">NIT</p><p class="font-semibold">${escapeHtml(e.supplierNit || e.providerNit) || '—'}</p></div>
+      ${dueInfo}
+      <div><p class="text-xs text-gray-400">Condición de pago</p><p class="font-semibold">${escapeHtml(e.paymentTermsLabel) || '—'}</p></div>
     </div>
-    <div class="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
-      <p class="text-xs text-gray-400 mb-1">Concepto</p>
-      <p>${escapeHtml(e.concept)}</p>
-    </div>
+
     <div class="bg-gray-50 p-3 rounded-lg mb-4 text-sm space-y-1">
       <div class="flex justify-between"><span class="text-gray-500">Base</span><span>${fmt(e.amount)}</span></div>
       <div class="flex justify-between"><span class="text-gray-500">IVA (${((e.taxRate||0)*100).toFixed(2)}%)</span><span>${fmt(e.taxAmount)}</span></div>
       <div class="flex justify-between"><span class="text-gray-500">Retención (${((e.retentionRate||0)*100).toFixed(2)}%)</span><span class="text-red-500">-${fmt(e.retentionAmount)}</span></div>
       <div class="flex justify-between border-t pt-2 font-bold text-sd"><span>TOTAL</span><span>${fmt(e.total)}</span></div>
     </div>
-    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
-      <div><p class="text-xs text-gray-400">Forma de pago</p><p class="font-semibold capitalize">${e.paymentMethod || '-'}</p></div>
-      <div><p class="text-xs text-gray-400">Registró</p><p class="font-semibold text-xs">${e.createdBy || '-'}</p></div>
+
+    ${e.paidAt ? `
+      <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-sm">
+        <p class="text-xs text-green-700 font-semibold mb-1">✅ Pago registrado</p>
+        <p class="text-xs text-gray-600">Fecha: <b>${e.paidAt}</b> · Por: ${escapeHtml(e.paidBy) || '-'}</p>
+        ${e.paymentNotes ? `<p class="text-xs text-gray-600 mt-1 italic">"${escapeHtml(e.paymentNotes)}"</p>` : ''}
+      </div>
+    ` : ''}
+
+    <div class="mb-4">
+      <p class="text-xs text-gray-400 mb-1">Registró</p>
+      <p class="text-xs">${escapeHtml(e.createdBy) || '-'}</p>
     </div>
+
     ${e.notes ? `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm mb-4"><p class="text-xs text-yellow-700 font-semibold mb-1">Notas</p><p>${escapeHtml(e.notes)}</p></div>` : ''}
-    ${e.supportUrl ? `
-      <a href="${e.supportUrl}" target="_blank" class="block text-center bg-sl text-white py-2 rounded-lg hover:bg-sd font-semibold text-sm">
-        📎 Ver soporte adjunto (${escapeHtml(e.supportName) || 'ver'})
-      </a>
-    ` : '<p class="text-xs text-gray-400 text-center">Sin soporte adjunto</p>'}
+
+    <div class="border-t pt-4">
+      <p class="text-xs font-semibold text-sd mb-2">📎 Adjuntos (${supports.length})</p>
+      ${supports.length ? supports.map(s => `
+        <a href="${s.url}" target="_blank" class="block text-center bg-sl text-white py-2 rounded-lg hover:bg-sd font-semibold text-sm mb-1">
+          📎 ${escapeHtml(s.name) || 'Ver archivo'}
+        </a>
+      `).join('') : '<p class="text-xs text-gray-400 text-center py-3">Sin adjuntos</p>'}
+    </div>
+
+    ${ps === 'anulado' ? `
+      <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm mt-4">
+        <p class="font-bold text-red-700 mb-1">Movimiento anulado</p>
+        <p class="text-xs text-red-600">Motivo: ${escapeHtml(e.motivoAnulacion) || '-'}</p>
+        <p class="text-xs text-gray-500 mt-1">Por: ${escapeHtml(e.anuladoPor) || '-'}</p>
+      </div>
+    ` : ''}
+
+    ${ps === 'pending' || ps === 'overdue' ? `
+      <button onclick="closeDetail(); openPayModal('${e.id}');" class="w-full bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-semibold text-sm mt-4">
+        💰 Marcar como pagado
+      </button>
+    ` : ''}
   `;
 
   const m = $('detail-modal');
@@ -902,6 +1618,80 @@ window.closeDetail = () => {
   m.classList.add('hidden'); m.classList.remove('flex');
 };
 
+/* ============================================================
+   MARCAR COMO PAGADO
+============================================================ */
+let currentPayId = null;
+
+window.openPayModal = (id) => {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  currentPayId = id;
+
+  $('pay-subtitle').innerText = `${e.concept} · ${fmt(e.total)}`;
+  $('pay-body').innerHTML = `
+    <label class="text-xs font-semibold text-sd block mb-1">Fecha de pago *</label>
+    <input id="pay-date" type="date" value="${todayStr()}" class="w-full px-3 py-2 border rounded-lg mb-3">
+
+    <label class="text-xs font-semibold text-sd block mb-1">Nota (opcional)</label>
+    <textarea id="pay-notes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm mb-4" placeholder="Ej: Transferencia Bancolombia, cheque #123..."></textarea>
+
+    <div class="flex gap-3">
+      <button onclick="closePayModal()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">Cancelar</button>
+      <button onclick="submitPay()" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-semibold">✅ Confirmar pago</button>
+    </div>
+  `;
+
+  const m = $('pay-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closePayModal = () => {
+  const m = $('pay-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+  currentPayId = null;
+};
+
+window.submitPay = async () => {
+  if (!currentPayId) return;
+  const e = expenses.find(x => x.id === currentPayId);
+  if (!e) return;
+
+  const paidAt = $('pay-date').value;
+  const paymentNotes = $('pay-notes').value.trim();
+
+  if (!paidAt) return alert('La fecha de pago es obligatoria');
+
+  try {
+    await updateDoc(doc(db, 'expenses', currentPayId), {
+      paidAt,
+      paidBy: currentUser.email,
+      paymentNotes: paymentNotes || null,
+      updatedAt: serverTimestamp()
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'expenses',
+      docId: currentPayId,
+      before: { paidAt: e.paidAt || null },
+      after: { paidAt, paymentNotes },
+      note: `Pago registrado: ${e.concept} · ${fmt(e.total)} · ${paidAt}`
+    });
+
+    window.SmartecCache.invalidate('expenses_all');
+    closePayModal();
+    await loadExpenses();
+    renderAll();
+    alert('✅ Pago registrado');
+  } catch(err) {
+    alert('Error: ' + err.message);
+  }
+};
+
+/* ============================================================
+   ANULAR / ELIMINAR
+============================================================ */
 window.anularExpense = async (id) => {
   const e = expenses.find(x => x.id === id);
   if (!e) return;
@@ -944,34 +1734,252 @@ window.anularExpense = async (id) => {
   }
 };
 
-// Mantengo deleteExpense (por si algo lo llama) pero ya no está en la UI
-window.deleteExpense = async (id) => {
-  const e = expenses.find(x => x.id === id);
-  if (!e) return;
-  if (!confirm(`⚠️ BORRAR definitivamente el movimiento "${e.concept}" por ${fmt(e.total)}?\n\nEsta acción NO se puede deshacer y solo está disponible para superadmin.`)) return;
+/* ============================================================
+   PROVEEDORES - CRUD
+============================================================ */
+let editingSupplierId = null;
+let returnToExpense = false;
+
+window.openSupplierForm = (supplier = null, fromExpense = false) => {
+  editingSupplierId = supplier?.id || null;
+  returnToExpense = !!fromExpense;
+
+  const v = supplier || {
+    name: '', nit: '', phone: '', email: '', address: '',
+    contactName: '', defaultPaymentTerms: 'net_30',
+    defaultAlertDaysBefore: conSettings.defaultAlertDays,
+    active: true, notes: ''
+  };
+
+  $('supplier-title').innerText = supplier ? 'Editar proveedor' : 'Nuevo proveedor';
+
+  const termsOpts = PAYMENT_TERMS.map(t =>
+    `<option value="${t.slug}" ${v.defaultPaymentTerms === t.slug ? 'selected' : ''}>${t.label}</option>`
+  ).join('');
+
+  $('supplier-body').innerHTML = `
+    <label class="text-xs font-semibold text-sd">Nombre / Razón social *</label>
+    <input id="s-name" type="text" value="${escapeHtml(v.name) || ''}" placeholder="Ej: Ferretería XYZ S.A.S." class="w-full px-3 py-2 border rounded-lg mt-1 mb-3">
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd">NIT / Cédula</label>
+        <input id="s-nit" type="text" value="${escapeHtml(v.nit) || ''}" placeholder="900123456-7" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Contacto</label>
+        <input id="s-contactName" type="text" value="${escapeHtml(v.contactName) || ''}" placeholder="Nombre del contacto" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd">Teléfono</label>
+        <input id="s-phone" type="text" value="${escapeHtml(v.phone) || ''}" placeholder="3101234567" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Email</label>
+        <input id="s-email" type="email" value="${escapeHtml(v.email) || ''}" placeholder="ventas@proveedor.com" class="w-full px-3 py-2 border rounded-lg mt-1">
+      </div>
+    </div>
+
+    <label class="text-xs font-semibold text-sd">Dirección</label>
+    <input id="s-address" type="text" value="${escapeHtml(v.address) || ''}" placeholder="Calle 45 #12-34, Bogotá" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3">
+
+    <div class="border border-gray-200 rounded-lg p-3 mb-3 bg-blue-50/30">
+      <p class="text-xs font-semibold text-sd mb-2">💳 Condiciones por defecto</p>
+
+      <div id="s-terms-grid" class="grid grid-cols-2 gap-3 mb-2">
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Condición de pago</label>
+          <select id="s-terms" class="w-full px-3 py-2 border rounded-lg text-sm mt-1" onchange="onSupplierTermsChange()">
+            ${termsOpts}
+          </select>
+        </div>
+        <div id="s-custom-days-wrap" class="hidden">
+          <label class="text-[10px] font-semibold text-sd">Días personalizados *</label>
+          <input id="s-custom-days" type="number" min="1" max="365" placeholder="Ej: 20" value="${v.customTermsDays || ''}" class="w-full px-3 py-2 border rounded-lg text-sm mt-1 border-blue-400 bg-white">
+          <p class="text-[9px] text-blue-600 mt-0.5">Días exactos de crédito</p>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Días de alerta antes del vencimiento</label>
+        <input id="s-alertDays" type="number" min="0" max="90" value="${v.defaultAlertDaysBefore ?? conSettings.defaultAlertDays}" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+      </div>
+    </div>
+
+    <label class="text-xs font-semibold text-sd">Notas</label>
+    <textarea id="s-notes" rows="2" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3 text-sm">${escapeHtml(v.notes) || ''}</textarea>
+
+    <label class="flex items-center gap-2 text-sm mb-3">
+      <input id="s-active" type="checkbox" ${v.active !== false ? 'checked' : ''} class="w-4 h-4">
+      Proveedor activo
+    </label>
+
+    <div class="flex gap-3">
+      <button onclick="closeSupplierForm()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">Cancelar</button>
+      <button onclick="saveSupplier()" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold">Guardar</button>
+    </div>
+  `;
+
+  // Si ya está en custom, mostrar el input desde el inicio
+  if (v.defaultPaymentTerms === 'custom') {
+    $('s-custom-days-wrap')?.classList.remove('hidden');
+  }
+
+  const m = $('supplier-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeSupplierForm = () => {
+  const m = $('supplier-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+  editingSupplierId = null;
+  returnToExpense = false;
+};
+
+window.editSupplier = (id) => {
+  const s = suppliers.find(x => x.id === id);
+  if (s) openSupplierForm(s, false);
+};
+
+window.saveSupplier = async () => {
+  const name = $('s-name').value.trim();
+  if (!name) return alert('El nombre es obligatorio');
+
+  const paymentTerms = $('s-terms').value;
+  const customTermsDays = paymentTerms === 'custom'
+    ? (Number($('s-custom-days').value) || 0)
+    : null;
+
+  if (paymentTerms === 'custom' && (!customTermsDays || customTermsDays <= 0)) {
+    return alert('⚠️ Debes indicar los días personalizados');
+  }
+
+  const data = {
+    name,
+    nit: $('s-nit').value.trim(),
+    contactName: $('s-contactName').value.trim(),
+    phone: $('s-phone').value.trim(),
+    email: $('s-email').value.trim(),
+    address: $('s-address').value.trim(),
+    defaultPaymentTerms: paymentTerms,
+    customTermsDays,
+    defaultAlertDaysBefore: Number($('s-alertDays').value) || conSettings.defaultAlertDays,
+    notes: $('s-notes').value.trim(),
+    active: $('s-active').checked,
+    updatedAt: serverTimestamp()
+  };
+
+  const btn = event.target;
+  btn.disabled = true; btn.innerText = '⏳ Guardando...';
 
   try {
-    if (e.supportUrl) {
-      try {
-        const fileRef = storageRef(storage, e.supportUrl);
-        await deleteObject(fileRef);
-      } catch(err) { console.warn('No se pudo borrar el soporte:', err); }
+    if (editingSupplierId) {
+      const before = suppliers.find(s => s.id === editingSupplierId);
+      await updateDoc(doc(db, 'suppliers', editingSupplierId), data);
+      await audit({
+        action: 'update',
+        collection: 'suppliers',
+        docId: editingSupplierId,
+        before, after: data,
+        note: `Proveedor editado: ${name}`
+      });
+    } else {
+      data.createdBy = currentUser.email;
+      data.createdAt = serverTimestamp();
+      const ref = await addDoc(collection(db, 'suppliers'), data);
+      await audit({
+        action: 'create',
+        collection: 'suppliers',
+        docId: ref.id,
+        after: data,
+        note: `Proveedor creado: ${name}`
+      });
     }
 
-    await deleteDoc(doc(db,'expenses',id));
-    await audit({
-      action:'delete', collection:'expenses', docId:id,
-      before: e,
-      note:`Eliminado: ${e.concept} · ${fmt(e.total)}`
-    });
+    window.SmartecCache.invalidate('suppliers_all');
+    await loadSuppliers();
+    renderSuppliers();
 
-    window.SmartecCache.invalidate('expenses_all');
-    await loadExpenses();
-    renderAll();
-    alert('✅ Movimiento eliminado');
-  } catch(err) {
-    console.error(err);
-    alert('Error: ' + err.message);
+    closeSupplierForm();
+
+    // Si venía del formulario de gasto, refrescar el selector
+    if (returnToExpense && !$('expense-modal').classList.contains('hidden')) {
+      const newId = editingSupplierId || (suppliers[suppliers.length - 1]?.id);
+      renderForm(expenses.find(e => e.id === editingId) || {});
+      if (newId) {
+        setTimeout(() => {
+          const sel = $('x-supplier');
+          if (sel) sel.value = newId;
+        }, 100);
+      }
+    }
+
+    alert('✅ Proveedor guardado');
+  } catch(e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+    btn.disabled = false; btn.innerText = 'Guardar';
+  }
+};
+
+window.toggleSupplier = async (id) => {
+  const s = suppliers.find(x => x.id === id);
+  if (!s) return;
+  const willActivate = s.active === false;
+  if (!confirm(`¿${willActivate ? 'Activar' : 'Desactivar'} a ${s.name}?`)) return;
+
+  try {
+    await updateDoc(doc(db, 'suppliers', id), {
+      active: willActivate,
+      updatedAt: serverTimestamp()
+    });
+    await audit({
+      action: 'update',
+      collection: 'suppliers',
+      docId: id,
+      before: { active: s.active },
+      after: { active: willActivate },
+      note: `Proveedor ${willActivate ? 'activado' : 'desactivado'}: ${s.name}`
+    });
+    window.SmartecCache.invalidate('suppliers_all');
+    await loadSuppliers();
+    renderSuppliers();
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+};
+
+window.deleteSupplier = async (id) => {
+  const s = suppliers.find(x => x.id === id);
+  if (!s) return;
+
+  // Verificar si tiene gastos asociados
+  const hasExpenses = expenses.some(e => e.supplierId === id);
+  if (hasExpenses) {
+    alert(`⛔ No se puede eliminar: "${s.name}" tiene gastos asociados.\n\nEn su lugar, usa "Desactivar".`);
+    return;
+  }
+
+  if (!confirm(`⚠️ ¿Eliminar definitivamente el proveedor "${s.name}"?\n\nEsta acción no se puede deshacer.`)) return;
+
+  try {
+    await deleteDoc(doc(db, 'suppliers', id));
+    await audit({
+      action: 'delete',
+      collection: 'suppliers',
+      docId: id,
+      before: s,
+      note: `Proveedor eliminado: ${s.name}`
+    });
+    window.SmartecCache.invalidate('suppliers_all');
+    await loadSuppliers();
+    renderSuppliers();
+    alert('✅ Proveedor eliminado');
+  } catch(e) {
+    alert('Error: ' + e.message);
   }
 };
 
@@ -985,6 +1993,7 @@ window.exportPDF = () => {
 
   const doc = new jsPDF('l', 'mm', 'a4');
   const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
   let y = 15;
 
   doc.setFillColor(10, 42, 74);
@@ -1001,46 +2010,48 @@ window.exportPDF = () => {
   doc.text(`Tienda: ${currentStore?.name || 'General'}`, 14, y); y += 5;
   doc.text(`Generado: ${new Date().toLocaleString('es-CO')}`, 14, y); y += 8;
 
-  const total = list.reduce((s,e) => s + Number(e.total||0), 0);
-  const cost = list.filter(e => e.type === 'costo').reduce((s,e) => s + Number(e.total||0), 0);
-  const expense = list.filter(e => e.type === 'gasto').reduce((s,e) => s + Number(e.total||0), 0);
-  const tax = list.reduce((s,e) => s + Number(e.taxAmount||0), 0);
-  const retention = list.reduce((s,e) => s + Number(e.retentionAmount||0), 0);
+  const total = list.filter(e => e.status !== 'anulado').reduce((s,e) => s + Number(e.total||0), 0);
+  const cost = list.filter(e => e.status !== 'anulado' && e.type === 'costo').reduce((s,e) => s + Number(e.total||0), 0);
+  const expense = list.filter(e => e.status !== 'anulado' && e.type === 'gasto').reduce((s,e) => s + Number(e.total||0), 0);
+  const payable = list.filter(e => ['pending','overdue'].includes(computePaymentStatus(e))).reduce((s,e) => s + Number(e.total||0), 0);
+  const paid = list.filter(e => computePaymentStatus(e) === 'paid').reduce((s,e) => s + Number(e.total||0), 0);
+  const overdue = list.filter(e => computePaymentStatus(e) === 'overdue').reduce((s,e) => s + Number(e.total||0), 0);
 
   doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
   doc.text('Resumen', 14, y); y += 3;
 
   doc.autoTable({
     startY: y,
-    head: [['Total', 'Costos', 'Gastos', 'IVA', 'Retenciones', 'Movimientos']],
+    head: [['Total', 'Costos', 'Gastos', 'Por pagar', 'Pagado', 'Vencido']],
     body: [[
       '$' + total.toLocaleString('es-CO'),
       '$' + cost.toLocaleString('es-CO'),
       '$' + expense.toLocaleString('es-CO'),
-      '$' + tax.toLocaleString('es-CO'),
-      '$' + retention.toLocaleString('es-CO'),
-      String(list.length)
+      '$' + payable.toLocaleString('es-CO'),
+      '$' + paid.toLocaleString('es-CO'),
+      '$' + overdue.toLocaleString('es-CO')
     ]],
     theme: 'grid',
     headStyles: { fillColor: [74, 122, 154], textColor: 255, halign: 'center' },
-    bodyStyles: { halign: 'center', fontSize: 10 },
+    bodyStyles: { halign: 'center', fontSize: 9 },
     margin: { left: 14, right: 14 }
   });
   y = doc.lastAutoTable.finalY + 10;
 
-    const rows = list.map(e => {
+  const rows = list.map(e => {
     const cat = categories.find(c => c.slug === e.category);
     const store = stores.find(s => s.storeId === e.storeId);
+    const ps = computePaymentStatus(e);
+    const psLabel = { pending: 'Pendiente', paid: 'Pagado', overdue: 'VENCIDO', anulado: 'Anulado' }[ps] || ps;
+
     return [
       e.date,
+      e.invoiceNumber || '',
       e.type === 'costo' ? 'Costo' : 'Gasto',
-      cat?.name || e.category,
-      e.provider || '',
-      e.responsible || '',                                   // 🆕 Responsable
+      (e.supplierName || e.provider || '').substring(0, 25),
       (e.concept || '').substring(0, 40),
-      e.storeId === 'general' ? 'General' : (store?.name || e.storeId),
-      '$' + Number(e.amount||0).toLocaleString('es-CO'),
-      '$' + Number(e.taxAmount||0).toLocaleString('es-CO'),
+      e.dueDate || '',
+      psLabel,
       '$' + Number(e.total||0).toLocaleString('es-CO')
     ];
   });
@@ -1050,15 +2061,22 @@ window.exportPDF = () => {
 
   doc.autoTable({
     startY: y,
-    head: [['Fecha','Tipo','Categoría','Proveedor','Responsable','Concepto','Tienda','Base','IVA','Total']],
+    head: [['Fecha','Factura','Tipo','Proveedor','Concepto','Vence','Estado','Total']],
     body: rows,
     theme: 'striped',
     headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 8 },
     bodyStyles: { fontSize: 8 },
     margin: { left: 14, right: 14 },
     columnStyles: {
-      4: { cellWidth: 32 },  // Responsable
-      5: { cellWidth: 45 }   // Concepto (se ajusta para que no se desborde)
+      4: { cellWidth: 60 },
+      7: { halign: 'right', fontStyle: 'bold' }
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 6) {
+        const v = data.cell.raw;
+        if (v === 'VENCIDO') data.cell.styles.textColor = [220, 38, 38];
+        else if (v === 'Pagado') data.cell.styles.textColor = [22, 163, 74];
+      }
     }
   });
 
@@ -1069,7 +2087,7 @@ window.exportPDF = () => {
     doc.setTextColor(120, 120, 120);
     doc.text(
       `Smartec · Centro Contable · Página ${i} de ${pages}`,
-      pageW / 2, doc.internal.pageSize.getHeight() - 8, { align: 'center' }
+      pageW / 2, pageH - 8, { align: 'center' }
     );
   }
 
@@ -1088,6 +2106,8 @@ window.forceRefresh = async () => {
 /* Cerrar con ESC */
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    if (!$('pay-modal').classList.contains('hidden')) return closePayModal();
+    if (!$('supplier-modal').classList.contains('hidden')) return closeSupplierForm();
     if (!$('expense-modal').classList.contains('hidden')) return closeExpenseForm();
     if (!$('detail-modal').classList.contains('hidden')) return closeDetail();
   }
