@@ -793,8 +793,8 @@
     <section id="tab-accounting" class="tab-content hidden">
       <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
         <div>
-          <h2 class="text-2xl font-bold text-sd">Resumen contable</h2>
-          <p class="text-xs text-gray-400">Gastos y costos consolidados · Todas las tiendas</p>
+          <h2 class="text-2xl font-bold text-sd">Análisis contable</h2>
+          <p class="text-xs text-gray-400">Cruces financieros consolidados · Todas las tiendas</p>
         </div>
         <div class="flex gap-2 flex-wrap">
           <select id="acc-store-filter" class="px-3 py-2 border rounded-lg text-sm">
@@ -804,9 +804,9 @@
         </div>
       </div>
 
-      <!-- Rango de fechas -->
+      <!-- Filtros de fecha + estado -->
       <div class="bg-white rounded-xl shadow p-4 mb-6">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-3">
           <div>
             <label class="text-[10px] font-semibold text-sd">Desde</label>
             <input id="acc-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
@@ -815,71 +815,249 @@
             <label class="text-[10px] font-semibold text-sd">Hasta</label>
             <input id="acc-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
           </div>
-          <div class="flex items-end gap-2 col-span-2">
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Estado de pago</label>
+            <select id="acc-status-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos</option>
+              <option value="pending">⏳ Pendientes</option>
+              <option value="paid">✅ Pagados</option>
+              <option value="overdue">🔴 Vencidos</option>
+              <option value="anulado">⚪ Anulados</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Proveedor</label>
+            <select id="acc-supplier-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Condición pago</label>
+            <select id="acc-terms-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas</option>
+              <option value="contado">Contado</option>
+              <option value="net_15">Net 15</option>
+              <option value="net_30">Net 30</option>
+              <option value="net_45">Net 45</option>
+              <option value="net_60">Net 60</option>
+              <option value="net_90">Net 90</option>
+              <option value="custom">Personalizado</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Buscar</label>
+            <input id="acc-search" type="text" placeholder="Concepto/Factura..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+        </div>
+        <div class="flex justify-between items-center flex-wrap gap-2 pt-3 border-t">
+          <div class="flex gap-2 flex-wrap">
             <button onclick="setAccRange('today')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Hoy</button>
             <button onclick="setAccRange('week')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Semana</button>
             <button onclick="setAccRange('month')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes</button>
+            <button onclick="setAccRange('lastmonth')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes pasado</button>
             <button onclick="setAccRange('year')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Año</button>
+          </div>
+          <button onclick="clearAccFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+        </div>
+      </div>
+
+      <!-- KPIs financieros -->
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
+          <p class="text-xs text-gray-500">Total del período</p>
+          <p id="acc-kpi-total" class="text-2xl font-bold text-sd mt-1">$0</p>
+          <p id="acc-kpi-count" class="text-[10px] text-gray-400 mt-1">0 movimientos</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-amber-500">
+          <p class="text-xs text-gray-500">Cuentas por pagar</p>
+          <p id="acc-kpi-payable" class="text-2xl font-bold text-amber-600 mt-1">$0</p>
+          <p id="acc-kpi-payable-count" class="text-[10px] text-gray-400 mt-1">0 facturas pendientes</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-red-500">
+          <p class="text-xs text-gray-500">Vencido</p>
+          <p id="acc-kpi-overdue" class="text-2xl font-bold text-red-600 mt-1">$0</p>
+          <p id="acc-kpi-overdue-count" class="text-[10px] text-gray-400 mt-1">0 facturas vencidas</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-green-500">
+          <p class="text-xs text-gray-500">Pagado del período</p>
+          <p id="acc-kpi-paid" class="text-2xl font-bold text-green-600 mt-1">$0</p>
+          <p id="acc-kpi-paid-count" class="text-[10px] text-gray-400 mt-1">0 pagos registrados</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-purple-500">
+          <p class="text-xs text-gray-500">Utilidad neta real</p>
+          <p id="acc-kpi-net" class="text-2xl font-bold text-purple-600 mt-1">$0</p>
+          <p id="acc-kpi-net-detail" class="text-[10px] text-gray-400 mt-1">Ventas − Gastos</p>
+        </div>
+      </div>
+
+      <!-- Toggle de vistas -->
+      <div class="bg-white rounded-xl shadow p-2 mb-6 inline-flex gap-1">
+        <button onclick="setAccView('summary')" data-view="summary" class="acc-view-btn px-4 py-2 rounded-lg text-sm font-semibold transition">
+          📊 Resumen
+        </button>
+        <button onclick="setAccView('invoices')" data-view="invoices" class="acc-view-btn px-4 py-2 rounded-lg text-sm font-semibold transition">
+          📄 Por factura
+        </button>
+        <button onclick="setAccView('suppliers')" data-view="suppliers" class="acc-view-btn px-4 py-2 rounded-lg text-sm font-semibold transition">
+          👥 Por proveedor
+        </button>
+      </div>
+
+      <!-- ========== VISTA: RESUMEN ========== -->
+      <div id="acc-view-summary" class="acc-view-content">
+
+      <!-- Bloque: Rentabilidad del período -->
+      <div class="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-xl shadow p-5 mb-6">
+        <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+          <div>
+            <h3 class="font-bold text-purple-800 flex items-center gap-2">💰 Rentabilidad del período</h3>
+            <p class="text-[10px] text-gray-500 mt-0.5">Ingresos vs egresos consolidados</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div class="bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-[10px] text-gray-500 uppercase font-semibold">Ventas</p>
+            <p id="acc-rent-sales" class="text-lg font-bold text-sl mt-1">$0</p>
+            <p id="acc-rent-sales-count" class="text-[10px] text-gray-400">0 ventas</p>
+          </div>
+          <div class="bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-[10px] text-gray-500 uppercase font-semibold">− Costo mercancía</p>
+            <p id="acc-rent-cogs" class="text-lg font-bold text-orange-500 mt-1">$0</p>
+            <p class="text-[10px] text-gray-400">Costo de lo vendido</p>
+          </div>
+          <div class="bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-[10px] text-gray-500 uppercase font-semibold">− Gastos operativos</p>
+            <p id="acc-rent-expenses" class="text-lg font-bold text-red-500 mt-1">$0</p>
+            <p class="text-[10px] text-gray-400">Gastos del período</p>
+          </div>
+          <div class="bg-white rounded-lg p-3 shadow-sm border-2 border-purple-300">
+            <p class="text-[10px] text-purple-700 uppercase font-semibold">= Utilidad neta</p>
+            <p id="acc-rent-net" class="text-lg font-bold text-purple-700 mt-1">$0</p>
+            <p id="acc-rent-margin" class="text-[10px] text-purple-500">Margen 0%</p>
+          </div>
+          <div class="bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-[10px] text-gray-500 uppercase font-semibold">Margen bruto</p>
+            <p id="acc-rent-gross" class="text-lg font-bold text-green-600 mt-1">$0</p>
+            <p id="acc-rent-gross-margin" class="text-[10px] text-gray-400">0%</p>
           </div>
         </div>
       </div>
 
-      <!-- KPIs -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white p-5 rounded-xl shadow">
-          <p class="text-xs text-gray-500">Total gastos + costos</p>
-          <p id="acc-kpi-total" class="text-2xl font-bold text-sd mt-1">$0</p>
-          <p id="acc-kpi-count" class="text-[10px] text-gray-400 mt-1">0 movimientos</p>
+      <!-- Bloque: Flujo de caja próximos 30 días -->
+      <div class="bg-white p-5 rounded-xl shadow mb-6">
+        <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+          <div>
+            <h3 class="font-bold text-sd flex items-center gap-2">📅 Flujo de caja proyectado (30 días)</h3>
+            <p class="text-[10px] text-gray-400 mt-0.5">Cuentas por pagar agrupadas por semana</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] text-gray-400">Total estimado</p>
+            <p id="acc-cashflow-total" class="text-lg font-bold text-sd">$0</p>
+          </div>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow">
-          <p class="text-xs text-gray-500">Costos</p>
-          <p id="acc-kpi-cost" class="text-2xl font-bold text-orange-500 mt-1">$0</p>
+        <div id="acc-cashflow-list" class="space-y-3">
+          <!-- Se llena dinámicamente -->
         </div>
-        <div class="bg-white p-5 rounded-xl shadow">
-          <p class="text-xs text-gray-500">Gastos</p>
-          <p id="acc-kpi-expense" class="text-2xl font-bold text-red-500 mt-1">$0</p>
+        <p id="acc-cashflow-empty" class="hidden text-center py-6 text-gray-400 text-sm">
+          🎉 No hay pagos programados en los próximos 30 días
+        </p>
+      </div>
+
+      <!-- Bloque: Vencidas críticas -->
+      <div id="acc-overdue-block" class="bg-red-50 border border-red-200 rounded-xl shadow p-5 mb-6 hidden">
+        <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
+          <div>
+            <h3 class="font-bold text-red-700 flex items-center gap-2">🔴 Facturas vencidas críticas</h3>
+            <p class="text-[10px] text-red-600 mt-0.5">Requieren atención inmediata</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] text-red-500">Total vencido</p>
+            <p id="acc-overdue-total" class="text-lg font-bold text-red-700">$0</p>
+          </div>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow">
-          <p class="text-xs text-gray-500">IVA / Retenciones</p>
-          <p id="acc-kpi-tax" class="text-2xl font-bold text-sl mt-1">$0</p>
-          <p id="acc-kpi-retention" class="text-[10px] text-gray-400 mt-1">Retenciones: $0</p>
+        <div id="acc-overdue-list" class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
+          <!-- Se llena dinámicamente -->
         </div>
       </div>
 
       <!-- Desglose por tienda -->
       <div class="bg-white p-5 rounded-xl shadow mb-6">
-        <h3 class="font-bold text-sd mb-4">Desglose por tienda</h3>
+        <h3 class="font-bold text-sd mb-4">🏪 Desglose por tienda</h3>
         <div id="acc-by-store" class="space-y-3"></div>
       </div>
 
       <!-- Desglose por categoría -->
       <div class="bg-white p-5 rounded-xl shadow mb-6">
-        <h3 class="font-bold text-sd mb-4">Desglose por categoría</h3>
+        <h3 class="font-bold text-sd mb-4">📂 Desglose por categoría</h3>
         <div id="acc-by-category" class="space-y-3"></div>
       </div>
 
-      <!-- Tabla detallada -->
-      <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
-        <div class="p-5 border-b">
-          <h3 class="font-bold text-sd">Movimientos del período</h3>
+      <!-- Desglose por condición de pago -->
+      <div class="bg-white p-5 rounded-xl shadow mb-6">
+        <h3 class="font-bold text-sd mb-4">💳 Desglose por condición de pago</h3>
+        <div id="acc-by-terms" class="space-y-3"></div>
+      </div>
+
+      <!-- Cerrar vista Resumen -->
+      </div>
+
+      <!-- ========== VISTA: POR FACTURA ========== -->
+      <div id="acc-view-invoices" class="acc-view-content hidden">
+        <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+          <div class="p-5 border-b flex justify-between items-center flex-wrap gap-2">
+            <h3 class="font-bold text-sd">Facturas del período</h3>
+            <p id="acc-invoices-count" class="text-xs text-gray-400">0 facturas</p>
+          </div>
+          <table class="w-full text-sm min-w-[1200px]">
+            <thead class="bg-gray-100 text-sd">
+              <tr>
+                <th class="p-3 text-left">Fecha</th>
+                <th class="p-3 text-left">Factura</th>
+                <th class="p-3 text-left">Tipo</th>
+                <th class="p-3 text-left">Proveedor</th>
+                <th class="p-3 text-left">Concepto</th>
+                <th class="p-3 text-left">Tienda</th>
+                <th class="p-3 text-right">Total</th>
+                <th class="p-3 text-center">Vence</th>
+                <th class="p-3 text-center">Estado</th>
+                <th class="p-3 text-center">Adjuntos</th>
+              </tr>
+            </thead>
+            <tbody id="acc-invoices-tbody"></tbody>
+          </table>
+          <p id="acc-invoices-empty" class="hidden text-center py-8 text-gray-400">Sin facturas en el período.</p>
         </div>
-        <table class="w-full text-sm min-w-[1000px]">
-          <thead class="bg-gray-50 text-sd">
-            <tr>
-              <th class="p-3 text-left">Fecha</th>
-              <th class="p-3 text-left">Tienda</th>
-              <th class="p-3 text-left">Tipo</th>
-              <th class="p-3 text-left">Categoría</th>
-              <th class="p-3 text-left">Proveedor</th>
-              <th class="p-3 text-left">Concepto</th>
-              <th class="p-3 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody id="acc-tbody"></tbody>
-        </table>
-        <p id="acc-empty" class="hidden text-center py-8 text-gray-400">Sin movimientos en el período.</p>
+      </div>
+
+      <!-- ========== VISTA: POR PROVEEDOR ========== -->
+      <div id="acc-view-suppliers" class="acc-view-content hidden">
+        <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+          <div class="p-5 border-b flex justify-between items-center flex-wrap gap-2">
+            <h3 class="font-bold text-sd">Análisis por proveedor</h3>
+            <p id="acc-suppliers-count" class="text-xs text-gray-400">0 proveedores</p>
+          </div>
+          <table class="w-full text-sm min-w-[1100px]">
+            <thead class="bg-gray-100 text-sd">
+              <tr>
+                <th class="p-3 text-left">Proveedor</th>
+                <th class="p-3 text-center">Facturas</th>
+                <th class="p-3 text-right">Total comprado</th>
+                <th class="p-3 text-right">Pagado</th>
+                <th class="p-3 text-right">Pendiente</th>
+                <th class="p-3 text-right">Vencido</th>
+                <th class="p-3 text-center">Última compra</th>
+                <th class="p-3 text-center">Días prom. pago</th>
+                <th class="p-3 text-right">Promedio</th>
+                <th class="p-3"></th>
+              </tr>
+            </thead>
+            <tbody id="acc-suppliers-tbody"></tbody>
+          </table>
+          <p id="acc-suppliers-empty" class="hidden text-center py-8 text-gray-400">Sin proveedores con movimientos en el período.</p>
+        </div>
       </div>
     </section>
+
     <!-- ============ SOLICITUDES DE TRASLADO ============ -->
     <section id="tab-transfers" class="tab-content hidden">
       <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
@@ -1204,6 +1382,20 @@
   </div>
 </div>
 
+<!-- ============ MODAL DETALLE PROVEEDOR ============ -->
+<div id="acc-supplier-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeAccSupplierModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeAccSupplierModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="acc-supplier-title" class="text-xl font-bold text-sd mb-1 pr-10">Proveedor</h3>
+    <p id="acc-supplier-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="acc-supplier-body"></div>
+  </div>
+</div>
+
+
 <!-- ============ MODAL FORM DE CANAL (crear/editar) ============ -->
 <div id="channel-form-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">
   <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeChannelForm()"></div>
@@ -1270,6 +1462,9 @@ let stores = [], users = [], products = [], inventory = [],
     transferRequestsAll = [];
 let paymentChannels = [];      // 🆕 cuentas/canales de pago
 let paymentPlatforms = [];     // 🆕 catálogo de bancos/plataformas
+let suppliers = [];            // 🆕 maestro de proveedores
+let accountingSettings = { defaultTermsDays: 30, defaultAlertDays: 5 }; // 🆕
+let currentAccView = 'summary'; // 🆕 vista actual de contabilidad
 
 /* ============================================================
    HELPERS
@@ -1416,9 +1611,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
     $('tab-' + btn.dataset.tab).classList.remove('hidden');
 
-        // Renderizar contabilidad al entrar
+    // Renderizar contabilidad al entrar
     if (btn.dataset.tab === 'accounting') {
-      renderAccounting();
+      try {
+        renderAccounting();
+      } catch(e) {
+        console.error('Error renderizando contabilidad:', e);
+      }
     }
 
     // Renderizar solicitudes al entrar
@@ -1512,7 +1711,27 @@ async function loadAll() {
     C.wrap('paymentPlatforms', async () => {
       const s = await getDocs(collection(db,'paymentPlatforms'));
       return s.docs.map(d => ({id:d.id,...d.data()}));
-    }).then(v => paymentPlatforms = v)
+    }).then(v => paymentPlatforms = v),
+
+    C.wrap('expenses_all', async () => {
+      const s = await getDocs(collection(db,'expenses'));
+      return s.docs.map(d => ({id:d.id,...d.data()}));
+    }).then(v => expensesAll = v),
+
+    C.wrap('suppliers_all', async () => {
+      const s = await getDocs(collection(db,'suppliers'));
+      return s.docs.map(d => ({id:d.id,...d.data()}));
+    }).then(v => suppliers = v),
+
+    C.wrap('accounting_settings', async () => {
+      const s = await getDoc(doc(db,'settings','accounting'));
+      return s.exists() ? s.data() : {};
+    }).then(v => {
+      accountingSettings = {
+        defaultTermsDays: Number(v.defaultTermsDays ?? 30),
+        defaultAlertDays: Number(v.defaultAlertDays ?? 5)
+      };
+    })
   ]);
 
   // Filtros para admin de tienda
@@ -7534,6 +7753,78 @@ window.addEventListener('beforeunload', () => {
 });
 
 /* ============================================================
+   VISTAS DE CONTABILIDAD
+============================================================ */
+window.setAccView = (view) => {
+  currentAccView = view;
+
+  // Actualizar botones
+  document.querySelectorAll('.acc-view-btn').forEach(btn => {
+    if (btn.dataset.view === view) {
+      btn.classList.add('bg-sd', 'text-white');
+      btn.classList.remove('text-gray-600', 'hover:bg-gray-100');
+    } else {
+      btn.classList.remove('bg-sd', 'text-white');
+      btn.classList.add('text-gray-600', 'hover:bg-gray-100');
+    }
+  });
+
+  // Mostrar la vista correspondiente
+  document.querySelectorAll('.acc-view-content').forEach(el => el.classList.add('hidden'));
+  const target = $(`acc-view-${view}`);
+  if (target) target.classList.remove('hidden');
+
+  // Renderizar según la vista (con protección)
+  try {
+    if (view === 'summary') renderAccSummary();
+    if (view === 'invoices') renderAccInvoices();
+    if (view === 'suppliers') renderAccSuppliers();
+  } catch(e) {
+    console.error('Error renderizando vista contable:', view, e);
+  }
+};
+
+window.clearAccFilters = () => {
+  const setVal = (id, val) => { const el = $(id); if (el) el.value = val; };
+  setVal('acc-date-from', '');
+  setVal('acc-date-to', '');
+  setVal('acc-status-filter', 'all');
+  setVal('acc-supplier-filter', 'all');
+  setVal('acc-terms-filter', 'all');
+  setVal('acc-search', '');
+  setAccRange('month');
+};
+
+function populateAccSupplierFilter() {
+  const sel = $('acc-supplier-filter');
+  if (!sel) return;
+  const prev = sel.value;
+
+  const active = suppliers.filter(s => s.active !== false);
+  sel.innerHTML = '<option value="all">Todos</option>' +
+    active.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+
+  if (prev && Array.from(sel.options).some(o => o.value === prev)) {
+    sel.value = prev;
+  }
+}
+
+function populateAccStoreFilter() {
+  const sel = $('acc-store-filter');
+  if (!sel || sel.dataset.loaded) return;
+  sel.dataset.loaded = '1';
+  sel.innerHTML = '<option value="all">Todas las tiendas</option>' +
+    stores.map(s => `<option value="${s.storeId}">${escapeHtml(s.name)}</option>`).join('') +
+    '<option value="general">General (sin tienda)</option>';
+  sel.onchange = () => {
+    if (currentAccView === 'summary') renderAccSummary();
+    if (currentAccView === 'invoices') renderAccInvoices();
+    if (currentAccView === 'suppliers') renderAccSuppliers();
+  };
+}
+
+
+/* ============================================================
    CONTABILIDAD — RESUMEN
 ============================================================ */
 window.setAccRange = (range) => {
@@ -7549,14 +7840,88 @@ window.setAccRange = (range) => {
       break;
     }
     case 'month': from = new Date(now.getFullYear(), now.getMonth(), 1); to = now; break;
+    case 'lastmonth':
+      from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      to = new Date(now.getFullYear(), now.getMonth(), 0);
+      break;
     case 'year': from = new Date(now.getFullYear(), 0, 1); to = now; break;
     default: return;
   }
+
   const fmtD = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  $('acc-date-from').value = fmtD(from);
-  $('acc-date-to').value = fmtD(to);
-  renderAccounting();
+
+  const fromEl = $('acc-date-from');
+  const toEl = $('acc-date-to');
+  if (fromEl) fromEl.value = fmtD(from);
+  if (toEl) toEl.value = fmtD(to);
+
+  // Re-renderizar la vista activa (sin depender de renderAccounting)
+  try {
+    if (currentAccView === 'summary') renderAccSummary();
+    if (currentAccView === 'invoices') renderAccInvoices();
+    if (currentAccView === 'suppliers') renderAccSuppliers();
+  } catch(e) {
+    console.error('Error al aplicar rango:', e);
+  }
 };
+
+/* ============================================================
+   HELPERS CONTABILIDAD
+============================================================ */
+
+/* Constantes de condiciones de pago */
+const ACC_PAYMENT_TERMS = [
+  { slug:'contado', label:'Contado', days: 0 },
+  { slug:'net_15', label:'Net 15 días', days: 15 },
+  { slug:'net_30', label:'Net 30 días', days: 30 },
+  { slug:'net_45', label:'Net 45 días', days: 45 },
+  { slug:'net_60', label:'Net 60 días', days: 60 },
+  { slug:'net_90', label:'Net 90 días', days: 90 },
+  { slug:'custom', label:'Personalizado', days: null }
+];
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + Number(days || 0));
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function daysBetween(dateStr1, dateStr2) {
+  const d1 = new Date(dateStr1 + 'T12:00:00');
+  const d2 = new Date(dateStr2 + 'T12:00:00');
+  return Math.round((d2 - d1) / (1000*60*60*24));
+}
+
+/* Calcular estado efectivo de pago al vuelo */
+function computeAccPaymentStatus(e) {
+  if (e.status === 'anulado') return 'anulado';
+  if (e.paidAt) return 'paid';
+  if (!e.dueDate) return 'pending';
+  const today = todayStr();
+  if (e.dueDate < today) return 'overdue';
+  return 'pending';
+}
+
+function accStatusBadge(status) {
+  const map = {
+    pending:  { cls: 'bg-amber-100 text-amber-700', lbl: '⏳ Pendiente' },
+    paid:     { cls: 'bg-green-100 text-green-700', lbl: '✅ Pagado' },
+    overdue:  { cls: 'bg-red-100 text-red-700',    lbl: '🔴 Vencido' },
+    anulado:  { cls: 'bg-gray-200 text-gray-600',  lbl: '⚪ Anulado' }
+  };
+  const m = map[status] || map.pending;
+  return `<span class="text-[10px] px-2 py-0.5 rounded ${m.cls} font-semibold whitespace-nowrap">${m.lbl}</span>`;
+}
+
+function accTermsLabel(slug) {
+  const t = ACC_PAYMENT_TERMS.find(x => x.slug === slug);
+  return t ? t.label : (slug || '—');
+}
 
 function getFilteredExpenses() {
   let list = (expensesAll || []).slice();
@@ -7569,68 +7934,163 @@ function getFilteredExpenses() {
   if (from) list = list.filter(e => e.date >= from);
   if (to) list = list.filter(e => e.date <= to);
 
+  // 🆕 Filtro por estado de pago
+  const statusF = $('acc-status-filter')?.value || 'all';
+  if (statusF !== 'all') {
+    list = list.filter(e => computeAccPaymentStatus(e) === statusF);
+  }
+
+  // 🆕 Filtro por proveedor
+  const supplierF = $('acc-supplier-filter')?.value || 'all';
+  if (supplierF !== 'all') {
+    list = list.filter(e => e.supplierId === supplierF);
+  }
+
+  // 🆕 Filtro por condición de pago
+  const termsF = $('acc-terms-filter')?.value || 'all';
+  if (termsF !== 'all') {
+    list = list.filter(e => e.paymentTerms === termsF);
+  }
+
+  // 🆕 Búsqueda libre (concepto o factura)
+  const searchF = ($('acc-search')?.value || '').toLowerCase().trim();
+  if (searchF) {
+    list = list.filter(e =>
+      (e.concept||'').toLowerCase().includes(searchF) ||
+      (e.invoiceNumber||'').toLowerCase().includes(searchF) ||
+      (e.supplierName||'').toLowerCase().includes(searchF) ||
+      (e.provider||'').toLowerCase().includes(searchF)
+    );
+  }
+
   return list.sort((a,b) => (b.date||'').localeCompare(a.date||''));
 }
 
+/* ============================================================
+   CONTABILIDAD — RENDER PRINCIPAL
+============================================================ */
 window.renderAccounting = () => {
-  if (!$('acc-tbody')) return;
+  populateAccStoreFilter();
+  populateAccSupplierFilter();
 
-  // Poblar filtro de tiendas
-  const sel = $('acc-store-filter');
-  if (sel && !sel.dataset.loaded) {
-    sel.dataset.loaded = '1';
-    sel.innerHTML = '<option value="all">Todas las tiendas</option>' +
-      stores.map(s => `<option value="${s.storeId}">${s.name}</option>`).join('') +
-      '<option value="general">General (sin tienda)</option>';
-    sel.onchange = renderAccounting;
-  }
-
-  // 🆕 Conectar listeners de fecha (solo la primera vez)
-  const dateFrom = $('acc-date-from');
-  const dateTo = $('acc-date-to');
-  if (dateFrom && !dateFrom.dataset.listeners) {
-    dateFrom.dataset.listeners = '1';
-    dateFrom.onchange = renderAccounting;
-    dateFrom.oninput = renderAccounting;
-  }
-  if (dateTo && !dateTo.dataset.listeners) {
-    dateTo.dataset.listeners = '1';
-    dateTo.onchange = renderAccounting;
-    dateTo.oninput = renderAccounting;
-  }
-    // Si no hay rango seleccionado, aplicar mes actual por defecto
-  if (dateFrom && !dateFrom.value && dateTo && !dateTo.value) {
-    setAccRange('month');
-    return;
-  }
-
-  const list = getFilteredExpenses();
-
-    // KPIs
-  let total = 0, cost = 0, expense = 0, tax = 0, retention = 0;
-  list.forEach(e => {
-    // 🆕 Excluir gastos anulados de los totales
-    if (e.status === 'anulado') return;
-
-    total += Number(e.total || 0);
-    if (e.type === 'costo') cost += Number(e.total || 0);
-    else expense += Number(e.total || 0);
-    tax += Number(e.taxAmount || 0);
-    retention += Number(e.retentionAmount || 0);
+  // Conectar listeners (solo una vez)
+  ['acc-status-filter','acc-supplier-filter','acc-terms-filter','acc-search',
+   'acc-date-from','acc-date-to'].forEach(id => {
+    const el = $(id);
+    if (el && !el.dataset.listeners) {
+      el.dataset.listeners = '1';
+      el.addEventListener('input', () => {
+        if (currentAccView === 'summary') renderAccSummary();
+        if (currentAccView === 'invoices') renderAccInvoices();
+        if (currentAccView === 'suppliers') renderAccSuppliers();
+      });
+      el.addEventListener('change', () => {
+        if (currentAccView === 'summary') renderAccSummary();
+        if (currentAccView === 'invoices') renderAccInvoices();
+        if (currentAccView === 'suppliers') renderAccSuppliers();
+      });
+    }
   });
 
-  $('acc-kpi-total').innerText = fmt(total);
-  $('acc-kpi-count').innerText = `${list.length} movimiento${list.length !== 1 ? 's' : ''}`;
-  $('acc-kpi-cost').innerText = fmt(cost);
-  $('acc-kpi-expense').innerText = fmt(expense);
-  $('acc-kpi-tax').innerText = fmt(tax);
-  $('acc-kpi-retention').innerText = `Retenciones: ${fmt(retention)}`;
+  // Aplicar vista actual
+  setAccView(currentAccView || 'summary');
+};
 
-   // Por tienda
+/* ============================================================
+   VISTA: RESUMEN FINANCIERO
+============================================================ */
+function renderAccSummary() {
+  const list = getFilteredExpenses();
+
+  // ============================================================
+  // 1. KPIs DE RENTABILIDAD (Ventas vs Costos vs Gastos)
+  // ============================================================
+  const salesFiltered = getFilteredSales();
+  const totalSales = salesFiltered.reduce((s, x) => {
+    const sub = Number(x.subtotal || 0);
+    const disc = Number(x.discount || 0);
+    const base = (x.commissionBase !== undefined) ? Number(x.commissionBase) : (sub - disc);
+    return s + base;
+  }, 0);
+
+  const totalCogs = salesFiltered.reduce((sum, s) => {
+    if (Number(s.totalCost || 0) > 0) return sum + Number(s.totalCost);
+    return sum + (s.items || []).reduce((itSum, it) =>
+      itSum + (Number(it.unitCost || 0) * Number(it.qty || 0)), 0);
+  }, 0);
+
+  // Gastos operativos del período (excluye anulados)
+  const operatingExpenses = list
+    .filter(e => e.status !== 'anulado' && e.type === 'gasto')
+    .reduce((s, e) => s + Number(e.total || 0), 0);
+
+  const grossProfit = totalSales - totalCogs;
+  const netProfit = totalSales - totalCogs - operatingExpenses;
+  const grossMargin = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
+  const netMargin = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
+
+  const safeSet = (id, val) => { const el = $(id); if (el) el.innerText = val; };
+
+  safeSet('acc-rent-sales', fmt(totalSales));
+  safeSet('acc-rent-sales-count', `${salesFiltered.length} ventas`);
+  safeSet('acc-rent-cogs', fmt(totalCogs));
+  safeSet('acc-rent-expenses', fmt(operatingExpenses));
+  safeSet('acc-rent-net', fmt(netProfit));
+  safeSet('acc-rent-margin', `Margen ${netMargin.toFixed(1)}%`);
+  safeSet('acc-rent-gross', fmt(grossProfit));
+  safeSet('acc-rent-gross-margin', `${grossMargin.toFixed(1)}%`);
+
+  // Color dinámico en utilidad neta
+  const netEl = $('acc-rent-net');
+  if (netEl) netEl.className = netProfit >= 0
+    ? 'text-lg font-bold text-purple-700 mt-1'
+    : 'text-lg font-bold text-red-600 mt-1';
+
+  // ============================================================
+  // 2. KPIs SUPERIORES (Gastos + Costos)
+  // ============================================================
+  let totalMov = 0, costMov = 0, expenseMov = 0, taxMov = 0, retentionMov = 0;
+  list.forEach(e => {
+    if (e.status === 'anulado') return;
+    totalMov += Number(e.total || 0);
+    if (e.type === 'costo') costMov += Number(e.total || 0);
+    else expenseMov += Number(e.total || 0);
+    taxMov += Number(e.taxAmount || 0);
+    retentionMov += Number(e.retentionAmount || 0);
+  });
+
+  // Cálculo de CxP (cuentas por pagar) y vencidos
+  let payable = 0, payableCount = 0, overdueTotal = 0, overdueCount = 0;
+  let paidTotal = 0, paidCount = 0;
+  list.forEach(e => {
+    if (e.status === 'anulado') return;
+    const ps = computeAccPaymentStatus(e);
+    if (ps === 'pending') { payable += Number(e.total || 0); payableCount++; }
+    else if (ps === 'overdue') { overdueTotal += Number(e.total || 0); overdueCount++; payable += Number(e.total || 0); payableCount++; }
+    else if (ps === 'paid') { paidTotal += Number(e.total || 0); paidCount++; }
+  });
+
+  safeSet('acc-kpi-total', fmt(totalMov));
+  safeSet('acc-kpi-count', `${list.length} movimiento${list.length !== 1 ? 's' : ''}`);
+  safeSet('acc-kpi-cost', fmt(costMov));
+  safeSet('acc-kpi-expense', fmt(expenseMov));
+  safeSet('acc-kpi-tax', fmt(taxMov));
+  safeSet('acc-kpi-retention', `Retenciones: ${fmt(retentionMov)}`);
+  safeSet('acc-kpi-payable', fmt(payable));
+  safeSet('acc-kpi-payable-count', `${payableCount} factura${payableCount !== 1 ? 's' : ''} pendiente${payableCount !== 1 ? 's' : ''}`);
+  safeSet('acc-kpi-overdue', fmt(overdueTotal));
+  safeSet('acc-kpi-overdue-count', `${overdueCount} factura${overdueCount !== 1 ? 's' : ''} vencida${overdueCount !== 1 ? 's' : ''}`);
+  safeSet('acc-kpi-paid', fmt(paidTotal));
+  safeSet('acc-kpi-paid-count', `${paidCount} pago${paidCount !== 1 ? 's' : ''} registrado${paidCount !== 1 ? 's' : ''}`);
+  safeSet('acc-kpi-net', fmt(netProfit));
+  safeSet('acc-kpi-net-detail', `Ventas ${fmt(totalSales)} − Costos ${fmt(totalCogs + operatingExpenses)}`);
+
+  // ============================================================
+  // 3. DESGLOSE POR TIENDA (gastos)
+  // ============================================================
   const byStore = {};
   list.forEach(e => {
-    if (e.status === 'anulado') return;  // 🆕 Excluir anulados
-
+    if (e.status === 'anulado') return;
     const key = e.storeId || 'general';
     if (!byStore[key]) byStore[key] = { sales: 0, count: 0 };
     byStore[key].sales += Number(e.total || 0);
@@ -7638,35 +8098,38 @@ window.renderAccounting = () => {
   });
 
   const storeEl = $('acc-by-store');
-  const entries = Object.entries(byStore).sort((a,b) => b[1].sales - a[1].sales);
-  if (!entries.length) {
-    storeEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Sin datos</p>';
-  } else {
-    const max = entries[0][1].sales || 1;
-    storeEl.innerHTML = entries.map(([sid, v]) => {
-      const st = stores.find(s => s.storeId === sid);
-      const name = sid === 'general' ? 'General' : (st?.name || sid);
-      const pct = (v.sales / max) * 100;
-      return `
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <p class="text-sm font-semibold text-sd">${name}</p>
-            <p class="text-sm font-bold text-sl">${fmt(v.sales)}</p>
+  if (storeEl) {
+    const entries = Object.entries(byStore).sort((a,b) => b[1].sales - a[1].sales);
+    if (!entries.length) {
+      storeEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Sin datos</p>';
+    } else {
+      const max = entries[0][1].sales || 1;
+      storeEl.innerHTML = entries.map(([sid, v]) => {
+        const st = stores.find(s => s.storeId === sid);
+        const name = sid === 'general' ? 'General' : (st?.name || sid);
+        const pct = (v.sales / max) * 100;
+        return `
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <p class="text-sm font-semibold text-sd">${escapeHtml(name)}</p>
+              <p class="text-sm font-bold text-sl">${fmt(v.sales)}</p>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2">
+              <div class="h-2 rounded-full bg-gradient-to-r from-sl to-blue-400" style="width:${pct}%"></div>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-0.5">${v.count} movimientos</p>
           </div>
-          <div class="w-full bg-gray-100 rounded-full h-2">
-            <div class="h-2 rounded-full bg-gradient-to-r from-sl to-blue-400" style="width:${pct}%"></div>
-          </div>
-          <p class="text-[10px] text-gray-400 mt-0.5">${v.count} movimientos</p>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    }
   }
 
-    // Por categoría
+  // ============================================================
+  // 4. DESGLOSE POR CATEGORÍA
+  // ============================================================
   const byCat = {};
   list.forEach(e => {
-    if (e.status === 'anulado') return;  // 🆕 Excluir anulados
-
+    if (e.status === 'anulado') return;
     const key = e.category || 'otros';
     if (!byCat[key]) byCat[key] = { sales: 0, count: 0 };
     byCat[key].sales += Number(e.total || 0);
@@ -7674,38 +8137,6 @@ window.renderAccounting = () => {
   });
 
   const catEl = $('acc-by-category');
-  const catEntries = Object.entries(byCat).sort((a,b) => b[1].sales - a[1].sales);
-  if (!catEntries.length) {
-    catEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Sin datos</p>';
-  } else {
-    const max = catEntries[0][1].sales || 1;
-    const catNames = {
-      arriendo:'Arriendo', servicios:'Servicios públicos', nomina:'Nómina',
-      papeleria:'Papelería', transporte:'Transporte', publicidad:'Publicidad',
-      mantenimiento:'Mantenimiento', impuestos:'Impuestos',
-      mercancia:'Compra de mercancía', otros:'Otros'
-    };
-    catEl.innerHTML = catEntries.map(([slug, v]) => {
-      const name = catNames[slug] || slug;
-      const pct = (v.sales / max) * 100;
-      return `
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <p class="text-sm font-semibold text-sd">${name}</p>
-            <p class="text-sm font-bold text-sl">${fmt(v.sales)}</p>
-          </div>
-          <div class="w-full bg-gray-100 rounded-full h-2">
-            <div class="h-2 rounded-full bg-gradient-to-r from-orange-400 to-red-500" style="width:${pct}%"></div>
-          </div>
-          <p class="text-[10px] text-gray-400 mt-0.5">${v.count} movimientos</p>
-        </div>
-      `;
-    }).join('');
-  }
-
-  // Tabla
-  const tb = $('acc-tbody');
-  const empty = $('acc-empty');
   const catNames = {
     arriendo:'Arriendo', servicios:'Servicios públicos', nomina:'Nómina',
     papeleria:'Papelería', transporte:'Transporte', publicidad:'Publicidad',
@@ -7713,82 +8144,582 @@ window.renderAccounting = () => {
     mercancia:'Compra de mercancía', otros:'Otros'
   };
 
-  if (!list.length) {
-    tb.innerHTML = '';
-    empty.classList.remove('hidden');
+  if (catEl) {
+    const catEntries = Object.entries(byCat).sort((a,b) => b[1].sales - a[1].sales);
+    if (!catEntries.length) {
+      catEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Sin datos</p>';
+    } else {
+      const max = catEntries[0][1].sales || 1;
+      catEl.innerHTML = catEntries.map(([slug, v]) => {
+        const name = catNames[slug] || slug;
+        const pct = (v.sales / max) * 100;
+        return `
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <p class="text-sm font-semibold text-sd">${escapeHtml(name)}</p>
+              <p class="text-sm font-bold text-sl">${fmt(v.sales)}</p>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2">
+              <div class="h-2 rounded-full bg-gradient-to-r from-orange-400 to-red-500" style="width:${pct}%"></div>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-0.5">${v.count} movimientos</p>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // ============================================================
+  // 5. DESGLOSE POR CONDICIÓN DE PAGO
+  // ============================================================
+  const termsEl = $('acc-by-terms');
+  if (termsEl) {
+    const byTerms = {};
+    list.forEach(e => {
+      if (e.status === 'anulado') return;
+      const key = e.paymentTerms || 'contado';
+      if (!byTerms[key]) byTerms[key] = { sales: 0, count: 0, paid: 0, pending: 0 };
+      const st = computeAccPaymentStatus(e);
+      byTerms[key].sales += Number(e.total || 0);
+      byTerms[key].count += 1;
+      if (st === 'paid') byTerms[key].paid += Number(e.total || 0);
+      else byTerms[key].pending += Number(e.total || 0);
+    });
+
+    const termsEntries = Object.entries(byTerms).sort((a,b) => b[1].sales - a[1].sales);
+    if (!termsEntries.length) {
+      termsEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Sin datos</p>';
+    } else {
+      termsEl.innerHTML = termsEntries.map(([slug, v]) => `
+        <div class="flex justify-between items-center border-b border-gray-100 py-2 last:border-0">
+          <div>
+            <p class="text-sm font-semibold text-sd">${escapeHtml(accTermsLabel(slug))}</p>
+            <p class="text-[10px] text-gray-400">${v.count} factura${v.count !== 1 ? 's' : ''}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-bold text-sl">${fmt(v.sales)}</p>
+            <p class="text-[10px] text-green-600">Pagado: ${fmt(v.paid)} · <span class="text-amber-600">Pend: ${fmt(v.pending)}</span></p>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // ============================================================
+  // 6. FLUJO DE CAJA PROYECTADO
+  // ============================================================
+  renderAccCashflow(list);
+
+  // ============================================================
+  // 7. VENCIDAS CRÍTICAS
+  // ============================================================
+  renderAccOverdue(list);
+}
+
+/* ============================================================
+   FLUJO DE CAJA PROYECTADO (próximos 30 días)
+============================================================ */
+function renderAccCashflow(list) {
+  const listEl = $('acc-cashflow-list');
+  const emptyEl = $('acc-cashflow-empty');
+  const totalEl = $('acc-cashflow-total');
+  if (!listEl) return;
+
+  const today = todayStr();
+  const in30 = addDays(today, 30);
+
+  const upcoming = list.filter(e => {
+    if (e.status === 'anulado') return false;
+    if (e.paidAt) return false;
+    if (!e.dueDate) return false;
+    return e.dueDate >= today && e.dueDate <= in30;
+  });
+
+  const totalUpcoming = upcoming.reduce((s, e) => s + Number(e.total || 0), 0);
+  if (totalEl) totalEl.innerText = fmt(totalUpcoming);
+
+  if (!upcoming.length) {
+    listEl.innerHTML = '';
+    if (emptyEl) emptyEl.classList.remove('hidden');
     return;
   }
-  empty.classList.add('hidden');
+  if (emptyEl) emptyEl.classList.add('hidden');
 
-   tb.innerHTML = list.slice(0, 500).map(e => {
+  const weeks = {};
+  upcoming.forEach(e => {
+    const daysFromNow = daysBetween(today, e.dueDate);
+    const weekIdx = Math.floor(daysFromNow / 7);
+    if (!weeks[weekIdx]) weeks[weekIdx] = { total: 0, items: [] };
+    weeks[weekIdx].total += Number(e.total || 0);
+    weeks[weekIdx].items.push(e);
+  });
+
+  const weekLabels = ['Esta semana', 'Próxima semana', 'En 2 semanas', 'En 3 semanas', 'En 4 semanas'];
+
+  listEl.innerHTML = Object.entries(weeks)
+    .sort((a,b) => Number(a[0]) - Number(b[0]))
+    .map(([idx, w]) => `
+      <div class="border rounded-lg p-3">
+        <div class="flex justify-between items-center mb-2">
+          <p class="font-semibold text-sd text-sm">${weekLabels[idx] || `Semana ${Number(idx)+1}`}</p>
+          <p class="text-base font-bold text-amber-600">${fmt(w.total)}</p>
+        </div>
+        <div class="space-y-1">
+          ${w.items.slice(0, 5).map(e => `
+            <div class="flex justify-between text-xs text-gray-600">
+              <span class="truncate">${escapeHtml(e.concept || e.supplierName || e.provider || '—')}</span>
+              <span class="ml-2 whitespace-nowrap">${fmt(e.total)} · vence ${e.dueDate}</span>
+            </div>
+          `).join('')}
+          ${w.items.length > 5 ? `<p class="text-[10px] text-gray-400 italic">... y ${w.items.length - 5} más</p>` : ''}
+        </div>
+      </div>
+    `).join('');
+}
+
+/* ============================================================
+   VENCIDAS CRÍTICAS
+============================================================ */
+function renderAccOverdue(list) {
+  const blockEl = $('acc-overdue-block');
+  const listEl = $('acc-overdue-list');
+  const totalEl = $('acc-overdue-total');
+  if (!blockEl || !listEl) return;
+
+  const overdue = list
+    .filter(e => e.status !== 'anulado' && computeAccPaymentStatus(e) === 'overdue')
+    .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
+
+  if (!overdue.length) {
+    blockEl.classList.add('hidden');
+    return;
+  }
+
+  blockEl.classList.remove('hidden');
+  const totalOverdue = overdue.reduce((s, e) => s + Number(e.total || 0), 0);
+  if (totalEl) totalEl.innerText = fmt(totalOverdue);
+
+  const today = todayStr();
+  listEl.innerHTML = overdue.slice(0, 20).map(e => {
+    const diff = daysBetween(e.dueDate, today);
+    return `
+      <div class="bg-white border border-red-200 rounded-lg p-3 flex justify-between items-center">
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-semibold text-red-700 truncate">${escapeHtml(e.concept || e.supplierName || '—')}</p>
+          <p class="text-[10px] text-red-500">
+            Venció hace ${diff} día${diff !== 1 ? 's' : ''} · ${e.dueDate}
+          </p>
+        </div>
+        <p class="text-sm font-bold text-red-700 ml-3">${fmt(e.total)}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   VISTA: FACTURAS
+============================================================ */
+function renderAccInvoices() {
+  const tb = $('acc-invoices-tbody');
+  const empty = $('acc-invoices-empty');
+  const countEl = $('acc-invoices-count');
+  if (!tb) return;
+
+  const list = getFilteredExpenses();
+  if (countEl) countEl.innerText = `${list.length} facturas`;
+
+  if (!list.length) {
+    tb.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+
+  tb.innerHTML = list.slice(0, 500).map(e => {
     const st = stores.find(s => s.storeId === e.storeId);
-    const isAnulado = e.status === 'anulado';
-    const rowClass = isAnulado ? 'bg-gray-50 opacity-60' : '';
-
+    const status = computeAccPaymentStatus(e);
     const typeBadge = e.type === 'costo'
       ? '<span class="text-[10px] px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-semibold">Costo</span>'
       : '<span class="text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-700 font-semibold">Gasto</span>';
 
-    const anuladoBadge = isAnulado
-      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-gray-200 text-gray-600 font-semibold ml-1">ANULADO</span>'
-      : '';
+    const adjCount = (e.supports || []).length + (e.supportUrl && !(e.supports||[]).length ? 1 : 0);
 
-    return `<tr class="border-b hover:bg-gray-50 ${rowClass}">
-      <td class="p-3 text-xs">${e.storeId === 'general' ? 'General' : escapeHtml(st?.name) || e.storeId || '-'}</td>
-      <td class="p-3">${typeBadge}${anuladoBadge}</td>
-      <td class="p-3 text-xs">${escapeHtml(catNames[e.category] || e.category) || '-'}</td>
-      <td class="p-3 text-xs">${escapeHtml(e.provider) || '-'}</td>
+    return `<tr class="border-b hover:bg-gray-50">
+      <td class="p-3 text-xs whitespace-nowrap">${e.date || '-'}</td>
+      <td class="p-3 text-xs font-mono">${escapeHtml(e.invoiceNumber) || '-'}</td>
+      <td class="p-3">${typeBadge}</td>
+      <td class="p-3 text-xs">${escapeHtml(e.supplierName || e.provider) || '-'}</td>
       <td class="p-3 text-xs max-w-xs truncate">${escapeHtml(e.concept) || '-'}</td>
-      <td class="p-3 text-right text-xs font-bold text-sd">${fmt(e.total)}</td>
+      <td class="p-3 text-xs">${e.storeId === 'general' ? 'General' : escapeHtml(st?.name) || e.storeId || '-'}</td>
+      <td class="p-3 text-right text-xs font-bold">${fmt(e.total)}</td>
+      <td class="p-3 text-center text-xs">${e.dueDate || '-'}</td>
+      <td class="p-3 text-center">${accStatusBadge(status)}</td>
+      <td class="p-3 text-center text-xs">${adjCount > 0 ? `📎 ${adjCount}` : '-'}</td>
     </tr>`;
   }).join('');
+}
+
+/* ============================================================
+   VISTA: PROVEEDORES
+============================================================ */
+function renderAccSuppliers() {
+  const tb = $('acc-suppliers-tbody');
+  const empty = $('acc-suppliers-empty');
+  const countEl = $('acc-suppliers-count');
+  if (!tb) return;
+
+  const list = getFilteredExpenses();
+
+  const bySupplier = {};
+  list.forEach(e => {
+    if (e.status === 'anulado') return;
+    const key = e.supplierId || e.supplierName || e.provider || 'sin-proveedor';
+    if (!bySupplier[key]) {
+      bySupplier[key] = {
+        name: e.supplierName || e.provider || 'Sin proveedor',
+        supplierId: e.supplierId || null,
+        invoices: 0,
+        total: 0,
+        paid: 0,
+        pending: 0,
+        overdue: 0,
+        lastPurchase: null,
+        totalDaysToPay: 0,
+        paymentsCount: 0
+      };
+    }
+    const s = bySupplier[key];
+    const status = computeAccPaymentStatus(e);
+    const amount = Number(e.total || 0);
+    s.invoices += 1;
+    s.total += amount;
+    if (status === 'paid') {
+      s.paid += amount;
+      if (e.date && e.paidAt) {
+        const days = daysBetween(e.date, e.paidAt.split('T')[0]);
+        if (days >= 0) { s.totalDaysToPay += days; s.paymentsCount += 1; }
+      }
+    } else if (status === 'overdue') {
+      s.overdue += amount;
+      s.pending += amount;
+    } else {
+      s.pending += amount;
+    }
+    if (!s.lastPurchase || (e.date && e.date > s.lastPurchase)) {
+      s.lastPurchase = e.date;
+    }
+  });
+
+  const rows = Object.values(bySupplier).sort((a,b) => b.total - a.total);
+  if (countEl) countEl.innerText = `${rows.length} proveedores`;
+
+  if (!rows.length) {
+    tb.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+
+  tb.innerHTML = rows.map(s => {
+    const avgDays = s.paymentsCount > 0 ? Math.round(s.totalDaysToPay / s.paymentsCount) : '—';
+    const avg = s.invoices > 0 ? s.total / s.invoices : 0;
+    return `<tr class="border-b hover:bg-gray-50">
+      <td class="p-3 text-xs font-semibold text-sd">${escapeHtml(s.name)}</td>
+      <td class="p-3 text-center text-xs">${s.invoices}</td>
+      <td class="p-3 text-right text-xs font-bold">${fmt(s.total)}</td>
+      <td class="p-3 text-right text-xs text-green-600">${fmt(s.paid)}</td>
+      <td class="p-3 text-right text-xs text-amber-600">${fmt(s.pending)}</td>
+      <td class="p-3 text-right text-xs text-red-500 font-semibold">${fmt(s.overdue)}</td>
+      <td class="p-3 text-center text-xs">${s.lastPurchase || '-'}</td>
+      <td class="p-3 text-center text-xs">${avgDays}</td>
+      <td class="p-3 text-right text-xs">${fmt(avg)}</td>
+      <td class="p-3 text-right">
+        <button onclick='viewAccSupplier("${s.supplierId || ''}","${escapeHtml(s.name).replace(/'/g, "\\'")}")' class="text-sl hover:underline text-xs">Ver</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   MODAL: DETALLE PROVEEDOR
+============================================================ */
+window.viewAccSupplier = (supplierId, name) => {
+  const list = getFilteredExpenses().filter(e =>
+    (supplierId && e.supplierId === supplierId) ||
+    (!supplierId && (e.supplierName || e.provider) === name)
+  );
+
+  const body = $('acc-supplier-body');
+  const title = $('acc-supplier-title');
+  const subtitle = $('acc-supplier-subtitle');
+  if (!body) return;
+
+  title.innerText = name;
+  subtitle.innerText = `${list.length} factura(s) en el período`;
+
+  if (!list.length) {
+    body.innerHTML = '<p class="text-center py-8 text-gray-400">Sin facturas para este proveedor.</p>';
+  } else {
+    body.innerHTML = `
+      <div class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
+        ${list.map(e => {
+          const status = computeAccPaymentStatus(e);
+          return `
+            <div class="border rounded-lg p-3">
+              <div class="flex justify-between items-start mb-1">
+                <div>
+                  <p class="text-xs font-mono text-gray-500">${escapeHtml(e.invoiceNumber) || 'Sin N°'}</p>
+                  <p class="text-sm font-semibold text-sd">${escapeHtml(e.concept) || '—'}</p>
+                </div>
+                ${accStatusBadge(status)}
+              </div>
+              <div class="flex justify-between text-xs text-gray-500 mt-1">
+                <span>${e.date || '-'} · vence ${e.dueDate || '—'}</span>
+                <span class="font-bold text-sd">${fmt(e.total)}</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  const m = $('acc-supplier-modal');
+  if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
 };
+
+window.closeAccSupplierModal = () => {
+  const m = $('acc-supplier-modal');
+  if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+};
+
+/* ============================================================
+   BADGE: SOLICITUDES PENDIENTES
+============================================================ */
+function updateTransfersBadge() {
+  const badge = $('transfers-badge');
+  if (!badge) return;
+  const pending = (transferRequestsAll || []).filter(r => r.status === 'pendiente').length;
+  if (pending > 0) {
+    badge.classList.remove('hidden');
+    badge.innerText = pending > 99 ? '99+' : pending;
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
 
 window.exportAccountingPDF = () => {
   const { jsPDF } = window.jspdf;
   const list = getFilteredExpenses();
-  if (!list.length) return alert('No hay movimientos para exportar.');
+  const salesFiltered = getFilteredSales();
 
-  const doc = new jsPDF('l', 'mm', 'a4');
+  if (!list.length && !salesFiltered.length) {
+    alert('No hay datos para exportar con los filtros actuales.');
+    return;
+  }
+
+  const doc = new jsPDF('p', 'mm', 'a4');
   const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
   let y = 15;
 
+  // ============================================================
+  // Utilidades
+  // ============================================================
+  const ensureSpace = (needed) => {
+    if (y + needed > pageH - 15) {
+      doc.addPage();
+      y = 20;
+    }
+  };
+
+  const fmtMoney = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-CO');
+
+  // ============================================================
+  // Encabezado
+  // ============================================================
   doc.setFillColor(10, 42, 74);
   doc.rect(0, 0, pageW, 20, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('SMARTEC · Resumen Contable', 14, 13);
+  doc.text('SMARTEC · Análisis Financiero', 14, 13);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Estado consolidado', pageW - 14, 13, { align: 'right' });
 
   y = 28;
+
+  // ============================================================
+  // Filtros aplicados
+  // ============================================================
   doc.setTextColor(60, 60, 60);
   doc.setFontSize(9);
-  doc.text(`Período: ${$('acc-date-from').value || 'todo'} — ${$('acc-date-to').value || 'hoy'}`, 14, y); y += 5;
+  const storeLabel = reportFilters?.storeId && reportFilters.storeId !== 'all'
+    ? (stores.find(s => s.storeId === reportFilters.storeId)?.name || reportFilters.storeId)
+    : 'Todas las tiendas';
+  const from = $('acc-date-from')?.value || 'todo';
+  const to = $('acc-date-to')?.value || 'hoy';
+
+  doc.text(`Período: ${from} — ${to}`, 14, y); y += 5;
+  doc.text(`Tienda: ${storeLabel}`, 14, y); y += 5;
   doc.text(`Generado: ${new Date().toLocaleString('es-CO')}`, 14, y); y += 8;
 
-  const total = list.reduce((s,e) => s + Number(e.total||0), 0);
-  const cost = list.filter(e => e.type === 'costo').reduce((s,e) => s + Number(e.total||0), 0);
-  const expense = list.filter(e => e.type === 'gasto').reduce((s,e) => s + Number(e.total||0), 0);
+  // ============================================================
+  // 1. ESTADO DE RESULTADOS
+  // ============================================================
+  const totalSales = salesFiltered.reduce((s, x) => {
+    const sub = Number(x.subtotal || 0);
+    const disc = Number(x.discount || 0);
+    const base = (x.commissionBase !== undefined) ? Number(x.commissionBase) : (sub - disc);
+    return s + base;
+  }, 0);
 
-  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
-  doc.text('Resumen', 14, y); y += 3;
+  const totalCogs = salesFiltered.reduce((sum, s) => {
+    if (Number(s.totalCost || 0) > 0) return sum + Number(s.totalCost);
+    return sum + (s.items || []).reduce((itSum, it) =>
+      itSum + (Number(it.unitCost || 0) * Number(it.qty || 0)), 0);
+  }, 0);
+
+  const operatingExpenses = list
+    .filter(e => e.status !== 'anulado' && e.type === 'gasto')
+    .reduce((s, e) => s + Number(e.total || 0), 0);
+
+  const grossProfit = totalSales - totalCogs;
+  const netProfit = totalSales - totalCogs - operatingExpenses;
+  const grossMargin = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
+  const netMargin = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
+
+  ensureSpace(80);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(10, 42, 74);
+  doc.text('Estado de Resultados', 14, y);
+  y += 6;
 
   doc.autoTable({
     startY: y,
-    head: [['Total', 'Costos', 'Gastos', 'Movimientos']],
-    body: [[
-      '$' + total.toLocaleString('es-CO'),
-      '$' + cost.toLocaleString('es-CO'),
-      '$' + expense.toLocaleString('es-CO'),
-      String(list.length)
-    ]],
+    head: [['Concepto', 'Valor', '% sobre ventas']],
+    body: [
+      ['Ingresos por ventas', fmtMoney(totalSales), '100.0%'],
+      ['(−) Costo de mercancía vendida', '-' + fmtMoney(totalCogs),
+        totalSales > 0 ? '-' + ((totalCogs / totalSales) * 100).toFixed(1) + '%' : '0%'],
+      ['= Utilidad bruta', fmtMoney(grossProfit), grossMargin.toFixed(1) + '%'],
+      ['(−) Gastos operativos', '-' + fmtMoney(operatingExpenses),
+        totalSales > 0 ? '-' + ((operatingExpenses / totalSales) * 100).toFixed(1) + '%' : '0%'],
+      ['= Utilidad neta', fmtMoney(netProfit), netMargin.toFixed(1) + '%']
+    ],
     theme: 'grid',
-    headStyles: { fillColor: [74, 122, 154], textColor: 255, halign: 'center' },
-    bodyStyles: { halign: 'center', fontSize: 10 },
+    headStyles: { fillColor: [10, 42, 74], textColor: 255, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 10 },
+    columnStyles: {
+      0: { cellWidth: 100 },
+      1: { cellWidth: 45, halign: 'right', fontStyle: 'bold' },
+      2: { cellWidth: 40, halign: 'right' }
+    },
+    margin: { left: 14, right: 14 },
+    didParseCell: (data) => {
+      if (data.section === 'body') {
+        const label = data.row.raw[0] || '';
+        if (label.startsWith('=')) {
+          data.cell.styles.fillColor = [240, 245, 250];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    }
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // ============================================================
+  // 2. CUENTAS POR PAGAR / VENCIDOS
+  // ============================================================
+  let payable = 0, payableCount = 0;
+  let overdueTotal = 0, overdueCount = 0;
+  let paidTotal = 0, paidCount = 0;
+
+  list.forEach(e => {
+    if (e.status === 'anulado') return;
+    const ps = computeAccPaymentStatus(e);
+    if (ps === 'paid') { paidTotal += Number(e.total || 0); paidCount++; }
+    else if (ps === 'overdue') { overdueTotal += Number(e.total || 0); overdueCount++; payable += Number(e.total || 0); payableCount++; }
+    else if (ps === 'pending') { payable += Number(e.total || 0); payableCount++; }
+  });
+
+  ensureSpace(60);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(10, 42, 74);
+  doc.text('Situación de pagos', 14, y);
+  y += 6;
+
+  doc.autoTable({
+    startY: y,
+    head: [['Concepto', 'Facturas', 'Monto']],
+    body: [
+      ['Cuentas por pagar (pendientes)', String(payableCount), fmtMoney(payable)],
+      ['Vencidas críticas', String(overdueCount), fmtMoney(overdueTotal)],
+      ['Pagado del período', String(paidCount), fmtMoney(paidTotal)],
+      ['Total movimientos', String(list.length), fmtMoney(list.reduce((s,e) => s + Number(e.total || 0), 0))]
+    ],
+    theme: 'striped',
+    headStyles: { fillColor: [74, 122, 154], textColor: 255 },
+    bodyStyles: { fontSize: 10 },
+    columnStyles: {
+      0: { cellWidth: 100 },
+      1: { cellWidth: 35, halign: 'center' },
+      2: { cellWidth: 50, halign: 'right', fontStyle: 'bold' }
+    },
     margin: { left: 14, right: 14 }
   });
   y = doc.lastAutoTable.finalY + 10;
 
+  // ============================================================
+  // 3. DESGLOSE POR TIENDA
+  // ============================================================
+  const byStore = {};
+  list.forEach(e => {
+    if (e.status === 'anulado') return;
+    const key = e.storeId || 'general';
+    if (!byStore[key]) byStore[key] = { total: 0, count: 0 };
+    byStore[key].total += Number(e.total || 0);
+    byStore[key].count += 1;
+  });
+
+  const storeRows = Object.entries(byStore).map(([sid, v]) => {
+    const st = stores.find(s => s.storeId === sid);
+    const name = sid === 'general' ? 'General' : (st?.name || sid);
+    return [name, String(v.count), fmtMoney(v.total)];
+  }).sort((a, b) => Number(b[2].replace(/\D/g, '')) - Number(a[2].replace(/\D/g, '')));
+
+  if (storeRows.length) {
+    ensureSpace(50);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(10, 42, 74);
+    doc.text('Desglose por tienda', 14, y);
+    y += 6;
+
+    doc.autoTable({
+      startY: y,
+      head: [['Tienda', 'Movimientos', 'Total gastos']],
+      body: storeRows,
+      theme: 'striped',
+      headStyles: { fillColor: [74, 122, 154], textColor: 255 },
+      bodyStyles: { fontSize: 10 },
+      columnStyles: {
+        0: { cellWidth: 100 },
+        1: { cellWidth: 35, halign: 'center' },
+        2: { cellWidth: 50, halign: 'right', fontStyle: 'bold' }
+      },
+      margin: { left: 14, right: 14 }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ============================================================
+  // 4. DESGLOSE POR CATEGORÍA
+  // ============================================================
   const catNames = {
     arriendo:'Arriendo', servicios:'Servicios públicos', nomina:'Nómina',
     papeleria:'Papelería', transporte:'Transporte', publicidad:'Publicidad',
@@ -7796,32 +8727,167 @@ window.exportAccountingPDF = () => {
     mercancia:'Compra de mercancía', otros:'Otros'
   };
 
-  const rows = list.map(e => {
+  const byCat = {};
+  list.forEach(e => {
+    if (e.status === 'anulado') return;
+    const key = e.category || 'otros';
+    if (!byCat[key]) byCat[key] = { total: 0, count: 0 };
+    byCat[key].total += Number(e.total || 0);
+    byCat[key].count += 1;
+  });
+
+  const catRows = Object.entries(byCat).map(([slug, v]) => [
+    catNames[slug] || slug, String(v.count), fmtMoney(v.total)
+  ]).sort((a, b) => Number(b[2].replace(/\D/g, '')) - Number(a[2].replace(/\D/g, '')));
+
+  if (catRows.length) {
+    ensureSpace(50);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(10, 42, 74);
+    doc.text('Desglose por categoría', 14, y);
+    y += 6;
+
+    doc.autoTable({
+      startY: y,
+      head: [['Categoría', 'Movimientos', 'Total']],
+      body: catRows,
+      theme: 'striped',
+      headStyles: { fillColor: [74, 122, 154], textColor: 255 },
+      bodyStyles: { fontSize: 10 },
+      columnStyles: {
+        0: { cellWidth: 100 },
+        1: { cellWidth: 35, halign: 'center' },
+        2: { cellWidth: 50, halign: 'right', fontStyle: 'bold' }
+      },
+      margin: { left: 14, right: 14 }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ============================================================
+  // 5. ANÁLISIS POR PROVEEDOR
+  // ============================================================
+  const bySupplier = {};
+  list.forEach(e => {
+    if (e.status === 'anulado') return;
+    const key = e.supplierName || e.provider || 'Sin proveedor';
+    if (!bySupplier[key]) {
+      bySupplier[key] = { invoices: 0, total: 0, paid: 0, pending: 0, overdue: 0 };
+    }
+    const s = bySupplier[key];
+    const st = computeAccPaymentStatus(e);
+    s.invoices += 1;
+    s.total += Number(e.total || 0);
+    if (st === 'paid') s.paid += Number(e.total || 0);
+    else if (st === 'overdue') { s.overdue += Number(e.total || 0); s.pending += Number(e.total || 0); }
+    else if (st === 'pending') s.pending += Number(e.total || 0);
+  });
+
+  const supplierRows = Object.entries(bySupplier)
+    .map(([name, v]) => [name, String(v.invoices), fmtMoney(v.total), fmtMoney(v.paid), fmtMoney(v.pending), fmtMoney(v.overdue)])
+    .sort((a, b) => Number(b[2].replace(/\D/g, '')) - Number(a[2].replace(/\D/g, '')));
+
+  if (supplierRows.length) {
+    ensureSpace(60);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(10, 42, 74);
+    doc.text('Análisis por proveedor', 14, y);
+    y += 6;
+
+    doc.autoTable({
+      startY: y,
+      head: [['Proveedor', 'Facturas', 'Total', 'Pagado', 'Pendiente', 'Vencido']],
+      body: supplierRows,
+      theme: 'striped',
+      headStyles: { fillColor: [74, 122, 154], textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 18, halign: 'center' },
+        2: { cellWidth: 25, halign: 'right', fontStyle: 'bold' },
+        3: { cellWidth: 25, halign: 'right' },
+        4: { cellWidth: 25, halign: 'right' },
+        5: { cellWidth: 25, halign: 'right' }
+      },
+      margin: { left: 14, right: 14 }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ============================================================
+  // 6. DETALLE DE MOVIMIENTOS
+  // ============================================================
+  ensureSpace(40);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(10, 42, 74);
+  doc.text(`Detalle de movimientos (${list.length})`, 14, y);
+  y += 4;
+
+  const detailRows = list.map(e => {
     const st = stores.find(s => s.storeId === e.storeId);
+    const status = computeAccPaymentStatus(e);
+    const statusLabels = { pending: 'Pendiente', paid: 'Pagado', overdue: 'Vencido', anulado: 'Anulado' };
     return [
-      e.date, e.storeId === 'general' ? 'General' : (st?.name || e.storeId),
+      e.date || '',
+      e.invoiceNumber || '',
       e.type === 'costo' ? 'Costo' : 'Gasto',
-      catNames[e.category] || e.category,
-      e.provider || '',
-      (e.concept || '').substring(0, 40),
-      '$' + Number(e.total||0).toLocaleString('es-CO')
+      (e.supplierName || e.provider || '').substring(0, 22),
+      (e.concept || '').substring(0, 35),
+      e.dueDate || '',
+      statusLabels[status] || status,
+      fmtMoney(e.total)
     ];
   });
 
-  doc.setFontSize(11); doc.setFont('helvetica','bold');
-  doc.text(`Detalle (${rows.length})`, 14, y); y += 3;
-
   doc.autoTable({
     startY: y,
-    head: [['Fecha','Tienda','Tipo','Categoría','Proveedor','Concepto','Total']],
-    body: rows,
+    head: [['Fecha','Factura','Tipo','Proveedor','Concepto','Vence','Estado','Total']],
+    body: detailRows,
     theme: 'striped',
     headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 8 },
     bodyStyles: { fontSize: 8 },
-    margin: { left: 14, right: 14 }
+    margin: { left: 10, right: 10 },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 25 },
+      2: { cellWidth: 15 },
+      3: { cellWidth: 35 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 20 },
+      6: { cellWidth: 20 },
+      7: { cellWidth: 25, halign: 'right', fontStyle: 'bold' }
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 6) {
+        const v = data.cell.raw;
+        if (v === 'Vencido') data.cell.styles.textColor = [220, 38, 38];
+        else if (v === 'Pagado') data.cell.styles.textColor = [22, 163, 74];
+        else if (v === 'Anulado') data.cell.styles.textColor = [120, 120, 120];
+      }
+    }
   });
 
-  doc.save(`smartec_contabilidad_${new Date().toISOString().split('T')[0]}.pdf`);
+  // ============================================================
+  // Pie de página
+  // ============================================================
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `Smartec · Análisis Financiero · Página ${i} de ${totalPages}`,
+      pageW / 2,
+      pageH - 8,
+      { align: 'center' }
+    );
+  }
+
+  const filename = `smartec_financiero_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(filename);
 };
 /* ============================================================
    SOLICITUDES DE TRASLADO
