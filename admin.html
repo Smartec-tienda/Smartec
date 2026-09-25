@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
@@ -1146,42 +1147,177 @@
 
     <!-- ============ AUDITORÍA ============ -->
     <section id="tab-audit" class="tab-content hidden">
-      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-        <h2 class="text-2xl font-bold text-sd">Auditoría del sistema</h2>
-        <div class="flex gap-2 flex-wrap">
-          <select id="audit-action-filter" class="px-3 py-2 border rounded-lg text-sm">
-            <option value="all">Todas las acciones</option>
-            <option value="create">Crear</option>
-            <option value="update">Editar</option>
-            <option value="delete">Borrar</option>
-            <option value="sale">Venta</option>
-            <option value="login">Login</option>
-            <option value="cancel">Anulación</option>
-            <option value="seed">Migración</option>
-          </select>
-          <select id="audit-collection-filter" class="px-3 py-2 border rounded-lg text-sm">
-            <option value="all">Todas las colecciones</option>
-            <option value="products">Productos</option>
-            <option value="sales">Ventas</option>
-            <option value="stores">Tiendas</option>
-            <option value="users">Usuarios</option>
-            <option value="inventory">Inventario</option>
-            <option value="promos">Promos</option>
-            <option value="settings">Configuración</option>
-            <option value="system">Sistema</option>
-          </select>
+      <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Auditoría del sistema</h2>
+          <p class="text-xs text-gray-400 mt-1">Trazabilidad completa de eventos · Solo superadmin</p>
+        </div>
+        <button onclick="exportAudit()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-semibold flex items-center gap-2">
+          📄 Exportar auditoría
+        </button>
+      </div>
+
+      <!-- KPIs de auditoría -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-sl">
+          <p class="text-xs text-gray-500">Total eventos</p>
+          <p id="audit-kpi-total" class="text-2xl font-bold text-sd mt-1">0</p>
+          <p id="audit-kpi-total-sub" class="text-[10px] text-gray-400 mt-1">en el período</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-red-500">
+          <p class="text-xs text-gray-500">Eventos críticos</p>
+          <p id="audit-kpi-critical" class="text-2xl font-bold text-red-600 mt-1">0</p>
+          <p id="audit-kpi-critical-sub" class="text-[10px] text-gray-400 mt-1">requieren atención</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-green-500">
+          <p class="text-xs text-gray-500">Usuarios activos</p>
+          <p id="audit-kpi-users" class="text-2xl font-bold text-green-600 mt-1">0</p>
+          <p id="audit-kpi-users-sub" class="text-[10px] text-gray-400 mt-1">distintos en el período</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-amber-500">
+          <p class="text-xs text-gray-500">Última actividad</p>
+          <p id="audit-kpi-last" class="text-lg font-bold text-amber-600 mt-1">—</p>
+          <p id="audit-kpi-last-sub" class="text-[10px] text-gray-400 mt-1">hace —</p>
         </div>
       </div>
+
+      <!-- Filtros rápidos: eventos destacados -->
+      <div class="bg-white rounded-xl shadow p-3 mb-4">
+        <p class="text-[10px] font-semibold text-gray-500 uppercase mb-2">⚡ Eventos destacados</p>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="setAuditQuickFilter('all')" data-quick="all" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-sl bg-sl text-white">
+            🌐 Todos
+          </button>
+          <button onclick="setAuditQuickFilter('critical')" data-quick="critical" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-red-300 text-red-700 hover:bg-red-50">
+            🔴 Críticos
+          </button>
+          <button onclick="setAuditQuickFilter('cancel')" data-quick="cancel" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-orange-300 text-orange-700 hover:bg-orange-50">
+            📉 Anulaciones
+          </button>
+          <button onclick="setAuditQuickFilter('delete')" data-quick="delete" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-red-300 text-red-700 hover:bg-red-50">
+            🗑 Borrados
+          </button>
+          <button onclick="setAuditQuickFilter('cashRegisters')" data-quick="cashRegisters" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-blue-300 text-blue-700 hover:bg-blue-50">
+            🌅 Arqueos de caja
+          </button>
+          <button onclick="setAuditQuickFilter('sales')" data-quick="sales" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-purple-300 text-purple-700 hover:bg-purple-50">
+            💰 Ventas
+          </button>
+          <button onclick="setAuditQuickFilter('inventory')" data-quick="inventory" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-amber-300 text-amber-700 hover:bg-amber-50">
+            📦 Inventario
+          </button>
+          <button onclick="setAuditQuickFilter('users')" data-quick="users" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-gray-300 text-gray-700 hover:bg-gray-50">
+            👤 Usuarios
+          </button>
+          <button onclick="setAuditQuickFilter('paymentChannels')" data-quick="paymentChannels" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-cyan-300 text-cyan-700 hover:bg-cyan-50">
+            💳 Métodos de pago
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros detallados -->
+      <div class="bg-white rounded-xl shadow p-4 mb-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-3">
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Desde</label>
+            <input id="audit-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Hasta</label>
+            <input id="audit-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Rol</label>
+            <select id="audit-role-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos los roles</option>
+              <option value="superadmin">👑 Superadmin</option>
+              <option value="admin">🏪 Admin de tienda</option>
+              <option value="vendedor">💼 Vendedor</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Usuario</label>
+            <select id="audit-user-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos los usuarios</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Severidad</label>
+            <select id="audit-severity-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas</option>
+              <option value="critical">🔴 Crítica</option>
+              <option value="high">🟠 Alta</option>
+              <option value="medium">🔵 Media</option>
+              <option value="low">🟢 Baja</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Buscar</label>
+            <input id="audit-search" type="text" placeholder="Concepto, docId, nota..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Acción</label>
+            <select id="audit-action-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas las acciones</option>
+              <option value="create">🆕 Crear</option>
+              <option value="update">✏️ Editar</option>
+              <option value="delete">🗑 Borrar</option>
+              <option value="sale">💰 Venta</option>
+              <option value="login">🔐 Login</option>
+              <option value="logout">🚪 Logout</option>
+              <option value="cancel">📉 Anulación</option>
+              <option value="seed">🌱 Migración</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Colección</label>
+            <select id="audit-collection-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas las colecciones</option>
+              <option value="products">📦 Productos</option>
+              <option value="sales">💰 Ventas</option>
+              <option value="stores">🏪 Tiendas</option>
+              <option value="users">👤 Usuarios</option>
+              <option value="inventory">📊 Inventario</option>
+              <option value="inventoryMovements">🔄 Movs. inventario</option>
+              <option value="promos">🎁 Promos</option>
+              <option value="cashRegisters">🌅 Arqueos</option>
+              <option value="paymentChannels">💳 Métodos pago</option>
+              <option value="transferRequests">📤 Traslados</option>
+              <option value="settings">⚙️ Configuración</option>
+              <option value="system">🔧 Sistema</option>
+            </select>
+          </div>
+          <div class="col-span-2 flex items-end justify-between">
+            <div class="flex gap-2 flex-wrap">
+              <button onclick="setAuditRange('today')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Hoy</button>
+              <button onclick="setAuditRange('week')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Esta semana</button>
+              <button onclick="setAuditRange('month')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este mes</button>
+              <button onclick="setAuditRange('lastmonth')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes pasado</button>
+              <button onclick="setAuditRange('year')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este año</button>
+            </div>
+            <button onclick="clearAuditFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+          </div>
+        </div>
+      </div>
+      <!-- Contador arriba de la tabla -->
+      <div class="flex justify-between items-center mb-2">
+        <p id="audit-results-count" class="text-xs text-gray-500">0 eventos</p>
+        <p class="text-[10px] text-gray-400">Click en una fila para ver el detalle completo</p>
+      </div>
+
       <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
-        <table class="w-full text-sm min-w-[1000px]">
+        <table class="w-full text-sm min-w-[1100px]">
           <thead class="bg-gray-100 text-sd">
             <tr>
+              <th class="p-3 text-center w-12">Sev.</th>
               <th class="p-3 text-left">Fecha / hora</th>
               <th class="p-3 text-left">Usuario</th>
-              <th class="p-3 text-left">Rol</th>
+              <th class="p-3 text-center">Rol</th>
               <th class="p-3 text-left">Acción</th>
               <th class="p-3 text-left">Colección</th>
-              <th class="p-3 text-left">Nota</th>
+              <th class="p-3 text-left">Resumen del cambio</th>
               <th class="p-3"></th>
             </tr>
           </thead>
@@ -1509,15 +1645,28 @@ const $ = id => document.getElementById(id);
 
 async function audit(entry) {
   try {
-    await addDoc(collection(db,'auditLog'), {
-      ...entry,
-      userId: currentUser?.uid || null,
-      userEmail: currentUser?.email || null,
-      userRole: currentUserData?.role || null,
-      storeId: currentUserData?.storeId || null,
-      timestamp: serverTimestamp()
+    // Usar la versión enriquecida de common.js
+    await window.Smartec.audit(entry, {
+      db,
+      user: currentUser,
+      userData: currentUserData,
+      store: { storeId: currentUserData?.storeId || null },
+      storeName: stores?.find(s => s.storeId === currentUserData?.storeId)?.name || null
     });
-  } catch(e) { console.warn('audit fail', e); }
+  } catch(e) {
+    console.warn('audit fail (fallback al simple):', e);
+    // Fallback: si falla la versión rica, guardar la simple
+    try {
+      await addDoc(collection(db,'auditLog'), {
+        ...entry,
+        userId: currentUser?.uid || null,
+        userEmail: currentUser?.email || null,
+        userRole: currentUserData?.role || null,
+        storeId: currentUserData?.storeId || null,
+        timestamp: serverTimestamp()
+      });
+    } catch(e2) { console.warn('audit fallback fail', e2); }
+  }
 }
 /* ============================================================
    TRADUCTOR DE COLORES (hex → nombre en español)
@@ -3334,62 +3483,899 @@ window.cancelSale = async (id) => {
 /* ============================================================
    AUDITORÍA
 ============================================================ */
+/* ============================================================
+   AUDITORÍA — Versión reestructurada (trazabilidad completa)
+   ============================================================ */
+
+// Estado de filtros rápidos
+let auditQuickFilter = 'all';
+
+// Helpers de severidad
+function auditSeverity(a) {
+  return a.severity || window.Smartec?.getSeverity?.(a.action) || 'medium';
+}
+
+function auditSeverityBadge(a) {
+  const s = auditSeverity(a);
+  const map = {
+    critical: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300', icon: '🔴', label: 'Crítica' },
+    high:     { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300', icon: '🟠', label: 'Alta' },
+    medium:   { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300', icon: '🔵', label: 'Media' },
+    low:      { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300', icon: '🟢', label: 'Baja' }
+  };
+  const m = map[s] || map.medium;
+  return `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full ${m.bg} ${m.text} text-xs font-bold" title="Severidad ${m.label}">${m.icon}</span>`;
+}
+
+function auditActionBadge(action) {
+  const map = {
+    create:  { bg: 'bg-green-100 text-green-700',  label: '🆕 Crear' },
+    update:  { bg: 'bg-blue-100 text-blue-700',    label: '✏️ Editar' },
+    delete:  { bg: 'bg-red-100 text-red-700',      label: '🗑 Borrar' },
+    sale:    { bg: 'bg-purple-100 text-purple-700', label: '💰 Venta' },
+    login:   { bg: 'bg-gray-100 text-gray-700',    label: '🔐 Login' },
+    logout:  { bg: 'bg-gray-100 text-gray-700',    label: '🚪 Logout' },
+    cancel:  { bg: 'bg-orange-100 text-orange-700', label: '📉 Anulación' },
+    seed:    { bg: 'bg-yellow-100 text-yellow-700', label: '🌱 Migración' },
+    cleanup: { bg: 'bg-pink-100 text-pink-700',    label: '🧹 Limpieza' }
+  };
+  const m = map[action] || { bg: 'bg-gray-100 text-gray-700', label: action };
+  return `<span class="text-[10px] px-2 py-0.5 rounded ${m.bg} font-semibold whitespace-nowrap">${m.label}</span>`;
+}
+
+function auditRoleBadge(role) {
+  const map = {
+    superadmin: 'bg-purple-100 text-purple-700',
+    admin:      'bg-blue-100 text-blue-700',
+    vendedor:   'bg-gray-100 text-gray-700'
+  };
+  return `<span class="text-[10px] px-2 py-0.5 rounded ${map[role] || 'bg-gray-100 text-gray-600'} font-semibold">${escapeHtml(role) || '—'}</span>`;
+}
+
+function auditCollectionLabel(coll) {
+  const map = {
+    products: '📦 Productos',
+    sales: '💰 Ventas',
+    stores: '🏪 Tiendas',
+    users: '👤 Usuarios',
+    inventory: '📊 Inventario',
+    inventoryMovements: '🔄 Movs. inv.',
+    promos: '🎁 Promos',
+    cashRegisters: '🌅 Arqueos',
+    paymentChannels: '💳 Métodos pago',
+    paymentPlatforms: '🏦 Plataformas',
+    transferRequests: '📤 Traslados',
+    storeGoals: '🎯 Metas',
+    settings: '⚙️ Config',
+    suppliers: '🏭 Proveedores',
+    expenses: '💸 Gastos',
+    customers: '👥 Clientes',
+    warranties: '🛡️ Garantías',
+    system: '🔧 Sistema',
+    counters: '🔢 Consecutivos',
+    audits: '📋 Auditoría'
+  };
+  return map[coll] || coll || '—';
+}
+
+// ============================================================
+// Filtros rápidos
+// ============================================================
+window.setAuditQuickFilter = (key) => {
+  auditQuickFilter = key;
+  // Actualizar estilo de los botones
+  document.querySelectorAll('.audit-quick-btn').forEach(btn => {
+    const isActive = btn.dataset.quick === key;
+    if (isActive) {
+      // Activar
+      const colorMap = {
+        all: 'border-sl bg-sl text-white',
+        critical: 'border-red-500 bg-red-500 text-white',
+        cancel: 'border-orange-500 bg-orange-500 text-white',
+        delete: 'border-red-500 bg-red-500 text-white',
+        cashRegisters: 'border-blue-500 bg-blue-500 text-white',
+        sales: 'border-purple-500 bg-purple-500 text-white',
+        inventory: 'border-amber-500 bg-amber-500 text-white',
+        users: 'border-gray-500 bg-gray-500 text-white',
+        paymentChannels: 'border-cyan-500 bg-cyan-500 text-white'
+      };
+      btn.className = `audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 ${colorMap[key] || colorMap.all}`;
+    } else {
+      // Resetear a inactivo
+      const inactiveMap = {
+        all: 'border-sl text-sl hover:bg-blue-50',
+        critical: 'border-red-300 text-red-700 hover:bg-red-50',
+        cancel: 'border-orange-300 text-orange-700 hover:bg-orange-50',
+        delete: 'border-red-300 text-red-700 hover:bg-red-50',
+        cashRegisters: 'border-blue-300 text-blue-700 hover:bg-blue-50',
+        sales: 'border-purple-300 text-purple-700 hover:bg-purple-50',
+        inventory: 'border-amber-300 text-amber-700 hover:bg-amber-50',
+        users: 'border-gray-300 text-gray-700 hover:bg-gray-50',
+        paymentChannels: 'border-cyan-300 text-cyan-700 hover:bg-cyan-50'
+      };
+      btn.className = `audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 ${inactiveMap[btn.dataset.quick] || inactiveMap.all}`;
+    }
+  });
+  renderAudit();
+};
+
+// ============================================================
+// Rango de fechas rápidas
+// ============================================================
+window.setAuditRange = (range) => {
+  const now = new Date();
+  let from, to;
+  switch(range) {
+    case 'today': from = to = now; break;
+    case 'week': {
+      const day = now.getDay() || 7;
+      from = new Date(now); from.setDate(now.getDate() - day + 1);
+      to = now;
+      break;
+    }
+    case 'month': from = new Date(now.getFullYear(), now.getMonth(), 1); to = now; break;
+    case 'lastmonth':
+      from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      to = new Date(now.getFullYear(), now.getMonth(), 0);
+      break;
+    case 'year': from = new Date(now.getFullYear(), 0, 1); to = now; break;
+    default: return;
+  }
+  const fmtD = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const fromEl = $('audit-date-from');
+  const toEl = $('audit-date-to');
+  if (fromEl) fromEl.value = fmtD(from);
+  if (toEl) toEl.value = fmtD(to);
+  renderAudit();
+};
+
+window.clearAuditFilters = () => {
+  const setVal = (id, val) => { const el = $(id); if (el) el.value = val; };
+  setVal('audit-date-from', '');
+  setVal('audit-date-to', '');
+  setVal('audit-role-filter', 'all');
+  setVal('audit-user-filter', 'all');
+  setVal('audit-severity-filter', 'all');
+  setVal('audit-action-filter', 'all');
+  setVal('audit-collection-filter', 'all');
+  setVal('audit-search', '');
+  auditQuickFilter = 'all';
+  setAuditQuickFilter('all');
+};
+
+// ============================================================
+// Poblar dropdown de usuarios
+// ============================================================
+function populateAuditUserFilter() {
+  const sel = $('audit-user-filter');
+  if (!sel || sel.dataset.loaded) return;
+  sel.dataset.loaded = '1';
+
+  // Combinar usuarios de auditLogs + users actuales
+  const map = new Map();
+  auditLogs.forEach(a => {
+    if (a.userEmail && !map.has(a.userEmail)) {
+      map.set(a.userEmail, a.userName || a.userEmail);
+    }
+  });
+  users.forEach(u => {
+    if (u.email && !map.has(u.email)) {
+      map.set(u.email, u.name || u.email);
+    }
+  });
+
+  const list = Array.from(map.entries()).sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
+  sel.innerHTML = '<option value="all">Todos los usuarios</option>' +
+    list.map(([email, name]) =>
+      `<option value="${escapeHtml(email)}">${escapeHtml(name)} — ${escapeHtml(email)}</option>`
+    ).join('');
+}
+
+// ============================================================
+// Filtrado principal
+// ============================================================
+function getFilteredAudit() {
+  let list = auditLogs.slice();
+
+  // Filtro rápido
+  if (auditQuickFilter === 'critical') {
+    list = list.filter(a => auditSeverity(a) === 'critical');
+  } else if (auditQuickFilter === 'cancel') {
+    list = list.filter(a => a.action === 'cancel');
+  } else if (auditQuickFilter === 'delete') {
+    list = list.filter(a => a.action === 'delete');
+  } else if (auditQuickFilter === 'cashRegisters') {
+    list = list.filter(a => a.collection === 'cashRegisters');
+  } else if (auditQuickFilter === 'sales') {
+    list = list.filter(a => a.collection === 'sales');
+  } else if (auditQuickFilter === 'inventory') {
+    list = list.filter(a => a.collection === 'inventory' || a.collection === 'inventoryMovements');
+  } else if (auditQuickFilter === 'users') {
+    list = list.filter(a => a.collection === 'users' || a.action === 'login' || a.action === 'logout');
+  } else if (auditQuickFilter === 'paymentChannels') {
+    list = list.filter(a => a.collection === 'paymentChannels' || a.collection === 'paymentPlatforms');
+  }
+
+  // Fecha desde
+  const from = $('audit-date-from')?.value;
+  if (from) {
+    const fromTs = new Date(from + 'T00:00:00').getTime() / 1000;
+    list = list.filter(a => (a.timestamp?.seconds || 0) >= fromTs);
+  }
+  // Fecha hasta
+  const to = $('audit-date-to')?.value;
+  if (to) {
+    const toTs = new Date(to + 'T23:59:59').getTime() / 1000;
+    list = list.filter(a => (a.timestamp?.seconds || 0) <= toTs);
+  }
+
+  // Rol
+  const roleF = $('audit-role-filter')?.value || 'all';
+  if (roleF !== 'all') list = list.filter(a => a.userRole === roleF);
+
+  // Usuario
+  const userF = $('audit-user-filter')?.value || 'all';
+  if (userF !== 'all') list = list.filter(a => a.userEmail === userF);
+
+  // Severidad
+  const sevF = $('audit-severity-filter')?.value || 'all';
+  if (sevF !== 'all') list = list.filter(a => auditSeverity(a) === sevF);
+
+  // Acción
+  const actionF = $('audit-action-filter')?.value || 'all';
+  if (actionF !== 'all') list = list.filter(a => a.action === actionF);
+
+  // Colección
+  const collF = $('audit-collection-filter')?.value || 'all';
+  if (collF !== 'all') list = list.filter(a => a.collection === collF);
+
+  // Búsqueda libre
+  const searchF = ($('audit-search')?.value || '').toLowerCase().trim();
+  if (searchF) {
+    list = list.filter(a =>
+      (a.note || '').toLowerCase().includes(searchF) ||
+      (a.docId || '').toLowerCase().includes(searchF) ||
+      (a.changeSummary || '').toLowerCase().includes(searchF) ||
+      (a.userEmail || '').toLowerCase().includes(searchF) ||
+      (a.userName || '').toLowerCase().includes(searchF) ||
+      (a.entityLabel || '').toLowerCase().includes(searchF)
+    );
+  }
+
+  // Ordenar por fecha descendente
+  list.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+  return list;
+}
+
+// ============================================================
+// Render de KPIs
+// ============================================================
+function renderAuditKPIs(list) {
+  const total = list.length;
+  const critical = list.filter(a => auditSeverity(a) === 'critical').length;
+  const uniqueUsers = new Set(list.map(a => a.userEmail).filter(Boolean)).size;
+
+  // Última actividad (en toda la lista filtrada, no solo la página)
+  const last = list[0];
+  let lastLabel = '—', lastSub = 'hace —';
+  if (last?.timestamp?.seconds) {
+    lastLabel = fmtDate(last.timestamp);
+    lastSub = 'hace ' + timeAgo(last.timestamp);
+  }
+
+  const setTxt = (id, val) => { const el = $(id); if (el) el.innerText = val; };
+  setTxt('audit-kpi-total', total);
+  setTxt('audit-kpi-total-sub', `en el período`);
+  setTxt('audit-kpi-critical', critical);
+  setTxt('audit-kpi-critical-sub', critical > 0 ? '⚠️ requieren atención' : '✅ sin eventos críticos');
+  setTxt('audit-kpi-users', uniqueUsers);
+  setTxt('audit-kpi-users-sub', uniqueUsers === 1 ? 'usuario distinto' : 'usuarios distintos');
+  setTxt('audit-kpi-last', lastLabel);
+  setTxt('audit-kpi-last-sub', lastSub);
+}
+
+// Helper: hace X tiempo
+function timeAgo(ts) {
+  if (!ts?.seconds) return '—';
+  const diff = Math.floor((Date.now() - ts.seconds * 1000) / 1000);
+  if (diff < 60) return `${diff}s`;
+  if (diff < 3600) return `${Math.floor(diff/60)} min`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} h`;
+  if (diff < 604800) return `${Math.floor(diff/86400)} d`;
+  return fmtDate(ts);
+}
+
+// ============================================================
+// Render principal
+// ============================================================
 function renderAudit() {
   if (currentUserData.role !== 'superadmin') {
-    $('audit-tbody').innerHTML = '<tr><td colspan="7" class="p-6 text-center text-gray-400">Solo superadmin tiene acceso a la auditoría.</td></tr>';
+    $('audit-tbody').innerHTML = '<tr><td colspan="8" class="p-6 text-center text-gray-400">Solo superadmin tiene acceso a la auditoría.</td></tr>';
     return;
   }
-  const actionF = $('audit-action-filter').value;
-  const collF = $('audit-collection-filter').value;
+
+  populateAuditUserFilter();
+
+  const list = getFilteredAudit();
+
+  // KPIs
+  renderAuditKPIs(list);
+
+  // Contador
+  const countEl = $('audit-results-count');
+  if (countEl) countEl.innerText = `${list.length} evento${list.length !== 1 ? 's' : ''}`;
+
+  // Tabla
   const tb = $('audit-tbody');
+  if (!list.length) {
+    tb.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-gray-400">Sin registros con esos filtros</td></tr>';
+    return;
+  }
 
-  let list = auditLogs.slice();
-  if (actionF !== 'all') list = list.filter(a => a.action === actionF);
-  if (collF !== 'all') list = list.filter(a => a.collection === collF);
-  list.sort((a,b) => (b.timestamp?.seconds||0) - (a.timestamp?.seconds||0));
-
-  tb.innerHTML = list.length ? list.slice(0,300).map(a => {
-    const ac = {create:'bg-green-100 text-green-700', update:'bg-blue-100 text-blue-700',
-                delete:'bg-red-100 text-red-700', sale:'bg-purple-100 text-purple-700',
-                login:'bg-gray-100 text-gray-700', logout:'bg-gray-100 text-gray-700',
-                cancel:'bg-orange-100 text-orange-700', seed:'bg-yellow-100 text-yellow-700'}[a.action] || 'bg-gray-100 text-gray-700';
-    return `<tr class="border-b hover:bg-gray-50">
-      <td class="p-3 text-xs text-gray-500">${fmtDate(a.timestamp)}</td>
-      <td class="p-3 text-xs">${escapeHtml(a.userEmail)||'-'}</td>
-      <td class="p-3 text-xs">${a.userRole||'-'}</td>
-      <td class="p-3"><span class="text-xs px-2 py-0.5 rounded ${ac}">${a.action}</span></td>
-      <td class="p-3 text-xs">${a.collection||'-'}</td>
-      <td class="p-3 text-xs text-gray-500 max-w-xs truncate">${escapeHtml(a.note)||'-'}</td>
-      <td class="p-3 text-right"><button onclick='viewAudit("${a.id}")' class="text-sl hover:underline text-xs">Ver</button></td>
+  tb.innerHTML = list.slice(0, 500).map(a => {
+    const summary = a.changeSummary || a.note || '—';
+    const userLabel = a.userName || a.userEmail || '—';
+    return `<tr class="border-b hover:bg-gray-50 cursor-pointer" onclick='viewAudit("${a.id}")'>
+      <td class="p-3 text-center">${auditSeverityBadge(a)}</td>
+      <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${fmtDate(a.timestamp)}</td>
+      <td class="p-3 text-xs">
+        <p class="font-medium text-sd truncate max-w-[180px]">${escapeHtml(userLabel)}</p>
+        <p class="text-[10px] text-gray-400 truncate max-w-[180px]">${escapeHtml(a.userEmail) || ''}</p>
+      </td>
+      <td class="p-3 text-center">${auditRoleBadge(a.userRole)}</td>
+      <td class="p-3">${auditActionBadge(a.action)}</td>
+      <td class="p-3 text-xs">${auditCollectionLabel(a.collection)}</td>
+      <td class="p-3 text-xs text-gray-600 max-w-md truncate">${escapeHtml(summary)}</td>
+      <td class="p-3 text-right">
+        <button onclick='event.stopPropagation(); viewAudit("${a.id}")' class="text-sl hover:underline text-xs">Ver →</button>
+      </td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="p-6 text-center text-gray-400">Sin registros</td></tr>';
+  }).join('');
+
+  // Si hay más de 500, avisar
+  if (list.length > 500) {
+    tb.innerHTML += `<tr><td colspan="8" class="p-3 text-center text-xs text-amber-600">Mostrando primeros 500 de ${list.length}. Refina los filtros para ver más específico.</td></tr>`;
+  }
 }
-$('audit-action-filter').addEventListener('change', renderAudit);
-$('audit-collection-filter').addEventListener('change', renderAudit);
+
+// ============================================================
+// Listeners de los filtros (enganchar una sola vez)
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  const ids = ['audit-date-from','audit-date-to','audit-role-filter','audit-user-filter',
+               'audit-severity-filter','audit-action-filter','audit-collection-filter','audit-search'];
+  ids.forEach(id => {
+    const el = $(id);
+    if (!el || el.dataset.auditListeners) return;
+    el.dataset.auditListeners = '1';
+    el.addEventListener('input', renderAudit);
+    el.addEventListener('change', renderAudit);
+  });
+});
 
 window.viewAudit = (id) => {
   const a = auditLogs.find(x => x.id === id);
   if (!a) return;
-  $('audit-detail').innerHTML = `
-    <div class="space-y-3 text-sm">
-      <div class="grid grid-cols-2 gap-2">
-        <div><p class="text-xs text-gray-400">Fecha</p><p class="font-semibold">${fmtDate(a.timestamp)}</p></div>
-        <div><p class="text-xs text-gray-400">Acción</p><p class="font-semibold">${a.action}</p></div>
-        <div><p class="text-xs text-gray-400">Usuario</p><p class="font-semibold">${escapeHtml(a.userEmail)||'-'}</p></div>
-        <div><p class="text-xs text-gray-400">Rol</p><p class="font-semibold">${a.userRole||'-'}</p></div>
-        <div><p class="text-xs text-gray-400">Colección</p><p class="font-semibold">${a.collection||'-'}</p></div>
-        <div><p class="text-xs text-gray-400">Doc ID</p><p class="font-semibold text-xs font-mono">${escapeHtml(a.docId)||'-'}</p></div>
+
+  const sev = auditSeverity(a);
+  const sevColors = {
+    critical: 'bg-red-100 text-red-700 border-red-300',
+    high:     'bg-orange-100 text-orange-700 border-orange-300',
+    medium:   'bg-blue-100 text-blue-700 border-blue-300',
+    low:      'bg-green-100 text-green-700 border-green-300'
+  };
+  const sevLabels = { critical: '🔴 Crítica', high: '🟠 Alta', medium: '🔵 Media', low: '🟢 Baja' };
+
+  // Diff visual (si existe before/after)
+  let diffHtml = '';
+  if (a.changedFields && a.changedFields.length) {
+    diffHtml = `
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+        <p class="text-xs font-bold text-amber-800 mb-2">📝 Campos modificados (${a.changedFields.length})</p>
+        <div class="flex flex-wrap gap-1">
+          ${a.changedFields.map(f => `<span class="text-[10px] bg-white border border-amber-300 text-amber-800 px-2 py-0.5 rounded font-mono">${escapeHtml(f)}</span>`).join('')}
+        </div>
+        ${a.changeSummary ? `<p class="text-xs text-amber-700 mt-2 italic">"${escapeHtml(a.changeSummary)}"</p>` : ''}
       </div>
-      <div><p class="text-xs text-gray-400">Nota</p><p>${escapeHtml(a.note)||'-'}</p></div>
-      ${a.before?`<div><p class="text-xs text-gray-400 mb-1">Estado anterior</p>
-        <pre class="bg-red-50 p-2 rounded text-xs overflow-x-auto scrollbar-thin">${JSON.stringify(a.before,null,2)}</pre></div>`:''}
-      ${a.after?`<div><p class="text-xs text-gray-400 mb-1">Estado nuevo</p>
-        <pre class="bg-green-50 p-2 rounded text-xs overflow-x-auto scrollbar-thin">${JSON.stringify(a.after,null,2)}</pre></div>`:''}
+    `;
+  }
+
+  $('audit-detail').innerHTML = `
+    <div class="space-y-4 text-sm">
+
+      <!-- Encabezado con severidad y acción -->
+      <div class="flex items-start justify-between gap-3 flex-wrap">
+        <div class="flex items-center gap-2">
+          <span class="text-xs px-3 py-1 rounded-full border-2 font-bold ${sevColors[sev]}">
+            ${sevLabels[sev]}
+          </span>
+          ${auditActionBadge(a.action)}
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-gray-400">${fmtDate(a.timestamp)}</p>
+          <p class="text-[10px] text-gray-400">hace ${timeAgo(a.timestamp)}</p>
+        </div>
+      </div>
+
+      <!-- Quién -->
+      <div class="bg-gray-50 rounded-lg p-3">
+        <p class="text-[10px] font-bold text-gray-500 uppercase mb-2">👤 Usuario</p>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div><p class="text-gray-500">Nombre</p><p class="font-semibold">${escapeHtml(a.userName) || escapeHtml(a.userEmail) || '—'}</p></div>
+          <div><p class="text-gray-500">Email</p><p class="font-semibold text-xs">${escapeHtml(a.userEmail) || '—'}</p></div>
+          <div><p class="text-gray-500">Rol</p><p>${auditRoleBadge(a.userRole)}</p></div>
+          <div><p class="text-gray-500">Tienda</p><p class="font-semibold">${escapeHtml(a.userStoreName) || escapeHtml(a.storeId) || '—'}</p></div>
+        </div>
+      </div>
+
+      <!-- Qué -->
+      <div class="bg-gray-50 rounded-lg p-3">
+        <p class="text-[10px] font-bold text-gray-500 uppercase mb-2">🎯 Qué afectó</p>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div><p class="text-gray-500">Colección</p><p class="font-semibold">${auditCollectionLabel(a.collection)}</p></div>
+          <div><p class="text-gray-500">Doc ID</p><p class="font-mono text-[10px] truncate">${escapeHtml(a.docId) || '—'}</p></div>
+          ${a.entityLabel ? `<div class="col-span-2"><p class="text-gray-500">Entidad</p><p class="font-semibold">${escapeHtml(a.entityLabel)}</p></div>` : ''}
+        </div>
+      </div>
+
+      <!-- Nota -->
+      ${a.note ? `
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p class="text-[10px] font-bold text-blue-800 uppercase mb-1">📝 Nota</p>
+          <p class="text-xs text-blue-900">${escapeHtml(a.note)}</p>
+        </div>
+      ` : ''}
+
+      <!-- Resumen del cambio -->
+      ${a.changeSummary ? `
+        <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+          <p class="text-[10px] font-bold text-purple-800 uppercase mb-1">🔍 Resumen del cambio</p>
+          <p class="text-xs text-purple-900">${escapeHtml(a.changeSummary)}</p>
+        </div>
+      ` : ''}
+
+      <!-- Campos modificados -->
+      ${diffHtml}
+
+      <!-- Sesión -->
+      ${a.sessionId ? `
+        <div class="text-[10px] text-gray-400 text-center">
+          Sesión: <span class="font-mono">${escapeHtml(a.sessionId)}</span>
+        </div>
+      ` : ''}
+
+      <!-- Antes/Después (colapsables) -->
+      ${a.before ? `
+        <details class="bg-red-50 border border-red-200 rounded-lg">
+          <summary class="p-3 text-xs font-bold text-red-800 cursor-pointer">📤 Estado anterior (click para ver)</summary>
+          <pre class="p-3 text-[10px] overflow-x-auto scrollbar-thin bg-white/50 rounded-b-lg">${escapeHtml(JSON.stringify(a.before, null, 2))}</pre>
+        </details>
+      ` : ''}
+
+      ${a.after ? `
+        <details class="bg-green-50 border border-green-200 rounded-lg">
+          <summary class="p-3 text-xs font-bold text-green-800 cursor-pointer">📥 Estado nuevo (click para ver)</summary>
+          <pre class="p-3 text-[10px] overflow-x-auto scrollbar-thin bg-white/50 rounded-b-lg">${escapeHtml(JSON.stringify(a.after, null, 2))}</pre>
+        </details>
+      ` : ''}
+
     </div>
   `;
   const m = $('audit-modal');
   m.classList.remove('hidden'); m.classList.add('flex');
 };
+
+/* ============================================================
+   EXPORTAR AUDITORÍA (PDF y CSV) — solo lo filtrado
+   ============================================================ */
+window.exportAudit = async () => {
+  const list = getFilteredAudit();
+
+  if (!list.length) {
+    alert('No hay eventos para exportar con los filtros actuales.');
+    return;
+  }
+
+  // Mostrar 2 opciones con prompt
+  const opcion = prompt(
+    `Se exportarán ${list.length} evento(s) filtrados.\n\n` +
+    `Escribe:\n` +
+    `  1 → Excel (.xlsx) — recomendado\n` +
+    `  2 → PDF con formato\n\n` +
+    `(o cancela para no exportar)`,
+    '1'
+  );
+
+  if (opcion === null) return;
+  if (opcion.trim() === '1') return exportAuditExcel(list);
+  if (opcion.trim() === '2') return exportAuditPDF(list);
+  alert('Opción no válida. Elige 1 o 2.');
+};
+
+/* ============================================================
+   EXPORTAR AUDITORÍA A EXCEL (XLSX) — solo lo filtrado
+   ============================================================ */
+/* ============================================================
+   EXPORTAR AUDITORÍA A EXCEL (XLSX) con ExcelJS — solo lo filtrado
+   ============================================================ */
+async function exportAuditExcel(list) {
+  if (!window.ExcelJS) {
+    alert('⚠️ La librería de Excel aún no ha cargado. Espera unos segundos y vuelve a intentar.');
+    return;
+  }
+
+  // ===== Filtros aplicados =====
+  const quickLabel = {
+    all: 'Todos', critical: 'Solo críticos', cancel: 'Anulaciones',
+    delete: 'Borrados', cashRegisters: 'Arqueos de caja', sales: 'Ventas',
+    inventory: 'Inventario', users: 'Usuarios', paymentChannels: 'Métodos de pago'
+  }[auditQuickFilter] || auditQuickFilter;
+
+  const from = $('audit-date-from')?.value || 'todo';
+  const to = $('audit-date-to')?.value || 'hoy';
+  const roleF = $('audit-role-filter')?.value || 'all';
+  const userF = $('audit-user-filter')?.value || 'all';
+  const sevF = $('audit-severity-filter')?.value || 'all';
+  const actionF = $('audit-action-filter')?.value || 'all';
+  const collF = $('audit-collection-filter')?.value || 'all';
+  const searchF = $('audit-search')?.value || '';
+
+  // ===== Estadísticas =====
+  const total = list.length;
+  const critical = list.filter(a => auditSeverity(a) === 'critical').length;
+  const high = list.filter(a => auditSeverity(a) === 'high').length;
+  const medium = list.filter(a => auditSeverity(a) === 'medium').length;
+  const low = list.filter(a => auditSeverity(a) === 'low').length;
+  const uniqueUsers = new Set(list.map(a => a.userEmail).filter(Boolean)).size;
+
+  // ===== Crear workbook =====
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Smartec';
+  wb.created = new Date();
+
+  // ============================================================
+  // HOJA 1: RESUMEN
+  // ============================================================
+  const wsR = wb.addWorksheet('Resumen', {
+    properties: { defaultRowHeight: 18 }
+  });
+
+  // Título
+  wsR.mergeCells('A1:B1');
+  const titleCell = wsR.getCell('A1');
+  titleCell.value = 'SMARTEC · Auditoría del sistema';
+  titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A2A4A' } };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  wsR.getRow(1).height = 32;
+
+  // Metadatos
+  const addMeta = (row, label, value) => {
+    wsR.getCell(`A${row}`).value = label;
+    wsR.getCell(`A${row}`).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+    wsR.getCell(`B${row}`).value = value;
+  };
+
+  addMeta(3, 'Generado', new Date().toLocaleString('es-CO'));
+  addMeta(4, 'Total eventos', total);
+  addMeta(5, 'Usuarios activos', uniqueUsers);
+
+  // Sección "Filtros aplicados"
+  wsR.mergeCells('A7:B7');
+  const filtrosTitle = wsR.getCell('A7');
+  filtrosTitle.value = 'FILTROS APLICADOS';
+  filtrosTitle.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  filtrosTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4A7A9A' } };
+  filtrosTitle.alignment = { horizontal: 'center' };
+
+  addMeta(8, 'Filtro rápido', quickLabel);
+  addMeta(9, 'Desde', from);
+  addMeta(10, 'Hasta', to);
+  addMeta(11, 'Rol', roleF === 'all' ? 'Todos' : roleF);
+  addMeta(12, 'Usuario', userF === 'all' ? 'Todos' : userF);
+  addMeta(13, 'Severidad', sevF === 'all' ? 'Todas' : sevF);
+  addMeta(14, 'Acción', actionF === 'all' ? 'Todas' : actionF);
+  addMeta(15, 'Colección', collF === 'all' ? 'Todas' : collF);
+  addMeta(16, 'Búsqueda', searchF || '—');
+
+  // Sección "Resumen por severidad"
+  wsR.mergeCells('A18:B18');
+  const sevTitle = wsR.getCell('A18');
+  sevTitle.value = 'RESUMEN POR SEVERIDAD';
+  sevTitle.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  sevTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4A7A9A' } };
+  sevTitle.alignment = { horizontal: 'center' };
+
+  addMeta(19, 'Críticas', critical);
+  addMeta(20, 'Altas', high);
+  addMeta(21, 'Medias', medium);
+  addMeta(22, 'Bajas', low);
+
+  // 🆕 Pintar cada fila del resumen con su color de severidad
+  const paintSevRow = (row, bgColor, textColor) => {
+    const labelCell = wsR.getCell(`A${row}`);
+    const valueCell = wsR.getCell(`B${row}`);
+    labelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+    labelCell.font = { bold: true, color: { argb: textColor } };
+    valueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+    valueCell.font = { bold: true, color: { argb: textColor } };
+  };
+  paintSevRow(19, 'FFFEE2E2', 'FF991B1B'); // Críticas → rojo claro
+  paintSevRow(20, 'FFFFEDD5', 'FF9A3412'); // Altas    → naranja claro
+  paintSevRow(21, 'FFDBEAFE', 'FF1E40AF'); // Medias   → azul claro
+  paintSevRow(22, 'FFDCFCE7', 'FF166534'); // Bajas    → verde claro
+
+  wsR.getColumn(1).width = 22;
+  wsR.getColumn(2).width = 45;
+
+  // ============================================================
+  // HOJA 2: EVENTOS
+  // ============================================================
+  const wsE = wb.addWorksheet('Eventos', {
+    properties: { defaultRowHeight: 18 }
+  });
+
+  const headers = [
+    { header: 'Fecha / hora', width: 20 },
+    { header: 'Severidad', width: 12 },
+    { header: 'Acción', width: 15 },
+    { header: 'Colección', width: 22 },
+    { header: 'Doc ID', width: 26 },
+    { header: 'Usuario', width: 24 },
+    { header: 'Email', width: 30 },
+    { header: 'Rol', width: 14 },
+    { header: 'Tienda', width: 22 },
+    { header: 'Resumen del cambio', width: 60 },
+    { header: 'Nota', width: 40 },
+    { header: 'Campos modificados', width: 40 }
+  ];
+
+  // Fila de encabezados
+  wsE.columns = headers.map(h => ({ width: h.width }));
+  const headerRow = wsE.addRow(headers.map(h => h.header));
+  headerRow.height = 26;
+  headerRow.eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A2A4A' } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF08344C' } },
+      bottom: { style: 'thin', color: { argb: 'FF08344C' } },
+      left: { style: 'thin', color: { argb: 'FF08344C' } },
+      right: { style: 'thin', color: { argb: 'FF08344C' } }
+    };
+  });
+
+  // Colores por severidad
+  const sevStyles = {
+    critical: { bg: 'FFFEE2E2', text: 'FF991B1B', label: 'CRÍTICA' },
+    high:     { bg: 'FFFFEDD5', text: 'FF9A3412', label: 'ALTA' },
+    medium:   { bg: 'FFDBEAFE', text: 'FF1E40AF', label: 'MEDIA' },
+    low:      { bg: 'FFDCFCE7', text: 'FF166534', label: 'BAJA' }
+  };
+
+  // Filas de datos
+  list.forEach(a => {
+    const sev = auditSeverity(a);
+    const style = sevStyles[sev] || sevStyles.medium;
+
+    const row = wsE.addRow([
+      fmtDate(a.timestamp),
+      style.label,
+      (a.action || '').toUpperCase(),
+      auditCollectionLabel(a.collection).replace(/^[^\w]+/, '').trim(),
+      a.docId || '',
+      a.userName || '',
+      a.userEmail || '',
+      a.userRole || '',
+      a.userStoreName || a.storeId || '',
+      a.changeSummary || '',
+      a.note || '',
+      (a.changedFields || []).join(' | ')
+    ]);
+
+    // Aplicar estilo a toda la fila
+    row.eachCell((cell, colIdx) => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+      };
+      cell.alignment = { vertical: 'top', wrapText: colIdx >= 10 }; // wrap en Resumen/Nota/Campos
+    });
+
+    // Colorear columna Severidad
+    const sevCell = row.getCell(2);
+    sevCell.font = { bold: true, color: { argb: style.text } };
+    sevCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: style.bg } };
+    sevCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // Colorear columna Fecha y Acción (más tenue)
+    row.getCell(1).font = { color: { argb: 'FF6B7280' } };
+    row.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };
+    row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+  });
+
+  // Congelar la primera fila (encabezados)
+  wsE.views = [{ state: 'frozen', ySplit: 1 }];
+
+  // Auto-filtro sobre todas las columnas
+  wsE.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: headers.length }
+  };
+
+  // ============================================================
+  // Descargar
+  // ============================================================
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `smartec_auditoria_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+/* --------- PDF --------- */
+/* --------- PDF --------- */
+/* --------- PDF --------- */
+function exportAuditPDF(list) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+
+  // ===== Encabezado =====
+  doc.setFillColor(10, 42, 74);
+  doc.rect(0, 0, pageW, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SMARTEC · Auditoría', 14, 13);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Trazabilidad de eventos', pageW - 14, 13, { align: 'right' });
+
+  let y = 28;
+
+  // ===== Filtros aplicados =====
+  doc.setTextColor(60, 60, 60);
+  doc.setFontSize(9);
+  const quickLabel = {
+    all: 'Todos',
+    critical: 'Solo críticos',
+    cancel: 'Anulaciones',
+    delete: 'Borrados',
+    cashRegisters: 'Arqueos de caja',
+    sales: 'Ventas',
+    inventory: 'Inventario',
+    users: 'Usuarios',
+    paymentChannels: 'Métodos de pago'
+  }[auditQuickFilter] || auditQuickFilter;
+
+  const from = $('audit-date-from')?.value || 'todo';
+  const to = $('audit-date-to')?.value || 'hoy';
+  const roleF = $('audit-role-filter')?.value || 'all';
+  const userF = $('audit-user-filter')?.value || 'all';
+  const sevF = $('audit-severity-filter')?.value || 'all';
+  const actionF = $('audit-action-filter')?.value || 'all';
+  const collF = $('audit-collection-filter')?.value || 'all';
+  const searchF = $('audit-search')?.value || '';
+
+  doc.text(`Período: ${from} — ${to}`, 14, y); y += 5;
+  doc.text(`Filtro rápido: ${quickLabel}`, 14, y); y += 5;
+  if (roleF !== 'all') { doc.text(`Rol: ${roleF}`, 14, y); y += 5; }
+  if (userF !== 'all') { doc.text(`Usuario: ${userF}`, 14, y); y += 5; }
+  if (sevF !== 'all') { doc.text(`Severidad: ${sevF}`, 14, y); y += 5; }
+  if (actionF !== 'all') { doc.text(`Acción: ${actionF}`, 14, y); y += 5; }
+  if (collF !== 'all') { doc.text(`Colección: ${collF}`, 14, y); y += 5; }
+  if (searchF) { doc.text(`Búsqueda: "${searchF}"`, 14, y); y += 5; }
+
+  doc.text(`Total eventos: ${list.length}`, 14, y); y += 5;
+  doc.text(`Generado: ${new Date().toLocaleString('es-CO')}`, 14, y); y += 8;
+
+  // ===== KPIs resumen =====
+  const total = list.length;
+  const critical = list.filter(a => auditSeverity(a) === 'critical').length;
+  const high = list.filter(a => auditSeverity(a) === 'high').length;
+  const medium = list.filter(a => auditSeverity(a) === 'medium').length;
+  const low = list.filter(a => auditSeverity(a) === 'low').length;
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(10, 42, 74);
+  doc.text('Resumen por severidad', 14, y);
+  y += 3;
+
+  doc.autoTable({
+    startY: y,
+    head: [['Total', 'Críticas', 'Altas', 'Medias', 'Bajas']],
+    body: [[
+      String(total),
+      String(critical),
+      String(high),
+      String(medium),
+      String(low)
+    ]],
+    theme: 'grid',
+    headStyles: { fillColor: [74, 122, 154], textColor: 255, halign: 'center', fontStyle: 'bold' },
+    bodyStyles: { halign: 'center', fontSize: 10 },
+    margin: { left: 14, right: 14 }
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  // ===== Tabla detallada =====
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(10, 42, 74);
+  doc.text('Detalle de eventos', 14, y);
+  y += 3;
+
+  const rows = list.map(a => {
+    const sevLabel = { critical: 'CRITICA', high: 'ALTA', medium: 'MEDIA', low: 'BAJA' }[auditSeverity(a)] || 'MEDIA';
+    const summary = a.changeSummary || a.note || '';
+    return [
+      fmtDate(a.timestamp),
+      sevLabel,
+      (a.action || '').toUpperCase(),
+      a.collection || '',
+      a.userName || a.userEmail || '',
+      a.userRole || '',
+      summary.substring(0, 80)
+    ];
+  });
+
+  doc.autoTable({
+    startY: y,
+    head: [['Fecha', 'Sev.', 'Acción', 'Colección', 'Usuario', 'Rol', 'Resumen']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 8, cellPadding: 1.5 },
+    bodyStyles: { fontSize: 7, cellPadding: 1.5 },
+    margin: { left: 8, right: 8 },
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 14, halign: 'center', fontStyle: 'bold' },
+      2: { cellWidth: 16, halign: 'center' },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 32 },
+      5: { cellWidth: 16 },
+      6: { cellWidth: 55 }
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 1) {
+        const v = data.cell.raw;
+        if (v === 'CRITICA') data.cell.styles.textColor = [220, 38, 38];
+        else if (v === 'ALTA') data.cell.styles.textColor = [234, 88, 12];
+        else if (v === 'MEDIA') data.cell.styles.textColor = [59, 130, 246];
+        else if (v === 'BAJA') data.cell.styles.textColor = [22, 163, 74];
+      }
+    }
+  });
+
+  // ===== Pie de página =====
+  const pages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `Smartec · Auditoría · Página ${i} de ${pages}`,
+      pageW / 2,
+      pageH - 8,
+      { align: 'center' }
+    );
+  }
+
+  const filename = `smartec_auditoria_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(filename);
+}
+
 window.closeAuditModal = () => { const m=$('audit-modal'); m.classList.add('hidden'); m.classList.remove('flex'); };
 
 /* ============================================================
