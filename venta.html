@@ -1703,8 +1703,9 @@ document.addEventListener('change', (e) => {
 
     // Obtener snapshot del canal/entidad elegido
     let paymentChannelData = null;
+    let selectedChannel = null;
     if (paymentChannelId || paymentEntityId) {
-      const selectedChannel = paymentChannelsList.find(c =>
+      selectedChannel = paymentChannelsList.find(c =>
         c.id === (paymentChannelId || paymentEntityId)
       );
       if (selectedChannel) {
@@ -1721,6 +1722,12 @@ document.addEventListener('change', (e) => {
       }
     }
 
+    // 🆕 Comisión financiera (solo crédito)
+    const creditCommissionRate = (paymentMethod === 'credito' && selectedChannel?.commissionRate)
+      ? Number(selectedChannel.commissionRate)
+      : 0;
+    const creditCommissionAmount = commissionBase * creditCommissionRate;
+    const netIncome = total - creditCommissionAmount;
     // Estado del pago
     const paymentStatus = paymentMethod === 'contraentrega' ? 'pending' : 'completed';
 
@@ -1792,6 +1799,17 @@ document.addEventListener('change', (e) => {
         paymentChannelAccount: paymentChannelData?.accountNumber || null, // 🆕
         paymentChannelIcon: paymentChannelData?.icon || null, // 🆕
         paymentChannelColor: paymentChannelData?.color || null, // 🆕
+        creditCommissionRate,        // 🆕 % comisión crédito
+        creditCommissionAmount,      // 🆕 valor comisión crédito
+        netIncome,                   // 🆕 ingreso neto real
+        status: 'completada',
+        paymentChannelId: paymentChannelData?.id || null,    // 🆕
+        paymentChannelCode: paymentChannelData?.code || null, // 🆕
+        paymentChannelType: paymentChannelData?.type || null, // 🆕
+        paymentChannelBank: paymentChannelData?.bank || null, // 🆕
+        paymentChannelName: paymentChannelData?.name || null, // 🆕
+        paymentChannelAccount: paymentChannelData?.accountNumber || null, // 🆕
+        paymentChannelIcon: paymentChannelData?.icon || null, // 🆕
         status: 'completada',
         sellerUid: currentUser.uid,
         sellerEmail: currentUser.email,

@@ -339,6 +339,7 @@
               <th class="p-3 text-left">Pago</th>
               <th class="p-3 text-center">Items</th>
               <th class="p-3 text-right">Venta neta</th>
+              <th class="p-3 text-right">Com. financ.</th>
               <th class="p-3 text-center">Estado</th>
               <th class="p-3"></th>
             </tr>
@@ -878,7 +879,7 @@
       </div>
 
       <!-- KPIs financieros -->
-      <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      <div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
         <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
           <p class="text-xs text-gray-500">Total del período</p>
           <p id="acc-kpi-total" class="text-2xl font-bold text-sd mt-1">$0</p>
@@ -898,6 +899,11 @@
           <p class="text-xs text-gray-500">Pagado del período</p>
           <p id="acc-kpi-paid" class="text-2xl font-bold text-green-600 mt-1">$0</p>
           <p id="acc-kpi-paid-count" class="text-[10px] text-gray-400 mt-1">0 pagos registrados</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-rose-500">
+          <p class="text-xs text-gray-500">Comisiones financieras</p>
+          <p id="acc-kpi-financial-commissions" class="text-2xl font-bold text-rose-600 mt-1">$0</p>
+          <p id="acc-kpi-financial-commissions-count" class="text-[10px] text-gray-400 mt-1">0 ventas con crédito</p>
         </div>
         <div class="bg-white p-5 rounded-xl shadow border-l-4 border-purple-500">
           <p class="text-xs text-gray-500">Utilidad neta real</p>
@@ -930,7 +936,7 @@
             <p class="text-[10px] text-gray-500 mt-0.5">Ingresos vs egresos consolidados</p>
           </div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
           <div class="bg-white rounded-lg p-3 shadow-sm">
             <p class="text-[10px] text-gray-500 uppercase font-semibold">Ventas</p>
             <p id="acc-rent-sales" class="text-lg font-bold text-sl mt-1">$0</p>
@@ -945,6 +951,11 @@
             <p class="text-[10px] text-gray-500 uppercase font-semibold">− Gastos operativos</p>
             <p id="acc-rent-expenses" class="text-lg font-bold text-red-500 mt-1">$0</p>
             <p class="text-[10px] text-gray-400">Gastos del período</p>
+          </div>
+          <div class="bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-[10px] text-gray-500 uppercase font-semibold">− Comisiones financieras</p>
+            <p id="acc-rent-financial" class="text-lg font-bold text-rose-600 mt-1">$0</p>
+            <p class="text-[10px] text-gray-400">Comisión crédito</p>
           </div>
           <div class="bg-white rounded-lg p-3 shadow-sm border-2 border-purple-300">
             <p class="text-[10px] text-purple-700 uppercase font-semibold">= Utilidad neta</p>
@@ -1054,7 +1065,7 @@
             <h3 class="font-bold text-sd">Análisis por proveedor</h3>
             <p id="acc-suppliers-count" class="text-xs text-gray-400">0 proveedores</p>
           </div>
-          <table class="w-full text-sm min-w-[1100px]">
+        <table class="w-full text-sm min-w-[1200px]">
             <thead class="bg-gray-100 text-sd">
               <tr>
                 <th class="p-3 text-left">Proveedor</th>
@@ -3091,6 +3102,7 @@ function renderSales() {
       <td class="p-3 text-xs">${paymentCell}</td>
       <td class="p-3 text-center">${itemsCount}</td>
       <td class="p-3 text-right font-semibold">${fmt(s.total)}</td>
+      <td class="p-3 text-right text-xs text-rose-600 font-semibold">${s.creditCommissionAmount ? '-' + fmt(s.creditCommissionAmount) : '—'}</td>
       <td class="p-3 text-center"><span class="text-xs px-2 py-1 rounded ${statusCls}">${s.status||'pendiente'}</span></td>
       <td class="p-3 text-right whitespace-nowrap">
         <button onclick='viewSale("${s.id}")' class="text-sl hover:underline text-xs">Ver</button>
@@ -3701,6 +3713,16 @@ window.openChannelForm = (channelId = null) => {
         <p class="text-[10px] text-gray-400 mt-1">Para diferenciar varias cuentas del mismo banco.</p>
       </div>
 
+      ${type === 'credito' ? `
+      <div>
+        <label class="text-xs font-semibold text-sd">% Comisión comercio</label>
+        <input id="cf-commissionRate" type="number" step="0.01" min="0" max="100"
+               value="${((channel.commissionRate || 0) * 100).toFixed(2)}"
+               placeholder="Ej: 6.5"
+               class="w-full px-3 py-2 border rounded-lg mt-1">
+        <p class="text-[10px] text-gray-400 mt-1">Porcentaje que la entidad descuenta al comercio por cada venta financiada.</p>
+      </div>
+      ` : ''}
       <!-- Número de cuenta -->
       <div>
         <label class="text-xs font-semibold text-sd">Número de cuenta / teléfono</label>
@@ -4062,6 +4084,7 @@ window.saveChannel = async (channelId = '') => {
   const icon = $('cf-icon').value.trim() || '🏦';
   const color = $('cf-color').value || '#0A2A4A';
   const notes = $('cf-notes').value.trim();
+  const commissionRate = (Number($('cf-commissionRate')?.value) || 0) / 100;
   const active = $('cf-active').checked;
 
   // Determinar el nombre real del banco
@@ -4097,6 +4120,7 @@ window.saveChannel = async (channelId = '') => {
     icon,
     color,
     notes,
+    commissionRate,
     active,
     updatedAt: serverTimestamp()
   };
@@ -4309,6 +4333,10 @@ function renderChannelCard(c) {
 
   const displayName = customName ? `${bank} — ${customName}` : bank;
 
+    const commissionLine = (c.type === 'credito' && c.commissionRate)
+    ? `<p class="text-xs text-gray-500 mt-0.5">Comisión comercio: <b class="text-sl">${(c.commissionRate*100).toFixed(2)}%</b></p>`
+    : '';
+
   // Badge de estado
   const badge = active
     ? '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Activo</span>'
@@ -4330,6 +4358,7 @@ function renderChannelCard(c) {
           ${badge}
         </div>
         ${account ? `<p class="text-xs text-gray-500 mt-0.5">Cuenta: <span class="font-mono">${account}</span></p>` : ''}
+        ${commissionLine}
       </div>
 
       <div class="flex gap-2 shrink-0">
@@ -8051,8 +8080,19 @@ function renderAccSummary() {
     .filter(e => e.status !== 'anulado' && e.type === 'gasto')
     .reduce((s, e) => s + Number(e.total || 0), 0);
 
+  // 🆕 Comisiones financieras (crédito: Addi, Sistecrédito, etc.)
+  let financialCommissions = 0;
+  let financialCommissionsCount = 0;
+  salesFiltered.forEach(s => {
+    const cc = Number(s.creditCommissionAmount || 0);
+    if (cc > 0) {
+      financialCommissions += cc;
+      financialCommissionsCount++;
+    }
+  });
+
   const grossProfit = totalSales - totalCogs;
-  const netProfit = totalSales - totalCogs - operatingExpenses;
+  const netProfit = totalSales - totalCogs - operatingExpenses - financialCommissions;
   const grossMargin = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
   const netMargin = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
 
@@ -8062,6 +8102,7 @@ function renderAccSummary() {
   safeSet('acc-rent-sales-count', `${salesFiltered.length} ventas`);
   safeSet('acc-rent-cogs', fmt(totalCogs));
   safeSet('acc-rent-expenses', fmt(operatingExpenses));
+  safeSet('acc-rent-financial', fmt(financialCommissions));
   safeSet('acc-rent-net', fmt(netProfit));
   safeSet('acc-rent-margin', `Margen ${netMargin.toFixed(1)}%`);
   safeSet('acc-rent-gross', fmt(grossProfit));
@@ -8110,7 +8151,9 @@ function renderAccSummary() {
   safeSet('acc-kpi-paid', fmt(paidTotal));
   safeSet('acc-kpi-paid-count', `${paidCount} pago${paidCount !== 1 ? 's' : ''} registrado${paidCount !== 1 ? 's' : ''}`);
   safeSet('acc-kpi-net', fmt(netProfit));
-  safeSet('acc-kpi-net-detail', `Ventas ${fmt(totalSales)} − Costos ${fmt(totalCogs + operatingExpenses)}`);
+  safeSet('acc-kpi-net-detail', `Ventas ${fmt(totalSales)} − Costos ${fmt(totalCogs + operatingExpenses + financialCommissions)}`);
+  safeSet('acc-kpi-financial-commissions', fmt(financialCommissions));
+  safeSet('acc-kpi-financial-commissions-count', `${financialCommissionsCount} venta${financialCommissionsCount !== 1 ? 's' : ''} con crédito`);
 
   // ============================================================
   // 3. DESGLOSE POR TIENDA (gastos)
@@ -8650,8 +8693,12 @@ window.exportAccountingPDF = () => {
     .filter(e => e.status !== 'anulado' && e.type === 'gasto')
     .reduce((s, e) => s + Number(e.total || 0), 0);
 
+  // 🆕 Comisiones financieras (crédito)
+  const financialCommissions = salesFiltered.reduce((sum, s) =>
+    sum + Number(s.creditCommissionAmount || 0), 0);
+
   const grossProfit = totalSales - totalCogs;
-  const netProfit = totalSales - totalCogs - operatingExpenses;
+  const netProfit = totalSales - totalCogs - operatingExpenses - financialCommissions;
   const grossMargin = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
   const netMargin = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
 
@@ -8672,6 +8719,8 @@ window.exportAccountingPDF = () => {
       ['= Utilidad bruta', fmtMoney(grossProfit), grossMargin.toFixed(1) + '%'],
       ['(-) Gastos operativos', '-' + fmtMoney(operatingExpenses),
         totalSales > 0 ? '-' + ((operatingExpenses / totalSales) * 100).toFixed(1) + '%' : '0%'],
+      ['(-) Comisiones financieras', '-' + fmtMoney(financialCommissions),
+        totalSales > 0 ? '-' + ((financialCommissions / totalSales) * 100).toFixed(1) + '%' : '0%'],
       ['= Utilidad neta', fmtMoney(netProfit), netMargin.toFixed(1) + '%']
     ],
     theme: 'grid',
