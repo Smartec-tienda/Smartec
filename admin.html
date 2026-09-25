@@ -61,6 +61,7 @@
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="promos">Promociones</button>
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="sales">Ventas</button>
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="reports">Reportes</button>
+    <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="shifts">Turnos</button>
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="cashregisters">Arqueos</button>
         <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="accounting">Contabilidad</button>
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap relative" data-tab="transfers">
@@ -166,7 +167,7 @@
         </div>
       </div>
       <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
-        <table class="w-full text-sm min-w-[700px]">
+        <table class="w-full text-sm min-w-[850px]">
           <thead class="bg-gray-100 text-sd">
             <tr>
               <th class="p-3 text-left">Nombre</th>
@@ -174,6 +175,7 @@
               <th class="p-3 text-left">Rol</th>
               <th class="p-3 text-left">Tienda</th>
               <th class="p-3 text-center">Comisión</th>
+              <th class="p-3 text-center">Dispositivos</th>
               <th class="p-3 text-center">Estado</th>
               <th class="p-3"></th>
             </tr>
@@ -791,6 +793,129 @@
   </div>
   <p id="arq-empty" class="hidden text-center py-8 text-gray-400">Sin arqueos con esos filtros.</p>
 </section>
+
+    <!-- ============ TURNOS ============ -->
+    <section id="tab-shifts" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Control de turnos</h2>
+          <p class="text-xs text-gray-400">Entradas y salidas del personal</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="exportShiftsExcel()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-semibold">📊 Exportar Excel</button>
+          <button onclick="renderShifts()" class="bg-white border border-gray-300 text-sd px-4 py-2 rounded-lg hover:bg-gray-50 text-sm">🔄 Actualizar</button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-green-500">
+          <p class="text-xs text-gray-500">Turnos activos ahora</p>
+          <p id="shift-kpi-active" class="text-2xl font-bold text-green-600 mt-1">0</p>
+          <p id="shift-kpi-active-sub" class="text-[10px] text-gray-400 mt-1">sin turno abierto</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-sl">
+          <p class="text-xs text-gray-500">Turnos hoy</p>
+          <p id="shift-kpi-today" class="text-2xl font-bold text-sl mt-1">0</p>
+          <p id="shift-kpi-today-sub" class="text-[10px] text-gray-400 mt-1">iniciados hoy</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-purple-500">
+          <p class="text-xs text-gray-500">Turnos esta semana</p>
+          <p id="shift-kpi-week" class="text-2xl font-bold text-purple-600 mt-1">0</p>
+          <p id="shift-kpi-week-sub" class="text-[10px] text-gray-400 mt-1">últimos 7 días</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-amber-500">
+          <p class="text-xs text-gray-500">Duración promedio</p>
+          <p id="shift-kpi-avg" class="text-2xl font-bold text-amber-600 mt-1">—</p>
+          <p id="shift-kpi-avg-sub" class="text-[10px] text-gray-400 mt-1">turnos cerrados</p>
+        </div>
+      </div>
+
+      <!-- Turnos activos -->
+      <div class="bg-white rounded-xl shadow p-5 mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-sd flex items-center gap-2">🟢 Turnos activos</h3>
+          <p id="shift-active-count" class="text-xs text-gray-400">0 turnos</p>
+        </div>
+        <div id="shift-active-list" class="space-y-2">
+          <!-- Se llena dinámicamente -->
+        </div>
+        <p id="shift-active-empty" class="hidden text-center py-6 text-gray-400 text-sm">
+          🎉 No hay turnos abiertos en este momento
+        </p>
+      </div>
+
+      <!-- Filtros -->
+      <div class="bg-white rounded-xl shadow p-4 mb-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Desde</label>
+            <input id="shift-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Hasta</label>
+            <input id="shift-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Tienda</label>
+            <select id="shift-store-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Usuario</label>
+            <select id="shift-user-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Estado</label>
+            <select id="shift-status-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos</option>
+              <option value="open">🟢 Abiertos</option>
+              <option value="closed">✅ Cerrados</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex justify-between items-center mt-3 pt-3 border-t flex-wrap gap-2">
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="setShiftRange('today')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Hoy</button>
+            <button onclick="setShiftRange('week')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Esta semana</button>
+            <button onclick="setShiftRange('month')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este mes</button>
+            <button onclick="setShiftRange('lastmonth')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes pasado</button>
+          </div>
+          <button onclick="clearShiftFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+        </div>
+      </div>
+
+      <!-- Histórico -->
+      <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="p-5 border-b flex justify-between items-center">
+          <h3 class="font-bold text-sd">Histórico de turnos</h3>
+          <p id="shift-hist-count" class="text-xs text-gray-400">0 turnos</p>
+        </div>
+        <div class="overflow-x-auto scrollbar-thin">
+          <table class="w-full text-sm min-w-[1100px]">
+            <thead class="bg-gray-50 text-sd">
+              <tr>
+                <th class="p-3 text-left">Inicio</th>
+                <th class="p-3 text-left">Fin</th>
+                <th class="p-3 text-left">Usuario</th>
+                <th class="p-3 text-left">Rol</th>
+                <th class="p-3 text-left">Tienda</th>
+                <th class="p-3 text-center">Duración</th>
+                <th class="p-3 text-center">Estado</th>
+                <th class="p-3 text-left">Notas</th>
+                <th class="p-3"></th>
+              </tr>
+            </thead>
+            <tbody id="shift-hist-tbody"></tbody>
+          </table>
+        </div>
+        <p id="shift-hist-empty" class="hidden text-center py-8 text-gray-400">Sin turnos en el período.</p>
+      </div>
+    </section>
+
     <!-- ============ CONTABILIDAD ============ -->
     <section id="tab-accounting" class="tab-content hidden">
       <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
@@ -1443,6 +1568,17 @@
   </div>
 </div>
 
+<!-- ============ MODAL DETALLE DE TURNO ============ -->
+<div id="shift-detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeShiftDetail()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto">
+    <button onclick="closeShiftDetail()" class="absolute top-3 right-3 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <div id="shift-detail-body"></div>
+  </div>
+</div>
+
 <!-- ============ MODAL DETALLE AUDITORÍA ============ -->
 <div id="audit-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
   <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeAuditModal()"></div>
@@ -1625,6 +1761,7 @@ let stores = [], users = [], products = [], inventory = [],
     sales = [], promos = [], auditLogs = [], settings = {},
     storeGoals = [], cashRegisters = [], expensesAll = [],
     transferRequestsAll = [];
+let shiftsAll = [];  // 🕒 todos los turnos (entradas/salidas)
 let paymentChannels = [];      // 🆕 cuentas/canales de pago
 let paymentPlatforms = [];     // 🆕 catálogo de bancos/plataformas
 let suppliers = [];            // 🆕 maestro de proveedores
@@ -1907,9 +2044,11 @@ async function loadAll() {
     }).then(v => {
       accountingSettings = {
         defaultTermsDays: Number(v.defaultTermsDays ?? 30),
-        defaultAlertDays: Number(v.defaultAlertDays ?? 5)
-      };
-    })
+        defaultAlertDays: Number(v.defaultAlertDays ?? 5)};}),
+    C.wrap('shifts_all', async () => {
+      const s = await getDocs(collection(db,'shifts'));
+      return s.docs.map(d => ({id:d.id,...d.data()}));
+    }).then(v => shiftsAll = v)
   ]);
 
   // Filtros para admin de tienda
@@ -1937,6 +2076,7 @@ async function loadAll() {
   populateArqueoFilters();
   populateReportFilters();
   renderReports();
+  renderShifts();
 
    // 🆕 Si la URL trae #transfers, abrir esa pestaña tras un pequeño delay
   // (para dar tiempo a que el onSnapshot traiga los datos)
@@ -2220,6 +2360,11 @@ function renderStores() {
           ${s.email?`<p>✉️ ${escapeHtml(s.email)}</p>`:''}
           <p>💵 Comisión pool: <b>${((s.commissionRate||0)*100).toFixed(1)}%</b></p>
           <p>🛡️ Margen arqueo: <b>${fmt(s.arqueoMargin||0)}</b></p>
+          <p>🌇 Hora de cierre: <b>${s.closeHour || '20:00'}</b>
+            ${s.alertCloseEnabled !== false
+              ? `<span class="text-green-600">· alertas ON (${s.alertCloseMinutesBefore ?? 30} min antes)</span>`
+              : `<span class="text-gray-400">· alertas OFF</span>`}
+          </p>
         </div>
         ${hasGoal ? `
           <div class="border-t pt-3 mb-3">
@@ -2304,6 +2449,46 @@ window.openStoreForm = (s = null) => {
       </div>
     </div>
 
+    <div class="border-t pt-3 mt-3 mb-3">
+      <p class="text-xs font-semibold text-sd mb-2">🌇 Cierre de caja y alertas</p>
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="text-xs font-semibold">Hora de cierre</label>
+          <input id="f-closeHour" type="time" value="${v.closeHour || '20:00'}" class="w-full px-3 py-2 border rounded">
+          <p class="text-[10px] text-gray-400 mt-1">Hora oficial del cierre diario</p>
+        </div>
+        <div>
+          <label class="text-xs font-semibold">Minutos antes para alertar</label>
+          <input id="f-alertCloseMinutesBefore" type="number" min="0" max="180" value="${v.alertCloseMinutesBefore ?? 30}" class="w-full px-3 py-2 border rounded">
+          <p class="text-[10px] text-gray-400 mt-1">Ej: 30 → aviso 30 min antes</p>
+        </div>
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 text-sm">
+            <input id="f-alertCloseEnabled" type="checkbox" ${v.alertCloseEnabled !== false ? 'checked' : ''} class="w-4 h-4">
+            <span>Alertas activas</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+        <div class="border-t pt-3 mt-3 mb-3">
+      <p class="text-xs font-semibold text-sd mb-2">⏱ Turnos y control de acceso</p>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="flex items-center gap-2 text-sm mb-2">
+            <input id="f-shiftEnabled" type="checkbox" ${v.shiftEnabled !== false ? 'checked' : ''} class="w-4 h-4">
+            <span>Activar control de turnos</span>
+          </label>
+          <p class="text-[10px] text-gray-400">Si está activo, los vendedores deben marcar entrada/salida.</p>
+        </div>
+        <div>
+          <label class="text-xs font-semibold">Duración máxima de turno (horas)</label>
+          <input id="f-shiftMaxHours" type="number" min="1" max="24" value="${v.shiftMaxHours ?? 12}" class="w-full px-3 py-2 border rounded">
+          <p class="text-[10px] text-gray-400 mt-1">Genera alerta si un turno supera este tiempo.</p>
+        </div>
+      </div>
+    </div>
+
     <label class="flex items-center gap-2 text-sm mb-3">
       <input id="f-active" type="checkbox" ${v.active !== false ? 'checked' : ''} class="w-4 h-4">
       Tienda activa
@@ -2345,6 +2530,11 @@ window.saveStore = async (existingId) => {
     arqueoMargin: Number($('f-arqueoMargin').value) || 0,
     goalAmount: Number($('f-goalAmount').value) || 0,
     bonusRate: (Number($('f-bonusRate').value) || 0) / 100,
+    shiftEnabled: $('f-shiftEnabled').checked,
+    shiftMaxHours: Number($('f-shiftMaxHours').value) || 12,
+    closeHour: $('f-closeHour').value || '20:00',
+    alertCloseMinutesBefore: Number($('f-alertCloseMinutesBefore').value) || 30,
+    alertCloseEnabled: $('f-alertCloseEnabled').checked,
     active: $('f-active').checked,
     updatedAt: serverTimestamp()
   };
@@ -2694,6 +2884,21 @@ function renderSellers() {
         u.role==='admin'?'bg-blue-100 text-blue-700':'bg-gray-100 text-gray-700'
       }">${u.role||'-'}</span></td>
       <td class="p-3">${escapeHtml(store?.name) || (u.role==='superadmin'?'Todas':'—')}</td>
+      <td class="p-3 text-center">
+        ${(() => {
+          const auth = (u.authorizedDevices || []).length;
+          const max = Number(u.maxDevices ?? 1);
+          const kioskBadge = u.kioskMode ? '<span class="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold ml-1">🔒 Kiosco</span>' : '';
+          const colorCls = auth >= max ? 'text-red-600 font-bold' : auth > 0 ? 'text-green-600 font-semibold' : 'text-gray-400';
+          return `
+            <div class="text-xs ${colorCls}">
+              ${auth} / ${max}
+            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">${auth === max ? 'límite alcanzado' : 'disponible'}</div>
+            ${kioskBadge}
+          `;
+        })()}
+      </td>
             <td class="p-3 text-center">
         <div class="text-xs font-semibold">${((u.commissionRate||0)*100).toFixed(1)}%</div>
         ${Number(u.goalAmount) > 0 ? (() => {
@@ -2771,6 +2976,32 @@ window.openSellerForm = (u = null) => {
         <p class="text-[10px] text-gray-400 mt-1">Solo sobre el excedente</p>
       </div>
     </div>
+
+        <div class="border-t pt-3 mt-3 mb-3">
+      <p class="text-xs font-semibold text-sd mb-2">🔒 Control de acceso y dispositivos</p>
+      <div class="grid grid-cols-3 gap-3 mb-2">
+        <div>
+          <label class="text-xs font-semibold">Máx. dispositivos</label>
+          <input id="f-maxDevices" type="number" min="1" max="10" value="${v.maxDevices ?? 1}" class="w-full px-3 py-2 border rounded">
+          <p class="text-[10px] text-gray-400 mt-1">Cantidad de equipos autorizados</p>
+        </div>
+        <div>
+          <label class="text-xs font-semibold">PIN acceso rápido (4 dígitos)</label>
+          <input id="f-pin" type="text" maxlength="4" inputmode="numeric" pattern="[0-9]*" value="${v.pin || ''}" placeholder="1234" class="w-full px-3 py-2 border rounded font-mono text-center tracking-widest">
+          <p class="text-[10px] text-gray-400 mt-1">Opcional. Para bloquear/desbloquear.</p>
+        </div>
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 text-sm">
+            <input id="f-kioskMode" type="checkbox" ${v.kioskMode ? 'checked' : ''} class="w-4 h-4">
+            <span>Modo kiosco</span>
+          </label>
+        </div>
+      </div>
+      <p class="text-[10px] text-gray-400">
+        💡 <b>Modo kiosco:</b> bloquea clic derecho, atajos de teclado y cierra sesión si el usuario sale de la pestaña. Ideal para tablets de tienda.
+      </p>
+    </div>
+
     <label class="flex items-center gap-2 text-sm mb-3">
       <input id="f-active" type="checkbox" ${v.active!==false?'checked':''} class="w-4 h-4"> Activo
     </label>
@@ -2792,6 +3023,9 @@ window.saveSeller = async (existingUid) => {
     commissionRate: (Number($('f-commission').value)||0)/100,
     goalAmount: Number($('f-goal').value)||0,
     bonusRate: (Number($('f-bonus').value)||0)/100,
+    maxDevices: Number($('f-maxDevices').value) || 1,
+    pin: $('f-pin').value.trim() || null,
+    kioskMode: $('f-kioskMode').checked,
     active: $('f-active').checked,
     updatedAt: serverTimestamp()
   };
@@ -9601,6 +9835,558 @@ function updateTransfersBadge() {
   }
 }
 
+/* ============================================================
+   TURNOS — Render y control
+   ============================================================ */
+
+function formatShiftDuration(ms) {
+  if (ms < 0) ms = 0;
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+function formatShiftDurationFromMinutes(min) {
+  if (!min || min < 0) return '—';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+function populateShiftFilters() {
+  const storeSel = $('shift-store-filter');
+  if (storeSel && !storeSel.dataset.loaded) {
+    storeSel.dataset.loaded = '1';
+    storeSel.innerHTML = '<option value="all">Todas</option>' +
+      stores.map(s => `<option value="${s.storeId}">${s.name}</option>`).join('');
+    storeSel.onchange = renderShifts;
+  }
+
+  const userSel = $('shift-user-filter');
+  if (userSel && !userSel.dataset.loaded) {
+    userSel.dataset.loaded = '1';
+    const map = new Map();
+    shiftsAll.forEach(s => {
+      if (s.userEmail && !map.has(s.userEmail)) {
+        map.set(s.userEmail, s.userName || s.userEmail);
+      }
+    });
+    users.forEach(u => {
+      if (u.email && !map.has(u.email)) map.set(u.email, u.name || u.email);
+    });
+    const list = Array.from(map.entries()).sort((a,b) => (a[1]||'').localeCompare(b[1]||''));
+    userSel.innerHTML = '<option value="all">Todos</option>' +
+      list.map(([email, name]) => `<option value="${escapeHtml(email)}">${escapeHtml(name)}</option>`).join('');
+    userSel.onchange = renderShifts;
+  }
+
+  ['shift-date-from','shift-date-to','shift-status-filter'].forEach(id => {
+    const el = $(id);
+    if (el && !el.dataset.loaded) {
+      el.dataset.loaded = '1';
+      el.addEventListener('change', renderShifts);
+      el.addEventListener('input', renderShifts);
+    }
+  });
+}
+
+function getFilteredShifts() {
+  let list = shiftsAll.slice();
+
+  const from = $('shift-date-from')?.value;
+  if (from) {
+    const fromTs = new Date(from + 'T00:00:00').getTime() / 1000;
+    list = list.filter(s => (s.startedAt?.seconds || 0) >= fromTs);
+  }
+
+  const to = $('shift-date-to')?.value;
+  if (to) {
+    const toTs = new Date(to + 'T23:59:59').getTime() / 1000;
+    list = list.filter(s => (s.startedAt?.seconds || 0) <= toTs);
+  }
+
+  const storeF = $('shift-store-filter')?.value || 'all';
+  if (storeF !== 'all') list = list.filter(s => s.storeId === storeF);
+
+  const userF = $('shift-user-filter')?.value || 'all';
+  if (userF !== 'all') list = list.filter(s => s.userEmail === userF);
+
+  const statusF = $('shift-status-filter')?.value || 'all';
+  if (statusF !== 'all') list = list.filter(s => s.status === statusF);
+
+  list.sort((a, b) => (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0));
+  return list;
+}
+
+window.setShiftRange = (range) => {
+  const now = new Date();
+  let from, to;
+  switch(range) {
+    case 'today': from = to = now; break;
+    case 'week': {
+      const day = now.getDay() || 7;
+      from = new Date(now); from.setDate(now.getDate() - day + 1);
+      to = now;
+      break;
+    }
+    case 'month': from = new Date(now.getFullYear(), now.getMonth(), 1); to = now; break;
+    case 'lastmonth':
+      from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      to = new Date(now.getFullYear(), now.getMonth(), 0);
+      break;
+    default: return;
+  }
+  const fmtD = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const fromEl = $('shift-date-from');
+  const toEl = $('shift-date-to');
+  if (fromEl) fromEl.value = fmtD(from);
+  if (toEl) toEl.value = fmtD(to);
+  renderShifts();
+};
+
+window.clearShiftFilters = () => {
+  const setVal = (id, val) => { const el = $(id); if (el) el.value = val; };
+  setVal('shift-date-from', '');
+  setVal('shift-date-to', '');
+  setVal('shift-store-filter', 'all');
+  setVal('shift-user-filter', 'all');
+  setVal('shift-status-filter', 'all');
+  renderShifts();
+};
+
+function renderShifts() {
+  populateShiftFilters();
+
+  const now = new Date();
+  const todayStrVal = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  // ===== KPIs =====
+  const activeShifts = shiftsAll.filter(s => s.status === 'open');
+  const todayShifts = shiftsAll.filter(s => {
+    const ts = s.startedAt?.seconds;
+    if (!ts) return false;
+    const d = new Date(ts * 1000);
+    return d.toDateString() === now.toDateString();
+  });
+  const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7);
+  const weekShifts = shiftsAll.filter(s => {
+    const ts = s.startedAt?.seconds;
+    if (!ts) return false;
+    return new Date(ts * 1000) >= weekAgo;
+  });
+  const closedShifts = shiftsAll.filter(s => s.status === 'closed' && s.durationMinutes > 0);
+  const avgDuration = closedShifts.length > 0
+    ? Math.round(closedShifts.reduce((sum, s) => sum + Number(s.durationMinutes || 0), 0) / closedShifts.length)
+    : 0;
+
+  const setTxt = (id, v) => { const el = $(id); if (el) el.innerText = v; };
+  setTxt('shift-kpi-active', activeShifts.length);
+  setTxt('shift-kpi-active-sub', activeShifts.length === 0 ? 'sin turno abierto' : `${activeShifts.length} usuario${activeShifts.length !== 1 ? 's' : ''} operando`);
+  setTxt('shift-kpi-today', todayShifts.length);
+  setTxt('shift-kpi-today-sub', 'iniciados hoy');
+  setTxt('shift-kpi-week', weekShifts.length);
+  setTxt('shift-kpi-week-sub', 'últimos 7 días');
+  setTxt('shift-kpi-avg', avgDuration > 0 ? formatShiftDurationFromMinutes(avgDuration) : '—');
+  setTxt('shift-kpi-avg-sub', `${closedShifts.length} turno${closedShifts.length !== 1 ? 's' : ''} cerrado${closedShifts.length !== 1 ? 's' : ''}`);
+
+  // ===== Turnos activos =====
+  const activeList = $('shift-active-list');
+  const activeEmpty = $('shift-active-empty');
+  const activeCount = $('shift-active-count');
+
+  if (activeCount) activeCount.innerText = `${activeShifts.length} turno${activeShifts.length !== 1 ? 's' : ''}`;
+
+  if (!activeShifts.length) {
+    activeList.innerHTML = '';
+    activeEmpty.classList.remove('hidden');
+  } else {
+    activeEmpty.classList.add('hidden');
+    activeList.innerHTML = activeShifts.map(s => {
+      const startMs = (s.startedAt?.seconds || 0) * 1000;
+      const elapsed = startMs ? Date.now() - startMs : 0;
+      const startTime = startMs ? new Date(startMs).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}) : '—';
+      const store = stores.find(st => st.storeId === s.storeId);
+      const maxHours = Number(store?.shiftMaxHours ?? 12);
+      const exceeded = elapsed > maxHours * 3600000;
+      const cardClass = exceeded ? 'bg-red-50 border-red-300' : 'bg-green-50 border-green-200';
+
+      return `
+        <div class="border rounded-lg p-3 ${cardClass} flex flex-wrap items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 text-xl">
+            ${exceeded ? '🔴' : '🟢'}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-sd text-sm truncate">${escapeHtml(s.userName || s.userEmail)}</p>
+            <p class="text-[10px] text-gray-500">
+              ${escapeHtml(store?.name || s.storeId)} · ${s.userRole || ''} · inicio ${startTime}
+            </p>
+            ${exceeded ? `<p class="text-[10px] text-red-600 font-bold mt-0.5">⚠️ Excede el máximo (${maxHours}h)</p>` : ''}
+          </div>
+          <div class="text-right">
+            <p class="text-lg font-bold ${exceeded ? 'text-red-600' : 'text-green-600'}">${formatShiftDuration(elapsed)}</p>
+            <p class="text-[10px] text-gray-400">en curso</p>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ===== Histórico =====
+  const list = getFilteredShifts();
+  const tbody = $('shift-hist-tbody');
+  const empty = $('shift-hist-empty');
+  const countEl = $('shift-hist-count');
+  if (countEl) countEl.innerText = `${list.length} turno${list.length !== 1 ? 's' : ''}`;
+
+  if (!list.length) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = list.slice(0, 500).map(s => {
+    const store = stores.find(st => st.storeId === s.storeId);
+    const startTime = s.startedAt?.seconds
+      ? new Date(s.startedAt.seconds * 1000).toLocaleString('es-CO', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
+      : '—';
+    const endTime = s.endedAt?.seconds
+      ? new Date(s.endedAt.seconds * 1000).toLocaleString('es-CO', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
+      : '—';
+    const isOpen = s.status === 'open';
+
+    let durationLabel = '—';
+    if (isOpen) {
+      const ms = (Date.now() - (s.startedAt?.seconds || 0) * 1000);
+      durationLabel = formatShiftDuration(ms);
+    } else if (s.durationMinutes) {
+      durationLabel = formatShiftDurationFromMinutes(s.durationMinutes);
+    }
+
+    const statusBadge = isOpen
+      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-green-100 text-green-700 font-semibold">🟢 Abierto</span>'
+      : '<span class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-semibold">✅ Cerrado</span>';
+
+    const notes = [s.startedNotes, s.endedNotes].filter(Boolean).join(' · ') || '—';
+
+    return `<tr class="border-b hover:bg-gray-50 ${isOpen ? 'bg-green-50/40' : ''}">
+      <td class="p-3 text-xs text-gray-600 whitespace-nowrap">${startTime}</td>
+      <td class="p-3 text-xs text-gray-600 whitespace-nowrap">${endTime}</td>
+      <td class="p-3 text-xs">
+        <p class="font-medium text-sd truncate max-w-[160px]">${escapeHtml(s.userName || s.userEmail)}</p>
+        <p class="text-[10px] text-gray-400 truncate max-w-[160px]">${escapeHtml(s.userEmail) || ''}</p>
+      </td>
+      <td class="p-3 text-xs">${escapeHtml(s.userRole || '—')}</td>
+      <td class="p-3 text-xs">${escapeHtml(store?.name || s.storeId)}</td>
+      <td class="p-3 text-center text-xs font-semibold">${durationLabel}</td>
+      <td class="p-3 text-center">${statusBadge}</td>
+      <td class="p-3 text-xs text-gray-500 max-w-xs truncate">${escapeHtml(notes)}</td>
+      <td class="p-3 text-right">
+        <button onclick='viewShift("${s.id}")' class="text-sl hover:underline text-xs">Ver</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   EXPORTAR TURNOS A EXCEL
+   ============================================================ */
+async function exportShiftsExcel() {
+  if (!window.ExcelJS) {
+    alert('⚠️ La librería de Excel no ha cargado. Espera unos segundos y vuelve a intentar.');
+    return;
+  }
+
+  const list = getFilteredShifts();
+  if (!list.length) {
+    alert('No hay turnos para exportar con los filtros actuales.');
+    return;
+  }
+
+  // ===== Filtros aplicados =====
+  const from = $('shift-date-from')?.value || 'todo';
+  const to = $('shift-date-to')?.value || 'hoy';
+  const storeF = $('shift-store-filter')?.value || 'all';
+  const userF = $('shift-user-filter')?.value || 'all';
+  const statusF = $('shift-status-filter')?.value || 'all';
+
+  // ===== Estadísticas =====
+  const total = list.length;
+  const open = list.filter(s => s.status === 'open').length;
+  const closed = list.filter(s => s.status === 'closed').length;
+  const totalDurationMin = list
+    .filter(s => s.status === 'closed' && s.durationMinutes > 0)
+    .reduce((sum, s) => sum + Number(s.durationMinutes || 0), 0);
+  const avgDuration = closed > 0 ? Math.round(totalDurationMin / closed) : 0;
+
+  // ===== Crear workbook =====
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Smartec';
+  wb.created = new Date();
+
+  // ============================================================
+  // HOJA 1: RESUMEN
+  // ============================================================
+  const wsR = wb.addWorksheet('Resumen', { properties: { defaultRowHeight: 18 } });
+
+  wsR.mergeCells('A1:B1');
+  const titleCell = wsR.getCell('A1');
+  titleCell.value = 'SMARTEC · Control de turnos';
+  titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A2A4A' } };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  wsR.getRow(1).height = 32;
+
+  const addMeta = (row, label, value) => {
+    wsR.getCell(`A${row}`).value = label;
+    wsR.getCell(`A${row}`).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+    wsR.getCell(`B${row}`).value = value;
+  };
+
+  addMeta(3, 'Generado', new Date().toLocaleString('es-CO'));
+  addMeta(4, 'Total turnos', total);
+  addMeta(5, 'Turnos abiertos', open);
+  addMeta(6, 'Turnos cerrados', closed);
+  addMeta(7, 'Duración promedio', formatShiftDurationFromMinutes(avgDuration));
+
+  wsR.mergeCells('A9:B9');
+  const filtrosTitle = wsR.getCell('A9');
+  filtrosTitle.value = 'FILTROS APLICADOS';
+  filtrosTitle.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  filtrosTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4A7A9A' } };
+  filtrosTitle.alignment = { horizontal: 'center' };
+
+  addMeta(10, 'Desde', from);
+  addMeta(11, 'Hasta', to);
+  addMeta(12, 'Tienda', storeF === 'all' ? 'Todas' : (stores.find(s => s.storeId === storeF)?.name || storeF));
+  addMeta(13, 'Usuario', userF === 'all' ? 'Todos' : userF);
+  addMeta(14, 'Estado', statusF === 'all' ? 'Todos' : (statusF === 'open' ? 'Abiertos' : 'Cerrados'));
+
+  wsR.getColumn(1).width = 24;
+  wsR.getColumn(2).width = 45;
+
+  // ============================================================
+  // HOJA 2: TURNOS
+  // ============================================================
+  const wsE = wb.addWorksheet('Turnos', { properties: { defaultRowHeight: 18 } });
+
+  const headers = [
+    { header: 'Inicio', width: 22 },
+    { header: 'Fin', width: 22 },
+    { header: 'Usuario', width: 24 },
+    { header: 'Email', width: 30 },
+    { header: 'Rol', width: 14 },
+    { header: 'Tienda', width: 22 },
+    { header: 'Duración', width: 14 },
+    { header: 'Estado', width: 12 },
+    { header: 'Notas inicio', width: 40 },
+    { header: 'Notas cierre', width: 40 }
+  ];
+
+  wsE.columns = headers.map(h => ({ width: h.width }));
+  const headerRow = wsE.addRow(headers.map(h => h.header));
+  headerRow.height = 26;
+  headerRow.eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A2A4A' } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF08344C' } },
+      bottom: { style: 'thin', color: { argb: 'FF08344C' } },
+      left: { style: 'thin', color: { argb: 'FF08344C' } },
+      right: { style: 'thin', color: { argb: 'FF08344C' } }
+    };
+  });
+
+  // Filas
+  list.forEach(s => {
+    const store = stores.find(st => st.storeId === s.storeId);
+    const startTime = s.startedAt?.seconds
+      ? new Date(s.startedAt.seconds * 1000).toLocaleString('es-CO', {day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'})
+      : '—';
+    const endTime = s.endedAt?.seconds
+      ? new Date(s.endedAt.seconds * 1000).toLocaleString('es-CO', {day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'})
+      : '—';
+
+    let durationLabel = '—';
+    if (s.status === 'open') {
+      durationLabel = formatShiftDuration(Date.now() - (s.startedAt?.seconds || 0) * 1000) + ' (en curso)';
+    } else if (s.durationMinutes) {
+      durationLabel = formatShiftDurationFromMinutes(s.durationMinutes);
+    }
+
+    const isOpen = s.status === 'open';
+    const row = wsE.addRow([
+      startTime,
+      endTime,
+      s.userName || '',
+      s.userEmail || '',
+      s.userRole || '',
+      store?.name || s.storeId || '',
+      durationLabel,
+      isOpen ? 'ABIERTO' : 'CERRADO',
+      s.startedNotes || '',
+      s.endedNotes || ''
+    ]);
+
+    row.eachCell((cell, colIdx) => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+      };
+      cell.alignment = { vertical: 'top', wrapText: colIdx >= 9 };
+    });
+
+    // Colorear estado
+    const statusCell = row.getCell(8);
+    statusCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    statusCell.font = { bold: true, color: { argb: isOpen ? 'FF166534' : 'FF6B7280' } };
+    statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isOpen ? 'FFDCFCE7' : 'FFF3F4F6' } };
+  });
+
+  // Congelar primera fila
+  wsE.views = [{ state: 'frozen', ySplit: 1 }];
+
+  // Auto-filtro
+  wsE.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: headers.length }
+  };
+
+  // ===== Descargar =====
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `smartec_turnos_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   DETALLE DE TURNO (modal con tarjeta visual)
+   ============================================================ */
+window.viewShift = (id) => {
+  const s = shiftsAll.find(x => x.id === id);
+  if (!s) return;
+
+  const store = stores.find(st => st.storeId === s.storeId);
+  const isOpen = s.status === 'open';
+
+  const formatTime = (ts) => {
+    if (!ts?.seconds) return '—';
+    return new Date(ts.seconds * 1000).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  };
+  const formatDateTime = (ts) => {
+    if (!ts?.seconds) return '—';
+    return new Date(ts.seconds * 1000).toLocaleString('es-CO', {
+      day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'
+    });
+  };
+
+  const startTime = formatTime(s.startedAt);
+  const endTime = isOpen ? 'En curso' : formatTime(s.endedAt);
+
+  let durationLabel = '—';
+  if (isOpen) {
+    durationLabel = formatShiftDuration(Date.now() - (s.startedAt?.seconds || 0) * 1000) + ' (en curso)';
+  } else if (s.durationMinutes) {
+    durationLabel = formatShiftDurationFromMinutes(s.durationMinutes);
+  }
+
+  const statusBadge = isOpen
+    ? '<span class="text-xs px-3 py-1 rounded-full bg-green-100 text-green-700 font-bold">🟢 TURNO ABIERTO</span>'
+    : '<span class="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-700 font-bold">✅ TURNO CERRADO</span>';
+
+  // Notas (con saltos de línea si hay varias)
+  const notesHtml = [];
+  if (s.startedNotes) notesHtml.push(`<div class="text-xs text-gray-600"><b>Entrada:</b> "${escapeHtml(s.startedNotes)}"</div>`);
+  if (s.endedNotes) notesHtml.push(`<div class="text-xs text-gray-600 mt-1"><b>Salida:</b> "${escapeHtml(s.endedNotes)}"</div>`);
+
+  $('shift-detail-body').innerHTML = `
+    <!-- Encabezado -->
+    <div class="text-center mb-5">
+      <div class="w-14 h-14 rounded-full ${isOpen ? 'bg-green-100' : 'bg-gray-100'} flex items-center justify-center mx-auto mb-3 text-2xl">
+        ${isOpen ? '🟢' : '✅'}
+      </div>
+      <p class="text-lg font-bold text-sd">${escapeHtml(s.userName || s.userEmail)}</p>
+      <p class="text-xs text-gray-500">${escapeHtml(s.userEmail) || ''}</p>
+      <div class="mt-3">${statusBadge}</div>
+    </div>
+
+    <!-- Info de contexto -->
+    <div class="bg-gray-50 rounded-lg p-3 mb-4 text-xs space-y-1">
+      <div class="flex justify-between"><span class="text-gray-500">Rol:</span><b>${escapeHtml(s.userRole || '—')}</b></div>
+      <div class="flex justify-between"><span class="text-gray-500">Tienda:</span><b>${escapeHtml(store?.name || s.storeId || '—')}</b></div>
+      <div class="flex justify-between"><span class="text-gray-500">Fecha:</span><b>${formatDateTime(s.startedAt)}</b></div>
+    </div>
+
+    <!-- Tarjeta de tiempo -->
+    <div class="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-5 mb-4">
+      <div class="flex items-center justify-between gap-3">
+        <!-- Hora entrada -->
+        <div class="text-center flex-1">
+          <p class="text-[10px] text-gray-500 uppercase font-semibold mb-1">🕐 Entrada</p>
+          <p class="text-xl font-bold text-sd">${startTime}</p>
+        </div>
+
+        <!-- Flecha / línea -->
+        <div class="flex-1 flex items-center justify-center">
+          <div class="w-full h-0.5 bg-gradient-to-r from-sl to-purple-400 relative">
+            <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-xs font-bold text-purple-600 whitespace-nowrap">
+              ${isOpen ? '⏳' : '➜'}
+            </span>
+          </div>
+        </div>
+
+        <!-- Hora salida -->
+        <div class="text-center flex-1">
+          <p class="text-[10px] text-gray-500 uppercase font-semibold mb-1">🕓 Salida</p>
+          <p class="text-xl font-bold ${isOpen ? 'text-green-600' : 'text-sd'}">${endTime}</p>
+        </div>
+      </div>
+
+      <!-- Duración -->
+      <div class="mt-4 pt-4 border-t border-purple-200 text-center">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold mb-1">⏱ Total trabajado</p>
+        <p class="text-2xl font-bold text-purple-700">${durationLabel}</p>
+      </div>
+    </div>
+
+    ${notesHtml.length ? `
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+        <p class="text-[10px] text-yellow-700 uppercase font-semibold mb-2">📝 Notas</p>
+        ${notesHtml.join('')}
+      </div>
+    ` : ''}
+  `;
+
+  const modal = $('shift-detail-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+window.closeShiftDetail = () => {
+  const modal = $('shift-detail-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+// ESC cierra el modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('shift-detail-modal')?.classList.contains('hidden')) {
+    closeShiftDetail();
+  }
+});
 
 window.exportAccountingPDF = () => {
   const { jsPDF } = window.jspdf;

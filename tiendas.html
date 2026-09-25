@@ -85,6 +85,40 @@
   </div>
 </div>
 
+<!-- ============ PANTALLA BLOQUEADA POR ARQUEO PENDIENTE ============ -->
+<div id="blocked-arqueo-screen" class="hidden min-h-screen flex items-center justify-center bg-gray-100 p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+      </svg>
+    </div>
+
+    <h2 class="text-xl font-bold text-sd text-center mb-2">🔴 Caja pendiente de cierre</h2>
+    <p class="text-sm text-gray-600 text-center mb-5">
+      No puedes abrir la caja de hoy porque <b>no realizaste el cierre de ayer</b>.
+      Debes cerrar la caja del día anterior antes de continuar.
+    </p>
+
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-5 text-sm">
+      <p class="text-red-700 font-semibold mb-2">📋 Detalles de la caja pendiente:</p>
+      <div id="blocked-arqueo-details" class="text-xs text-gray-700 space-y-1"></div>
+    </div>
+
+    <div class="space-y-2">
+      <button onclick="cerrarCajaAyerPendiente()" class="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 font-bold">
+        🌇 Cerrar caja de ayer
+      </button>
+      <button onclick="solicitarAutorizacionArqueo()" class="w-full bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">
+        🆘 Solicitar autorización al superadmin
+      </button>
+      <button onclick="logout()" class="w-full text-red-500 hover:text-red-700 py-2 text-xs">
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ PANEL PRINCIPAL (placeholder por ahora) ============ -->
 <div id="panel-screen" class="hidden min-h-screen">
   <header class="bg-sd text-white px-4 py-4 flex justify-between items-center shrink-0">
@@ -97,6 +131,11 @@
         <select id="store-selector" class="hidden mt-1 text-sm rounded-lg px-3 py-1.5 cursor-pointer focus:outline-none border border-white/30"></select>
       </div>
     </div>
+      <button id="shift-btn" onclick="toggleShift()" class="hidden lg:flex items-center gap-2 text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded transition font-semibold">
+        <span id="shift-btn-icon">🟢</span>
+        <span id="shift-btn-text">Marcar entrada</span>
+        <span id="shift-timer" class="hidden text-[10px] opacity-80 font-mono"></span>
+      </button>
         <div class="flex items-center gap-3 text-sm shrink-0">
       <span id="seller-info" class="hidden lg:inline opacity-80 text-xs"></span>
       <button onclick="forceRefreshStore()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition" title="Refrescar datos">
@@ -120,6 +159,9 @@
   </nav>
 
   <main class="container mx-auto p-4 md:p-6">
+
+    <!-- 🆕 Banner de alerta de cierre pendiente -->
+    <div id="close-alert-banner" class="hidden mb-4"></div>
 
     <!-- ============ DASHBOARD ============ -->
     <section id="tab-dashboard" class="tab-content">
@@ -709,6 +751,22 @@
   </div>
 </div>
 
+<!-- ============ MODAL MARCAR ENTRADA/SALIDA ============ -->
+<div id="shift-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeShiftModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto">
+    <button onclick="closeShiftModal()" class="absolute top-3 right-3 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <div class="text-center mb-5">
+      <div id="shift-modal-icon" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl">🟢</div>
+      <h3 id="shift-modal-title" class="text-xl font-bold text-sd">Marcar entrada</h3>
+      <p id="shift-modal-subtitle" class="text-sm text-gray-500 mt-1"></p>
+    </div>
+    <div id="shift-modal-body"></div>
+  </div>
+</div>
+
 <!-- ============ MODAL DE CIERRE DE CAJA ============ -->
 <div id="close-cash-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
   <div class="absolute inset-0 bg-black/80 pointer-events-auto"></div>
@@ -763,7 +821,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs, doc, getDoc,
-  query, where, addDoc, serverTimestamp
+  query, where, addDoc, updateDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
@@ -824,7 +882,7 @@ function showScreen(name) {
   // Renombrar el antiguo loading-screen → loading-store-screen
   if (name === 'loading-screen') name = 'loading-store-screen';
 
-  ['login-screen','loading-store-screen','blocked-screen','panel-screen'].forEach(id => {
+  ['login-screen','loading-store-screen','blocked-screen','blocked-arqueo-screen','panel-screen'].forEach(id => {
     const el = $(id);
     if (!el) return;
     if (id === name) {
@@ -834,6 +892,303 @@ function showScreen(name) {
       el.classList.add('hidden');
     }
   });
+}
+/* ============================================================
+   DETECCIÓN DE ARQUEO PENDIENTE
+============================================================ */
+
+/**
+ * Detecta si el cierre del día anterior quedó pendiente.
+ * Devuelve el objeto del arqueo de cierre pendiente, o null si todo OK.
+ */
+async function getPendingPreviousClose(storeId) {
+  const today = todayStr();
+  const yesterday = (() => {
+    const d = new Date(today + 'T12:00:00');
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
+
+  try {
+    const q = query(
+      collection(db, 'cashRegisters'),
+      where('storeId', '==', storeId),
+      where('type', '==', 'cierre')
+    );
+    const snap = await getDocs(q);
+    const closes = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+    // Buscar cierre de ayer aprobado
+    const closeYesterday = closes.find(c => c.dateStr === yesterday && c.status === 'approved');
+    if (closeYesterday) return null; // Todo OK, sí cerró ayer
+
+    // Si no cerró ayer, ver si hubo apertura ayer (para saber si hay algo pendiente)
+    const qAp = query(
+      collection(db, 'cashRegisters'),
+      where('storeId', '==', storeId),
+      where('type', '==', 'apertura')
+    );
+    const snapAp = await getDocs(qAp);
+    const aperturas = snapAp.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+    const openYesterday = aperturas.find(a => a.dateStr === yesterday && a.status === 'approved');
+
+    if (!openYesterday) {
+      // Nunca abrió ayer, no hay nada pendiente
+      return null;
+    }
+
+    // Hubo apertura ayer pero no cierre → pendiente
+    return {
+      type: 'pending_close',
+      dateStr: yesterday,
+      aperturaId: openYesterday.id,
+      apertura: openYesterday,
+      message: 'No se registró el cierre del día de ayer.'
+    };
+  } catch (e) {
+    console.warn('Error buscando arqueo pendiente:', e);
+    return null;
+  }
+}
+
+/**
+ * Muestra la pantalla de bloqueo por arqueo pendiente.
+ */
+function showBlockedArqueoScreen(pending) {
+  // Rellenar detalles
+  const detailsEl = $('blocked-arqueo-details');
+  if (detailsEl && pending) {
+    detailsEl.innerHTML = `
+      <div class="flex justify-between"><span>Fecha de apertura:</span><b>${pending.dateStr}</b></div>
+      <div class="flex justify-between"><span>Base de apertura:</span><b>${fmt(pending.apertura.actualAmount || 0)}</b></div>
+      <div class="flex justify-between"><span>Registrado por:</span><b>${escapeHtml(pending.apertura.adminEmail) || '—'}</b></div>
+      <div class="flex justify-between"><span>Estado:</span><span class="text-orange-600 font-bold">Pendiente de cierre</span></div>
+    `;
+  }
+  showScreen('blocked-arqueo-screen');
+}
+
+/**
+ * Intenta cerrar la caja de ayer pendiente.
+ * Redirige a la pestaña de caja para que el admin haga el cierre normal.
+ */
+window.cerrarCajaAyerPendiente = async () => {
+  if (!window.__pendingPreviousClose) return;
+  const pending = window.__pendingPreviousClose;
+
+  // Limpiar el flag para que el admin pueda entrar al panel
+  window.__pendingPreviousClose = null;
+
+  // Mostrar el panel y abrir la pestaña de caja
+  showScreen('panel-screen');
+
+  // Asegurarnos de que los datos estén cargados
+  await loadAllData();
+
+  // Abrir el modal de cierre de caja del día de ayer
+  // (nuestro modal de cierre ya usa `todayStr()` internamente, pero aquí lo llamamos
+  //  porque el admin tiene que ir a la pestaña de caja)
+  const tabCashBtn = document.querySelector('[data-tab="cash"]');
+  if (tabCashBtn) tabCashBtn.click();
+
+  // Abrir el modal de cierre con la fecha de ayer
+  setTimeout(() => {
+    openCloseCashModal(pending.dateStr);
+  }, 400);
+};
+
+/**
+ * Solicita autorización al superadmin para desbloquear la tienda sin cerrar.
+ */
+window.solicitarAutorizacionArqueo = async () => {
+  if (!window.__pendingPreviousClose) return;
+  const pending = window.__pendingPreviousClose;
+
+  const motivo = prompt(
+    'Explica por qué no puedes cerrar la caja del día anterior.\n\n' +
+    'Esta solicitud llegará al superadmin.'
+  );
+  if (!motivo || !motivo.trim()) return;
+
+  try {
+    await addDoc(collection(db, 'auditLog'), {
+      action: 'update',
+      collection: 'cashRegisters',
+      docId: pending.aperturaId || null,
+      note: `Solicitud de autorización para desbloquear tienda sin cerrar arqueo: ${motivo.trim()}`,
+      requestType: 'arqueo_unblock',
+      requestStatus: 'pending',
+      storeId: currentStore?.storeId || null,
+      storeName: currentStore?.name || null,
+      pendingDate: pending.dateStr,
+      requestedBy: currentUser?.uid || null,
+      requestedByEmail: currentUser?.email || null,
+      requestedByName: currentUserData?.name || currentUser?.email || null,
+      timestamp: serverTimestamp()
+    });
+
+    alert('✅ Solicitud enviada al superadmin. Te avisaremos cuando sea revisada.');
+  } catch (e) {
+    console.error(e);
+    alert('Error al enviar la solicitud: ' + e.message);
+  }
+};
+/* ============================================================
+   ALERTA PROGRAMADA DE CIERRE DE CAJA
+============================================================ */
+let closeAlertInterval = null;
+
+/**
+ * Detecta si estamos cerca de la hora de cierre y no se ha cerrado.
+ * Si aplica, muestra el banner.
+ */
+function checkCloseAlert() {
+  const banner = $('close-alert-banner');
+  if (!banner) return;
+
+  // Si no hay tienda o no está activa la alerta → ocultar
+  if (!currentStore) {
+    banner.classList.add('hidden');
+    return;
+  }
+  if (currentStore.alertCloseEnabled === false) {
+    banner.classList.add('hidden');
+    return;
+  }
+
+  const today = todayStr();
+  const todayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === today);
+  const todayClose = cashRegisters.find(a => a.type === 'cierre' && a.dateStr === today);
+
+  // Si ya cerró la caja hoy, no mostrar
+  if (todayClose) {
+    banner.classList.add('hidden');
+    return;
+  }
+
+  // Si no hay apertura hoy, no mostrar
+  if (!todayOpen) {
+    banner.classList.add('hidden');
+    return;
+  }
+
+    // Si el admin silenció la alerta hoy, no mostrar
+  if (isCloseAlertMutedToday()) {
+    banner.classList.add('hidden');
+    return;
+  }
+
+  // Calcular minutos hasta la hora de cierre
+  const closeHour = currentStore.closeHour || '20:00';
+  const minutesBefore = Number(currentStore.alertCloseMinutesBefore ?? 30);
+
+  const now = new Date();
+  const [ch, cm] = closeHour.split(':').map(Number);
+  const closeTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ch, cm, 0);
+
+  const diffMinutes = Math.round((closeTime - now) / 60000);
+
+  // Mostrar si ya pasó la hora de cierre, o si estamos dentro de los minutos antes
+  const shouldAlert = diffMinutes <= minutesBefore;
+
+  if (!shouldAlert) {
+    banner.classList.add('hidden');
+    return;
+  }
+
+  // Estilo según urgencia
+  let bgClass, icon, title, subtitle;
+  if (diffMinutes < 0) {
+    const overdue = Math.abs(diffMinutes);
+    bgClass = 'bg-red-50 border-red-500';
+    icon = '🔴';
+    title = `Cierre de caja retrasado ${overdue} min`;
+    subtitle = `La hora de cierre fue ${closeHour}. Debes cerrar la caja antes de terminar el día.`;
+  } else if (diffMinutes <= 10) {
+    bgClass = 'bg-orange-50 border-orange-500';
+    icon = '🟠';
+    title = `Cierre de caja en ${diffMinutes} min`;
+    subtitle = `Prepara el conteo. Hora de cierre: ${closeHour}.`;
+  } else {
+    bgClass = 'bg-amber-50 border-amber-500';
+    icon = '🟡';
+    title = `Cierre de caja en ${diffMinutes} min`;
+    subtitle = `Recuerda hacer el arqueo antes de las ${closeHour}.`;
+  }
+
+  banner.classList.remove('hidden');
+  banner.innerHTML = `
+    <div class="${bgClass} border-l-4 rounded-lg p-4 flex flex-wrap items-center gap-3">
+      <div class="text-3xl">${icon}</div>
+      <div class="flex-1 min-w-0">
+        <p class="font-bold text-sd text-sm">${title}</p>
+        <p class="text-xs text-gray-600">${subtitle}</p>
+      </div>
+      <div class="flex gap-2 shrink-0">
+        <button onclick="irACerrarCaja()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-xs font-semibold whitespace-nowrap">
+          🌇 Ir a cerrar caja
+        </button>
+        <button onclick="silenciarAlertaCierre()" class="text-gray-500 hover:text-gray-700 text-xs px-2" title="Silenciar por hoy">
+          🔕
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Inicia el chequeo periódico cada 60 segundos.
+ */
+function startCloseAlertChecker() {
+  if (closeAlertInterval) clearInterval(closeAlertInterval);
+  // Ejecutar inmediatamente
+  checkCloseAlert();
+  // Ejecutar cada 60s
+  closeAlertInterval = setInterval(checkCloseAlert, 60000);
+}
+
+/**
+ * Detiene el chequeo periódico.
+ */
+function stopCloseAlertChecker() {
+  if (closeAlertInterval) {
+    clearInterval(closeAlertInterval);
+    closeAlertInterval = null;
+  }
+}
+
+/**
+ * Ir a la pestaña de caja y abrir el modal de cierre.
+ */
+window.irACerrarCaja = () => {
+  const tabCashBtn = document.querySelector('[data-tab="cash"]');
+  if (tabCashBtn) tabCashBtn.click();
+  setTimeout(() => {
+    if (typeof openCloseCashModal === 'function') openCloseCashModal();
+  }, 200);
+};
+
+/**
+ * Silenciar la alerta por hoy (guarda en sessionStorage).
+ */
+window.silenciarAlertaCierre = () => {
+  const today = todayStr();
+  sessionStorage.setItem(`smartec_close_alert_muted_${today}`, '1');
+  $('close-alert-banner').classList.add('hidden');
+};
+
+/**
+ * Verifica si el admin silenció la alerta hoy.
+ * (Se llama antes de mostrar la alerta).
+ */
+function isCloseAlertMutedToday() {
+  const today = todayStr();
+  return sessionStorage.getItem(`smartec_close_alert_muted_${today}`) === '1';
 }
 
 /* ============ AUTENTICACIÓN ============ */
@@ -851,6 +1206,8 @@ $('login-btn').onclick = async () => {
 };
 
 window.logout = async () => {
+  stopCloseAlertChecker();
+  stopShiftTimer();
   await audit({ action:'logout', collection:'system', note:'Cierre de sesión panel tienda' });
   await signOut(auth);
   window.location.href = 'home.html';
@@ -960,6 +1317,18 @@ onAuthStateChanged(auth, async user => {
     // ========== VERIFICAR ARQUEO DEL DÍA ==========
     $('loading-detail').innerText = 'Verificando arqueo de caja...';
     await loadTodayCashRegisters();
+
+    // 🆕 Verificar si el cierre de AYER quedó pendiente
+    $('loading-detail').innerText = 'Verificando cierre pendiente del día anterior...';
+    const pendingPrevClose = await getPendingPreviousClose(currentStore.storeId);
+
+    if (pendingPrevClose) {
+      // Guardar globalmente para que las funciones de la pantalla lo usen
+      window.__pendingPreviousClose = pendingPrevClose;
+      $('loading-detail').innerText = '';
+      showBlockedArqueoScreen(pendingPrevClose);
+      return;
+    }
 
     const today = todayStr();
     todayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === today);
@@ -1314,6 +1683,13 @@ window.loadAllData = async () => {
     renderSalesTab();
     renderCashTab();
     showScreen('panel-screen');
+
+    // 🆕 Arrancar chequeo periódico de alerta de cierre
+    startCloseAlertChecker();
+
+    // 🕒 Cargar turno activo del usuario
+    await loadTodayShift();
+
   } catch(e) {
     console.error('Error cargando dashboard:', e);
     alert('Error: ' + e.message);
@@ -1957,13 +2333,19 @@ function renderCashHistory() {
 /* ========== MODAL DE CIERRE ========== */
 let expectedCashForClose = 0;
 
-window.openCloseCashModal = () => {
-  const today = todayStr();
-  const todayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === today);
-  const todayClose = cashRegisters.find(a => a.type === 'cierre' && a.dateStr === today);
+window.openCloseCashModal = (dateStr = null) => {
+  const targetDate = dateStr || todayStr();
+  const isPast = targetDate !== todayStr();
 
-  if (!todayOpen) {
-    alert('⚠️ No hay apertura registrada hoy. Debes abrir la caja primero.');
+  const dayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === targetDate);
+  const dayClose = cashRegisters.find(a => a.type === 'cierre' && a.dateStr === targetDate);
+
+  if (!dayOpen) {
+    alert(`⚠️ No hay apertura registrada para ${targetDate}.`);
+    return;
+  }
+  if (dayClose) {
+    alert(`Ya registraste el cierre de ${isPast ? 'ese día' : 'hoy'}.`);
     return;
   }
   if (todayClose) {
@@ -1971,19 +2353,21 @@ window.openCloseCashModal = () => {
     return;
   }
 
-  const now = new Date();
-  const todaySales = (dashboardData.sales || []).filter(s => {
+  const targetDateObj = new Date(targetDate + 'T12:00:00');
+  const daySales = (dashboardData.sales || []).filter(s => {
     if (!s.createdAt?.seconds) return false;
     const d = new Date(s.createdAt.seconds * 1000);
-    return d.toDateString() === now.toDateString() && s.status !== 'anulada';
+    return d.toDateString() === targetDateObj.toDateString() && s.status !== 'anulada';
   });
-  const todayCash = todaySales.filter(s => s.paymentMethod === 'efectivo')
+  const dayCash = daySales.filter(s => s.paymentMethod === 'efectivo')
     .reduce((sum, s) => sum + Number(s.total || 0), 0);
 
-  expectedCashForClose = Number(todayOpen.actualAmount || 0) + todayCash;
+  expectedCashForClose = Number(dayOpen.actualAmount || 0) + dayCash;
 
   const todayLabel = now.toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long' });
-  $('close-modal-subtitle').innerText = `${currentStore.name} · ${todayLabel}`;
+  const targetLabel = targetDateObj.toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long' });
+  const subtitlePrefix = isPast ? '⚠️ Cierre atrasado · ' : '';
+  $('close-modal-subtitle').innerText = `${subtitlePrefix}${currentStore.name} · ${targetLabel}`;
   $('close-expected').innerText = fmt(expectedCashForClose);
   $('close-expected-short').innerText = Math.round(expectedCashForClose).toLocaleString('es-CO');
 
@@ -2729,6 +3113,251 @@ window.forceRefreshStore = async () => {
   window.SmartecCache.clear();
   await loadAllData();
   alert('✅ Datos actualizados desde el servidor');
+};
+
+/* ============================================================
+   🕒 SISTEMA DE TURNOS (marcar entrada/salida) — Panel Tienda
+   ============================================================ */
+
+let currentShift = null;
+let shiftTimerInterval = null;
+
+function formatDuration(ms) {
+  if (ms < 0) ms = 0;
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+async function loadTodayShift() {
+  if (!currentUser || !currentStore) return;
+  try {
+    const q = query(
+      collection(db, 'shifts'),
+      where('userId', '==', currentUser.uid),
+      where('storeId', '==', currentStore.storeId),
+      where('status', '==', 'open')
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      currentShift = null;
+    } else {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0));
+      currentShift = list[0];
+    }
+    updateShiftButton();
+  } catch (e) {
+    console.warn('Error cargando turno:', e);
+  }
+}
+
+function updateShiftButton() {
+  const btn = $('shift-btn');
+  const icon = $('shift-btn-icon');
+  const text = $('shift-btn-text');
+  const timer = $('shift-timer');
+  if (!btn) return;
+
+  if (currentStore?.shiftEnabled === false) {
+    btn.classList.add('hidden');
+    stopShiftTimer();
+    return;
+  }
+
+  btn.classList.remove('hidden');
+
+  if (currentShift) {
+    if (icon) icon.innerText = '🔴';
+    if (text) text.innerText = 'Marcar salida';
+    btn.classList.remove('bg-white/10', 'hover:bg-white/20');
+    btn.classList.add('bg-red-500', 'hover:bg-red-600');
+    startShiftTimer();
+  } else {
+    if (icon) icon.innerText = '🟢';
+    if (text) text.innerText = 'Marcar entrada';
+    btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+    btn.classList.add('bg-white/10', 'hover:bg-white/20');
+    stopShiftTimer();
+    if (timer) timer.classList.add('hidden');
+  }
+}
+
+function startShiftTimer() {
+  stopShiftTimer();
+  const timer = $('shift-timer');
+  if (!timer || !currentShift) return;
+  timer.classList.remove('hidden');
+  const tick = () => {
+    const startMs = (currentShift.startedAt?.seconds || 0) * 1000;
+    if (!startMs) { timer.innerText = ''; return; }
+    timer.innerText = formatDuration(Date.now() - startMs);
+  };
+  tick();
+  shiftTimerInterval = setInterval(tick, 60000);
+}
+
+function stopShiftTimer() {
+  if (shiftTimerInterval) {
+    clearInterval(shiftTimerInterval);
+    shiftTimerInterval = null;
+  }
+}
+
+window.toggleShift = () => {
+  if (!currentStore) return;
+  if (currentStore.shiftEnabled === false) {
+    alert('⛔ El control de turnos no está activado en esta tienda.');
+    return;
+  }
+
+  const modal = $('shift-modal');
+  const icon = $('shift-modal-icon');
+  const title = $('shift-modal-title');
+  const subtitle = $('shift-modal-subtitle');
+  const body = $('shift-modal-body');
+  if (!modal) return;
+
+  if (currentShift) {
+    icon.innerText = '🔴';
+    icon.className = 'w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl bg-red-100';
+    title.innerText = 'Marcar salida';
+    subtitle.innerText = `${currentStore.name} · ${currentUser.email}`;
+
+    const startMs = (currentShift.startedAt?.seconds || 0) * 1000;
+    const elapsed = startMs ? formatDuration(Date.now() - startMs) : '—';
+    const startTime = startMs
+      ? new Date(startMs).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' })
+      : '—';
+
+    body.innerHTML = `
+      <div class="bg-gray-50 rounded-lg p-4 mb-4 text-sm space-y-1">
+        <div class="flex justify-between"><span class="text-gray-500">Inicio:</span><b>${startTime}</b></div>
+        <div class="flex justify-between"><span class="text-gray-500">Tiempo transcurrido:</span><b>${elapsed}</b></div>
+      </div>
+      <label class="text-xs font-semibold text-sd block mb-1">Nota (opcional)</label>
+      <textarea id="shift-notes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm mb-4" placeholder="Ej: Fin de jornada"></textarea>
+      <div class="flex gap-3">
+        <button onclick="closeShiftModal()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">Cancelar</button>
+        <button onclick="confirmCloseShift()" class="flex-1 bg-red-500 text-white py-2.5 rounded-lg hover:bg-red-600 font-semibold">🔴 Marcar salida</button>
+      </div>
+    `;
+  } else {
+    icon.innerText = '🟢';
+    icon.className = 'w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl bg-green-100';
+    title.innerText = 'Marcar entrada';
+    subtitle.innerText = `${currentStore.name} · ${currentUser.email}`;
+
+    const now = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+
+    body.innerHTML = `
+      <div class="bg-gray-50 rounded-lg p-4 mb-4 text-sm space-y-1">
+        <div class="flex justify-between"><span class="text-gray-500">Hora actual:</span><b>${now}</b></div>
+        <div class="flex justify-between"><span class="text-gray-500">Rol:</span><b>${currentUserData.role || 'admin'}</b></div>
+        <div class="flex justify-between"><span class="text-gray-500">Tienda:</span><b>${currentStore.name}</b></div>
+      </div>
+      <label class="text-xs font-semibold text-sd block mb-1">Nota (opcional)</label>
+      <textarea id="shift-notes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm mb-4" placeholder="Ej: Inicio de jornada"></textarea>
+      <div class="flex gap-3">
+        <button onclick="closeShiftModal()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">Cancelar</button>
+        <button onclick="confirmOpenShift()" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-semibold">🟢 Marcar entrada</button>
+      </div>
+    `;
+  }
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+window.closeShiftModal = () => {
+  const modal = $('shift-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+window.confirmOpenShift = async () => {
+  const notes = ($('shift-notes')?.value || '').trim();
+  if (currentShift) {
+    alert('⚠️ Ya tienes un turno abierto.');
+    return;
+  }
+
+  try {
+    const data = {
+      userId: currentUser.uid,
+      userEmail: currentUser.email,
+      userName: currentUserData.name || currentUser.email,
+      userRole: currentUserData.role || 'admin',
+      storeId: currentStore.storeId,
+      storeName: currentStore.name,
+      status: 'open',
+      startedAt: serverTimestamp(),
+      startedNotes: notes || null,
+      endedAt: null,
+      endedNotes: null,
+      durationMinutes: null
+    };
+
+    const ref = await addDoc(collection(db, 'shifts'), data);
+    currentShift = { id: ref.id, ...data };
+
+    await audit({
+      action: 'create',
+      collection: 'shifts',
+      docId: ref.id,
+      note: `Turno iniciado: ${currentStore.name} · ${currentUserData.name || currentUser.email}`
+    });
+
+    closeShiftModal();
+    updateShiftButton();
+    alert('🟢 Turno iniciado correctamente.');
+  } catch (e) {
+    console.error('Error abriendo turno:', e);
+    alert('Error: ' + e.message);
+  }
+};
+
+window.confirmCloseShift = async () => {
+  if (!currentShift) {
+    alert('⚠️ No hay turno abierto.');
+    return;
+  }
+
+  const notes = ($('shift-notes')?.value || '').trim();
+
+  try {
+    const startMs = (currentShift.startedAt?.seconds || 0) * 1000;
+    const durationMin = startMs ? Math.round((Date.now() - startMs) / 60000) : 0;
+
+    const updateData = {
+      status: 'closed',
+      endedAt: serverTimestamp(),
+      endedNotes: notes || null,
+      durationMinutes: durationMin
+    };
+
+    await updateDoc(doc(db, 'shifts', currentShift.id), updateData);
+
+    await audit({
+      action: 'update',
+      collection: 'shifts',
+      docId: currentShift.id,
+      before: { status: 'open' },
+      after: { status: 'closed', durationMinutes: durationMin },
+      note: `Turno cerrado: ${currentStore.name} · duración ${formatDuration(durationMin * 60000)}`
+    });
+
+    currentShift = null;
+    closeShiftModal();
+    updateShiftButton();
+    alert(`🔴 Turno cerrado. Duración: ${formatDuration(durationMin * 60000)}`);
+  } catch (e) {
+    console.error('Error cerrando turno:', e);
+    alert('Error: ' + e.message);
+  }
 };
 
 /* ESC cierra modales */
