@@ -8,7 +8,7 @@ admin.initializeApp();
  * Crea un usuario en Firebase Auth + guarda su perfil en Firestore.
  * Solo puede ser invocado por un superadmin autenticado.
  */
-exports.createUserAdmin = onCall(async (request) => {
+exports.createUserAdmin = onCall({ cors: true, region: 'us-central1' }, async (request) => {
   const { auth, data } = request;
 
   // 1. Verificar que hay usuario autenticado
@@ -127,3 +127,165 @@ exports.createUserAdmin = onCall(async (request) => {
     );
   }
 });
+
+/* ============================================================
+   verifyWebAuthnAssertion
+   Verifica criptográficamente una firma WebAuthn contra la
+   clave pública guardada en Firestore.
+============================================================ */
+const { verifyAuthenticationResponse } = require('@simplewebauthn/server');
+
+exports.verifyWebAuthnAssertion = onCall(
+  { cors: true, region: 'us-central1' },
+  async (request) => {
+    const { auth, data } = request;
+
+    // 1. Verificar autenticación
+    if (!auth) {
+      throw new HttpsError(
+        'unauthenticated',
+        'Debes iniciar sesión para verificar la huella.'
+      );
+    }
+
+    // 2. Validar datos de entrada
+    const {
+      credentialId,
+      authenticatorData,
+      clientDataJSON,
+      signature
+    } = data || {};
+
+    if (!credentialId || !authenticatorData || !clientDataJSON || !signature) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Faltan datos para verificar la firma.'
+      );
+    }
+
+    // 3. Cargar la credencial desde Firestore
+    let credDoc;
+    try {
+      credDoc = await admin.firestore()
+        .collection('webauthnCredentials')
+        .doc(credentialId)
+        .get();
+    } catch (e) {
+      console.error('Error leyendo credencial:', e);
+      throw new HttpsError('internal', 'Error al leer la credencial.');
+    }
+
+    if (!credDoc.exists) {
+      throw new HttpsError(
+        'not-found',
+        'Credencial no encontrada.'
+      );
+    }
+
+    const credData = credDoc.data();
+
+    // 4. Verificar que la credencial pertenece al usuario que llama
+    if (credData.userId !== auth.uid) {
+      throw new HttpsError(
+        'permission-denied',
+        'Esta credencial no te pertenece.'
+      );
+    }
+
+    // 5. Verificar que la credencial está activa
+    if (credData.active === false) {
+      throw new HttpsError(
+        'permission-denied',
+        'Esta credencial está desactivada.'
+      );
+    }
+
+    // 6. Verificar la firma con SimpleWebAuthn
+    const expectedOrigin = [
+      'https://smartec-tienda.github.io',
+      'http://localhost:5500',
+      'http://127.0.0.1:5500'
+    ];
+
+    const expectedRPID = 'smartec-tienda.github.io';
+
+    let verification;
+    try {
+      verification = await verifyAuthenticationResponse({
+        response: {
+          id: credentialId,
+          rawId: credentialId,
+          response: {
+            authenticatorData,
+            clientDataJSON,
+            signature,
+            userHandle: null
+          },
+          type: 'public-key',
+          clientExtensionResults: {}
+        },
+        expectedChallenge: (challenge) => typeof challenge === 'string',
+        expectedOrigin,
+        expectedRPID,
+        credential: {
+          id: credentialId,
+          publicKey: Buffer.from(credData.publicKey, 'base64url'),
+          counter: Number(credData.counter || 0),
+          transports: credData.transports || []
+        },
+        requireUserVerification: true
+      });
+    } catch (e) {
+      console.error('Verificación WebAuthn falló:', e);
+      throw new HttpsError(
+        'permission-denied',
+        'La firma de la huella no es válida: ' + e.message
+      );
+    }
+
+    if (!verification.verified) {
+      throw new HttpsError(
+        'permission-denied',
+        'La verificación de huella no pasó.'
+      );
+    }
+
+    // 7. Actualizar el contador anti-replay
+    try {
+      await admin.firestore()
+        .collection('webauthnCredentials')
+        .doc(credentialId)
+        .update({
+          counter: verification.authenticationInfo.newCounter,
+          lastUsedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (e) {
+      console.warn('No se pudo actualizar el contador:', e);
+    }
+
+    // 8. Auditoría
+    try {
+      await admin.firestore().collection('auditLog').add({
+        action: 'login',
+        collection: 'webauthnCredentials',
+        docId: credentialId,
+        userId: auth.uid,
+        userEmail: auth.token.email || null,
+        note: `Huella verificada correctamente`,
+        after: {
+          method: 'webauthn',
+          newCounter: verification.authenticationInfo.newCounter
+        },
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (e) {
+      console.warn('Auditoría falló:', e);
+    }
+
+    return {
+      success: true,
+      verified: true,
+      newCounter: verification.authenticationInfo.newCounter
+    };
+  }
+);

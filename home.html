@@ -250,6 +250,8 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, collection, getDo
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getFunctions, httpsCallable }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 
 /* ============ CONFIG ============ */
 const firebaseConfig = {
@@ -264,6 +266,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const functions = getFunctions(app, 'us-central1');
 
 /* ============ HELPERS ============ */
 const $ = id => document.getElementById(id);
@@ -656,9 +659,35 @@ async function submitFingerprintUnlock() {
  * TODO: cambiar a Cloud Function real.
  */
 async function verifyAssertionOnServer(assertion, challenge) {
-  console.log('[HOME] Assertion recibida (simulada):', assertion);
-  // TODO: llamar a Cloud Function 'verifyWebAuthnAssertion'
-  return true;
+  console.log('[HOME] Enviando assertion a Cloud Function...');
+
+  try {
+    const verifyFn = httpsCallable(functions, 'verifyWebAuthnAssertion');
+
+    const result = await verifyFn({
+      credentialId: assertion.credentialId,
+      authenticatorData: assertion.authenticatorData,
+      clientDataJSON: assertion.clientDataJSON,
+      signature: assertion.signature
+    });
+
+    console.log('[HOME] Respuesta CF:', result.data);
+
+    if (result.data && result.data.verified === true) {
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.error('[HOME] Error llamando CF:', e);
+    // Si la CF dice "permission-denied" → la firma no es válida
+    if (e.code === 'functions/permission-denied') {
+      throw new Error('La huella no es válida. Intenta de nuevo o usa PIN.');
+    }
+    if (e.code === 'functions/unauthenticated') {
+      throw new Error('Tu sesión expiró. Ingresa con correo y contraseña.');
+    }
+    throw new Error('Error verificando huella: ' + (e.message || 'desconocido'));
+  }
 }
 
 /**
