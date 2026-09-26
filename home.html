@@ -92,9 +92,6 @@
       <button id="db-request-btn" onclick="submitDeviceRequest()" class="w-full bg-sd text-white py-3 rounded-lg hover:bg-sl font-bold">
         🆘 Solicitar autorización al superadmin
       </button>
-      <button id="db-pin-btn" onclick="openPinModal('device_not_auth')" class="w-full bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">
-        🔓 Usar PIN de acceso
-      </button>
       <button onclick="logoutFromDeviceGuard()" class="w-full text-red-500 hover:text-red-700 py-2 text-xs">
         Cerrar sesión
       </button>
@@ -489,6 +486,8 @@ onAuthStateChanged(auth, async user => {
     db,
     doc,
     updateDoc,
+    addDoc,
+    collection,
     serverTimestamp,
     audit: auditFromGuard
   });

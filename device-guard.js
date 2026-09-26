@@ -130,16 +130,19 @@ window.SmartecDeviceGuard = (() => {
         return result;
       }
 
-      // 6. ¿Hay cupo? → Auto-registrar
-      if (devices.length < maxDevices) {
-        console.log('[DeviceGuard] Hay cupo, auto-registrando dispositivo');
+      // 6. ¿Auto-autorizar? (solo si deviceAutoApprove = true Y hay cupo)
+      const autoApprove = userData.deviceAutoApprove === true;
+
+      if (autoApprove && devices.length < maxDevices) {
+        console.log('[DeviceGuard] Hay cupo + autoApprove → auto-registrando');
         const newDevice = {
           fingerprint,
           label: deviceLabel,
           userAgent: navigator.userAgent,
           registeredAt: new Date().toISOString(),
           lastSeen: new Date().toISOString(),
-          registeredBy: user.email
+          registeredBy: user.email,
+          autoApproved: true
         };
 
         await ctx.updateDoc(ctx.doc(ctx.db, 'users', user.uid), {
@@ -152,7 +155,7 @@ window.SmartecDeviceGuard = (() => {
             collection: 'users',
             docId: user.uid,
             after: { device: newDevice },
-            note: `Dispositivo autorizado automáticamente: ${deviceLabel}`
+            note: `Dispositivo autorizado automáticamente (autoApprove=true): ${deviceLabel}`
           });
         }
 
@@ -162,10 +165,61 @@ window.SmartecDeviceGuard = (() => {
         return result;
       }
 
-      // 7. Sin cupo → bloqueado
-      console.log('[DeviceGuard] Sin cupo → bloqueado');
+      // 7. Requiere aprobación (autoApprove=false) o sin cupo → bloqueado
+      console.log('[DeviceGuard] Requiere aprobación. autoApprove:', autoApprove, '| Cupo:', devices.length, '/', maxDevices);
+
+      // Determinar motivo del bloqueo
+      const blockReason = !autoApprove ? 'autoApprove_disabled' : 'no_capacity';
+
+      // 🆕 Registrar intento en la colección deviceAttempts
+      if (ctx.addDoc) {
+        try {
+          await ctx.addDoc(ctx.collection(ctx.db, 'deviceAttempts'), {
+            userId: user.uid,
+            userEmail: user.email,
+            userName: userData.name || user.email,
+            userRole: userData.role,
+            storeId: userData.storeId || null,
+            deviceLabel: deviceLabel || 'Desconocido',
+            fingerprint: fingerprint || 'unknown',
+            userAgent: navigator.userAgent,
+            blockReason,
+            autoApprove,
+            currentCount: devices.length,
+            maxDevices,
+            timestamp: ctx.serverTimestamp ? ctx.serverTimestamp() : new Date()
+          });
+        } catch(e) {
+          console.warn('[DeviceGuard] No se pudo registrar el intento:', e);
+        }
+      }
+
+      // Auditoría general (para el log histórico)
+      if (ctx.audit) {
+        await ctx.audit({
+          action: 'login',
+          collection: 'users',
+          docId: user.uid,
+          note: `Intento de acceso desde dispositivo NO autorizado: ${deviceLabel} (${blockReason})`,
+          after: {
+            blockedDevice: {
+              fingerprint,
+              label: deviceLabel,
+              autoApprove,
+              currentDevices: devices.length,
+              maxDevices,
+              blockReason
+            }
+          }
+        });
+      }
+
       result.allowed = false;
       result.reason = 'limit_reached';
+      result.currentCount = devices.length;
+      result.maxDevices = maxDevices;
+      result.deviceLabel = deviceLabel;
+      result.fingerprint = fingerprint;
       return result;
 
     } catch (e) {

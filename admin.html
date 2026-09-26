@@ -1227,7 +1227,8 @@
           <select id="tr-filter-type" class="px-3 py-2 border rounded-lg text-sm">
             <option value="all">Todos los tipos</option>
             <option value="transfers">📦 Traslados</option>
-            <option value="devices">📱 Dispositivos</option>
+            <option value="devices">📱 Solicitudes de dispositivo</option>
+            <option value="attempts">⚠️ Intentos de acceso</option>
           </select>
           <select id="tr-filter-status" class="px-3 py-2 border rounded-lg text-sm">
             <option value="pendiente">Pendientes</option>
@@ -1784,6 +1785,7 @@ let accountingSettings = { defaultTermsDays: 30, defaultAlertDays: 5 }; // 🆕
 let currentAccView = 'summary'; // 🆕 vista actual de contabilidad
 let transferRequestsAll = [];   // 🆕 solicitudes de traslado (tiempo real)
 let deviceRequestsAll = [];     // 🆕 solicitudes de dispositivo (tiempo real)
+let deviceAttemptsAll = [];     // 🆕 intentos de acceso bloqueados (tiempo real)
 
 /* ============================================================
    HELPERS
@@ -2102,7 +2104,12 @@ async function loadAll() {
     C.wrap('deviceRequests_all', async () => {
       const s = await getDocs(collection(db,'deviceRequests'));
       return s.docs.map(d => ({id:d.id, ...d.data()}));
-    }).then(v => deviceRequestsAll = v)
+    }).then(v => deviceRequestsAll = v),
+
+    C.wrap('deviceAttempts_all', async () => {
+      const s = await getDocs(collection(db,'deviceAttempts'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    }).then(v => deviceAttemptsAll = v)
   ]);
 
   // Filtros para admin de tienda
@@ -3055,6 +3062,15 @@ window.openSellerForm = (u = null) => {
           </label>
         </div>
       </div>
+      <div class="grid grid-cols-2 gap-3 mt-2">
+        <div>
+          <label class="flex items-center gap-2 text-sm">
+            <input id="f-deviceAutoApprove" type="checkbox" ${v.deviceAutoApprove === true ? 'checked' : ''} class="w-4 h-4">
+            <span>Auto-autorizar dispositivos nuevos</span>
+          </label>
+          <p class="text-[10px] text-gray-400 mt-1">Si está activo, cuando el usuario entre desde un dispositivo nuevo y haya cupo, se autorizará solo. Si está apagado, requerirá aprobación del superadmin.</p>
+        </div>
+      </div>
           <!-- ============================================================ -->
     <!-- 🆕 DISPOSITIVOS AUTORIZADOS (solo visible al editar usuario) -->
     <!-- ============================================================ -->
@@ -3241,6 +3257,7 @@ window.saveSeller = async (existingUid) => {
     maxDevices: Number($('f-maxDevices').value) || 1,
     pin: $('f-pin').value.trim() || null,
     kioskMode: $('f-kioskMode')?.checked || false,
+    deviceAutoApprove: $('f-deviceAutoApprove')?.checked || false,
     active: $('f-active').checked
   };
   if (!data.name) return alert('El nombre es obligatorio');
@@ -3290,6 +3307,7 @@ window.saveSeller = async (existingUid) => {
         maxDevices: data.maxDevices,
         pin: data.pin,
         kioskMode: data.kioskMode,
+        deviceAutoApprove: data.deviceAutoApprove,
         active: data.active
       });
 
@@ -9269,10 +9287,12 @@ window.forceRefreshCache = async () => {
 let transfersBadgeUnsubscribe = null;
 
 let devicesBadgeUnsubscribe = null;
+let attemptsBadgeUnsubscribe = null;
 
 function startTransfersBadgeListener() {
   if (transfersBadgeUnsubscribe) transfersBadgeUnsubscribe();
   if (devicesBadgeUnsubscribe) devicesBadgeUnsubscribe();
+  if (attemptsBadgeUnsubscribe) attemptsBadgeUnsubscribe();
 
   // 1. Escuchar traslados
   const qT = query(collection(db,'transferRequests'));
@@ -9285,7 +9305,7 @@ function startTransfersBadgeListener() {
     }
   }, (err) => console.warn('Transfers listener error:', err));
 
-  // 2. Escuchar dispositivos
+  // 2. Escuchar solicitudes de dispositivo
   const qD = query(collection(db,'deviceRequests'));
   devicesBadgeUnsubscribe = onSnapshot(qD, (snap) => {
     deviceRequestsAll = snap.docs.map(d => ({id:d.id, ...d.data()}));
@@ -9295,11 +9315,23 @@ function startTransfersBadgeListener() {
       renderTransfers();
     }
   }, (err) => console.warn('Devices listener error:', err));
+
+  // 3. 🆕 Escuchar intentos de acceso bloqueados
+  const qA = query(collection(db,'deviceAttempts'));
+  attemptsBadgeUnsubscribe = onSnapshot(qA, (snap) => {
+    deviceAttemptsAll = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    updateTransfersBadge();
+    const tabTransfers = $('tab-transfers');
+    if (tabTransfers && !tabTransfers.classList.contains('hidden')) {
+      renderTransfers();
+    }
+  }, (err) => console.warn('Attempts listener error:', err));
 }
 
 window.addEventListener('beforeunload', () => {
   if (transfersBadgeUnsubscribe) transfersBadgeUnsubscribe();
   if (devicesBadgeUnsubscribe) devicesBadgeUnsubscribe();
+  if (attemptsBadgeUnsubscribe) attemptsBadgeUnsubscribe();
 });
 
 window.addEventListener('beforeunload', () => {
@@ -10115,7 +10147,9 @@ function updateTransfersBadge() {
   if (!badge) return;
   const pendingT = (transferRequestsAll || []).filter(r => r.status === 'pendiente').length;
   const pendingD = (deviceRequestsAll || []).filter(r => r.status === 'pendiente').length;
-  const total = pendingT + pendingD;
+  // 🆕 Los intentos cuentan solo si NO fueron marcados como resueltos
+  const pendingA = (deviceAttemptsAll || []).filter(r => r.status !== 'resuelto').length;
+  const total = pendingT + pendingD + pendingA;
   if (total > 0) {
     badge.classList.remove('hidden');
     badge.innerText = total > 99 ? '99+' : total;
@@ -11085,14 +11119,19 @@ window.renderTransfers = () => {
   const filterStatus = statusF?.value || 'pendiente';
   const filterType = typeF?.value || 'all';
 
-  // Recolectar solicitudes (traslados + dispositivos)
+  // Recolectar las 3 fuentes
   const transfersList = (transferRequestsAll || []).map(r => ({ ...r, _type: 'transfers' }));
   const devicesList = (deviceRequestsAll || []).map(r => ({ ...r, _type: 'devices' }));
-  const all = [...transfersList, ...devicesList];
+  const attemptsList = (deviceAttemptsAll || []).map(r => ({ ...r, _type: 'attempts' }));
 
-  // KPIs (siempre sobre TODAS las solicitudes, sin filtro)
+  // Los intentos usan "status" propio: pendiente por defecto si no tienen
+  attemptsList.forEach(a => { if (!a.status) a.status = 'pendiente'; });
+
+  const all = [...transfersList, ...devicesList, ...attemptsList];
+
+  // KPIs (sobre TODAS las solicitudes sin filtro)
   const pending = all.filter(r => r.status === 'pendiente').length;
-  const approved = all.filter(r => r.status === 'aprobada').length;
+  const approved = all.filter(r => r.status === 'aprobada' || r.status === 'resuelto').length;
   const rejected = all.filter(r => r.status === 'rechazada').length;
 
   $('tr-kpi-pending').innerText = pending;
@@ -11103,9 +11142,20 @@ window.renderTransfers = () => {
   // Aplicar filtros
   let list = all.slice();
   if (filterType !== 'all') list = list.filter(r => r._type === filterType);
-  if (filterStatus !== 'all') list = list.filter(r => r.status === filterStatus);
+  if (filterStatus !== 'all') {
+    // Normalizar "resuelto" como "aprobada" para el filtro
+    const fs = filterStatus;
+    list = list.filter(r => {
+      const st = (r._type === 'attempts' && r.status === 'resuelto') ? 'aprobada' : r.status;
+      return st === fs;
+    });
+  }
 
-  list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+  list.sort((a,b) => {
+    const tsA = a.createdAt?.seconds || a.timestamp?.seconds || 0;
+    const tsB = b.createdAt?.seconds || b.timestamp?.seconds || 0;
+    return tsB - tsA;
+  });
 
   const tb = $('transfers-tbody');
   const empty = $('transfers-empty');
@@ -11119,16 +11169,18 @@ window.renderTransfers = () => {
   empty.classList.add('hidden');
 
   tb.innerHTML = list.slice(0, 300).map(r => {
-    const statusCls = r.status === 'aprobada' ? 'bg-green-100 text-green-700' :
-                      r.status === 'rechazada' ? 'bg-red-100 text-red-700' :
+    const status = r.status || 'pendiente';
+    const statusCls = (status === 'aprobada' || status === 'resuelto') ? 'bg-green-100 text-green-700' :
+                      status === 'rechazada' ? 'bg-red-100 text-red-700' :
                       'bg-yellow-100 text-yellow-700';
-    const statusLbl = r.status === 'aprobada' ? 'Aprobada' :
-                      r.status === 'rechazada' ? 'Rechazada' : 'Pendiente';
+    const statusLbl = status === 'aprobada' ? 'Aprobada' :
+                      status === 'resuelto' ? 'Resuelto' :
+                      status === 'rechazada' ? 'Rechazada' : 'Pendiente';
 
+    // ===== TRASLADO =====
     if (r._type === 'transfers') {
-      // ===== FILA DE TRASLADO =====
       const variantLabel = [r.colorName, r.size].filter(Boolean).join(' · ') || 'Estándar';
-      return `<tr class="border-b hover:bg-gray-50 ${r.status === 'pendiente' ? 'bg-yellow-50/40' : ''}">
+      return `<tr class="border-b hover:bg-gray-50 ${status === 'pendiente' ? 'bg-yellow-50/40' : ''}">
         <td class="p-3 text-center text-xl">📦</td>
         <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${fmtDate(r.createdAt)}</td>
         <td class="p-3 text-xs">
@@ -11144,15 +11196,17 @@ window.renderTransfers = () => {
         </td>
         <td class="p-3 text-center"><span class="text-[10px] px-2 py-0.5 rounded ${statusCls}">${statusLbl}</span></td>
         <td class="p-3 text-right whitespace-nowrap">
-          ${r.status === 'pendiente' ? `
+          ${status === 'pendiente' ? `
             <button onclick='approveTransfer("${r.id}")' class="text-green-600 hover:underline text-xs font-semibold mr-2">✅ Aprobar</button>
             <button onclick='rejectTransfer("${r.id}")' class="text-red-500 hover:underline text-xs">⛔ Rechazar</button>
           ` : `<button onclick='viewTransfer("${r.id}")' class="text-sl hover:underline text-xs">Ver</button>`}
         </td>
       </tr>`;
-    } else {
-      // ===== FILA DE DISPOSITIVO =====
-      return `<tr class="border-b hover:bg-gray-50 ${r.status === 'pendiente' ? 'bg-blue-50/40' : ''}">
+    }
+
+    // ===== SOLICITUD DE DISPOSITIVO =====
+    if (r._type === 'devices') {
+      return `<tr class="border-b hover:bg-gray-50 ${status === 'pendiente' ? 'bg-blue-50/40' : ''}">
         <td class="p-3 text-center text-xl">📱</td>
         <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${fmtDate(r.createdAt)}</td>
         <td class="p-3 text-xs">
@@ -11167,13 +11221,46 @@ window.renderTransfers = () => {
         </td>
         <td class="p-3 text-center"><span class="text-[10px] px-2 py-0.5 rounded ${statusCls}">${statusLbl}</span></td>
         <td class="p-3 text-right whitespace-nowrap">
-          ${r.status === 'pendiente' ? `
+          ${status === 'pendiente' ? `
             <button onclick='approveDeviceRequest("${r.id}")' class="text-green-600 hover:underline text-xs font-semibold mr-2">✅ Aprobar</button>
             <button onclick='rejectDeviceRequest("${r.id}")' class="text-red-500 hover:underline text-xs">⛔ Rechazar</button>
           ` : `<button onclick='viewDeviceRequest("${r.id}")' class="text-sl hover:underline text-xs">Ver</button>`}
         </td>
       </tr>`;
     }
+
+    // ===== INTENTO DE ACCESO =====
+    if (r._type === 'attempts') {
+      const reasonLbl = r.blockReason === 'autoApprove_disabled'
+        ? 'Auto-aprobación desactivada'
+        : r.blockReason === 'no_capacity'
+          ? 'Sin cupo disponible'
+          : 'Bloqueado';
+      return `<tr class="border-b hover:bg-gray-50 ${status === 'pendiente' ? 'bg-amber-50/40' : ''}">
+        <td class="p-3 text-center text-xl">⚠️</td>
+        <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${fmtDate(r.timestamp)}</td>
+        <td class="p-3 text-xs">
+          <p class="font-semibold text-sd">${escapeHtml(r.deviceLabel) || 'Dispositivo desconocido'}</p>
+          <p class="text-[10px] text-gray-400 font-mono">${escapeHtml((r.fingerprint||'').slice(0,16))}…</p>
+          <p class="text-[10px] text-amber-700 mt-0.5">⚠️ ${reasonLbl}</p>
+        </td>
+        <td class="p-3 text-xs">—</td>
+        <td class="p-3 text-xs">
+          <p>${escapeHtml(r.userName) || escapeHtml(r.userEmail) || '-'}</p>
+          <p class="text-[10px] text-gray-400">${escapeHtml(r.userEmail) || ''}</p>
+          <p class="text-[10px] text-gray-400">${r.currentCount || 0} / ${r.maxDevices || 0} dispositivos</p>
+        </td>
+        <td class="p-3 text-center"><span class="text-[10px] px-2 py-0.5 rounded ${statusCls}">${statusLbl}</span></td>
+        <td class="p-3 text-right whitespace-nowrap">
+          ${status === 'pendiente' ? `
+            <button onclick='resolveDeviceAttempt("${r.id}")' class="text-green-600 hover:underline text-xs font-semibold mr-2">✅ Marcar visto</button>
+            <button onclick='viewDeviceAttempt("${r.id}")' class="text-sl hover:underline text-xs">Ver</button>
+          ` : `<button onclick='viewDeviceAttempt("${r.id}")' class="text-sl hover:underline text-xs">Ver</button>`}
+        </td>
+      </tr>`;
+    }
+
+    return '';
   }).join('');
 };
 
@@ -11475,6 +11562,78 @@ window.viewDeviceRequest = (id) => {
     `Fecha: ${r.createdAt ? new Date(r.createdAt.seconds * 1000).toLocaleString('es-CO') : '—'}` +
     (r.rejectionReason ? `\n\nMotivo del rechazo: ${r.rejectionReason}` : '')
   );
+};
+
+/* ============================================================
+   🆕 INTENTOS DE ACCESO — Ver y marcar como visto
+============================================================ */
+window.viewDeviceAttempt = (id) => {
+  const r = (deviceAttemptsAll || []).find(x => x.id === id);
+  if (!r) return;
+
+  const fecha = r.timestamp?.seconds
+    ? new Date(r.timestamp.seconds * 1000).toLocaleString('es-CO')
+    : (r.timestamp ? new Date(r.timestamp).toLocaleString('es-CO') : '—');
+
+  const reasonLbl = r.blockReason === 'autoApprove_disabled'
+    ? 'El usuario no tiene auto-aprobación activada. Todos los dispositivos nuevos requieren aprobación.'
+    : r.blockReason === 'no_capacity'
+      ? 'El usuario ya alcanzó su límite de dispositivos autorizados.'
+      : 'Bloqueado por política de seguridad.';
+
+  const statusLbl = r.status === 'resuelto' ? 'Resuelto' : 'Pendiente';
+
+  alert(
+    `⚠️ Intento de acceso bloqueado\n\n` +
+    `Usuario: ${r.userName || r.userEmail}\n` +
+    `Email: ${r.userEmail || '—'}\n` +
+    `Rol: ${r.userRole || '—'}\n` +
+    `Tienda: ${r.storeId || '—'}\n\n` +
+    `Dispositivo: ${r.deviceLabel || 'Desconocido'}\n` +
+    `Fingerprint: ${r.fingerprint || '—'}\n\n` +
+    `Motivo del bloqueo: ${reasonLbl}\n` +
+    `Dispositivos actuales: ${r.currentCount || 0} / ${r.maxDevices || 0}\n\n` +
+    `Fecha del intento: ${fecha}\n` +
+    `Estado: ${statusLbl}\n\n` +
+    `User Agent: ${r.userAgent || '—'}`
+  );
+};
+
+window.resolveDeviceAttempt = async (id) => {
+  const r = (deviceAttemptsAll || []).find(x => x.id === id);
+  if (!r) return;
+
+  if (!confirm(
+    `¿Marcar este intento como "visto"?\n\n` +
+    `Usuario: ${r.userName || r.userEmail}\n` +
+    `Dispositivo: ${r.deviceLabel || 'Desconocido'}\n\n` +
+    `No autorizará el dispositivo, solo lo quita de la lista de pendientes.`
+  )) return;
+
+  try {
+    await updateDoc(doc(db, 'deviceAttempts', id), {
+      status: 'resuelto',
+      resolvedBy: currentUser.uid,
+      resolvedByEmail: currentUser.email,
+      resolvedAt: serverTimestamp()
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'deviceAttempts',
+      docId: id,
+      before: { status: 'pendiente' },
+      after: { status: 'resuelto' },
+      note: `Intento de acceso marcado como visto: ${r.userName || r.userEmail} · ${r.deviceLabel || 'Dispositivo'}`
+    });
+
+    window.SmartecCache.invalidate('deviceAttempts_all');
+    alert('✅ Intento marcado como visto.');
+    renderTransfers();
+  } catch (e) {
+    console.error('Error resolviendo intento:', e);
+    alert('Error: ' + e.message);
+  }
 };
 
 window.viewTransfer = (id) => {
