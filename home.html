@@ -9,6 +9,7 @@
 <script src="cache.js"></script>
 <script src="fingerprint.js"></script>
 <script src="device-guard.js"></script>
+<script src="webauthn.js"></script>
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
@@ -134,6 +135,72 @@
   </div>
 </div>
 
+<!-- ============ MODAL: REGISTRAR HUELLA ============ -->
+<div id="register-fingerprint-modal" class="fixed inset-0 z-[120] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/80 pointer-events-auto"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto">
+    <div class="text-center mb-5">
+      <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-sd">Registrar huella</h3>
+      <p class="text-xs text-gray-500 mt-1">Vas a registrar tu huella en este dispositivo. Solo tú podrás usarla para ingresar.</p>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-700">
+      <p class="font-semibold mb-1">📌 ¿Por qué es obligatorio?</p>
+      <p>Para garantizar que solo tú puedes acceder con tu cuenta. Cada dispositivo debe tener tu huella registrada.</p>
+    </div>
+
+    <label class="text-xs font-semibold text-sd">Motivo del registro (obligatorio)</label>
+    <textarea id="register-reason" rows="2" placeholder="Ej: Es mi celular personal / Es la tablet del local 1"
+      class="w-full px-3 py-2 border rounded-lg mt-1 mb-3 text-sm"></textarea>
+
+    <p id="register-msg" class="text-xs mb-3 hidden"></p>
+
+    <div class="flex gap-3">
+      <button onclick="cancelRegisterFingerprint()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">Cancelar</button>
+      <button id="register-confirm-btn" onclick="submitRegisterFingerprint()" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold text-sm">Registrar huella</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: DESBLOQUEAR CON HUELLA ============ -->
+<div id="unlock-fingerprint-modal" class="fixed inset-0 z-[120] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/80 pointer-events-auto"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto">
+    <div class="text-center mb-5">
+      <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+        <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-sd">Ingresar con huella</h3>
+      <p id="unlock-user-label" class="text-xs text-gray-500 mt-1">Hola</p>
+    </div>
+
+    <div class="bg-gray-50 rounded-lg p-3 mb-4 text-xs text-gray-600 text-center">
+      <p>Presiona el botón para verificar tu identidad con huella o rostro.</p>
+    </div>
+
+    <p id="unlock-msg" class="text-xs mb-3 hidden"></p>
+
+    <div class="space-y-2">
+      <button id="unlock-confirm-btn" onclick="submitFingerprintUnlock()" class="w-full bg-sd text-white py-3 rounded-lg hover:bg-sl font-semibold">
+        🔐 Verificar huella
+      </button>
+      <button onclick="switchToPinFromUnlock()" class="w-full bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">
+        🔓 Usar PIN en su lugar
+      </button>
+      <button onclick="switchToPasswordFromUnlock()" class="w-full text-red-500 hover:text-red-700 py-2 text-xs">
+        Usar correo y contraseña
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ HOME ============ -->
 <div id="home-screen" class="hidden min-h-screen flex flex-col">
 
@@ -200,6 +267,20 @@ const ROLE_LABELS = {
   admin: 'Administrador de tienda',
   vendedor: 'Vendedor'
 };
+
+
+/* ============ WEBAUTHN CONFIG ============ */
+const WEBAUTHN_RP_ID = 'smartec-tienda.github.io';
+const WEBAUTHN_RP_NAME = 'Smartec';
+
+/* Estado del flujo de huella */
+let _pendingRegister = null;      // Datos para registrar huella tras login
+let _pendingUnlockUser = null;    // Usuario detectado en el dispositivo
+
+/* ============ ESTADO GLOBAL PARA EL GUARD ============ */
+let _deviceGuardUser = null;
+let _deviceGuardUserData = null;
+
 
 /* ============ DEFINICIÓN DE MÓDULOS ============ */
 const MODULES = [
@@ -315,6 +396,559 @@ const MODULES = [
   }
 ];
 
+/* ============================================================
+   UTILIDADES DE FLUJO — "primera vez del día" + biometría
+============================================================ */
+
+/**
+ * Fecha de hoy en formato YYYY-MM-DD (hora local).
+ */
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/**
+ * Clave de localStorage por usuario + dispositivo + día.
+ * Sirve para saber si ya se hizo login completo hoy en este equipo.
+ */
+function loginKey(uid, fingerprint) {
+  return `smartec_day_${todayStr()}_${uid}_${(fingerprint || '').slice(0, 16)}`;
+}
+
+/**
+ * ¿Este (usuario + dispositivo) ya hizo login hoy?
+ */
+function alreadyLoggedToday(uid, fingerprint) {
+  try {
+    return localStorage.getItem(loginKey(uid, fingerprint)) === '1';
+  } catch (e) { return false; }
+}
+
+/**
+ * Marca que este (usuario + dispositivo) ya hizo login hoy.
+ */
+function markLoggedToday(uid, fingerprint) {
+  try {
+    localStorage.setItem(loginKey(uid, fingerprint), '1');
+  } catch (e) {}
+}
+
+/**
+ * Devuelve la lista de usuarios que ya hicieron login hoy en este dispositivo.
+ * Se usa para mostrar el modal de "Ingresar con huella" sin pedir email.
+ * Formato: [{ uid, email, name, fingerprint }]
+ */
+function getLoggedUsersToday() {
+  const list = [];
+  try {
+    const prefix = `smartec_day_${todayStr()}_`;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(prefix)) {
+        // Formato: smartec_day_2026-09-26_<uid>_<fingerprint16>
+        const rest = key.slice(prefix.length);
+        const parts = rest.split('_');
+        if (parts.length >= 2) {
+          const uid = parts[0];
+          const fp16 = parts.slice(1).join('_');
+          const meta = localStorage.getItem(`smartec_day_meta_${uid}_${fp16}`);
+          if (meta) {
+            try {
+              const parsed = JSON.parse(meta);
+              list.push({ uid, fingerprint: fp16, ...parsed });
+            } catch (e) {}
+          } else {
+            list.push({ uid, fingerprint: fp16, email: '', name: '' });
+          }
+        }
+      }
+    }
+  } catch (e) {}
+  return list;
+}
+
+/**
+ * Guarda metadatos (email, name) del usuario que logró login hoy,
+ * para poder mostrar su nombre en la pantalla de "Ingresar con huella".
+ */
+function saveLoggedUserMeta(uid, fingerprint, email, name) {
+  try {
+    localStorage.setItem(
+      `smartec_day_meta_${uid}_${(fingerprint || '').slice(0, 16)}`,
+      JSON.stringify({ email, name, ts: Date.now() })
+    );
+  } catch (e) {}
+}
+
+/**
+ * Detecta si este dispositivo soporta biometría (huella/rostro) o PIN del sistema.
+ */
+async function hasPlatformAuthenticator() {
+  if (!window.SmartecWebAuthn) return false;
+  return await window.SmartecWebAuthn.isPlatformAuthenticatorAvailable();
+}
+/* ============================================================
+   FLUJO DE HUELLA / PIN — Funciones principales
+============================================================ */
+
+/**
+ * Muestra el modal de "Ingresar con huella" cuando hay usuarios logueados hoy.
+ * Si hay más de uno, muestra un selector.
+ */
+function showUnlockPicker(loggedUsers) {
+  if (!loggedUsers || !loggedUsers.length) {
+    $('login-screen').classList.remove('hidden');
+    return;
+  }
+
+  // Si hay un solo usuario → directo al modal de unlock
+  if (loggedUsers.length === 1) {
+    const u = loggedUsers[0];
+    _pendingUnlockUser = {
+      uid: u.uid,
+      email: u.email,
+      name: u.name || u.email,
+      fingerprint: u.fingerprint,
+      userData: null
+    };
+    openUnlockModal();
+    return;
+  }
+
+  // Varios usuarios → mostrar selector
+  // Simplificamos: mostramos el login normal (por ahora)
+  // TODO: en el futuro, mostrar un selector visual
+  $('login-screen').classList.remove('hidden');
+}
+
+/**
+ * Abre el modal de "Ingresar con huella".
+ */
+async function openUnlockModal() {
+  if (!_pendingUnlockUser) return;
+
+  const label = $('unlock-user-label');
+  if (label) label.innerText = `Hola, ${_pendingUnlockUser.name}`;
+
+  // Limpiar mensajes
+  const msg = $('unlock-msg');
+  if (msg) { msg.classList.add('hidden'); msg.innerText = ''; }
+
+  const btn = $('unlock-confirm-btn');
+  if (btn) { btn.disabled = false; btn.innerText = '🔐 Verificar huella'; }
+
+  const modal = $('unlock-fingerprint-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+/**
+ * Cierra el modal de unlock.
+ */
+function closeUnlockModal() {
+  const modal = $('unlock-fingerprint-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+/**
+ * Envía la verificación de huella (WebAuthn get).
+ */
+async function submitFingerprintUnlock() {
+  if (!_pendingUnlockUser) return;
+
+  const msg = $('unlock-msg');
+  const btn = $('unlock-confirm-btn');
+
+  msg.classList.add('hidden');
+  msg.innerText = '';
+
+  btn.disabled = true;
+  btn.innerText = '⏳ Verificando...';
+
+  try {
+    // 1. Cargar credenciales del usuario desde Firestore
+    const credSnap = await getDocs(query(
+      collection(db, 'webauthnCredentials'),
+      where('userId', '==', _pendingUnlockUser.uid),
+      where('active', '==', true)
+    ));
+
+    if (credSnap.empty) {
+      throw new Error('No hay huellas registradas para este usuario. Usa PIN o correo y contraseña.');
+    }
+
+    const allowCredentials = credSnap.docs.map(d => d.id);
+
+    // 2. Generar challenge y pedir assertion
+    const challenge = window.SmartecWebAuthn.generateChallenge();
+
+    let assertion;
+    try {
+      assertion = await window.SmartecWebAuthn.getAssertion({
+        rpId: WEBAUTHN_RP_ID,
+        challenge,
+        allowCredentials
+      });
+    } catch (e) {
+      if (window.SmartecWebAuthn.isUserCancelled(e)) {
+        // Usuario canceló → ofrecer PIN
+        msg.innerText = '⚠️ Verificación cancelada. Puedes intentar de nuevo o usar PIN.';
+        msg.className = 'text-xs mb-3 text-amber-600 font-semibold';
+        msg.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerText = '🔐 Verificar huella';
+        return;
+      }
+      throw e;
+    }
+
+    // 3. Enviar a Cloud Function para verificar
+    // Por ahora, simulamos (implementaremos la CF en el siguiente paso)
+    const verifyOk = await verifyAssertionOnServer(assertion, challenge);
+
+    if (!verifyOk) {
+      throw new Error('La verificación de huella no pasó.');
+    }
+
+    // 4. Actualizar lastUsedAt de la credencial
+    try {
+      await updateDoc(doc(db, 'webauthnCredentials', assertion.credentialId), {
+        lastUsedAt: serverTimestamp()
+      });
+    } catch (e) { console.warn('No se pudo actualizar lastUsedAt:', e); }
+
+    // 5. Huella OK → verificar que Firebase Auth tenga sesión
+    if (!auth.currentUser || auth.currentUser.uid !== _pendingUnlockUser.uid) {
+      // No hay sesión activa en Firebase Auth → forzar login con contraseña
+      throw new Error('Tu sesión expiró. Ingresa con correo y contraseña.');
+    }
+
+    // 6. Continuar con el flujo normal (device-guard + entrar)
+    closeUnlockModal();
+    await enterHomeAfterFullFlow(
+      auth.currentUser,
+      _pendingUnlockUser.userData || (await getDoc(doc(db, 'users', _pendingUnlockUser.uid))).data(),
+      _pendingUnlockUser.fingerprint
+    );
+
+  } catch (e) {
+    console.error('[HOME] Error verificando huella:', e);
+    msg.innerText = '❌ ' + e.message;
+    msg.className = 'text-xs mb-3 text-red-600 font-semibold';
+    msg.classList.remove('hidden');
+    btn.disabled = false;
+    btn.innerText = '🔐 Verificar huella';
+  }
+}
+
+/**
+ * Placeholder para la verificación en servidor.
+ * Por ahora devuelve true (simulación).
+ * TODO: cambiar a Cloud Function real.
+ */
+async function verifyAssertionOnServer(assertion, challenge) {
+  console.log('[HOME] Assertion recibida (simulada):', assertion);
+  // TODO: llamar a Cloud Function 'verifyWebAuthnAssertion'
+  return true;
+}
+
+/**
+ * Cambiar a PIN cuando la huella falla/cancela.
+ */
+function switchToPinFromUnlock() {
+  if (!_pendingUnlockUser) return;
+  closeUnlockModal();
+  openPinModalForUser(_pendingUnlockUser, 'fingerprint_failed');
+}
+
+/**
+ * Cambiar a login con correo/contraseña.
+ */
+function switchToPasswordFromUnlock() {
+  closeUnlockModal();
+  _pendingUnlockUser = null;
+  $('login-screen').classList.remove('hidden');
+}
+
+/**
+ * Abre el modal de PIN para un usuario específico.
+ * @param {Object} userCtx - { uid, email, name, fingerprint, userData }
+ * @param {string} origin - 'fingerprint_failed' | 'first_time' | 'device_not_auth'
+ */
+async function openPinModalForUser(userCtx, origin) {
+  // Guardar referencia
+  _deviceGuardUser = { uid: userCtx.uid, email: userCtx.email };
+  _deviceGuardUserData = userCtx.userData || null;
+
+  // Si no tenemos userData, cargarlo
+  if (!_deviceGuardUserData) {
+    try {
+      const snap = await getDoc(doc(db, 'users', userCtx.uid));
+      _deviceGuardUserData = snap.exists() ? snap.data() : null;
+    } catch (e) {
+      _deviceGuardUserData = null;
+    }
+  }
+
+  // Configurar el modal de PIN existente
+  window.__pinOrigin = origin;
+  window.__pinUserCtx = userCtx;
+
+  $('pin-input').value = '';
+  $('pin-reason').value = '';
+
+  const msg = $('pin-msg');
+  msg.classList.add('hidden');
+  msg.innerText = '';
+
+  const btn = $('pin-confirm-btn');
+  btn.disabled = false;
+  btn.innerText = 'Validar PIN';
+
+  // Ajustar textos según origen
+  const subtitle = document.querySelector('#pin-modal p.text-xs.text-gray-500');
+  if (subtitle) {
+    if (origin === 'first_time') {
+      subtitle.innerText = 'Ingresa tu PIN de 4 dígitos para completar el registro.';
+    } else if (origin === 'fingerprint_failed') {
+      subtitle.innerText = 'Huella cancelada o fallida. Ingresa tu PIN y explica el motivo.';
+    } else {
+      subtitle.innerText = 'Usa tu PIN de 4 dígitos. El motivo del uso quedará en auditoría.';
+    }
+  }
+
+  const modal = $('pin-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  setTimeout(() => $('pin-input')?.focus(), 100);
+}
+
+/**
+ * Abre el modal de registro de huella (primera vez del día).
+ */
+function openRegisterFingerprintModal() {
+  if (!_pendingRegister) return;
+
+  $('register-reason').value = '';
+
+  const msg = $('register-msg');
+  msg.classList.add('hidden');
+  msg.innerText = '';
+
+  const btn = $('register-confirm-btn');
+  btn.disabled = false;
+  btn.innerText = 'Registrar huella';
+
+  const modal = $('register-fingerprint-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+/**
+ * Cierra el modal de registro.
+ */
+function closeRegisterFingerprintModal() {
+  const modal = $('register-fingerprint-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+/**
+ * Cancela el registro de huella.
+ */
+function cancelRegisterFingerprint() {
+  closeRegisterFingerprintModal();
+  // Limpiar estado
+  _pendingRegister = null;
+  // Cerrar sesión de Firebase → el usuario vuelve al login
+  signOut(auth).then(() => {
+    _deviceGuardUser = null;
+    _deviceGuardUserData = null;
+    _pendingUnlockUser = null;
+    // El onAuthStateChanged se encargará de mostrar el login
+  });
+}
+/**
+ * Envía el registro de huella (WebAuthn create).
+ */
+async function submitRegisterFingerprint() {
+  if (!_pendingRegister) return;
+
+  const reason = $('register-reason').value.trim();
+  const msg = $('register-msg');
+  const btn = $('register-confirm-btn');
+
+  if (!reason) {
+    msg.innerText = '⚠️ Debes indicar el motivo del registro.';
+    msg.className = 'text-xs mb-3 text-red-600 font-semibold';
+    msg.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = '⏳ Registrando...';
+
+  try {
+    const { user, userData, fingerprint } = _pendingRegister;
+
+    // 1. Generar challenge y registrar credencial
+    const challenge = window.SmartecWebAuthn.generateChallenge();
+
+    let credential;
+    try {
+      credential = await window.SmartecWebAuthn.registerCredential({
+        rpId: WEBAUTHN_RP_ID,
+        userId: user.uid,
+        userEmail: user.email,
+        userName: userData.name || user.email,
+        challenge
+      });
+    } catch (e) {
+      if (window.SmartecWebAuthn.isUserCancelled(e)) {
+        msg.innerText = '⚠️ Registro cancelado. Puedes intentar de nuevo.';
+        msg.className = 'text-xs mb-3 text-amber-600 font-semibold';
+        msg.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerText = 'Registrar huella';
+        return;
+      }
+      throw e;
+    }
+
+    // 2. Guardar en Firestore
+    const deviceLabel = window.SmartecFingerprint.deviceLabel();
+
+    await setDoc(doc(db, 'webauthnCredentials', credential.credentialId), {
+      credentialId: credential.credentialId,
+      userId: user.uid,
+      userEmail: user.email,
+      userName: userData.name || user.email,
+      publicKey: credential.publicKey,
+      attestationObject: credential.attestationObject,
+      clientDataJSON: credential.clientDataJSON,
+      transports: credential.transports || [],
+      counter: 0,
+      deviceFingerprint: fingerprint,
+      deviceLabel,
+      reason,
+      active: true,
+      createdAt: serverTimestamp(),
+      lastUsedAt: serverTimestamp()
+    });
+
+    // 3. Auditoría
+    await auditFromGuard({
+      action: 'create',
+      collection: 'webauthnCredentials',
+      docId: credential.credentialId,
+      note: `Huella registrada: ${deviceLabel} · Motivo: ${reason}`
+    });
+
+    // 4. Marcar como logueado hoy
+    markLoggedToday(user.uid, fingerprint);
+
+    // 5. Continuar al home
+    closeRegisterFingerprintModal();
+    _pendingRegister = null;
+
+    await enterHomeAfterFullFlow(user, userData, fingerprint);
+
+  } catch (e) {
+    console.error('[HOME] Error registrando huella:', e);
+    msg.innerText = '❌ ' + e.message;
+    msg.className = 'text-xs mb-3 text-red-600 font-semibold';
+    msg.classList.remove('hidden');
+    btn.disabled = false;
+    btn.innerText = 'Registrar huella';
+  }
+}
+
+/**
+ * Abre el modal de PIN para la primera vez del día (equipo sin biometría).
+ */
+function openFirstTimePinModal() {
+  if (!_pendingRegister) return;
+  openPinModalForUser(
+    {
+      uid: _pendingRegister.user.uid,
+      email: _pendingRegister.user.email,
+      name: _pendingRegister.userData.name || _pendingRegister.user.email,
+      fingerprint: _pendingRegister.fingerprint,
+      userData: _pendingRegister.userData
+    },
+    'first_time'
+  );
+}
+
+/**
+ * Entra al home después de completar todo el flujo
+ * (huella registrada/PIN validado + device-guard OK).
+ */
+async function enterHomeAfterFullFlow(user, userData, fingerprint) {
+  // Ejecutar device-guard
+  let deviceCheck;
+  try {
+    deviceCheck = await Promise.race([
+      window.SmartecDeviceGuard.validate(user, userData, {
+        db,
+        doc,
+        updateDoc,
+        addDoc,
+        collection,
+        serverTimestamp,
+        audit: auditFromGuard
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 15000)
+      )
+    ]);
+  } catch (e) {
+    console.error('[HOME] Timeout o error validando dispositivo:', e);
+    deviceCheck = { allowed: false, reason: 'error', error: e.message };
+  }
+
+  if (!deviceCheck.allowed) {
+    $('login-screen').classList.add('hidden');
+    $('home-screen').classList.add('hidden');
+
+    if (deviceCheck.reason === 'fingerprint_failed') {
+      openPinModal('fingerprint_failed');
+    } else if (deviceCheck.reason === 'limit_reached') {
+      showDeviceBlockedModal(deviceCheck);
+    } else {
+      alert('⚠️ Error validando el dispositivo: ' + (deviceCheck.error || 'desconocido'));
+      await signOut(auth);
+      window.location.href = 'index.html';
+    }
+    return;
+  }
+
+  // Todo OK → mostrar home
+  $('login-screen').classList.add('hidden');
+  $('home-screen').classList.remove('hidden');
+
+  $('user-name').innerText = userData.name || user.email;
+  $('user-role').innerText = ROLE_LABELS[userData.role] || userData.role;
+
+  if (userData.role === 'superadmin') {
+    $('user-store').innerText = '· Acceso a todas las tiendas';
+  } else if (userData.storeId) {
+    $('user-store').innerText = '· Tienda: ' + userData.storeId;
+  }
+
+  renderModules(userData.role);
+
+  if (userData.role === 'superadmin') {
+    startTransfersBadgeListener();
+  }
+}
 
 /* ============ AUTENTICACIÓN ============ */
 $('login-btn').onclick = async () => {
@@ -447,18 +1081,29 @@ $('logout-btn').onclick = async () => {
   window.location.href = 'index.html';
 };
 
-/* ============ ESTADO GLOBAL PARA EL GUARD ============ */
-let _deviceGuardUser = null;
-let _deviceGuardUserData = null;
 
 onAuthStateChanged(auth, async user => {
+  // Ocultar todo al inicio
+  $('login-screen').classList.add('hidden');
+  $('home-screen').classList.add('hidden');
+
   if (!user) {
-    $('login-screen').classList.remove('hidden');
-    $('home-screen').classList.add('hidden');
+    // Sin sesión → mostrar login normal (o modal de huella si ya hay usuarios logueados hoy)
     _deviceGuardUser = null;
     _deviceGuardUserData = null;
+
+    const loggedUsers = getLoggedUsersToday();
+    if (loggedUsers.length > 0) {
+      // Hay al menos un usuario que ya se logueó hoy en este dispositivo
+      // Mostramos el modal de desbloqueo con huella en lugar del login normal
+      showUnlockPicker(loggedUsers);
+    } else {
+      $('login-screen').classList.remove('hidden');
+    }
     return;
   }
+
+  // ============ USUARIO AUTENTICADO CON FIREBASE AUTH ============
 
   // Cargar perfil
   let userData = null;
@@ -481,56 +1126,69 @@ onAuthStateChanged(auth, async user => {
   _deviceGuardUser = user;
   _deviceGuardUserData = userData;
 
-  console.log('%c[HOME] A punto de llamar a validate()', 'color: green; font-weight: bold', {
-    uid: user.uid,
-    role: userData.role,
-    maxDevices: userData.maxDevices
-  });
+  // 🔒 Generar fingerprint para saber si este usuario+dispositivo ya hizo login hoy
+  let fingerprint = '';
+  try {
+    fingerprint = await window.SmartecFingerprint.generate();
+  } catch (e) {
+    console.warn('[HOME] No se pudo generar fingerprint:', e);
+  }
 
-  // 🔒 VALIDAR DISPOSITIVO
-  const deviceCheck = await window.SmartecDeviceGuard.validate(user, userData, {
-    db,
-    doc,
-    updateDoc,
-    addDoc,
-    collection,
-    serverTimestamp,
-    audit: auditFromGuard
-  });
+  // ¿Ya hizo login hoy este (usuario + dispositivo)?
+  const alreadyToday = alreadyLoggedToday(user.uid, fingerprint);
 
-  if (!deviceCheck.allowed) {
+  if (alreadyToday) {
+    // Ya hizo login hoy → pedir huella o PIN antes de entrar
+    _pendingUnlockUser = {
+      uid: user.uid,
+      email: user.email,
+      name: userData.name || user.email,
+      fingerprint,
+      userData
+    };
+
+    // Ocultar login y home
     $('login-screen').classList.add('hidden');
     $('home-screen').classList.add('hidden');
 
-    if (deviceCheck.reason === 'fingerprint_failed') {
-      openPinModal('fingerprint_failed');
-    } else if (deviceCheck.reason === 'limit_reached') {
-      showDeviceBlockedModal(deviceCheck);
-    } else {
-      alert('⚠️ Error validando el dispositivo: ' + (deviceCheck.error || 'desconocido'));
-      await signOut(auth);
-      window.location.href = 'index.html';
-    }
+    // Abrir modal de desbloqueo
+    await openUnlockModal();
     return;
   }
 
-  // ✅ Validación OK → mostrar home
-  $('login-screen').classList.add('hidden');
-  $('home-screen').classList.remove('hidden');
+  // 🆕 PRIMERA VEZ DEL DÍA:
+  // Guardar meta para el modal de unlock de mañana/futuro
+  saveLoggedUserMeta(user.uid, fingerprint, user.email, userData.name || user.email);
 
-  $('user-name').innerText = userData.name || user.email;
-  $('user-role').innerText = ROLE_LABELS[userData.role] || userData.role;
-
+  // Si es superadmin → saltar huella y entrar directo
   if (userData.role === 'superadmin') {
-    $('user-store').innerText = '· Acceso a todas las tiendas';
-  } else if (userData.storeId) {
-    $('user-store').innerText = '· Tienda: ' + userData.storeId;
+    markLoggedToday(user.uid, fingerprint);
+    await enterHomeAfterFullFlow(user, userData, fingerprint);
+    return;
   }
 
-  renderModules(userData.role);
+  // Verificar si hay biometría disponible en el dispositivo
+  const hasBio = await hasPlatformAuthenticator();
 
-  if (userData.role === 'superadmin') {
-    startTransfersBadgeListener();
+  // Guardar datos para el flujo de registro
+  _pendingRegister = {
+    user,
+    userData,
+    fingerprint,
+    hasBio
+  };
+
+  // Ocultar login y home mientras decidimos qué hacer
+  $('login-screen').classList.add('hidden');
+  $('home-screen').classList.add('hidden');
+
+  if (hasBio) {
+    // Hay biometría → pedir registrar huella con motivo
+    openRegisterFingerprintModal();
+  } else {
+    // No hay biometría → pedir registrar PIN con motivo (o sin motivo, según definamos)
+    // Por ahora mostramos el modal de PIN para que el usuario ingrese su PIN
+    openFirstTimePinModal();
   }
 });
 
@@ -617,7 +1275,12 @@ window.submitPinAccess = async () => {
     msg.classList.remove('hidden');
     return;
   }
-  if (!reason) {
+
+  // Determinar si el motivo es obligatorio según el origen
+  const origin = window.__pinOrigin || 'device_not_auth';
+  const requiresReason = origin !== 'first_time_no_bio';
+
+  if (requiresReason && !reason) {
     msg.innerText = '⚠️ Debes indicar el motivo del uso de PIN.';
     msg.className = 'text-xs mb-3 text-red-600 font-semibold';
     msg.classList.remove('hidden');
@@ -627,11 +1290,23 @@ window.submitPinAccess = async () => {
   btn.disabled = true;
   btn.innerText = '⏳ Validando...';
 
+  // Usar el contexto del usuario guardado
+  const userCtx = window.__pinUserCtx;
+  if (!userCtx) {
+    msg.innerText = '❌ Error: contexto de usuario perdido.';
+    msg.className = 'text-xs mb-3 text-red-600 font-semibold';
+    msg.classList.remove('hidden');
+    btn.disabled = false;
+    btn.innerText = 'Validar PIN';
+    return;
+  }
+
+  // Validar el PIN contra el usuario
   const res = await window.SmartecDeviceGuard.validatePin(
-    _deviceGuardUser,
-    _deviceGuardUserData,
+    { uid: userCtx.uid, email: userCtx.email },
+    userCtx.userData || _deviceGuardUserData,
     pin,
-    reason,
+    requiresReason ? reason : '(equipo sin biometría)',
     { audit: auditFromGuard }
   );
 
@@ -644,9 +1319,19 @@ window.submitPinAccess = async () => {
     return;
   }
 
-  // ✅ OK → cerrar modal y mostrar home
+  // ✅ PIN OK → marcar logueado hoy y continuar
+  markLoggedToday(userCtx.uid, userCtx.fingerprint);
+
   closePinModal();
-  enterHomeAfterValidation();
+  window.__pinOrigin = null;
+  window.__pinUserCtx = null;
+
+  // Continuar al home
+  await enterHomeAfterFullFlow(
+    { uid: userCtx.uid, email: userCtx.email },
+    userCtx.userData || _deviceGuardUserData,
+    userCtx.fingerprint
+  );
 };
 
 /**
