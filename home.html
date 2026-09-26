@@ -1153,18 +1153,12 @@ onAuthStateChanged(auth, async user => {
   $('home-screen').classList.add('hidden');
 
   if (!user) {
-    // Sin sesión → mostrar login normal (o modal de huella si ya hay usuarios logueados hoy)
+    // Sin sesión → SIEMPRE mostrar login normal.
+    // La huella solo se pide cuando YA hay sesión activa de Firebase Auth.
     _deviceGuardUser = null;
     _deviceGuardUserData = null;
-
-    const loggedUsers = getLoggedUsersToday();
-    if (loggedUsers.length > 0) {
-      // Hay al menos un usuario que ya se logueó hoy en este dispositivo
-      // Mostramos el modal de desbloqueo con huella en lugar del login normal
-      showUnlockPicker(loggedUsers);
-    } else {
-      $('login-screen').classList.remove('hidden');
-    }
+    _pendingUnlockUser = null;
+    $('login-screen').classList.remove('hidden');
     return;
   }
 
