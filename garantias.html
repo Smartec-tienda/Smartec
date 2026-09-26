@@ -7,6 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="kiosk.js"></script>
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
@@ -317,7 +318,8 @@ $('login-btn').onclick = async () => {
 };
 
 $('logout-btn').onclick = async () => {
-  await audit({ action:'logout', collection:'system', note:'Cierre de sesión garantías' });
+  if (window.SmartecKiosk) window.SmartecKiosk.disable();
+  await audit({ action:'logout', collection:'system', note:'Cierre de sesión' });
   await signOut(auth);
   window.location.href = 'home.html';
 };
@@ -350,7 +352,14 @@ onAuthStateChanged(auth, async user => {
     window.location.href = 'home.html';
     return;
   }
-
+    // 🔒 Activar modo kiosco si el usuario lo tiene configurado
+    if (currentUserData.kioskMode === true) {
+      window.SmartecKiosk.enable(() => {
+        if (confirm('⚠️ Saliste de la aplicación.\n\n¿Cerrar sesión?')) {
+          window.location.href = 'home.html';
+        }
+      });
+    }
   await audit({ action:'login', collection:'system', note:'Inicio de sesión garantías' });
 
   $('login-screen').classList.add('hidden');

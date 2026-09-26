@@ -308,7 +308,43 @@ window.Smartec = window.Smartec || {};
   window.Smartec.actionLabel = function (action) {
     return window.Smartec.ACTION_LABELS[action] || action;
   };
-
+  /* ============================================================
+     ESTILOS DEL MODO KIOSCO
+  ============================================================ */
+  (function injectKioskStyles() {
+    if (document.getElementById('smartec-kiosk-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'smartec-kiosk-styles';
+    style.textContent = `
+      body.kiosk-mode {
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        overflow-x: hidden;
+      }
+      body.kiosk-mode input,
+      body.kiosk-mode textarea {
+        user-select: text;
+        -webkit-user-select: text;
+      }
+      body.kiosk-mode::after {
+        content: '🔒 MODO KIOSCO';
+        position: fixed;
+        top: 0;
+        right: 0;
+        background: #dc2626;
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+        padding: 4px 10px;
+        border-bottom-left-radius: 8px;
+        z-index: 9999;
+        pointer-events: none;
+        letter-spacing: 1px;
+      }
+    `;
+    document.head.appendChild(style);
+  })();
   /* ============================================================
      FIN
   ============================================================ */

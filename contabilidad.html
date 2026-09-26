@@ -7,6 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="kiosk.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -486,7 +487,8 @@ $('login-btn').onclick = async () => {
 };
 
 $('logout-btn').onclick = async () => {
-  await audit({ action:'logout', collection:'system', note:'Cierre de sesión contabilidad' });
+  if (window.SmartecKiosk) window.SmartecKiosk.disable();
+  await audit({ action:'logout', collection:'system', note:'Cierre de sesión' });
   await signOut(auth);
   window.location.href = 'home.html';
 };
@@ -512,7 +514,14 @@ onAuthStateChanged(auth, async user => {
     window.location.href = 'home.html';
     return;
   }
-
+    // 🔒 Activar modo kiosco si el usuario lo tiene configurado
+    if (currentUserData.kioskMode === true) {
+      window.SmartecKiosk.enable(() => {
+        if (confirm('⚠️ Saliste de la aplicación.\n\n¿Cerrar sesión?')) {
+          window.location.href = 'home.html';
+        }
+      });
+    }
   await audit({ action:'login', collection:'system', note:'Inicio de sesión contabilidad' });
 
   $('login-screen').classList.add('hidden');
