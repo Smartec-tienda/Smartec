@@ -1,9 +1,9 @@
 /* ============================================================
    SMARTEC · Device Guard
    Valida el dispositivo del usuario al iniciar sesión.
-   - Una vez al día (reset a las 00:00 hora local)
+   - Una vez al día por (usuario + dispositivo)
+   - Reset a las 00:00 hora local
    - Solo para roles admin y vendedor (superadmin exento)
-   - Configurable por usuario (maxDevices > 0)
    ============================================================ */
 
 window.SmartecDeviceGuard = (() => {
@@ -18,21 +18,32 @@ window.SmartecDeviceGuard = (() => {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
-  function markValidatedToday() {
+  /**
+   * Guarda que esta combinación (usuario + dispositivo) ya se validó hoy.
+   */
+  function markValidatedToday(uid, fingerprint) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         date: todayStr(),
+        uid: uid || null,
+        fingerprint: fingerprint || null,
         ts: Date.now()
       }));
     } catch(e) { console.warn('[DeviceGuard] No se pudo guardar validación:', e); }
   }
 
-  function isValidatedToday() {
+  /**
+   * ¿Ya se validó hoy esta combinación (uid + fingerprint)?
+   */
+  function isValidatedToday(uid, fingerprint) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return false;
       const data = JSON.parse(raw);
-      return data.date === todayStr();
+      if (data.date !== todayStr()) return false;
+      if (uid && data.uid !== uid) return false;
+      if (fingerprint && data.fingerprint !== fingerprint) return false;
+      return true;
     } catch(e) {
       return false;
     }
@@ -72,32 +83,14 @@ window.SmartecDeviceGuard = (() => {
         return result;
       }
 
-      // 2. ¿Ya validó hoy?
-      if (isValidatedToday()) {
-        console.log('[DeviceGuard] Ya validado hoy');
-        result.reason = 'already_authorized';
-        return result;
-      }
-
-      // 3. ¿Sin límite configurado?
-      const maxDevices = Number(userData.maxDevices || 0);
-      if (maxDevices <= 0) {
-        console.log('[DeviceGuard] Sin límite (maxDevices <= 0)');
-        result.reason = 'no_limit';
-        markValidatedToday();
-        return result;
-      }
-
-      result.maxDevices = maxDevices;
-
-      // 4. Generar fingerprint
+      // 2. Generar fingerprint (lo necesitamos siempre para saber si es el mismo dispositivo)
       console.log('[DeviceGuard] Generando fingerprint...');
       let fingerprint = '';
       let deviceLabel = '';
       try {
         fingerprint = await window.SmartecFingerprint.generate();
         deviceLabel = window.SmartecFingerprint.deviceLabel();
-        console.log('[DeviceGuard] Fingerprint generado:', fingerprint.slice(0, 16));
+        console.log('[DeviceGuard] Fingerprint:', fingerprint.slice(0, 16));
         result.fingerprint = fingerprint;
         result.deviceLabel = deviceLabel;
       } catch (fpErr) {
@@ -109,7 +102,18 @@ window.SmartecDeviceGuard = (() => {
         };
       }
 
-      // 5. ¿Ya está autorizado?
+      // 3. ¿Ya se validó hoy esta combinación (usuario + dispositivo)?
+      if (isValidatedToday(user.uid, fingerprint)) {
+        console.log('[DeviceGuard] Ya validado hoy (mismo user + device)');
+        result.reason = 'already_authorized';
+        return result;
+      }
+
+      // 4. Leer maxDevices (por defecto 1 si no está configurado)
+      const maxDevices = Number(userData.maxDevices || 1);
+      result.maxDevices = maxDevices;
+
+      // 5. ¿Ya está autorizado el dispositivo?
       const devices = userData.authorizedDevices || [];
       result.currentCount = devices.length;
       console.log('[DeviceGuard] Dispositivos autorizados:', devices.length, '/', maxDevices);
@@ -128,7 +132,7 @@ window.SmartecDeviceGuard = (() => {
           });
         } catch(e) { console.warn('No se pudo actualizar lastSeen:', e); }
 
-        markValidatedToday();
+        markValidatedToday(user.uid, fingerprint);
         result.reason = 'already_authorized';
         return result;
       }
@@ -162,7 +166,7 @@ window.SmartecDeviceGuard = (() => {
           });
         }
 
-        markValidatedToday();
+        markValidatedToday(user.uid, fingerprint);
         result.reason = 'auto_registered';
         result.currentCount = devices.length + 1;
         return result;
@@ -174,8 +178,8 @@ window.SmartecDeviceGuard = (() => {
       // Determinar motivo del bloqueo
       const blockReason = !autoApprove ? 'autoApprove_disabled' : 'no_capacity';
 
-      // 🆕 Registrar intento en la colección deviceAttempts
-      if (ctx.addDoc) {
+      // Registrar intento en la colección deviceAttempts
+      if (ctx.addDoc && ctx.collection) {
         try {
           await ctx.addDoc(ctx.collection(ctx.db, 'deviceAttempts'), {
             userId: user.uid,
@@ -190,6 +194,7 @@ window.SmartecDeviceGuard = (() => {
             autoApprove,
             currentCount: devices.length,
             maxDevices,
+            status: 'pendiente',
             timestamp: ctx.serverTimestamp ? ctx.serverTimestamp() : new Date()
           });
         } catch(e) {
@@ -197,7 +202,7 @@ window.SmartecDeviceGuard = (() => {
         }
       }
 
-      // Auditoría general (para el log histórico)
+      // Auditoría general
       if (ctx.audit) {
         await ctx.audit({
           action: 'login',
@@ -265,7 +270,7 @@ window.SmartecDeviceGuard = (() => {
         });
       }
 
-      markValidatedToday();
+      markValidatedToday(user.uid, null);
       return { ok: true };
     } catch (e) {
       console.error('[DeviceGuard] Error validando PIN:', e);
@@ -276,11 +281,22 @@ window.SmartecDeviceGuard = (() => {
   /* ============================================================
      GUARD PARA OTRAS PÁGINAS
   ============================================================ */
-  function shouldRedirectToHome(userData) {
+  function shouldRedirectToHome(userData, uid) {
     if (!userData) return true;
     if (userData.role === 'superadmin') return false;
-    if (isValidatedToday()) return false;
-    return true;
+    // Sin uid no podemos verificar la combinación exacta.
+    // Si hay algo guardado hoy que coincida en uid, permitimos el paso.
+    // (El fingerprint no se puede regenerar aquí sin costo; confiamos en uid + date).
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return true;
+      const data = JSON.parse(raw);
+      if (data.date !== todayStr()) return true;
+      if (uid && data.uid !== uid) return true;
+      return false;
+    } catch(e) {
+      return true;
+    }
   }
 
   return {
