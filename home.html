@@ -7,6 +7,8 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="fingerprint.js"></script>
+<script src="device-guard.js"></script>
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
@@ -25,12 +27,113 @@
 <div id="login-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
   <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
     <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
-    <p class="text-center text-sm text-gray-500 mb-6">Panel de inicio</p>
+    <p class="text-center text-sm text-gray-500 mb-6">Panel Administrativo</p>
     <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
     <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
     <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
     <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
-    <a href="index.html" class="block text-center text-xs text-gray-400 hover:text-sl mt-4">← Ir a la tienda</a>
+    <button id="forgot-pass-btn" type="button" class="block w-full text-center text-xs text-sl hover:underline mt-4">
+      ¿Olvidaste tu contraseña?
+    </button>
+  </div>
+</div>
+
+<!-- ============ MODAL: RESTABLECER CONTRASEÑA ============ -->
+<div id="reset-pass-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeResetModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 pointer-events-auto">
+    <button onclick="closeResetModal()" class="absolute top-3 right-3 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+
+    <div class="text-center mb-5">
+      <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-sd">Restablecer contraseña</h3>
+      <p class="text-xs text-gray-500 mt-1">Te enviaremos un correo con un enlace para crear una nueva contraseña.</p>
+    </div>
+
+    <label class="text-xs font-semibold text-sd">Correo electrónico</label>
+    <input id="reset-email" type="email" placeholder="tu-correo@ejemplo.com" class="w-full px-3 py-2 border rounded-lg mt-1 mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
+
+    <p id="reset-msg" class="text-xs mb-3 hidden"></p>
+
+    <div class="flex gap-3">
+      <button onclick="closeResetModal()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">Cancelar</button>
+      <button id="reset-confirm-btn" onclick="submitResetPassword()" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold text-sm">Enviar correo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: DISPOSITIVO BLOQUEADO ============ -->
+<div id="device-blocked-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/80 pointer-events-auto"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 pointer-events-auto">
+    <div class="text-center mb-5">
+      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+        <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+      </div>
+      <h3 class="text-xl font-bold text-sd">Dispositivo no autorizado</h3>
+      <p class="text-sm text-gray-500 mt-1">No puedes acceder desde este dispositivo.</p>
+    </div>
+
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-5 text-xs space-y-1">
+      <div class="flex justify-between"><span class="text-gray-500">Dispositivos autorizados:</span><b id="db-count">—</b></div>
+      <div class="flex justify-between"><span class="text-gray-500">Este dispositivo:</span><b id="db-label">—</b></div>
+      <div class="flex justify-between"><span class="text-gray-500">Usuario:</span><b id="db-user">—</b></div>
+    </div>
+
+    <div class="space-y-2">
+      <button id="db-request-btn" onclick="submitDeviceRequest()" class="w-full bg-sd text-white py-3 rounded-lg hover:bg-sl font-bold">
+        🆘 Solicitar autorización al superadmin
+      </button>
+      <button id="db-pin-btn" onclick="openPinModal('device_not_auth')" class="w-full bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">
+        🔓 Usar PIN de acceso
+      </button>
+      <button onclick="logoutFromDeviceGuard()" class="w-full text-red-500 hover:text-red-700 py-2 text-xs">
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: PIN DE ACCESO ============ -->
+<div id="pin-modal" class="fixed inset-0 z-[110] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/80 pointer-events-auto" onclick="closePinModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto">
+    <button onclick="closePinModal()" class="absolute top-3 right-3 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+
+    <div class="text-center mb-5">
+      <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-sd">Acceso con PIN</h3>
+      <p class="text-xs text-gray-500 mt-1">Usa tu PIN de 4 dígitos. El motivo del uso quedará en auditoría.</p>
+    </div>
+
+    <label class="text-xs font-semibold text-sd">PIN de 4 dígitos</label>
+    <input id="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="••••"
+      class="w-full px-3 py-3 border-2 border-gray-300 rounded-lg mt-1 mb-3 text-center text-2xl font-mono tracking-widest focus:outline-none focus:border-sl">
+
+    <label class="text-xs font-semibold text-sd">Motivo del uso de PIN (obligatorio)</label>
+    <textarea id="pin-reason" rows="2" placeholder="Ej: El navegador bloqueó la huella / Cambié de navegador"
+      class="w-full px-3 py-2 border rounded-lg mt-1 mb-3 text-sm"></textarea>
+
+    <p id="pin-msg" class="text-xs mb-3 hidden"></p>
+
+    <div class="flex gap-3">
+      <button onclick="closePinModal()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">Cancelar</button>
+      <button id="pin-confirm-btn" onclick="submitPinAccess()" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold text-sm">Validar PIN</button>
+    </div>
   </div>
 </div>
 
@@ -74,9 +177,9 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getFirestore, doc, getDoc, collection, query, where, onSnapshot }
+import { getFirestore, doc, getDoc, addDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 /* ============ CONFIG ============ */
@@ -230,15 +333,155 @@ $('login-btn').onclick = async () => {
   }
 };
 
+/* ============================================================
+   🆕 RESTABLECER CONTRASEÑA
+============================================================ */
+window.openResetModal = () => {
+  const modal = $('reset-pass-modal');
+  if (!modal) return;
+
+  // Pre-llenar con el email del login si ya está escrito
+  const emailLogin = $('login-email')?.value.trim() || '';
+  $('reset-email').value = emailLogin;
+
+  // Limpiar mensajes previos
+  const msg = $('reset-msg');
+  msg.classList.add('hidden');
+  msg.innerText = '';
+
+  const btn = $('reset-confirm-btn');
+  btn.disabled = false;
+  btn.innerText = 'Enviar correo';
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  setTimeout(() => $('reset-email')?.focus(), 100);
+};
+
+window.closeResetModal = () => {
+  const modal = $('reset-pass-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+window.submitResetPassword = async () => {
+  const email = $('reset-email').value.trim();
+  const msg = $('reset-msg');
+  const btn = $('reset-confirm-btn');
+
+  // Validar email
+  if (!email) {
+    msg.innerText = '⚠️ Escribe tu correo electrónico.';
+    msg.className = 'text-xs mb-3 text-red-600 font-semibold';
+    msg.classList.remove('hidden');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    msg.innerText = '⚠️ El correo no tiene un formato válido.';
+    msg.className = 'text-xs mb-3 text-red-600 font-semibold';
+    msg.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = '⏳ Enviando...';
+
+  try {
+    await sendPasswordResetEmail(auth, email);
+
+    // Éxito → mostrar confirmación y cerrar después de 2.5s
+    msg.innerHTML = `✅ Correo enviado a <b>${email}</b>.<br><span class="text-[10px] text-gray-500">Revisa tu bandeja (y la carpeta de spam).</span>`;
+    msg.className = 'text-xs mb-3 text-green-700 bg-green-50 border border-green-200 rounded-lg p-2';
+    msg.classList.remove('hidden');
+
+    btn.innerText = '✅ Enviado';
+
+    setTimeout(() => {
+      closeResetModal();
+    }, 2500);
+  } catch (e) {
+    console.error('Error enviando reset:', e);
+
+    // Firebase devuelve 400 si el email no está registrado o es inválido
+    let errMsg = 'No se pudo enviar el correo. Verifica el correo e intenta de nuevo.';
+    if (e.code === 'auth/user-not-found') {
+      errMsg = 'No existe una cuenta con ese correo.';
+    } else if (e.code === 'auth/invalid-email') {
+      errMsg = 'El correo no es válido.';
+    } else if (e.code === 'auth/too-many-requests') {
+      errMsg = 'Demasiados intentos. Espera unos minutos.';
+    }
+
+    msg.innerText = '❌ ' + errMsg;
+    msg.className = 'text-xs mb-3 text-red-600 font-semibold';
+    msg.classList.remove('hidden');
+
+    btn.disabled = false;
+    btn.innerText = 'Enviar correo';
+  }
+};
+
+/* Listener del botón "¿Olvidaste tu contraseña?" */
+$('forgot-pass-btn')?.addEventListener('click', () => {
+  openResetModal();
+});
+
+/* Cerrar con ESC */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('reset-pass-modal').classList.contains('hidden')) {
+    closeResetModal();
+  }
+});
+
+/* Enviar con Enter desde el input de email */
+$('reset-email')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') submitResetPassword();
+});
+
 $('logout-btn').onclick = async () => {
   await signOut(auth);
   window.location.href = 'index.html';
 };
 
+$('logout-btn').onclick = async () => {
+  await signOut(auth);
+  window.location.href = 'index.html';
+};
+
+/* ============ ESTADO GLOBAL PARA EL GUARD ============ */
+let _deviceGuardUser = null;
+let _deviceGuardUserData = null;
+
 onAuthStateChanged(auth, async user => {
+      // 🚧 GUARD: solo se entra a esta página desde home.html
+    if (user) {
+      try {
+        const _guardSnap = await getDoc(doc(db, 'users', user.uid));
+        const _guardData = _guardSnap.exists() ? _guardSnap.data() : null;
+
+        if (!_guardData || !['superadmin','admin','vendedor'].includes(_guardData.role)) {
+          await signOut(auth);
+          window.location.href = 'home.html';
+          return;
+        }
+
+        if (window.SmartecDeviceGuard.shouldRedirectToHome(_guardData)) {
+          window.location.href = 'home.html';
+          return;
+        }
+      } catch (e) {
+        console.warn('[Guard] Error validando acceso:', e);
+        window.location.href = 'home.html';
+        return;
+      }
+    }
   if (!user) {
     $('login-screen').classList.remove('hidden');
     $('home-screen').classList.add('hidden');
+    _deviceGuardUser = null;
+    _deviceGuardUserData = null;
     return;
   }
 
@@ -259,7 +502,40 @@ onAuthStateChanged(auth, async user => {
     return;
   }
 
-  // Mostrar home
+  // Guardar referencias para el flujo del guard
+  _deviceGuardUser = user;
+  _deviceGuardUserData = userData;
+
+  // 🔒 VALIDAR DISPOSITIVO
+  const deviceCheck = await window.SmartecDeviceGuard.validate(user, userData, {
+    db,
+    doc,
+    updateDoc,
+    serverTimestamp,
+    audit: auditFromGuard
+  });
+
+  if (!deviceCheck.allowed) {
+    // Ocultar login y home
+    $('login-screen').classList.add('hidden');
+    $('home-screen').classList.add('hidden');
+
+    if (deviceCheck.reason === 'fingerprint_failed') {
+      // La huella falló → ofrecer PIN directamente
+      openPinModal('fingerprint_failed');
+    } else if (deviceCheck.reason === 'limit_reached') {
+      // Sin cupo → mostrar modal de dispositivo bloqueado
+      showDeviceBlockedModal(deviceCheck);
+    } else {
+      // Error técnico
+      alert('⚠️ Error validando el dispositivo: ' + (deviceCheck.error || 'desconocido'));
+      await signOut(auth);
+      window.location.href = 'index.html';
+    }
+    return;
+  }
+
+  // ✅ Validación OK → mostrar home
   $('login-screen').classList.add('hidden');
   $('home-screen').classList.remove('hidden');
 
@@ -272,12 +548,221 @@ onAuthStateChanged(auth, async user => {
     $('user-store').innerText = '· Tienda: ' + userData.storeId;
   }
 
-   renderModules(userData.role);
+  renderModules(userData.role);
 
-  // Activar badge en tiempo real para superadmin
   if (userData.role === 'superadmin') {
     startTransfersBadgeListener();
   }
+});
+
+/* ============================================================
+   🆕 DEVICE GUARD — UI Y FLUJOS
+============================================================ */
+
+/**
+ * Wrapper de audit para pasarle al device-guard.
+ */
+async function auditFromGuard(entry) {
+  try {
+    await addDoc(collection(db,'auditLog'), {
+      ...entry,
+      userId: _deviceGuardUser?.uid || null,
+      userEmail: _deviceGuardUser?.email || null,
+      userRole: _deviceGuardUserData?.role || null,
+      storeId: _deviceGuardUserData?.storeId || null,
+      timestamp: serverTimestamp()
+    });
+  } catch(e) { console.warn('auditFromGuard fail', e); }
+}
+
+/**
+ * Muestra el modal de dispositivo bloqueado con datos.
+ */
+function showDeviceBlockedModal(check) {
+  $('db-count').innerText = `${check.currentCount} / ${check.maxDevices}`;
+  $('db-label').innerText = check.deviceLabel || '—';
+  $('db-user').innerText = _deviceGuardUserData?.name || _deviceGuardUser?.email || '—';
+
+  const modal = $('device-blocked-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+/**
+ * Abre el modal de PIN.
+ * @param {string} origin 'fingerprint_failed' | 'device_not_auth'
+ */
+window.openPinModal = (origin) => {
+  // Si es device_not_auth, ocultamos el modal bloqueado para no confundir
+  if (origin === 'device_not_auth') {
+    $('device-blocked-modal')?.classList.add('hidden');
+    $('device-blocked-modal')?.classList.remove('flex');
+  }
+
+  $('pin-input').value = '';
+  $('pin-reason').value = '';
+
+  const msg = $('pin-msg');
+  msg.classList.add('hidden');
+  msg.innerText = '';
+
+  const btn = $('pin-confirm-btn');
+  btn.disabled = false;
+  btn.innerText = 'Validar PIN';
+
+  const modal = $('pin-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  setTimeout(() => $('pin-input')?.focus(), 100);
+};
+
+window.closePinModal = () => {
+  const modal = $('pin-modal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+/**
+ * Envía el PIN + motivo. Si OK → cierra modal y muestra home.
+ */
+window.submitPinAccess = async () => {
+  const pin = $('pin-input').value.trim();
+  const reason = $('pin-reason').value.trim();
+  const msg = $('pin-msg');
+  const btn = $('pin-confirm-btn');
+
+  if (!pin || pin.length !== 4) {
+    msg.innerText = '⚠️ El PIN debe tener 4 dígitos.';
+    msg.className = 'text-xs mb-3 text-red-600 font-semibold';
+    msg.classList.remove('hidden');
+    return;
+  }
+  if (!reason) {
+    msg.innerText = '⚠️ Debes indicar el motivo del uso de PIN.';
+    msg.className = 'text-xs mb-3 text-red-600 font-semibold';
+    msg.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = '⏳ Validando...';
+
+  const res = await window.SmartecDeviceGuard.validatePin(
+    _deviceGuardUser,
+    _deviceGuardUserData,
+    pin,
+    reason,
+    { audit: auditFromGuard }
+  );
+
+  if (!res.ok) {
+    msg.innerText = '❌ ' + res.message;
+    msg.className = 'text-xs mb-3 text-red-600 font-semibold';
+    msg.classList.remove('hidden');
+    btn.disabled = false;
+    btn.innerText = 'Validar PIN';
+    return;
+  }
+
+  // ✅ OK → cerrar modal y mostrar home
+  closePinModal();
+  enterHomeAfterValidation();
+};
+
+/**
+ * Entra al home sin recargar la página.
+ */
+function enterHomeAfterValidation() {
+  $('login-screen').classList.add('hidden');
+  $('home-screen').classList.remove('hidden');
+  $('device-blocked-modal')?.classList.add('hidden');
+  $('device-blocked-modal')?.classList.remove('flex');
+
+  const ud = _deviceGuardUserData;
+  const u = _deviceGuardUser;
+  if (!ud || !u) return;
+
+  $('user-name').innerText = ud.name || u.email;
+  $('user-role').innerText = ROLE_LABELS[ud.role] || ud.role;
+
+  if (ud.role === 'superadmin') {
+    $('user-store').innerText = '· Acceso a todas las tiendas';
+  } else if (ud.storeId) {
+    $('user-store').innerText = '· Tienda: ' + ud.storeId;
+  }
+
+  renderModules(ud.role);
+
+  if (ud.role === 'superadmin') {
+    startTransfersBadgeListener();
+  }
+}
+
+/**
+ * Envía una solicitud de autorización de dispositivo al superadmin.
+ */
+window.submitDeviceRequest = async () => {
+  if (!_deviceGuardUser || !_deviceGuardUserData) return;
+
+  const motivo = prompt(
+    'Explica por qué necesitas autorizar este dispositivo.\n\n' +
+    'La solicitud llegará al superadmin.'
+  );
+  if (!motivo || !motivo.trim()) return;
+
+  const btn = $('db-request-btn');
+  btn.disabled = true;
+  btn.innerText = '⏳ Enviando...';
+
+  try {
+    await addDoc(collection(db, 'deviceRequests'), {
+      userId: _deviceGuardUser.uid,
+      userEmail: _deviceGuardUser.email,
+      userName: _deviceGuardUserData.name || _deviceGuardUser.email,
+      userRole: _deviceGuardUserData.role,
+      storeId: _deviceGuardUserData.storeId || null,
+      deviceLabel: window.SmartecFingerprint.deviceLabel(),
+      fingerprint: await window.SmartecFingerprint.generate().catch(() => null),
+      userAgent: navigator.userAgent,
+      reason: motivo.trim(),
+      status: 'pendiente',
+      createdAt: serverTimestamp()
+    });
+
+    await auditFromGuard({
+      action: 'create',
+      collection: 'deviceRequests',
+      note: `Solicitud de dispositivo: ${motivo.trim()}`
+    });
+
+    alert('✅ Solicitud enviada al superadmin. Te avisaremos cuando sea revisada.');
+    await signOut(auth);
+    window.location.href = 'index.html';
+  } catch (e) {
+    console.error('Error enviando solicitud de dispositivo:', e);
+    alert('Error: ' + e.message);
+    btn.disabled = false;
+    btn.innerText = '🆘 Solicitar autorización al superadmin';
+  }
+};
+
+window.logoutFromDeviceGuard = async () => {
+  try { window.SmartecDeviceGuard.clearValidatedToday(); } catch(e) {}
+  await signOut(auth);
+  window.location.href = 'index.html';
+};
+
+/* Cerrar modales con ESC */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('pin-modal').classList.contains('hidden')) {
+    closePinModal();
+  }
+});
+
+/* Enter en el input de PIN dispara el submit */
+$('pin-input')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') submitPinAccess();
 });
 
 /* ============================================================

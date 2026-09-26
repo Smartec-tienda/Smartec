@@ -7,8 +7,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="common.js"></script>
   <script src="cache.js"></script>
-  <script src="kiosk.js"></script>
   <script src="fingerprint.js"></script>
+  <script src="device-guard.js"></script>
+  <script src="kiosk.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root{--sd:#0A2A4A;--sl:#4A7A9A}
@@ -608,11 +609,33 @@
     stopShiftTimer();
     if (window.SmartecKiosk) window.SmartecKiosk.disable();
     await audit({ action:'logout', collection:'system', note:'Cierre de sesión POS' });
+    window.SmartecDeviceGuard.clearValidatedToday();
     await signOut(auth);
     window.location.href = 'home.html';
   };
-
   onAuthStateChanged(auth, async user => {
+        // 🚧 GUARD: solo se entra a esta página desde home.html
+    if (user) {
+      try {
+        const _guardSnap = await getDoc(doc(db, 'users', user.uid));
+        const _guardData = _guardSnap.exists() ? _guardSnap.data() : null;
+
+        if (!_guardData || !['superadmin','admin','vendedor'].includes(_guardData.role)) {
+          await signOut(auth);
+          window.location.href = 'home.html';
+          return;
+        }
+
+        if (window.SmartecDeviceGuard.shouldRedirectToHome(_guardData)) {
+          window.location.href = 'home.html';
+          return;
+        }
+      } catch (e) {
+        console.warn('[Guard] Error validando acceso:', e);
+        window.location.href = 'home.html';
+        return;
+      }
+    }
     // Ocultar pantalla de carga siempre que Firebase responda
     document.getElementById('loading-screen').classList.add('hidden');
 
@@ -647,21 +670,6 @@
       if (currentUserData.role !== 'superadmin' && !currentUserData.storeId) {
         alert('⛔ No tienes una tienda asignada. Contacta al superadmin.');
         await signOut(auth);
-        return;
-      }
-      // 🔒 VALIDAR DISPOSITIVO AUTORIZADO
-      const deviceCheck = await validateDeviceAccess();
-
-      if (!deviceCheck.allowed) {
-        // Guardar datos para el modal
-        window.__blockedDevice = deviceCheck;
-        // Mostrar pantalla bloqueada
-        const blockedEl = $('device-blocked-screen');
-        $('blocked-device-count').innerText = `${deviceCheck.currentCount}/${deviceCheck.maxDevices}`;
-        $('blocked-device-label').innerText = deviceCheck.deviceLabel;
-        $('blocked-device-date').innerText = new Date().toLocaleString('es-CO');
-        blockedEl.classList.remove('hidden');
-        blockedEl.classList.add('flex');
         return;
       }
 
