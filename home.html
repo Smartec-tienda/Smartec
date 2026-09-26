@@ -1430,6 +1430,24 @@ $('pin-input')?.addEventListener('keypress', (e) => {
 });
 
 /* ============================================================
+   EXPONER FUNCIONES AL SCOPE GLOBAL (para los onclick del HTML)
+============================================================ */
+window.openResetModal = openResetModal;
+window.closeResetModal = closeResetModal;
+window.submitResetPassword = submitResetPassword;
+window.closePinModal = closePinModal;
+window.submitPinAccess = submitPinAccess;
+window.openPinModal = openPinModal;
+window.logoutFromDeviceGuard = logoutFromDeviceGuard;
+window.submitDeviceRequest = submitDeviceRequest;
+window.closeRegisterFingerprintModal = closeRegisterFingerprintModal;
+window.cancelRegisterFingerprint = cancelRegisterFingerprint;
+window.submitRegisterFingerprint = submitRegisterFingerprint;
+window.submitFingerprintUnlock = submitFingerprintUnlock;
+window.switchToPinFromUnlock = switchToPinFromUnlock;
+window.switchToPasswordFromUnlock = switchToPasswordFromUnlock;
+
+/* ============================================================
    BADGE EN TIEMPO REAL — SOLICITUDES PENDIENTES
 ============================================================ */
 let transfersUnsubscribe = null;
