@@ -18,9 +18,6 @@ window.SmartecDeviceGuard = (() => {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
-  /**
-   * Marca el dispositivo como validado HOY.
-   */
   function markValidatedToday() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -30,9 +27,6 @@ window.SmartecDeviceGuard = (() => {
     } catch(e) { console.warn('[DeviceGuard] No se pudo guardar validación:', e); }
   }
 
-  /**
-   * ¿Ya se validó HOY?
-   */
   function isValidatedToday() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -44,26 +38,20 @@ window.SmartecDeviceGuard = (() => {
     }
   }
 
-  /**
-   * Fuerza revalidación (borra el flag).
-   */
   function clearValidatedToday() {
     try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
   }
 
   /* ============================================================
      VALIDACIÓN PRINCIPAL
-     Devuelve:
-     {
-       allowed: bool,
-       reason: 'ok' | 'no_limit' | 'already_authorized' | 'auto_registered'
-             | 'limit_reached' | 'superadmin' | 'error',
-       deviceLabel, fingerprint, currentCount, maxDevices,
-       userData, user
-     }
   ============================================================ */
   async function validate(user, userData, ctx) {
-    // ctx = { db, updateDoc, doc, serverTimestamp, audit }
+    console.log('[DeviceGuard] validate() llamado', {
+      uid: user?.uid,
+      role: userData?.role,
+      maxDevices: userData?.maxDevices
+    });
+
     const result = {
       allowed: true,
       reason: 'ok',
@@ -76,19 +64,22 @@ window.SmartecDeviceGuard = (() => {
     try {
       // 1. Superadmin → exento
       if (userData.role === 'superadmin') {
+        console.log('[DeviceGuard] Superadmin exento');
         result.reason = 'superadmin';
         return result;
       }
 
       // 2. ¿Ya validó hoy?
       if (isValidatedToday()) {
+        console.log('[DeviceGuard] Ya validado hoy');
         result.reason = 'already_authorized';
         return result;
       }
 
-      // 3. ¿Sin límite configurado? (maxDevices <= 0)
+      // 3. ¿Sin límite configurado?
       const maxDevices = Number(userData.maxDevices || 0);
       if (maxDevices <= 0) {
+        console.log('[DeviceGuard] Sin límite (maxDevices <= 0)');
         result.reason = 'no_limit';
         markValidatedToday();
         return result;
@@ -97,15 +88,16 @@ window.SmartecDeviceGuard = (() => {
       result.maxDevices = maxDevices;
 
       // 4. Generar fingerprint
+      console.log('[DeviceGuard] Generando fingerprint...');
       let fingerprint = '';
       let deviceLabel = '';
       try {
         fingerprint = await window.SmartecFingerprint.generate();
         deviceLabel = window.SmartecFingerprint.deviceLabel();
+        console.log('[DeviceGuard] Fingerprint generado:', fingerprint.slice(0, 16));
         result.fingerprint = fingerprint;
         result.deviceLabel = deviceLabel;
       } catch (fpErr) {
-        // Fingerprint falló técnicamente → permitir PIN
         console.warn('[DeviceGuard] Fingerprint falló:', fpErr);
         return {
           ...result,
@@ -117,10 +109,11 @@ window.SmartecDeviceGuard = (() => {
       // 5. ¿Ya está autorizado?
       const devices = userData.authorizedDevices || [];
       result.currentCount = devices.length;
+      console.log('[DeviceGuard] Dispositivos autorizados:', devices.length, '/', maxDevices);
 
       const existing = devices.find(d => d.fingerprint === fingerprint);
       if (existing) {
-        // Actualizar lastSeen
+        console.log('[DeviceGuard] Dispositivo ya autorizado, actualizando lastSeen');
         try {
           const updatedDevices = devices.map(d =>
             d.fingerprint === fingerprint
@@ -139,6 +132,7 @@ window.SmartecDeviceGuard = (() => {
 
       // 6. ¿Hay cupo? → Auto-registrar
       if (devices.length < maxDevices) {
+        console.log('[DeviceGuard] Hay cupo, auto-registrando dispositivo');
         const newDevice = {
           fingerprint,
           label: deviceLabel,
@@ -169,6 +163,7 @@ window.SmartecDeviceGuard = (() => {
       }
 
       // 7. Sin cupo → bloqueado
+      console.log('[DeviceGuard] Sin cupo → bloqueado');
       result.allowed = false;
       result.reason = 'limit_reached';
       return result;
@@ -186,12 +181,9 @@ window.SmartecDeviceGuard = (() => {
 
   /* ============================================================
      VALIDACIÓN DE PIN
-     Usada cuando el fingerprint falló técnicamente.
-     El usuario introduce su PIN + un motivo obligatorio.
   ============================================================ */
   async function validatePin(user, userData, pin, reason, ctx) {
     try {
-      // 1. Comparar PIN
       if (!userData.pin) {
         return { ok: false, message: 'Este usuario no tiene PIN configurado. Contacta al superadmin.' };
       }
@@ -202,7 +194,6 @@ window.SmartecDeviceGuard = (() => {
         return { ok: false, message: 'Debes indicar el motivo.' };
       }
 
-      // 2. Registrar en auditoría
       if (ctx.audit) {
         await ctx.audit({
           action: 'login',
@@ -217,9 +208,7 @@ window.SmartecDeviceGuard = (() => {
         });
       }
 
-      // 3. Marcar como validado hoy
       markValidatedToday();
-
       return { ok: true };
     } catch (e) {
       console.error('[DeviceGuard] Error validando PIN:', e);
@@ -229,15 +218,6 @@ window.SmartecDeviceGuard = (() => {
 
   /* ============================================================
      GUARD PARA OTRAS PÁGINAS
-     Redirige a home.html si:
-     - No hay sesión
-     - No se validó hoy
-     - El rol no es válido
-     - El perfil no existe
-
-     Excepción: superadmin siempre pasa.
-
-     Uso: se llama desde onAuthStateChanged de cada página.
   ============================================================ */
   function shouldRedirectToHome(userData) {
     if (!userData) return true;
