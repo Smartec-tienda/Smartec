@@ -455,28 +455,6 @@ let _deviceGuardUser = null;
 let _deviceGuardUserData = null;
 
 onAuthStateChanged(auth, async user => {
-      // 🚧 GUARD: solo se entra a esta página desde home.html
-    if (user) {
-      try {
-        const _guardSnap = await getDoc(doc(db, 'users', user.uid));
-        const _guardData = _guardSnap.exists() ? _guardSnap.data() : null;
-
-        if (!_guardData || !['superadmin','admin','vendedor'].includes(_guardData.role)) {
-          await signOut(auth);
-          window.location.href = 'home.html';
-          return;
-        }
-
-        if (window.SmartecDeviceGuard.shouldRedirectToHome(_guardData)) {
-          window.location.href = 'home.html';
-          return;
-        }
-      } catch (e) {
-        console.warn('[Guard] Error validando acceso:', e);
-        window.location.href = 'home.html';
-        return;
-      }
-    }
   if (!user) {
     $('login-screen').classList.remove('hidden');
     $('home-screen').classList.add('hidden');
@@ -516,18 +494,14 @@ onAuthStateChanged(auth, async user => {
   });
 
   if (!deviceCheck.allowed) {
-    // Ocultar login y home
     $('login-screen').classList.add('hidden');
     $('home-screen').classList.add('hidden');
 
     if (deviceCheck.reason === 'fingerprint_failed') {
-      // La huella falló → ofrecer PIN directamente
       openPinModal('fingerprint_failed');
     } else if (deviceCheck.reason === 'limit_reached') {
-      // Sin cupo → mostrar modal de dispositivo bloqueado
       showDeviceBlockedModal(deviceCheck);
     } else {
-      // Error técnico
       alert('⚠️ Error validando el dispositivo: ' + (deviceCheck.error || 'desconocido'));
       await signOut(auth);
       window.location.href = 'index.html';
