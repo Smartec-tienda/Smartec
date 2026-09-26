@@ -194,8 +194,11 @@
       <button onclick="switchToPinFromUnlock()" class="w-full bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">
         🔓 Usar PIN en su lugar
       </button>
-      <button onclick="switchToPasswordFromUnlock()" class="w-full text-red-500 hover:text-red-700 py-2 text-xs">
+      <button onclick="switchToPasswordFromUnlock()" class="w-full bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold text-sm">
         Usar correo y contraseña
+      </button>
+      <button onclick="closeSessionCompletely()" class="w-full text-red-500 hover:text-red-700 py-2 text-xs">
+        Cerrar sesión completamente
       </button>
     </div>
   </div>
@@ -675,6 +678,36 @@ function switchToPasswordFromUnlock() {
 }
 
 /**
+ * Cierra sesión completamente (signOut real de Firebase).
+ * Se usa cuando el usuario quiere salir de verdad, ej: cambiar de usuario
+ * o usar un dispositivo compartido.
+ */
+async function closeSessionCompletely() {
+  if (!confirm('¿Cerrar sesión completamente?\n\nTendrás que ingresar correo y contraseña la próxima vez.')) {
+    return;
+  }
+
+  try {
+    // Limpiar estado local
+    _pendingUnlockUser = null;
+    _deviceGuardUser = null;
+    _deviceGuardUserData = null;
+
+    // Cerrar modales
+    closeUnlockModal();
+    closePinModal();
+    $('home-screen').classList.add('hidden');
+
+    // Cerrar sesión real de Firebase
+    await signOut(auth);
+    // onAuthStateChanged se encarga de mostrar el login
+  } catch (e) {
+    console.error('Error cerrando sesión completamente:', e);
+    alert('Error: ' + e.message);
+  }
+}
+
+/**
  * Abre el modal de PIN para un usuario específico.
  * @param {Object} userCtx - { uid, email, name, fingerprint, userData }
  * @param {string} origin - 'fingerprint_failed' | 'first_time' | 'device_not_auth'
@@ -1071,14 +1104,44 @@ $('reset-email')?.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') submitResetPassword();
 });
 
+/* ============================================================
+   BOTÓN "SALIR" (no cierra sesión real — solo bloquea la UI)
+============================================================ */
 $('logout-btn').onclick = async () => {
-  await signOut(auth);
-  window.location.href = 'index.html';
-};
+  // 🆕 No cerramos sesión de Firebase. Solo bloqueamos la UI y pedimos huella/PIN.
+  // Esto permite que al día siguiente la sesión siga activa y se pueda pedir huella directamente.
 
-$('logout-btn').onclick = async () => {
-  await signOut(auth);
-  window.location.href = 'index.html';
+  // 1. Generar fingerprint para saber quién es
+  let fingerprint = '';
+  try {
+    fingerprint = await window.SmartecFingerprint.generate();
+  } catch (e) {
+    console.warn('[HOME] No se pudo generar fingerprint al cerrar sesión:', e);
+  }
+
+  const uid = auth.currentUser?.uid;
+  const email = auth.currentUser?.email;
+
+  if (!uid) {
+    // No hay sesión → redirigir a login limpio
+    window.location.href = 'index.html';
+    return;
+  }
+
+  // 2. Guardar contexto del usuario para el modal de unlock
+  _pendingUnlockUser = {
+    uid,
+    email,
+    name: _deviceGuardUserData?.name || email,
+    fingerprint,
+    userData: _deviceGuardUserData
+  };
+
+  // 3. Ocultar home y mostrar modal de huella
+  $('home-screen').classList.add('hidden');
+  $('login-screen').classList.add('hidden');
+
+  await openUnlockModal();
 };
 
 
@@ -1446,6 +1509,7 @@ window.submitRegisterFingerprint = submitRegisterFingerprint;
 window.submitFingerprintUnlock = submitFingerprintUnlock;
 window.switchToPinFromUnlock = switchToPinFromUnlock;
 window.switchToPasswordFromUnlock = switchToPasswordFromUnlock;
+window.closeSessionCompletely = closeSessionCompletely;
 
 /* ============================================================
    BADGE EN TIEMPO REAL — SOLICITUDES PENDIENTES
