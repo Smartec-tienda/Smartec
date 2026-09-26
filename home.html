@@ -481,6 +481,12 @@ onAuthStateChanged(auth, async user => {
   _deviceGuardUser = user;
   _deviceGuardUserData = userData;
 
+  console.log('%c[HOME] A punto de llamar a validate()', 'color: green; font-weight: bold', {
+    uid: user.uid,
+    role: userData.role,
+    maxDevices: userData.maxDevices
+  });
+
   // 🔒 VALIDAR DISPOSITIVO
   const deviceCheck = await window.SmartecDeviceGuard.validate(user, userData, {
     db,

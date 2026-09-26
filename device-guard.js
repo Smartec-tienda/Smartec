@@ -46,10 +46,13 @@ window.SmartecDeviceGuard = (() => {
      VALIDACIÓN PRINCIPAL
   ============================================================ */
   async function validate(user, userData, ctx) {
-    console.log('[DeviceGuard] validate() llamado', {
+    console.log('%c[DeviceGuard] validate() llamado', 'color: blue; font-weight: bold', {
       uid: user?.uid,
+      email: user?.email,
       role: userData?.role,
-      maxDevices: userData?.maxDevices
+      maxDevices: userData?.maxDevices,
+      hasDeviceAutoApprove: userData?.deviceAutoApprove,
+      authorizedCount: (userData?.authorizedDevices || []).length
     });
 
     const result = {
