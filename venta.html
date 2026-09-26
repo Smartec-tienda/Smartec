@@ -8,6 +8,7 @@
   <script src="common.js"></script>
   <script src="cache.js"></script>
   <script src="kiosk.js"></script>
+  <script src="fingerprint.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root{--sd:#0A2A4A;--sl:#4A7A9A}
@@ -338,6 +339,37 @@
     </div>
   </div>
 
+<!-- ============ PANTALLA BLOQUEADA POR DISPOSITIVO ============ -->
+<div id="device-blocked-screen" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-100 p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+      </svg>
+    </div>
+
+    <h2 class="text-xl font-bold text-sd text-center mb-2">🔒 Dispositivo no autorizado</h2>
+    <p class="text-sm text-gray-600 text-center mb-5">
+      Has alcanzado el límite de dispositivos autorizados para tu cuenta.
+      Este dispositivo no puede iniciar sesión.
+    </p>
+
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-5 text-sm">
+      <div class="flex justify-between mb-2"><span class="text-gray-500">Dispositivos autorizados:</span><b id="blocked-device-count">0/0</b></div>
+      <div class="flex justify-between mb-2"><span class="text-gray-500">Este dispositivo:</span><b id="blocked-device-label">—</b></div>
+      <div class="flex justify-between"><span class="text-gray-500">Fecha:</span><b id="blocked-device-date">—</b></div>
+    </div>
+
+    <div class="space-y-2">
+      <button onclick="solicitarAutorizacionDispositivo()" class="w-full bg-sd text-white py-3 rounded-lg hover:bg-sl font-bold">
+        🆘 Solicitar autorización al superadmin
+      </button>
+      <button onclick="logout()" class="w-full text-red-500 hover:text-red-700 py-2 text-xs">
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+</div>
 
   <!-- ============ MODAL éxito ============ -->
   <div id="success-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
@@ -615,6 +647,21 @@
       if (currentUserData.role !== 'superadmin' && !currentUserData.storeId) {
         alert('⛔ No tienes una tienda asignada. Contacta al superadmin.');
         await signOut(auth);
+        return;
+      }
+      // 🔒 VALIDAR DISPOSITIVO AUTORIZADO
+      const deviceCheck = await validateDeviceAccess();
+
+      if (!deviceCheck.allowed) {
+        // Guardar datos para el modal
+        window.__blockedDevice = deviceCheck;
+        // Mostrar pantalla bloqueada
+        const blockedEl = $('device-blocked-screen');
+        $('blocked-device-count').innerText = `${deviceCheck.currentCount}/${deviceCheck.maxDevices}`;
+        $('blocked-device-label').innerText = deviceCheck.deviceLabel;
+        $('blocked-device-date').innerText = new Date().toLocaleString('es-CO');
+        blockedEl.classList.remove('hidden');
+        blockedEl.classList.add('flex');
         return;
       }
 
@@ -2856,7 +2903,141 @@ window.confirmCloseShift = async () => {
   }
 };
 
-  /* ============ ESC cierra modales ============ */
+/* ============================================================
+   VALIDACIÓN DE DISPOSITIVO AUTORIZADO
+   ============================================================ */
+async function validateDeviceAccess() {
+  const result = {
+    allowed: true,
+    reason: null,
+    currentCount: 0,
+    maxDevices: 0,
+    deviceLabel: '',
+    fingerprint: ''
+  };
+
+  try {
+    // Si no hay usuario, no validar
+    if (!currentUser || !currentUserData) return result;
+
+    // Si el usuario no tiene límite configurado (undefined o 0), permitir todo
+    const maxDevices = Number(currentUserData.maxDevices || 0);
+    if (maxDevices <= 0) {
+      console.log('🔓 Sin límite de dispositivos para este usuario');
+      return result;
+    }
+
+    // Generar fingerprint
+    const fingerprint = await window.SmartecFingerprint.generate();
+    const deviceLabel = window.SmartecFingerprint.deviceLabel();
+    result.fingerprint = fingerprint;
+    result.deviceLabel = deviceLabel;
+    result.maxDevices = maxDevices;
+
+    // Dispositivos autorizados actuales
+    const authorizedDevices = currentUserData.authorizedDevices || [];
+    result.currentCount = authorizedDevices.length;
+
+    // ¿Ya está autorizado este dispositivo?
+    const existing = authorizedDevices.find(d => d.fingerprint === fingerprint);
+    if (existing) {
+      console.log('✅ Dispositivo ya autorizado');
+      // Actualizar lastSeen
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        authorizedDevices: authorizedDevices.map(d =>
+          d.fingerprint === fingerprint
+            ? { ...d, lastSeen: new Date().toISOString() }
+            : d
+        )
+      }).catch(e => console.warn('No se pudo actualizar lastSeen:', e));
+      return result;
+    }
+
+    // No está autorizado. ¿Hay cupo?
+    if (authorizedDevices.length < maxDevices) {
+      // Registrar automáticamente
+      const newDevice = {
+        fingerprint,
+        label: deviceLabel,
+        userAgent: navigator.userAgent,
+        registeredAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        registeredBy: currentUser.email
+      };
+
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        authorizedDevices: [...authorizedDevices, newDevice]
+      });
+
+      // Registrar en auditoría
+      await audit({
+        action: 'create',
+        collection: 'users',
+        docId: currentUser.uid,
+        after: { device: newDevice },
+        note: `Dispositivo autorizado: ${deviceLabel}`
+      });
+
+      console.log('✅ Nuevo dispositivo registrado:', deviceLabel);
+      result.currentCount = authorizedDevices.length + 1;
+      return result;
+    }
+
+    // Alcanzó el límite → bloquear
+    result.allowed = false;
+    result.reason = 'limit_reached';
+    console.log('❌ Límite de dispositivos alcanzado');
+
+    // Registrar intento bloqueado en auditoría
+    await audit({
+      action: 'create',
+      collection: 'users',
+      docId: currentUser.uid,
+      note: `Intento de acceso desde dispositivo NO autorizado: ${deviceLabel}`,
+      after: { blockedDevice: { fingerprint, label: deviceLabel } }
+    });
+
+    return result;
+  } catch (e) {
+    console.error('Error validando dispositivo:', e);
+    // Ante la duda, permitir acceso (mejor que bloquear por error técnico)
+    return { ...result, allowed: true };
+  }
+}
+
+window.solicitarAutorizacionDispositivo = async () => {
+  if (!window.__blockedDevice) return;
+  const d = window.__blockedDevice;
+
+  const motivo = prompt(
+    'Explica por qué necesitas usar este dispositivo.\n\n' +
+    'La solicitud llegará al superadmin.'
+  );
+  if (!motivo || !motivo.trim()) return;
+
+  try {
+    await addDoc(collection(db, 'auditLog'), {
+      action: 'create',
+      collection: 'users',
+      docId: currentUser?.uid || null,
+      note: `Solicitud de autorización de dispositivo: ${motivo.trim()}`,
+      requestType: 'device_unblock',
+      requestStatus: 'pending',
+      deviceFingerprint: d.fingerprint,
+      deviceLabel: d.deviceLabel,
+      requestedByEmail: currentUser?.email || null,
+      requestedByName: currentUserData?.name || null,
+      timestamp: serverTimestamp()
+    });
+
+    alert('✅ Solicitud enviada al superadmin.');
+  } catch (e) {
+    console.error(e);
+    alert('Error al enviar la solicitud: ' + e.message);
+  }
+};
+
+/* ============ ESC cierra modales ============ */
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (!$('print-format-modal').classList.contains('hidden')) return closePrintModal();
