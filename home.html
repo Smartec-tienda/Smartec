@@ -894,7 +894,6 @@ async function submitRegisterFingerprint() {
       userId: user.uid,
       userEmail: user.email,
       userName: userData.name || user.email,
-      publicKey: credential.publicKey,
       attestationObject: credential.attestationObject,
       clientDataJSON: credential.clientDataJSON,
       transports: credential.transports || [],
