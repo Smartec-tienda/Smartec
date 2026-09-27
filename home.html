@@ -897,7 +897,7 @@ async function submitRegisterFingerprint() {
       credentialId: credential.credentialId
     });
 
-    console.log('[HOME] Respuesta CF registro:', regResult.data);
+    console.log('[HOME] Respuesta CF registro:', JSON.stringify(regResult.data, null, 2));
 
     if (!regResult.data || !regResult.data.verified) {
       throw new Error('La CF no pudo verificar el registro.');
