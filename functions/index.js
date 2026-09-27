@@ -1,5 +1,6 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
+const { Buffer } = require('buffer');
 
 admin.initializeApp();
 
@@ -229,18 +230,7 @@ exports.verifyWebAuthnAssertion = onCall(
         expectedRPID,
         credential: {
           id: credentialId,
-          publicKey: (() => {
-            // SimpleWebAuthn espera la public key en formato COSE (Uint8Array).
-            // La extraemos del attestationObject usando @simplewebauthn/server.
-            const { isoBase64URL, isoCBOR } = require('@simplewebauthn/server/helpers');
-            const attestationBuffer = isoBase64URL.toBuffer(credData.attestationObject);
-            const decoded = isoCBOR.decodeFirst(attestationBuffer);
-            const authData = decoded.authData;
-            const credIdLen = (authData[53] << 8) | authData[54];
-            const publicKeyOffset = 55 + credIdLen;
-            const publicKeyBytes = authData.slice(publicKeyOffset);
-            return publicKeyBytes;
-          })(),
+          publicKey: Buffer.from(credData.publicKey, 'base64url'),
           counter: Number(credData.counter || 0),
           transports: credData.transports || []
         },
@@ -297,6 +287,100 @@ exports.verifyWebAuthnAssertion = onCall(
       success: true,
       verified: true,
       newCounter: verification.authenticationInfo.newCounter
+    };
+  }
+);
+/* ============================================================
+   verifyWebAuthnRegistration
+   Verifica y procesa un registro de WebAuthn.
+   Extrae la public key correctamente usando SimpleWebAuthn.
+   Devuelve la public key en base64url lista para guardar.
+============================================================ */
+const { verifyRegistrationResponse } = require('@simplewebauthn/server');
+const { isoBase64URL } = require('@simplewebauthn/server/helpers');
+
+exports.verifyWebAuthnRegistration = onCall(
+  { cors: true, region: 'us-central1' },
+  async (request) => {
+    const { auth, data } = request;
+
+    if (!auth) {
+      throw new HttpsError(
+        'unauthenticated',
+        'Debes iniciar sesión para registrar la huella.'
+      );
+    }
+
+    const {
+      attestationObject,
+      clientDataJSON,
+      expectedChallenge,
+      credentialId
+    } = data || {};
+
+    if (!attestationObject || !clientDataJSON || !expectedChallenge || !credentialId) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Faltan datos para verificar el registro.'
+      );
+    }
+
+    const expectedOrigin = [
+      'https://smartec-tienda.github.io',
+      'http://localhost:5500',
+      'http://127.0.0.1:5500'
+    ];
+
+    const expectedRPID = 'smartec-tienda.github.io';
+
+    let verification;
+    try {
+      verification = await verifyRegistrationResponse({
+        response: {
+          id: credentialId,
+          rawId: credentialId,
+          response: {
+            attestationObject,
+            clientDataJSON
+          },
+          type: 'public-key',
+          clientExtensionResults: {}
+        },
+        expectedChallenge,
+        expectedOrigin,
+        expectedRPID,
+        requireUserVerification: true
+      });
+    } catch (e) {
+      console.error('Error verificando registro WebAuthn:', e);
+      throw new HttpsError(
+        'invalid-argument',
+        'La verificación del registro falló: ' + e.message
+      );
+    }
+
+    if (!verification.verified || !verification.registrationInfo) {
+      throw new HttpsError(
+        'invalid-argument',
+        'El registro no pudo ser verificado.'
+      );
+    }
+
+    const {
+      credentialPublicKey,
+      credentialID,
+      counter
+    } = verification.registrationInfo;
+
+    const publicKeyBase64Url = isoBase64URL.fromBuffer(credentialPublicKey);
+    const credentialIdBase64Url = isoBase64URL.fromBuffer(credentialID);
+
+    return {
+      success: true,
+      credentialId: credentialIdBase64Url,
+      publicKey: publicKeyBase64Url,
+      counter: counter,
+      verified: true
     };
   }
 );

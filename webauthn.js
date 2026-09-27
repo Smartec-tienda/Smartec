@@ -123,7 +123,8 @@ window.SmartecWebAuthn = (() => {
         attestationObject: response.response.attestationObject,
         clientDataJSON: response.response.clientDataJSON,
         transports: response.response.transports || [],
-        userHandle: userHandleB64
+        userHandle: userHandleB64,
+        challenge: challengeBase64Url
       };
     } catch (e) {
       console.error('[WebAuthn] Error en registerCredential:', e);

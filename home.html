@@ -862,7 +862,7 @@ async function submitRegisterFingerprint() {
   try {
     const { user, userData, fingerprint } = _pendingRegister;
 
-    // 1. Generar challenge y registrar credencial
+    // 1. Generar challenge y registrar credencial en el navegador
     const challenge = window.SmartecWebAuthn.generateChallenge();
 
     let credential;
@@ -886,18 +886,34 @@ async function submitRegisterFingerprint() {
       throw e;
     }
 
-    // 2. Guardar en Firestore
+    // 2. Enviar a Cloud Function para verificar y extraer publicKey
+    console.log('[HOME] Enviando registro a CF...');
+    const verifyRegFn = httpsCallable(functions, 'verifyWebAuthnRegistration');
+
+    const regResult = await verifyRegFn({
+      attestationObject: credential.attestationObject,
+      clientDataJSON: credential.clientDataJSON,
+      expectedChallenge: credential.challenge,
+      credentialId: credential.credentialId
+    });
+
+    console.log('[HOME] Respuesta CF registro:', regResult.data);
+
+    if (!regResult.data || !regResult.data.verified) {
+      throw new Error('La CF no pudo verificar el registro.');
+    }
+
+    // 3. Guardar en Firestore con la publicKey devuelta por la CF
     const deviceLabel = window.SmartecFingerprint.deviceLabel();
 
-    await setDoc(doc(db, 'webauthnCredentials', credential.credentialId), {
-      credentialId: credential.credentialId,
+    await setDoc(doc(db, 'webauthnCredentials', regResult.data.credentialId), {
+      credentialId: regResult.data.credentialId,
       userId: user.uid,
       userEmail: user.email,
       userName: userData.name || user.email,
-      attestationObject: credential.attestationObject,
-      clientDataJSON: credential.clientDataJSON,
+      publicKey: regResult.data.publicKey,
+      counter: regResult.data.counter || 0,
       transports: credential.transports || [],
-      counter: 0,
       deviceFingerprint: fingerprint,
       deviceLabel,
       reason,
@@ -906,18 +922,18 @@ async function submitRegisterFingerprint() {
       lastUsedAt: serverTimestamp()
     });
 
-    // 3. Auditoría
+    // 4. Auditoría
     await auditFromGuard({
       action: 'create',
       collection: 'webauthnCredentials',
-      docId: credential.credentialId,
+      docId: regResult.data.credentialId,
       note: `Huella registrada: ${deviceLabel} · Motivo: ${reason}`
     });
 
-    // 4. Marcar como logueado hoy
+    // 5. Marcar como logueado hoy
     markLoggedToday(user.uid, fingerprint);
 
-    // 5. Continuar al home
+    // 6. Continuar al home
     closeRegisterFingerprintModal();
     _pendingRegister = null;
 
@@ -925,7 +941,7 @@ async function submitRegisterFingerprint() {
 
   } catch (e) {
     console.error('[HOME] Error registrando huella:', e);
-    msg.innerText = '❌ ' + e.message;
+    msg.innerText = '❌ ' + (e.message || 'Error desconocido');
     msg.className = 'text-xs mb-3 text-red-600 font-semibold';
     msg.classList.remove('hidden');
     btn.disabled = false;
