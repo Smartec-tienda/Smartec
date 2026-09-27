@@ -620,26 +620,47 @@
     window.location.href = 'home.html';
   };
   onAuthStateChanged(auth, async user => {
-        // 🚧 GUARD: solo se entra a esta página desde home.html
+    // 🚧 GUARD: validar acceso a esta página
     if (user) {
       try {
         const _guardSnap = await getDoc(doc(db, 'users', user.uid));
         const _guardData = _guardSnap.exists() ? _guardSnap.data() : null;
 
+        // Rol no autorizado → fuera
         if (!_guardData || !['superadmin','admin','vendedor'].includes(_guardData.role)) {
           await signOut(auth);
           window.location.href = 'home.html';
           return;
         }
 
-        if (window.SmartecDeviceGuard.shouldRedirectToHome(_guardData)) {
-          window.location.href = 'home.html';
-          return;
+        // 🆕 Vendedores: siempre pueden entrar al POS, sin redirigir.
+        //    El device-guard corre dentro de loadData() más abajo.
+        if (_guardData.role === 'vendedor') {
+          console.log('[POS] Vendedor detectado → acceso directo al POS');
+          // No redirigir. Seguimos con el flujo normal.
+        } else {
+          // Admin / superadmin: comportamiento anterior
+          if (window.SmartecDeviceGuard.shouldRedirectToHome(_guardData)) {
+            window.location.href = 'home.html';
+            return;
+          }
         }
       } catch (e) {
         console.warn('[Guard] Error validando acceso:', e);
-        window.location.href = 'home.html';
-        return;
+        // 🆕 Si hay error y es vendedor, permitirle entrar al POS de todos modos
+        //    (el device-guard se encarga más abajo)
+        try {
+          const _snapRetry = await getDoc(doc(db, 'users', user.uid));
+          const _dataRetry = _snapRetry.exists() ? _snapRetry.data() : null;
+          if (!_dataRetry || _dataRetry.role !== 'vendedor') {
+            window.location.href = 'home.html';
+            return;
+          }
+          console.warn('[Guard] Vendedor con error de guard → permitido entrar al POS');
+        } catch (e2) {
+          window.location.href = 'home.html';
+          return;
+        }
       }
     }
     // Ocultar pantalla de carga siempre que Firebase responda
