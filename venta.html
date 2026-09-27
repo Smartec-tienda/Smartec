@@ -165,52 +165,20 @@
             <p id="c-phone-status" class="col-span-2 text-[10px] text-gray-400 -mt-1"></p>
             <input id="c-address" placeholder="Dirección" class="col-span-2 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl">
             <input id="c-city" placeholder="Ciudad" class="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl">
+            <!-- 🆕 PAGOS MÚLTIPLES -->
             <div class="col-span-2">
-              <label class="text-xs font-semibold text-sd">Método de pago *</label>
-              <div id="payment-methods" class="flex flex-wrap gap-2 mt-1">
-                <label class="payment-method-btn cursor-pointer">
-                  <input type="radio" name="c-payment" value="efectivo" class="hidden" checked>
-                  <span class="inline-block px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:border-sl transition">💵 Efectivo</span>
-                </label>
-                <label class="payment-method-btn cursor-pointer">
-                  <input type="radio" name="c-payment" value="transferencia" class="hidden">
-                  <span class="inline-block px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:border-sl transition">🔄 Transferencia</span>
-                </label>
-                <label class="payment-method-btn cursor-pointer">
-                  <input type="radio" name="c-payment" value="tarjeta" class="hidden">
-                  <span class="inline-block px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:border-sl transition">💳 Tarjeta</span>
-                </label>
-                <label class="payment-method-btn cursor-pointer">
-                  <input type="radio" name="c-payment" value="contraentrega" class="hidden">
-                  <span class="inline-block px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:border-sl transition">📦 Contra entrega</span>
-                </label>
-                <label class="payment-method-btn cursor-pointer">
-                  <input type="radio" name="c-payment" value="credito" class="hidden">
-                  <span class="inline-block px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:border-sl transition">🛍️ Crédito</span>
-                </label>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-semibold text-sd">Métodos de pago *</label>
+                <span id="payments-status" class="text-[10px] font-semibold">—</span>
               </div>
-            </div>
-
-            <!-- Selector de canal de transferencia -->
-            <div id="payment-channel-wrap" class="col-span-2 hidden">
-              <label class="text-xs font-semibold text-sd">Cuenta destino *</label>
-              <select id="payment-channel" class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl mt-1">
-                <option value="">— Selecciona una cuenta —</option>
-              </select>
-            </div>
-
-            <!-- Selector de entidad de crédito -->
-            <div id="payment-entity-wrap" class="col-span-2 hidden">
-              <label class="text-xs font-semibold text-sd">Entidad de crédito *</label>
-              <select id="payment-entity" class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl mt-1">
-                <option value="">— Selecciona una entidad —</option>
-              </select>
-            </div>
-
-            <!-- Aviso de contra entrega -->
-            <div id="payment-cta-note" class="col-span-2 hidden">
-              <div class="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-700">
-                ⚠️ <b>Contra entrega:</b> la venta quedará como <b>PAGO PENDIENTE</b> hasta confirmar el cobro.
+              <div id="payment-rows" class="space-y-2"></div>
+              <button type="button" onclick="addPaymentRow()" class="w-full mt-2 py-2 border-2 border-dashed border-gray-300 rounded-lg text-xs font-semibold text-gray-500 hover:border-sl hover:text-sl transition">
+                + Agregar otro método
+              </button>
+              <div id="payment-cta-note" class="hidden mt-2">
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-700">
+                  ⚠️ <b>Contra entrega:</b> la venta quedará como <b>PAGO PENDIENTE</b> hasta confirmar el cobro.
+                </div>
               </div>
             </div>
             <input id="c-notes" placeholder="Notas / observaciones" class="col-span-2 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-sl">
@@ -771,71 +739,311 @@ function renderPaymentSelectors() {
   }
 }
 
-function updatePaymentUI() {
-  const selected = document.querySelector('input[name="c-payment"]:checked')?.value || 'efectivo';
+/* ============================================================
+   🆕 PAGOS MÚLTIPLES — Estado y funciones
+   ============================================================ */
 
-  const channelWrap = $('payment-channel-wrap');
-  const entityWrap = $('payment-entity-wrap');
-  const ctaNote = $('payment-cta-note');
-  const channelSel = $('payment-channel');
-  const entitySel = $('payment-entity');
+/**
+ * Estado de los pagos del POS.
+ * Cada pago: { method, amount, channelId, isContraentrega }
+ */
+window.__posPayments = [
+  // Fila inicial: efectivo, monto = total actual
+  { method: 'efectivo', amount: 0, channelId: null }
+];
 
-  // Ocultar todo por defecto
-  channelWrap?.classList.add('hidden');
-  entityWrap?.classList.add('hidden');
-  ctaNote?.classList.add('hidden');
+/** Flag: si el carrito tiene contraentrega activo (excluyente) */
+let _posHasContraentrega = false;
 
-  if (selected === 'transferencia') {
-    channelWrap?.classList.remove('hidden');
-    if (channelSel) channelSel.value = '';
-  } else if (selected === 'credito') {
-    entityWrap?.classList.remove('hidden');
-    if (entitySel) entitySel.value = '';
-  } else if (selected === 'contraentrega') {
-    ctaNote?.classList.remove('hidden');
+/**
+ * Calcula el "total base" de la venta (sin recargo tarjeta).
+ * Es lo que el usuario debe cubrir con los pagos + recargo tarjeta.
+ */
+function computePosTotalBase() {
+  const subtotal = cart.reduce((s, it) => s + it.qty * it.unitPrice, 0);
+  const discount = Number($('t-discount')?.value) || 0;
+  const shipping = Number($('t-shipping')?.value) || 0;
+  return subtotal - discount + shipping;
+}
+
+/**
+ * Calcula el recargo por tarjeta (proporcional al monto pagado con tarjeta).
+ */
+function computePosSurcharge() {
+  const rate = Number($('t-cardsurcharge')?.value) || 0;
+  if (rate <= 0) return { amount: 0, rate: 0 };
+
+  const payments = window.__posPayments || [];
+  const tarjetaAmount = payments
+    .filter(p => p.method === 'tarjeta')
+    .reduce((s, p) => s + Number(p.amount || 0), 0);
+
+  return {
+    amount: tarjetaAmount * rate,
+    rate,
+    tarjetaAmount
+  };
+}
+
+/**
+ * Calcula el total real de la venta (base + recargo tarjeta).
+ */
+function computePosTotalFinal() {
+  return computePosTotalBase() + computePosSurcharge().amount;
+}
+
+/**
+ * Renderiza las filas de pago en el POS.
+ */
+function renderPosPaymentRows() {
+  const container = $('payment-rows');
+  const statusEl = $('payments-status');
+  if (!container) return;
+
+  const payments = window.__posPayments || [];
+  const totalFinal = computePosTotalFinal();
+  const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const remaining = totalFinal - sum;
+
+  // Status del header
+  if (statusEl) {
+    if (_posHasContraentrega) {
+      statusEl.innerHTML = '<span class="text-amber-600">📦 Contra entrega (pago pendiente)</span>';
+    } else if (Math.abs(remaining) < 1) {
+      statusEl.innerHTML = '<span class="text-green-600">✅ Cuadra</span>';
+    } else if (remaining > 0) {
+      statusEl.innerHTML = `<span class="text-amber-600">Faltan ${fmt(remaining)}</span>`;
+    } else {
+      statusEl.innerHTML = `<span class="text-red-600">Sobra ${fmt(-remaining)}</span>`;
+    }
   }
 
-  // Revalidar formulario
+  // Opciones de métodos (contraentrega excluido si hay más de 1 pago)
+  const methods = [
+    { v: 'efectivo', l: '💵 Efectivo' },
+    { v: 'transferencia', l: '🔄 Transferencia' },
+    { v: 'tarjeta', l: '💳 Tarjeta' },
+    { v: 'credito', l: '🛍️ Crédito' },
+    { v: 'contraentrega', l: '📦 Contra entrega' }
+  ];
+
+  // Si ya hay un método contraentrega seleccionado en cualquier fila,
+  // solo permitir 1 fila y bloquear el botón "+ agregar"
+  const hasCTA = payments.some(p => p.method === 'contraentrega');
+
+  // Opciones de canales (transferencia / crédito)
+  const transferChannels = (paymentChannelsList || [])
+    .filter(c => c.type === 'transferencia' && c.active !== false);
+  const creditChannels = (paymentChannelsList || [])
+    .filter(c => c.type === 'credito' && c.active !== false);
+
+  const renderChannelSelect = (p, idx) => {
+    if (p.method !== 'transferencia' && p.method !== 'credito') return '';
+    const list = p.method === 'transferencia' ? transferChannels : creditChannels;
+    const label = p.method === 'transferencia' ? 'Cuenta destino *' : 'Entidad crédito *';
+
+    const opts = list.map(c => {
+      const icon = c.icon || (p.method === 'credito' ? '🛍️' : '🏦');
+      const name = c.customName ? `${c.bank} — ${c.customName}` : c.bank;
+      return `<option value="${c.id}" ${p.channelId === c.id ? 'selected' : ''}>${icon} ${escapeHtml(name)}</option>`;
+    }).join('');
+
+    return `
+      <div class="mt-2">
+        <label class="text-[10px] font-semibold text-sd block mb-1">${label}</label>
+        <select onchange="updatePaymentRow(${idx}, 'channelId', this.value)" class="w-full px-2 py-1.5 border rounded-lg text-xs">
+          <option value="">— Selecciona —</option>
+          ${opts}
+        </select>
+      </div>
+    `;
+  };
+
+  // Render
+  container.innerHTML = payments.map((p, idx) => {
+    const methodOpts = methods.map(m =>
+      `<option value="${m.v}" ${p.method === m.v ? 'selected' : ''}>${m.l}</option>`
+    ).join('');
+
+    return `
+      <div class="border rounded-lg p-2.5 bg-gray-50" data-row-idx="${idx}">
+        <div class="flex justify-between items-center mb-1.5">
+          <p class="text-[10px] font-semibold text-gray-500">Pago ${idx + 1} de ${payments.length}</p>
+          ${payments.length > 1 ? `
+            <button type="button" onclick="removePaymentRow(${idx})" class="text-red-500 hover:text-red-700 text-[10px] font-semibold">✕ Quitar</button>
+          ` : ''}
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <select onchange="updatePaymentRow(${idx}, 'method', this.value)" class="px-2 py-1.5 border rounded-lg text-xs">
+            ${methodOpts}
+          </select>
+          <input type="number" value="${p.amount || 0}" min="0" step="100"
+            onchange="updatePaymentRow(${idx}, 'amount', this.value)"
+            class="px-2 py-1.5 border rounded-lg text-xs text-right font-semibold">
+        </div>
+        ${renderChannelSelect(p, idx)}
+      </div>
+    `;
+  }).join('');
+
+  // Habilitar/deshabilitar botón "+ agregar"
+  const addBtn = container.parentNode.querySelector('button[onclick="addPaymentRow()"]');
+  if (addBtn) {
+    if (hasCTA) {
+      addBtn.disabled = true;
+      addBtn.classList.add('opacity-40', 'cursor-not-allowed');
+      addBtn.title = 'Contra entrega no se puede combinar con otros métodos';
+    } else {
+      addBtn.disabled = false;
+      addBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+      addBtn.title = '';
+    }
+  }
+
+  // Aviso de contraentrega
+  const ctaNote = $('payment-cta-note');
+  if (ctaNote) {
+    if (_posHasContraentrega) ctaNote.classList.remove('hidden');
+    else ctaNote.classList.add('hidden');
+  }
+
+  // Revalidar botón guardar
   validatePaymentForm();
 }
 
+/**
+ * Agrega una nueva fila de pago.
+ */
+window.addPaymentRow = () => {
+  const payments = window.__posPayments || [];
+  const totalFinal = computePosTotalFinal();
+  const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const remaining = Math.max(0, totalFinal - sum);
+
+  // Si ya hay fila con "efectivo" al total, la reducimos a 0 para no duplicar
+  if (payments.length === 1 && payments[0].amount === totalFinal) {
+    payments[0].amount = Math.max(0, totalFinal - remaining);
+  }
+
+  payments.push({
+    method: 'efectivo',
+    amount: remaining,
+    channelId: null
+  });
+
+  renderPosPaymentRows();
+};
+
+/**
+ * Elimina una fila de pago.
+ */
+window.removePaymentRow = (idx) => {
+  const payments = window.__posPayments || [];
+  if (payments.length <= 1) return;
+  payments.splice(idx, 1);
+
+  // Si queda 1, le ponemos el total base
+  if (payments.length === 1) {
+    const totalFinal = computePosTotalFinal();
+    payments[0].amount = totalFinal;
+  }
+
+  renderPosPaymentRows();
+};
+
+/**
+ * Actualiza un campo de una fila.
+ */
+window.updatePaymentRow = (idx, field, value) => {
+  const payments = window.__posPayments || [];
+  if (!payments[idx]) return;
+
+  if (field === 'amount') {
+    payments[idx].amount = Math.max(0, Number(value) || 0);
+  } else {
+    payments[idx][field] = value;
+    // Si cambia el método, limpiar canal si ya no aplica
+    if (field === 'method') {
+      if (value !== 'transferencia' && value !== 'credito') {
+        payments[idx].channelId = null;
+      }
+      // Actualizar flag de contraentrega
+      _posHasContraentrega = payments.some(p => p.method === 'contraentrega');
+    }
+  }
+
+  // Re-render (afecta todos los cálculos)
+  renderPosPaymentRows();
+};
+
+/**
+ * Valida el formulario de pago.
+ */
 function validatePaymentForm() {
-  const selected = document.querySelector('input[name="c-payment"]:checked')?.value || 'efectivo';
   const btn = $('save-btn');
+  if (!btn) return;
 
-  // Validación de canal
-  if (selected === 'transferencia') {
-    const channelId = $('payment-channel')?.value;
-    if (!channelId) {
+  // Si no hay carrito, siempre bloqueado
+  if (!cart.length) {
+    btn.disabled = true;
+    return;
+  }
+
+  const payments = window.__posPayments || [];
+
+  // Al menos 1 pago
+  if (!payments.length) {
+    btn.disabled = true;
+    return;
+  }
+
+  // Contraentrega especial
+  if (_posHasContraentrega) {
+    // Contraentrega debe ser la única fila
+    if (payments.length > 1) {
+      btn.disabled = true;
+      return;
+    }
+    // Contraentrega no requiere monto exacto (se cobra después)
+    btn.disabled = false;
+    return;
+  }
+
+  // Sin contraentrega: la suma debe cuadrar con el total final
+  const totalFinal = computePosTotalFinal();
+  const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  if (Math.abs(sum - totalFinal) > 1) {
+    btn.disabled = true;
+    return;
+  }
+
+  // Cada transferencia/crédito debe tener canal
+  for (const p of payments) {
+    if ((p.method === 'transferencia' || p.method === 'credito') && !p.channelId) {
       btn.disabled = true;
       return;
     }
   }
 
-  // Validación de entidad de crédito
-  if (selected === 'credito') {
-    const entityId = $('payment-entity')?.value;
-    if (!entityId) {
-      btn.disabled = true;
-      return;
-    }
-  }
-
-  // Si tiene carrito, habilitar
-  btn.disabled = cart.length === 0;
+  // Todo OK
+  btn.disabled = false;
 }
 
-// Listener: cambio de método de pago
-document.querySelectorAll('input[name="c-payment"]').forEach(radio => {
-  radio.addEventListener('change', updatePaymentUI);
-});
-
-// Listener: cambio de canal
-document.addEventListener('change', (e) => {
-  if (e.target.id === 'payment-channel' || e.target.id === 'payment-entity') {
-    validatePaymentForm();
-  }
-});
+/**
+ * Inicializa el sistema de pagos (al abrir el POS por primera vez).
+ */
+function initPosPayments() {
+  const payments = window.__posPayments || [];
+  const totalFinal = computePosTotalFinal();
+  // Iniciar con una sola fila en efectivo cubriendo el total
+  window.__posPayments = [{
+    method: 'efectivo',
+    amount: totalFinal,
+    channelId: null
+  }];
+  _posHasContraentrega = false;
+  renderPosPaymentRows();
+}
 
   /* ============ CARGA DE DATOS ============ */
   async function loadData() {
@@ -986,7 +1194,9 @@ document.addEventListener('change', (e) => {
       renderProducts();
       renderCart();
       await loadPaymentChannels();
-      updatePaymentUI();
+
+      // 🆕 Inicializar sistema de pagos
+      initPosPayments();
 
       // 🕒 Cargar turno activo del usuario (vía módulo shifts.js)
       await window.SmartecShift.loadTodayShift();
@@ -1708,25 +1918,40 @@ document.addEventListener('change', (e) => {
     const subtotal = cart.reduce((s,it) => s + it.qty*it.unitPrice, 0);
     const disc = Number($('t-discount').value)||0;
     const ship = Number($('t-shipping').value)||0;
-    const surchargeRate = Number($('t-cardsurcharge').value)||0;
 
-    const baseForSurcharge = subtotal - disc + ship;
-    const surchargeAmount = baseForSurcharge * surchargeRate;
-    const total = baseForSurcharge + surchargeAmount;
+    // 🆕 Total base
+    const totalBase = subtotal - disc + ship;
+
+    // 🆕 Recargo tarjeta (solo sobre el monto pagado con tarjeta)
+    const surchargeInfo = computePosSurcharge();
+    const surchargeAmount = surchargeInfo.amount;
+    const surchargeRate = surchargeInfo.rate;
+
+    // 🆕 Total final
+    const total = totalBase + surchargeAmount;
 
     $('t-subtotal').innerText = fmt(subtotal);
     $('t-total').innerText = fmt(total);
 
     // Fila del recargo
     const surchargeRow = $('t-cardsurcharge-row');
-    if (surchargeRate > 0) {
+    if (surchargeRate > 0 && surchargeAmount > 0) {
       surchargeRow.style.display = 'flex';
       $('t-cardsurcharge-amount').innerText = fmt(surchargeAmount);
     } else {
       surchargeRow.style.display = 'none';
     }
 
-    $('save-btn').disabled = cart.length === 0;
+    // 🆕 Refrescar filas de pago (porque el total pudo cambiar)
+    if (typeof renderPosPaymentRows === 'function') {
+      // Solo re-renderizar si ya hay pagos inicializados
+      if (Array.isArray(window.__posPayments) && window.__posPayments.length) {
+        renderPosPaymentRows();
+      }
+    } else {
+      // Si aún no está inicializado el sistema de pagos, solo validar el botón básico
+      $('save-btn').disabled = cart.length === 0;
+    }
   }
   /* ============ GUARDAR VENTA ============ */
   $('save-btn').onclick = async () => {
@@ -1773,9 +1998,21 @@ document.addEventListener('change', (e) => {
       const shipping = Number($('t-shipping').value)||0;
       const surchargeRate = Number($('t-cardsurcharge').value)||0;
 
-      // Recargo tarjeta: aplica sobre (subtotal - descuento + envío)
-      const surchargeAmount = (subtotal - discount + shipping) * surchargeRate;
-      const total = subtotal - discount + shipping + surchargeAmount;
+      // 🆕 Total base (sin recargo tarjeta)
+      const totalBase = subtotal - discount + shipping;
+
+      // 🆕 Recolectar pagos desde el estado global
+      const payments = window.__posPayments || [];
+      const hasContraentrega = payments.some(p => p.method === 'contraentrega');
+
+      // 🆕 Recargo por tarjeta: solo sobre el monto pagado con tarjeta
+      const tarjetaAmount = payments
+        .filter(p => p.method === 'tarjeta')
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
+      const surchargeAmount = tarjetaAmount * surchargeRate;
+
+      // 🆕 Total final = total base + recargo tarjeta
+      const total = totalBase + surchargeAmount;
 
       const totalCost = cart.reduce((s,it) => s + it.qty*it.unitCost, 0);
 
@@ -1822,54 +2059,95 @@ document.addEventListener('change', (e) => {
       const sellerCommissionAmount = poolAmount + bonusAmount;
       const storeCommissionAmount = 0;
 
-    // ============ MÉTODO DE PAGO (nuevo) ============
-    const paymentMethod = document.querySelector('input[name="c-payment"]:checked')?.value || 'efectivo';
-    const paymentChannelId = paymentMethod === 'transferencia'
-      ? ($('payment-channel')?.value || null)
-      : null;
-    const paymentEntityId = paymentMethod === 'credito'
-      ? ($('payment-entity')?.value || null)
-      : null;
+    // ============ 🆕 MÉTODOS DE PAGO (múltiples) ============
+    if (!payments.length) {
+      alert('⚠️ Debes agregar al menos un método de pago.');
+      return;
+    }
 
-    // Obtener snapshot del canal/entidad elegido
-    let paymentChannelData = null;
-    let selectedChannel = null;
-    if (paymentChannelId || paymentEntityId) {
-      selectedChannel = paymentChannelsList.find(c =>
-        c.id === (paymentChannelId || paymentEntityId)
-      );
-      if (selectedChannel) {
-        paymentChannelData = {
-          id: selectedChannel.id,
-          code: selectedChannel.code || null,
-          type: selectedChannel.type,
-          bank: selectedChannel.bank || null,
-          name: selectedChannel.customName || null,
-          accountNumber: selectedChannel.accountNumber || null,
-          icon: selectedChannel.icon || null,
-          color: selectedChannel.color || null
-        };
+    // Validar contraentrega
+    if (hasContraentrega) {
+      if (payments.length > 1) {
+        alert('⚠️ Contra entrega no se puede combinar con otros métodos.');
+        return;
+      }
+      // Contraentrega: no requiere cuadre exacto
+    } else {
+      // Sin contraentrega: la suma debe cuadrar
+      const sumPayments = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+      if (Math.abs(sumPayments - total) > 1) {
+        alert(
+          `⚠️ Los pagos no cuadran con el total.\n\n` +
+          `Total: ${fmt(total)}\n` +
+          `Suma: ${fmt(sumPayments)}\n` +
+          `Diferencia: ${fmt(total - sumPayments)}`
+        );
+        return;
+      }
+      // Cada transferencia/crédito debe tener canal
+      for (const p of payments) {
+        if ((p.method === 'transferencia' || p.method === 'credito') && !p.channelId) {
+          alert(`⚠️ Debes seleccionar el canal para el pago con ${p.method}.`);
+          return;
+        }
       }
     }
 
-    // 🆕 Comisión financiera (solo crédito)
-    const creditCommissionRate = (paymentMethod === 'credito' && selectedChannel?.commissionRate)
-      ? Number(selectedChannel.commissionRate)
-      : 0;
-    const creditCommissionAmount = commissionBase * creditCommissionRate;
-    const netIncome = total - creditCommissionAmount;
-    // Estado del pago
-    const paymentStatus = paymentMethod === 'contraentrega' ? 'pending' : 'completed';
+    // 🆕 Construir paymentBreakdown (para guardar en Firestore)
+    const paymentBreakdown = payments.map(p => {
+      const item = {
+        method: p.method,
+        amount: Number(p.amount || 0),
+      };
+      // Snapshot del canal si aplica
+      if (p.channelId) {
+        const ch = paymentChannelsList.find(c => c.id === p.channelId);
+        if (ch) {
+          item.channelId = ch.id;
+          item.channelCode = ch.code || null;
+          item.channelType = ch.type || null;
+          item.channelBank = ch.bank || null;
+          item.channelName = ch.customName || null;
+          item.channelAccount = ch.accountNumber || null;
+          item.channelIcon = ch.icon || null;
+          item.channelColor = ch.color || null;
+          if (p.method === 'credito') {
+            item.creditCommissionRate = Number(ch.commissionRate || 0);
+            item.creditCommissionAmount = Number(p.amount || 0) * Number(ch.commissionRate || 0);
+          }
+        }
+      }
+      return item;
+    });
 
-    // Validación final: si es transferencia y no hay canal, bloquear
-    if (paymentMethod === 'transferencia' && !paymentChannelData) {
-      alert('⚠️ Debes seleccionar la cuenta de transferencia.');
-      return;
-    }
-    if (paymentMethod === 'credito' && !paymentChannelData) {
-      alert('⚠️ Debes seleccionar la entidad de crédito.');
-      return;
-    }
+    // 🆕 Método "resumen"
+    const methods = payments.map(p => p.method);
+    const uniqueMethods = [...new Set(methods)];
+    const paymentMethod = uniqueMethods.length === 1 ? uniqueMethods[0] : 'mixto';
+
+    // 🆕 Comisión financiera total (suma de comisiones de crédito)
+    const totalCreditCommission = paymentBreakdown.reduce(
+      (s, p) => s + Number(p.creditCommissionAmount || 0),
+      0
+    );
+
+    // 🆕 Compatibilidad con código viejo (primer pago)
+    const paymentChannelData = paymentBreakdown[0]?.channelId ? {
+      id: paymentBreakdown[0].channelId,
+      code: paymentBreakdown[0].channelCode,
+      type: paymentBreakdown[0].channelType,
+      bank: paymentBreakdown[0].channelBank,
+      name: paymentBreakdown[0].channelName,
+      accountNumber: paymentBreakdown[0].channelAccount,
+      icon: paymentBreakdown[0].channelIcon,
+      color: paymentBreakdown[0].channelColor
+    } : null;
+
+    const creditCommissionAmount = totalCreditCommission;
+    const netIncome = total - creditCommissionAmount;
+
+    // Estado del pago
+    const paymentStatus = hasContraentrega ? 'pending' : 'completed';
 
     const btn = $('save-btn');
     btn.disabled = true; btn.innerText = '⏳ Guardando...';
@@ -1901,7 +2179,7 @@ document.addEventListener('change', (e) => {
 
       // Crear venta
       const saleRef = await addDoc(collection(db,'sales'), {
-        documentNumber,  
+        documentNumber,
         storeId: currentStore.storeId,
         storeName: currentStore.name,
         customer,
@@ -1919,27 +2197,26 @@ document.addEventListener('change', (e) => {
         storeCommissionAmount,
         accumulatedBefore,
         accumulatedAfter,
-        paymentMethod,
-        paymentStatus,                                       // 🆕 'completed' | 'pending'
-        paymentChannelId: paymentChannelData?.id || null,    // 🆕
-        paymentChannelCode: paymentChannelData?.code || null, // 🆕
-        paymentChannelType: paymentChannelData?.type || null, // 🆕
-        paymentChannelBank: paymentChannelData?.bank || null, // 🆕
-        paymentChannelName: paymentChannelData?.name || null, // 🆕
-        paymentChannelAccount: paymentChannelData?.accountNumber || null, // 🆕
-        paymentChannelIcon: paymentChannelData?.icon || null, // 🆕
-        paymentChannelColor: paymentChannelData?.color || null, // 🆕
-        creditCommissionRate,        // 🆕 % comisión crédito
-        creditCommissionAmount,      // 🆕 valor comisión crédito
-        netIncome,                   // 🆕 ingreso neto real
-        status: 'completada',
-        paymentChannelId: paymentChannelData?.id || null,    // 🆕
-        paymentChannelCode: paymentChannelData?.code || null, // 🆕
-        paymentChannelType: paymentChannelData?.type || null, // 🆕
-        paymentChannelBank: paymentChannelData?.bank || null, // 🆕
-        paymentChannelName: paymentChannelData?.name || null, // 🆕
-        paymentChannelAccount: paymentChannelData?.accountNumber || null, // 🆕
-        paymentChannelIcon: paymentChannelData?.icon || null, // 🆕
+
+        // 🆕 Pago principal (resumen)
+        paymentMethod,                  // 'efectivo' | 'transferencia' | ... | 'mixto'
+        paymentStatus,                  // 'completed' | 'pending'
+        paymentBreakdown,               // 🆕 array de pagos
+
+        // 🆕 Snapshot del primer canal (compatibilidad con código viejo)
+        paymentChannelId: paymentChannelData?.id || null,
+        paymentChannelCode: paymentChannelData?.code || null,
+        paymentChannelType: paymentChannelData?.type || null,
+        paymentChannelBank: paymentChannelData?.bank || null,
+        paymentChannelName: paymentChannelData?.name || null,
+        paymentChannelAccount: paymentChannelData?.accountNumber || null,
+        paymentChannelIcon: paymentChannelData?.icon || null,
+        paymentChannelColor: paymentChannelData?.color || null,
+
+        // 🆕 Comisiones financieras
+        creditCommissionAmount,         // suma total de comisiones de crédito
+        netIncome,                      // ingreso neto real
+
         status: 'completada',
         sellerUid: currentUser.uid,
         sellerEmail: currentUser.email,
@@ -2118,15 +2395,16 @@ document.addEventListener('change', (e) => {
     ['c-name','c-phone','c-email','c-address','c-city','c-notes'].forEach(id => $(id).value = '');
     $('t-discount').value = 0;
     $('t-shipping').value = 0;
+    $('t-cardsurcharge').value = 0;
 
-    // 🆕 Resetear método de pago
-    const defaultRadio = document.querySelector('input[name="c-payment"][value="efectivo"]');
-    if (defaultRadio) defaultRadio.checked = true;
-    const channelSel = $('payment-channel');
-    if (channelSel) channelSel.value = '';
-    const entitySel = $('payment-entity');
-    if (entitySel) entitySel.value = '';
-    updatePaymentUI();
+    // 🆕 Resetear pagos múltiples
+    window.__posPayments = [{
+      method: 'efectivo',
+      amount: 0,
+      channelId: null
+    }];
+    _posHasContraentrega = false;
+    renderPosPaymentRows();
 
     lastAutocompletedPhone = '';
     const status = $('c-phone-status');
@@ -2135,6 +2413,7 @@ document.addEventListener('change', (e) => {
       status.className = 'col-span-2 text-[10px] text-gray-400 -mt-1';
     }
     renderCart();
+    updateTotals();
 
     // 🆕 Cerrar el carrito para volver al catálogo
     if (cartOpen) toggleCart();

@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec · Domicilios</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="common.js"></script>
+<script src="cache.js"></script>
+<script src="fingerprint.js"></script>
+<script src="device-guard.js"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<!-- ============ LOADING ============ -->
+<div id="loading-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+  <div class="text-center">
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
+    <p class="text-white font-semibold text-sm">Verificando sesión...</p>
+  </div>
+</div>
+
+<!-- ============ PANEL ============ -->
+<div id="panel" class="hidden min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-sd text-white p-4 flex justify-between items-center sticky top-0 z-40">
+    <div class="flex items-center gap-3 min-w-0">
+      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap">SMART<span class="text-sl">EC</span></h1>
+      <div class="hidden md:block w-px h-6 bg-white/20"></div>
+      <p class="hidden md:block text-sm opacity-80">📦 Domicilios y cobros pendientes</p>
+    </div>
+    <div class="flex items-center gap-3 text-sm shrink-0">
+      <span id="user-info" class="hidden md:inline opacity-80 text-xs"></span>
+      <button onclick="forceRefreshCache()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition" title="Refrescar datos">🔄</button>
+      <a href="admin.html" class="hover:text-sl transition text-xs">← Panel Admin</a>
+      <a href="home.html" class="hover:text-sl transition text-xs">Home</a>
+      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="container mx-auto p-4 md:p-6">
+
+    <!-- Info -->
+    <div class="mb-4">
+      <h2 class="text-2xl font-bold text-sd">Cobros pendientes</h2>
+      <p class="text-xs text-gray-400 mt-1">Ventas contraentrega esperando confirmación del pago.</p>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow p-4 mb-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+          <label class="text-[10px] font-semibold text-sd block mb-1">🏪 Tienda</label>
+          <select id="filter-store" class="w-full px-3 py-2 border rounded-lg text-xs">
+            <option value="all">Todas las tiendas</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd block mb-1">👤 Vendedor</label>
+          <select id="filter-seller" class="w-full px-3 py-2 border rounded-lg text-xs">
+            <option value="all">Todos los vendedores</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd block mb-1">📅 Antigüedad</label>
+          <select id="filter-age" class="w-full px-3 py-2 border rounded-lg text-xs">
+            <option value="all">Todos</option>
+            <option value="today">Hoy</option>
+            <option value="week">Últimos 7 días</option>
+            <option value="month">Últimos 30 días</option>
+            <option value="older">Más de 30 días</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd block mb-1">🔍 Buscar</label>
+          <input id="filter-search" type="text" placeholder="Cliente, teléfono, doc..." class="w-full px-3 py-2 border rounded-lg text-xs">
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div class="bg-white p-4 rounded-xl shadow border-l-4 border-amber-500">
+        <p class="text-xs text-gray-500">Pendientes</p>
+        <p id="kpi-count" class="text-2xl font-bold text-amber-600 mt-1">0</p>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow border-l-4 border-red-500">
+        <p class="text-xs text-gray-500">Monto por cobrar</p>
+        <p id="kpi-amount" class="text-2xl font-bold text-red-600 mt-1">$0</p>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow border-l-4 border-orange-500">
+        <p class="text-xs text-gray-500">Más antiguo</p>
+        <p id="kpi-oldest" class="text-lg font-bold text-orange-600 mt-1">—</p>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow border-l-4 border-sl">
+        <p class="text-xs text-gray-500">Tiendas con pendientes</p>
+        <p id="kpi-stores" class="text-2xl font-bold text-sl mt-1">0</p>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+      <div class="p-4 border-b flex justify-between items-center flex-wrap gap-2">
+        <h3 class="font-bold text-sd">Ventas pendientes</h3>
+        <p id="results-count" class="text-xs text-gray-400">0 ventas</p>
+      </div>
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[1000px]">
+          <thead class="bg-gray-50 text-sd">
+            <tr>
+              <th class="p-3 text-left">Fecha</th>
+              <th class="p-3 text-left">Cliente</th>
+              <th class="p-3 text-left">Tienda</th>
+              <th class="p-3 text-left">Vendedor</th>
+              <th class="p-3 text-right">Monto</th>
+              <th class="p-3 text-center">Días</th>
+              <th class="p-3 text-center"></th>
+            </tr>
+          </thead>
+          <tbody id="pending-tbody">
+            <tr>
+              <td colspan="7" class="p-8 text-center text-gray-400 text-xs">
+                Cargando ventas pendientes...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="empty-message" class="hidden text-center py-8 text-gray-400 text-sm">🎉 No hay ventas pendientes con esos filtros.</p>
+    </div>
+
+  </main>
+</div>
+
+<!-- ============ MODAL CONFIRMAR COBRO (se llena por JS) ============ -->
+<div id="confirm-payment-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeConfirmPaymentModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeConfirmPaymentModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-1 pr-10">✅ Confirmar cobro</h3>
+    <p id="confirm-payment-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="confirm-payment-body"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc, updateDoc, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+/* ============ CONFIG ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const escapeHtml = (window.Smartec?.escapeHtml) || (s => s);
+
+/* ============ ESTADO ============ */
+let currentUser = null;
+let currentUserData = null;
+let stores = [];
+let users = [];
+let paymentChannels = [];
+let pendingSales = [];
+let allPendingSales = [];
+
+/* ============ AUDIT ============ */
+async function audit(entry) {
+  try {
+    await addDoc(collection(db,'auditLog'), {
+      ...entry,
+      userId: currentUser?.uid || null,
+      userEmail: currentUser?.email || null,
+      userRole: currentUserData?.role || null,
+      storeId: currentUserData?.storeId || null,
+      timestamp: serverTimestamp()
+    });
+  } catch(e) { console.warn('audit fail', e); }
+}
+
+/* ============ AUTH ============ */
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    window.location.href = 'home.html';
+    return;
+  }
+
+  currentUser = user;
+
+  // Cargar perfil
+  try {
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    currentUserData = snap.exists() ? snap.data() : null;
+  } catch(e) {
+    currentUserData = null;
+  }
+
+  // Solo admin y superadmin
+  if (!currentUserData || !['superadmin','admin'].includes(currentUserData.role)) {
+    alert('⛔ Esta página es solo para administradores.');
+    await signOut(auth);
+    window.location.href = 'home.html';
+    return;
+  }
+
+  // Mostrar panel
+  $('loading-screen').classList.add('hidden');
+  $('panel').classList.remove('hidden');
+  $('user-info').innerText = `👤 ${user.email}`;
+
+  await loadAll();
+});
+
+$('logout-btn').onclick = async () => {
+  await audit({ action: 'logout', collection: 'system', note: 'Cierre de sesión desde domicilios' });
+  await signOut(auth);
+  window.location.href = 'home.html';
+};
+
+/* ============ CARGA DE DATOS ============ */
+async function loadAll() {
+  try {
+    const C = window.SmartecCache;
+
+    // Tiendas
+    stores = await C.wrap('stores', async () => {
+      const s = await getDocs(collection(db,'stores'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+
+    // Usuarios
+    users = await C.wrap('users', async () => {
+      const s = await getDocs(collection(db,'users'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+
+    // Canales de pago
+    paymentChannels = await C.wrap('paymentChannels', async () => {
+      const s = await getDocs(collection(db,'paymentChannels'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+
+    // Ventas pendientes
+    allPendingSales = await C.wrap('pendingSales', async () => {
+      const s = await getDocs(query(
+        collection(db,'sales'),
+        where('paymentStatus','==','pending')
+      ));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+
+    console.log('[Domicilios] Datos cargados:', {
+      stores: stores.length,
+      users: users.length,
+      channels: paymentChannels.length,
+      pendingSales: allPendingSales.length
+    });
+
+    // Filtrar por tienda si el admin no es superadmin
+    if (currentUserData.role === 'admin' && currentUserData.storeId) {
+      allPendingSales = allPendingSales.filter(s => s.storeId === currentUserData.storeId);
+    }
+
+    populateFilters();
+    applyFilters();
+
+  } catch(e) {
+    console.error('Error en loadAll:', e);
+    alert('Error al cargar datos: ' + e.message);
+  }
+}
+
+window.forceRefreshCache = async () => {
+  window.SmartecCache.clear();
+  await loadAll();
+  alert('✅ Datos actualizados');
+};
+
+/* ============ FILTROS ============ */
+function populateFilters() {
+  // Stores
+  const storeSel = $('filter-store');
+  if (storeSel) {
+    const opts = stores.map(s => `<option value="${s.storeId}">${escapeHtml(s.name)}</option>`).join('');
+    storeSel.innerHTML = '<option value="all">Todas las tiendas</option>' + opts;
+    if (currentUserData.role === 'admin' && currentUserData.storeId) {
+      storeSel.value = currentUserData.storeId;
+      storeSel.disabled = true;
+    }
+  }
+
+  // Sellers (de las ventas pendientes)
+  const sellerSel = $('filter-seller');
+  if (sellerSel) {
+    const uniqueSellers = new Map();
+    allPendingSales.forEach(s => {
+      if (s.sellerEmail && !uniqueSellers.has(s.sellerEmail)) {
+        uniqueSellers.set(s.sellerEmail, s.sellerName || s.sellerEmail);
+      }
+    });
+    const opts = Array.from(uniqueSellers.entries()).map(([email, name]) =>
+      `<option value="${email}">${escapeHtml(name)}</option>`
+    ).join('');
+    sellerSel.innerHTML = '<option value="all">Todos los vendedores</option>' + opts;
+  }
+
+  // Listeners
+  ['filter-store','filter-seller','filter-age'].forEach(id => {
+    const el = $(id);
+    if (el && !el.dataset.listeners) {
+      el.dataset.listeners = '1';
+      el.addEventListener('change', applyFilters);
+    }
+  });
+
+  const searchEl = $('filter-search');
+  if (searchEl && !searchEl.dataset.listeners) {
+    searchEl.dataset.listeners = '1';
+    let timer = null;
+    searchEl.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(applyFilters, 250);
+    });
+  }
+}
+
+function applyFilters() {
+  const storeF = $('filter-store')?.value || 'all';
+  const sellerF = $('filter-seller')?.value || 'all';
+  const ageF = $('filter-age')?.value || 'all';
+  const searchF = ($('filter-search')?.value || '').toLowerCase().trim();
+
+  let list = allPendingSales.slice();
+
+  if (storeF !== 'all') list = list.filter(s => s.storeId === storeF);
+  if (sellerF !== 'all') list = list.filter(s => s.sellerEmail === sellerF);
+
+  if (ageF !== 'all') {
+    const now = Date.now();
+    list = list.filter(s => {
+      if (!s.createdAt?.seconds) return false;
+      const days = (now - s.createdAt.seconds * 1000) / (24*60*60*1000);
+      if (ageF === 'today') return days <= 1;
+      if (ageF === 'week') return days <= 7;
+      if (ageF === 'month') return days <= 30;
+      if (ageF === 'older') return days > 30;
+      return true;
+    });
+  }
+
+  if (searchF) {
+    list = list.filter(s =>
+      (s.customer?.name || '').toLowerCase().includes(searchF) ||
+      (s.customer?.phone || '').toLowerCase().includes(searchF) ||
+      (s.documentNumber || '').toLowerCase().includes(searchF)
+    );
+  }
+
+  // Orden: más antiguos primero
+  list.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+
+  pendingSales = list;
+  renderKPIs(list);
+  renderTable(list);
+}
+
+function renderKPIs(list) {
+  const totalAmount = list.reduce((s, x) => s + Number(x.total || 0), 0);
+
+  let oldest = '—';
+  if (list.length) {
+    const oldestSale = list[0];
+    if (oldestSale.createdAt?.seconds) {
+      const days = Math.floor((Date.now() - oldestSale.createdAt.seconds * 1000) / (24*60*60*1000));
+      oldest = days === 0 ? 'Hoy' : (days === 1 ? '1 día' : `${days} días`);
+    }
+  }
+
+  const uniqueStores = new Set(list.map(s => s.storeId)).size;
+
+  $('kpi-count').innerText = list.length;
+  $('kpi-amount').innerText = fmt(totalAmount);
+  $('kpi-oldest').innerText = oldest;
+  $('kpi-stores').innerText = uniqueStores;
+  $('results-count').innerText = `${list.length} venta${list.length !== 1 ? 's' : ''}`;
+}
+
+function renderTable(list) {
+  const tbody = $('pending-tbody');
+  const emptyMsg = $('empty-message');
+
+  if (!list.length) {
+    tbody.innerHTML = '';
+    emptyMsg.classList.remove('hidden');
+    return;
+  }
+  emptyMsg.classList.add('hidden');
+
+  tbody.innerHTML = list.map(s => {
+    const store = stores.find(x => x.storeId === s.storeId);
+    const seller = users.find(u => u.id === s.sellerUid);
+    const days = s.createdAt?.seconds
+      ? Math.floor((Date.now() - s.createdAt.seconds * 1000) / (24*60*60*1000))
+      : 0;
+
+    const daysClass = days >= 7 ? 'text-red-600 font-bold'
+                     : days >= 3 ? 'text-orange-500 font-semibold'
+                     : 'text-gray-500';
+
+    const dateStr = s.createdAt?.seconds
+      ? new Date(s.createdAt.seconds * 1000).toLocaleDateString('es-CO')
+      : '—';
+
+    return `
+      <tr class="border-b hover:bg-gray-50">
+        <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${dateStr}</td>
+        <td class="p-3 text-xs">
+          <p class="font-medium text-sd">${escapeHtml(s.customer?.name) || '—'}</p>
+          <p class="text-[10px] text-gray-400">${escapeHtml(s.customer?.phone) || ''}</p>
+        </td>
+        <td class="p-3 text-xs">${escapeHtml(store?.name) || s.storeId || '—'}</td>
+        <td class="p-3 text-xs">${escapeHtml(seller?.name) || escapeHtml(s.sellerName) || '—'}</td>
+        <td class="p-3 text-right text-xs font-bold">${fmt(s.total)}</td>
+        <td class="p-3 text-center text-xs ${daysClass}">${days}d</td>
+        <td class="p-3 text-right whitespace-nowrap">
+          <button onclick='openConfirmPaymentModal("${s.id}")' class="bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-green-700 transition">
+            ✅ Cobrar
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   MODAL CONFIRMAR COBRO (con pagos múltiples)
+============================================================ */
+
+window.openConfirmPaymentModal = (saleId) => {
+  const sale = pendingSales.find(x => x.id === saleId) || allPendingSales.find(x => x.id === saleId);
+  if (!sale) return alert('Venta no encontrada');
+
+  const modal = $('confirm-payment-modal');
+  const subtitle = $('confirm-payment-subtitle');
+  const body = $('confirm-payment-body');
+  if (!modal || !body) return;
+
+  const store = stores.find(s => s.storeId === sale.storeId);
+  const totalToCharge = Number(sale.total || 0);
+
+  // Guardar contexto en el modal
+  modal.dataset.saleId = saleId;
+  modal.dataset.totalToCharge = String(totalToCharge);
+
+  subtitle.innerText = `Venta de ${sale.customer?.name || 'Cliente'} · ${store?.name || sale.storeId}`;
+
+  // Canales activos
+  const transferChannels = paymentChannels
+    .filter(c => c.type === 'transferencia' && c.active !== false)
+    .sort((a, b) => (a.bank || '').localeCompare(b.bank || ''));
+
+  const creditChannels = paymentChannels
+    .filter(c => c.type === 'credito' && c.active !== false)
+    .sort((a, b) => (a.bank || '').localeCompare(b.bank || ''));
+
+  // Guardar en globales temporales
+  window.__confirmTransferChannels = transferChannels;
+  window.__confirmCreditChannels = creditChannels;
+  window.__confirmPayments = [
+    { method: 'efectivo', amount: totalToCharge, channelId: null }
+  ];
+
+  // Render
+  renderConfirmPaymentBody(body, totalToCharge);
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+/**
+ * Renderiza el cuerpo del modal.
+ */
+function renderConfirmPaymentBody(body, totalToCharge) {
+  const payments = window.__confirmPayments || [];
+  const transferChannels = window.__confirmTransferChannels || [];
+  const creditChannels = window.__confirmCreditChannels || [];
+
+  const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const remaining = totalToCharge - sum;
+  const diffClass = Math.abs(remaining) < 1
+    ? 'text-green-700'
+    : (remaining > 0 ? 'text-amber-700' : 'text-red-600');
+
+  // Opciones de canales
+  const transferOptions = transferChannels.map(c => {
+    const icon = c.icon || '🏦';
+    const label = c.customName ? `${c.bank} — ${c.customName}` : c.bank;
+    const account = c.accountNumber ? ` (${c.accountNumber})` : '';
+    return `<option value="${c.id}">${icon} ${escapeHtml(label)}${escapeHtml(account)}</option>`;
+  }).join('');
+
+  const creditOptions = creditChannels.map(c => {
+    const icon = c.icon || '🛍️';
+    const label = c.customName ? `${c.bank} — ${c.customName}` : c.bank;
+    const comm = c.commissionRate ? ` · ${(c.commissionRate*100).toFixed(2)}%` : '';
+    return `<option value="${c.id}">${icon} ${escapeHtml(label)}${escapeHtml(comm)}</option>`;
+  }).join('');
+
+  // Render de filas
+  const rowsHtml = payments.map((p, idx) => {
+    const methodOptions = [
+      { v: 'efectivo', l: '💵 Efectivo' },
+      { v: 'transferencia', l: '🔄 Transferencia' },
+      { v: 'tarjeta', l: '💳 Tarjeta' },
+      { v: 'credito', l: '🛍️ Crédito' },
+    ].map(o => `<option value="${o.v}" ${p.method === o.v ? 'selected' : ''}>${o.l}</option>`).join('');
+
+    const needsTransfer = p.method === 'transferencia';
+    const needsCredit = p.method === 'credito';
+    const needsChannel = needsTransfer || needsCredit;
+
+    const channelOptions = needsTransfer ? transferOptions : (needsCredit ? creditOptions : '');
+    const channelLabel = needsTransfer ? 'Cuenta destino *' : 'Entidad de crédito *';
+
+    return `
+      <div class="border rounded-lg p-3 mb-2 bg-gray-50" data-row-idx="${idx}">
+        <div class="flex justify-between items-center mb-2">
+          <p class="text-xs font-semibold text-gray-500">Pago ${idx + 1} de ${payments.length}</p>
+          ${payments.length > 1 ? `
+            <button type="button" onclick="removeConfirmPaymentRow(${idx})" class="text-red-500 hover:text-red-700 text-xs font-semibold">
+              ✕ Eliminar
+            </button>
+          ` : ''}
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <label class="text-[10px] font-semibold text-sd block mb-1">Método *</label>
+            <select onchange="updateConfirmPaymentRow(${idx}, 'method', this.value)"
+              class="w-full px-2 py-1.5 border rounded-lg text-xs">
+              ${methodOptions}
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd block mb-1">Monto *</label>
+            <input type="number" value="${p.amount || 0}" min="0" step="100"
+              onchange="updateConfirmPaymentRow(${idx}, 'amount', this.value)"
+              class="w-full px-2 py-1.5 border rounded-lg text-xs text-right font-semibold">
+          </div>
+        </div>
+
+        ${needsChannel ? `
+          <div>
+            <label class="text-[10px] font-semibold text-sd block mb-1">${channelLabel}</label>
+            <select onchange="updateConfirmPaymentRow(${idx}, 'channelId', this.value)"
+              class="w-full px-2 py-1.5 border rounded-lg text-xs">
+              <option value="">— Selecciona —</option>
+              ${channelOptions}
+            </select>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-5">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-xs text-gray-600">Monto a cobrar:</p>
+        <p class="text-2xl font-bold text-amber-700">${fmt(totalToCharge)}</p>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-xs font-semibold text-sd">Pagos aplicados</p>
+        <span class="text-xs ${diffClass} font-semibold">
+          ${Math.abs(remaining) < 1
+            ? '✅ Cuadra perfecto'
+            : (remaining > 0
+                ? `Faltan ${fmt(remaining)}`
+                : `Sobra ${fmt(-remaining)}`)}
+        </span>
+      </div>
+
+      <div id="confirm-payments-list">
+        ${rowsHtml}
+      </div>
+
+      <button type="button" onclick="addConfirmPaymentRow()"
+        class="w-full mt-2 py-2 border-2 border-dashed border-gray-300 rounded-lg text-xs font-semibold text-gray-500 hover:border-sl hover:text-sl transition">
+        + Agregar otro método
+      </button>
+    </div>
+
+    <label class="text-xs font-semibold text-sd block mb-1">Nota (opcional)</label>
+    <textarea id="confirm-notes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Ej: Cobrado al entregar a las 3pm..."></textarea>
+
+    <div class="flex gap-3 mt-5">
+      <button onclick="closeConfirmPaymentModal()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">
+        Cancelar
+      </button>
+      <button id="confirm-payment-btn" onclick="submitConfirmPayment()" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-semibold disabled:opacity-40">
+        ✅ Confirmar cobro
+      </button>
+    </div>
+  `;
+
+  validateConfirmPayment();
+}
+
+window.closeConfirmPaymentModal = () => {
+  const modal = $('confirm-payment-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  delete modal.dataset.saleId;
+  delete modal.dataset.totalToCharge;
+  window.__confirmPayments = null;
+};
+
+/* ============ FILAS DINÁMICAS ============ */
+window.addConfirmPaymentRow = () => {
+  const modal = $('confirm-payment-modal');
+  const body = $('confirm-payment-body');
+  if (!modal || !body) return;
+
+  const totalToCharge = Number(modal.dataset.totalToCharge || 0);
+  const payments = window.__confirmPayments || [];
+
+  const sumBefore = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const remaining = totalToCharge - sumBefore;
+
+  payments.push({
+    method: 'efectivo',
+    amount: remaining > 0 ? remaining : 0,
+    channelId: null
+  });
+
+  if (payments.length === 2 && payments[0].amount === totalToCharge) {
+    payments[0].amount = Math.max(0, totalToCharge - payments[1].amount);
+  }
+
+  renderConfirmPaymentBody(body, totalToCharge);
+};
+
+window.removeConfirmPaymentRow = (idx) => {
+  const modal = $('confirm-payment-modal');
+  const body = $('confirm-payment-body');
+  if (!modal || !body) return;
+
+  const totalToCharge = Number(modal.dataset.totalToCharge || 0);
+  const payments = window.__confirmPayments || [];
+
+  if (payments.length <= 1) return;
+  payments.splice(idx, 1);
+
+  if (payments.length === 1) {
+    payments[0].amount = totalToCharge;
+  }
+
+  renderConfirmPaymentBody(body, totalToCharge);
+};
+
+window.updateConfirmPaymentRow = (idx, field, value) => {
+  const modal = $('confirm-payment-modal');
+  const body = $('confirm-payment-body');
+  if (!modal || !body) return;
+
+  const totalToCharge = Number(modal.dataset.totalToCharge || 0);
+  const payments = window.__confirmPayments || [];
+  if (!payments[idx]) return;
+
+  if (field === 'amount') {
+    payments[idx].amount = Math.max(0, Number(value) || 0);
+  } else {
+    payments[idx][field] = value;
+    if (field === 'method' && value !== 'transferencia' && value !== 'credito') {
+      payments[idx].channelId = null;
+    }
+  }
+
+  renderConfirmPaymentBody(body, totalToCharge);
+};
+
+/* ============ VALIDACIÓN ============ */
+function validateConfirmPayment() {
+  const modal = $('confirm-payment-modal');
+  const btn = $('confirm-payment-btn');
+  if (!modal || !btn) return;
+
+  const totalToCharge = Number(modal.dataset.totalToCharge || 0);
+  const payments = window.__confirmPayments || [];
+
+  if (!payments.length) { btn.disabled = true; return; }
+
+  for (const p of payments) {
+    if (!p.amount || Number(p.amount) <= 0) { btn.disabled = true; return; }
+  }
+
+  const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  if (Math.abs(sum - totalToCharge) > 1) { btn.disabled = true; return; }
+
+  for (const p of payments) {
+    if ((p.method === 'transferencia' || p.method === 'credito') && !p.channelId) {
+      btn.disabled = true; return;
+    }
+  }
+
+  btn.disabled = false;
+}
+
+/* ============ GUARDAR COBRO ============ */
+window.submitConfirmPayment = async () => {
+  const modal = $('confirm-payment-modal');
+  const saleId = modal?.dataset.saleId;
+  if (!saleId) return;
+
+  const sale = pendingSales.find(x => x.id === saleId) || allPendingSales.find(x => x.id === saleId);
+  if (!sale) return alert('Venta no encontrada');
+
+  const notes = $('confirm-notes')?.value.trim() || '';
+  const totalToCharge = Number(modal.dataset.totalToCharge || 0);
+  const payments = window.__confirmPayments || [];
+
+  // Validar
+  if (!payments.length) return alert('Debes agregar al menos un método de pago');
+  const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  if (Math.abs(sum - totalToCharge) > 1) {
+    return alert(`⚠️ Los pagos no cuadran.\n\nTotal: ${fmt(totalToCharge)}\nSuma: ${fmt(sum)}`);
+  }
+  for (const p of payments) {
+    if ((p.method === 'transferencia' || p.method === 'credito') && !p.channelId) {
+      return alert('⚠️ Cada transferencia o crédito debe tener un canal.');
+    }
+  }
+
+  // Construir paymentBreakdown
+  const paymentBreakdown = payments.map(p => {
+    const item = {
+      method: p.method,
+      amount: Number(p.amount || 0),
+    };
+    if (p.channelId) {
+      const ch = paymentChannels.find(c => c.id === p.channelId);
+      if (ch) {
+        item.channelId = ch.id;
+        item.channelCode = ch.code || null;
+        item.channelType = ch.type || null;
+        item.channelBank = ch.bank || null;
+        item.channelName = ch.customName || null;
+        item.channelAccount = ch.accountNumber || null;
+        item.channelIcon = ch.icon || null;
+        item.channelColor = ch.color || null;
+        if (p.method === 'credito') {
+          item.creditCommissionRate = Number(ch.commissionRate || 0);
+          item.creditCommissionAmount = Number(p.amount || 0) * Number(ch.commissionRate || 0);
+        }
+      }
+    }
+    return item;
+  });
+
+  const methods = payments.map(p => p.method);
+  const uniqueMethods = [...new Set(methods)];
+  const summaryMethod = uniqueMethods.length === 1 ? uniqueMethods[0] : 'mixto';
+
+  const totalCreditCommission = paymentBreakdown.reduce(
+    (s, p) => s + Number(p.creditCommissionAmount || 0), 0
+  );
+
+  const btn = $('confirm-payment-btn');
+  if (btn) { btn.disabled = true; btn.innerText = '⏳ Guardando...'; }
+
+  try {
+    const before = {
+      paymentStatus: sale.paymentStatus || 'pending',
+      paymentMethod: sale.paymentMethod,
+    };
+
+    const updateData = {
+      paymentStatus: 'completed',
+      paymentMethod: summaryMethod,
+      paymentBreakdown,
+      creditCommissionAmount: totalCreditCommission,
+      finalPaymentAt: serverTimestamp(),
+      finalPaymentBy: currentUser.email,
+      finalPaymentNotes: notes || null,
+      updatedAt: serverTimestamp(),
+    };
+
+    if (paymentBreakdown.length === 1) {
+      const p = paymentBreakdown[0];
+      updateData.finalPaymentMethod = p.method;
+      if (p.channelId) {
+        updateData.finalPaymentChannelId = p.channelId;
+        updateData.finalPaymentChannelCode = p.channelCode;
+        updateData.finalPaymentChannelBank = p.channelBank;
+        updateData.finalPaymentChannelName = p.channelName;
+        updateData.finalPaymentChannelAccount = p.channelAccount;
+        updateData.finalPaymentChannelIcon = p.channelIcon;
+        updateData.finalPaymentChannelColor = p.channelColor;
+      }
+    }
+
+    await updateDoc(doc(db, 'sales', saleId), updateData);
+
+    const noteParts = paymentBreakdown.map(p => `${p.method} ${fmt(p.amount)}`);
+    await audit({
+      action: 'update',
+      collection: 'sales',
+      docId: saleId,
+      before,
+      after: updateData,
+      note: `Cobro confirmado (domicilios): ${noteParts.join(' + ')} · ${fmt(totalToCharge)}`
+    });
+
+    window.SmartecCache.invalidate('pendingSales');
+    window.SmartecCache.invalidate('sales');
+
+    closeConfirmPaymentModal();
+
+    // Quitar la venta de la lista local y refrescar
+    allPendingSales = allPendingSales.filter(s => s.id !== saleId);
+    populateFilters();
+    applyFilters();
+
+    alert(`✅ Cobro confirmado.\n\n${noteParts.join('\n')}`);
+  } catch (e) {
+    console.error('Error confirmando cobro:', e);
+    alert('Error: ' + e.message);
+    if (btn) { btn.disabled = false; btn.innerText = '✅ Confirmar cobro'; }
+  }
+};
+</script>
+
+</body>
+</html>

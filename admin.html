@@ -49,6 +49,7 @@
       🔄
     </button>
     <a href="venta.html" class="hover:text-sl transition hidden md:inline">Punto de venta</a>
+    <a href="domicilios.html" class="hover:text-sl transition hidden md:inline">🚚 Domicilios</a>
     <a href="home.html" class="hover:text-sl transition">← Home</a>
     <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600">Salir</button>
   </div>
@@ -3081,6 +3082,16 @@ function renderDashCharts(salesList) {
   if (canvasMethods && canvasMethods.offsetParent !== null) {
     const byMethod = {};
     salesList.forEach(s => {
+      // 🆕 Si la venta tiene paymentBreakdown, cada pago va a su método
+      if (Array.isArray(s.paymentBreakdown) && s.paymentBreakdown.length) {
+        s.paymentBreakdown.forEach(p => {
+          const m = p.method || 'efectivo';
+          byMethod[m] = (byMethod[m] || 0) + Number(p.amount || 0);
+        });
+        return;
+      }
+
+      // Compatibilidad: venta normal
       const m = s.paymentMethod || 'efectivo';
       const sub = Number(s.subtotal || 0);
       const disc = Number(s.discount || 0);
@@ -6423,16 +6434,18 @@ window.openConfirmPaymentModal = (saleId) => {
   if (!modal || !body) return;
 
   const store = stores.find(s => s.storeId === sale.storeId);
-  const base = (sale.commissionBase !== undefined)
-    ? Number(sale.commissionBase)
-    : (Number(sale.subtotal||0) - Number(sale.discount||0));
+
+  // 🆕 Total a cobrar = total real de la venta (incluye envío y recargo)
+  //    El envío y el recargo NO entran a comisión, pero SÍ se cobran al cliente.
+  const totalToCharge = Number(sale.total || 0);
 
   // Guardar el id de la venta en el dataset del modal
   modal.dataset.saleId = saleId;
+  modal.dataset.totalToCharge = String(totalToCharge);
 
   subtitle.innerText = `Venta de ${sale.customer?.name || 'Cliente'} · ${store?.name || sale.storeId}`;
 
-  // Opciones de canal de transferencia (solo activos)
+  // Canales de transferencia activos (para los selects de cada fila)
   const transferChannels = paymentChannels
     .filter(c => c.type === 'transferencia' && c.active !== false)
     .sort((a, b) => {
@@ -6441,6 +6454,42 @@ window.openConfirmPaymentModal = (saleId) => {
       return (a.customName || '').localeCompare(b.customName || '');
     });
 
+  // Canales de crédito activos
+  const creditChannels = paymentChannels
+    .filter(c => c.type === 'credito' && c.active !== false)
+    .sort((a, b) => (a.bank || '').localeCompare(b.bank || ''));
+
+  // Guardar en una global temporal para reusar en render
+  window.__confirmTransferChannels = transferChannels;
+  window.__confirmCreditChannels = creditChannels;
+  window.__confirmPayments = [
+    // Fila inicial: método efectivo con el monto total
+    { method: 'efectivo', amount: totalToCharge, channelId: null }
+  ];
+
+  // Render inicial
+  renderConfirmPaymentBody(body, totalToCharge);
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+/**
+ * 🆕 Renderiza el cuerpo del modal con la lista de pagos.
+ */
+function renderConfirmPaymentBody(body, totalToCharge) {
+  const payments = window.__confirmPayments || [];
+  const transferChannels = window.__confirmTransferChannels || [];
+  const creditChannels = window.__confirmCreditChannels || [];
+
+  // Calcular suma actual
+  const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const remaining = totalToCharge - sum;
+  const diffClass = Math.abs(remaining) < 1
+    ? 'text-green-700'
+    : (remaining > 0 ? 'text-amber-700' : 'text-red-600');
+
+  // Opciones de canales de transferencia
   const transferOptions = transferChannels.map(c => {
     const icon = c.icon || '🏦';
     const label = c.customName ? `${c.bank} — ${c.customName}` : c.bank;
@@ -6448,59 +6497,211 @@ window.openConfirmPaymentModal = (saleId) => {
     return `<option value="${c.id}">${icon} ${escapeHtml(label)}${escapeHtml(account)}</option>`;
   }).join('');
 
+  // Opciones de canales de crédito
+  const creditOptions = creditChannels.map(c => {
+    const icon = c.icon || '🛍️';
+    const label = c.customName ? `${c.bank} — ${c.customName}` : c.bank;
+    const comm = c.commissionRate ? ` · ${(c.commissionRate*100).toFixed(2)}%` : '';
+    return `<option value="${c.id}">${icon} ${escapeHtml(label)}${escapeHtml(comm)}</option>`;
+  }).join('');
+
+  // Render de cada fila
+  const rowsHtml = payments.map((p, idx) => {
+    const methodOptions = [
+      { v: 'efectivo', l: '💵 Efectivo' },
+      { v: 'transferencia', l: '🔄 Transferencia' },
+      { v: 'tarjeta', l: '💳 Tarjeta' },
+      { v: 'credito', l: '🛍️ Crédito' },
+    ].map(o => `<option value="${o.v}" ${p.method === o.v ? 'selected' : ''}>${o.l}</option>`).join('');
+
+    const needsTransfer = p.method === 'transferencia';
+    const needsCredit = p.method === 'credito';
+    const needsChannel = needsTransfer || needsCredit;
+
+    const channelOptions = needsTransfer
+      ? transferOptions
+      : (needsCredit ? creditOptions : '');
+
+    const channelLabel = needsTransfer ? 'Cuenta destino *' : 'Entidad de crédito *';
+
+    return `
+      <div class="border rounded-lg p-3 mb-2 bg-gray-50" data-row-idx="${idx}">
+        <div class="flex justify-between items-center mb-2">
+          <p class="text-xs font-semibold text-gray-500">Pago ${idx + 1} de ${payments.length}</p>
+          ${payments.length > 1 ? `
+            <button type="button" onclick="removeConfirmPaymentRow(${idx})" class="text-red-500 hover:text-red-700 text-xs font-semibold">
+              ✕ Eliminar
+            </button>
+          ` : ''}
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <label class="text-[10px] font-semibold text-sd block mb-1">Método *</label>
+            <select onchange="updateConfirmPaymentRow(${idx}, 'method', this.value)"
+              class="w-full px-2 py-1.5 border rounded-lg text-xs">
+              ${methodOptions}
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd block mb-1">Monto *</label>
+            <input type="number" value="${p.amount || 0}" min="0" step="100"
+              onchange="updateConfirmPaymentRow(${idx}, 'amount', this.value)"
+              class="w-full px-2 py-1.5 border rounded-lg text-xs text-right font-semibold">
+          </div>
+        </div>
+
+        ${needsChannel ? `
+          <div>
+            <label class="text-[10px] font-semibold text-sd block mb-1">${channelLabel}</label>
+            <select onchange="updateConfirmPaymentRow(${idx}, 'channelId', this.value)"
+              class="w-full px-2 py-1.5 border rounded-lg text-xs">
+              <option value="">— Selecciona —</option>
+              ${channelOptions}
+            </select>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
   body.innerHTML = `
     <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-5">
       <div class="flex justify-between items-center mb-2">
         <p class="text-xs text-gray-600">Monto a cobrar:</p>
-        <p class="text-2xl font-bold text-amber-700">${fmt(base)}</p>
+        <p class="text-2xl font-bold text-amber-700">${fmt(totalToCharge)}</p>
       </div>
       <p class="text-[10px] text-gray-500">
-        Venta registrada como <b>${sale.paymentMethod === 'contraentrega' ? '📦 Contra entrega' : sale.paymentMethod}</b>
+        Venta registrada como <b>${sale_paymentMethodLabel()}</b>
       </p>
     </div>
 
-    <label class="text-xs font-semibold text-sd block mb-2">¿Cómo pagó el cliente? *</label>
-    <div class="grid grid-cols-3 gap-2 mb-4">
-      <button type="button" onclick="selectConfirmMethod('efectivo')" data-method="efectivo" class="confirm-method-btn flex flex-col items-center gap-1 p-3 border-2 border-gray-300 rounded-lg hover:border-sl transition">
-        <span class="text-2xl">💵</span>
-        <span class="text-xs font-semibold">Efectivo</span>
-      </button>
-      <button type="button" onclick="selectConfirmMethod('transferencia')" data-method="transferencia" class="confirm-method-btn flex flex-col items-center gap-1 p-3 border-2 border-gray-300 rounded-lg hover:border-sl transition">
-        <span class="text-2xl">🔄</span>
-        <span class="text-xs font-semibold">Transferencia</span>
-      </button>
-      <button type="button" onclick="selectConfirmMethod('tarjeta')" data-method="tarjeta" class="confirm-method-btn flex flex-col items-center gap-1 p-3 border-2 border-gray-300 rounded-lg hover:border-sl transition">
-        <span class="text-2xl">💳</span>
-        <span class="text-xs font-semibold">Tarjeta</span>
-      </button>
-    </div>
+    <div class="mb-4">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-xs font-semibold text-sd">Pagos aplicados</p>
+        <span class="text-xs ${diffClass} font-semibold">
+          ${Math.abs(remaining) < 1
+            ? '✅ Cuadra perfecto'
+            : (remaining > 0
+                ? `Faltan ${fmt(remaining)}`
+                : `Sobra ${fmt(-remaining)}`)}
+        </span>
+      </div>
 
-    <!-- Selector de canal (solo para transferencia) -->
-    <div id="confirm-channel-wrap" class="hidden mb-4">
-      <label class="text-xs font-semibold text-sd block mb-1">Cuenta destino *</label>
-      <select id="confirm-channel" class="w-full px-3 py-2 border rounded-lg text-sm">
-        <option value="">— Selecciona una cuenta —</option>
-        ${transferOptions}
-      </select>
+      <div id="confirm-payments-list">
+        ${rowsHtml}
+      </div>
+
+      <button type="button" onclick="addConfirmPaymentRow()"
+        class="w-full mt-2 py-2 border-2 border-dashed border-gray-300 rounded-lg text-xs font-semibold text-gray-500 hover:border-sl hover:text-sl transition">
+        + Agregar otro método
+      </button>
     </div>
 
     <label class="text-xs font-semibold text-sd block mb-1">Nota (opcional)</label>
     <textarea id="confirm-notes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Ej: Cobrado al entregar a las 3pm..."></textarea>
 
-    <input type="hidden" id="confirm-method-value" value="">
-
     <div class="flex gap-3 mt-5">
       <button onclick="closeConfirmPaymentModal()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">
         Cancelar
       </button>
-      <button id="confirm-payment-btn" onclick="submitConfirmPayment()" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-semibold disabled:opacity-40" disabled>
+      <button id="confirm-payment-btn" onclick="submitConfirmPayment()" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-semibold disabled:opacity-40">
         ✅ Confirmar cobro
       </button>
     </div>
   `;
 
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
+  // Revalidar botón
+  validateConfirmPayment();
+}
+
+/** Helper para el label del método original de la venta */
+function sale_paymentMethodLabel() {
+  const modal = $('confirm-payment-modal');
+  const saleId = modal?.dataset.saleId;
+  const sale = sales.find(x => x.id === saleId);
+  if (!sale) return '—';
+  const labels = {
+    efectivo: '💵 Efectivo',
+    transferencia: '🔄 Transferencia',
+    tarjeta: '💳 Tarjeta',
+    contraentrega: '📦 Contra entrega',
+    credito: '🛍️ Crédito'
+  };
+  return labels[sale.paymentMethod] || sale.paymentMethod || '—';
+}
+
+/** 🆕 Agrega una nueva fila de pago (monto 0 por defecto) */
+window.addConfirmPaymentRow = () => {
+  const modal = $('confirm-payment-modal');
+  const body = $('confirm-payment-body');
+  if (!modal || !body) return;
+
+  const totalToCharge = Number(modal.dataset.totalToCharge || 0);
+  const payments = window.__confirmPayments || [];
+
+  // 🆕 Al agregar fila, la suma anterior se ajusta:
+  //    la primera fila se reduce al remanente y la nueva toma 0.
+  const sumBefore = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const remaining = totalToCharge - sumBefore;
+
+  // Nueva fila con el remanente (o 0 si ya cuadra)
+  payments.push({
+    method: 'efectivo',
+    amount: remaining > 0 ? remaining : 0,
+    channelId: null
+  });
+
+  // Ajustar la fila anterior: si era la única, reducirla al 0
+  if (payments.length === 2 && payments[0].amount === totalToCharge) {
+    payments[0].amount = Math.max(0, totalToCharge - payments[1].amount);
+  }
+
+  renderConfirmPaymentBody(body, totalToCharge);
+};
+
+/** 🆕 Elimina una fila de pago */
+window.removeConfirmPaymentRow = (idx) => {
+  const modal = $('confirm-payment-modal');
+  const body = $('confirm-payment-body');
+  if (!modal || !body) return;
+
+  const totalToCharge = Number(modal.dataset.totalToCharge || 0);
+  const payments = window.__confirmPayments || [];
+
+  if (payments.length <= 1) return;
+  payments.splice(idx, 1);
+
+  // Si solo queda 1 fila, le ponemos el total (para que cuadre)
+  if (payments.length === 1) {
+    payments[0].amount = totalToCharge;
+  }
+
+  renderConfirmPaymentBody(body, totalToCharge);
+};
+
+/** 🆕 Actualiza un campo de una fila */
+window.updateConfirmPaymentRow = (idx, field, value) => {
+  const modal = $('confirm-payment-modal');
+  const body = $('confirm-payment-body');
+  if (!modal || !body) return;
+
+  const totalToCharge = Number(modal.dataset.totalToCharge || 0);
+  const payments = window.__confirmPayments || [];
+  if (!payments[idx]) return;
+
+  if (field === 'amount') {
+    payments[idx].amount = Math.max(0, Number(value) || 0);
+  } else {
+    payments[idx][field] = value;
+    // Si cambia el método y no es transferencia ni crédito, limpiar canal
+    if (field === 'method' && value !== 'transferencia' && value !== 'credito') {
+      payments[idx].channelId = null;
+    }
+  }
+
+  // Re-renderizar
+  renderConfirmPaymentBody(body, totalToCharge);
 };
 
 window.closeConfirmPaymentModal = () => {
@@ -6511,61 +6712,59 @@ window.closeConfirmPaymentModal = () => {
   delete modal.dataset.saleId;
 };
 
-window.selectConfirmMethod = (method) => {
-  // Actualizar UI de los botones
-  document.querySelectorAll('.confirm-method-btn').forEach(btn => {
-    if (btn.dataset.method === method) {
-      btn.classList.remove('border-gray-300');
-      btn.classList.add('border-sl', 'bg-sl/10');
-    } else {
-      btn.classList.remove('border-sl', 'bg-sl/10');
-      btn.classList.add('border-gray-300');
-    }
-  });
-
-  const valueInput = $('confirm-method-value');
-  if (valueInput) valueInput.value = method;
-
-  // Mostrar/ocultar selector de canal
-  const channelWrap = $('confirm-channel-wrap');
-  if (channelWrap) {
-    if (method === 'transferencia') {
-      channelWrap.classList.remove('hidden');
-    } else {
-      channelWrap.classList.add('hidden');
-      const sel = $('confirm-channel');
-      if (sel) sel.value = '';
-    }
-  }
-
-  validateConfirmPayment();
-};
-
+/**
+ * 🆕 Validación del modal de confirmar cobro con pagos múltiples.
+ * Reglas:
+ *  - Debe haber al menos 1 pago
+ *  - La suma debe cuadrar exactamente con el total
+ *  - Cada pago con transferencia o crédito debe tener canal seleccionado
+ */
 function validateConfirmPayment() {
-  const method = $('confirm-method-value')?.value || '';
+  const modal = $('confirm-payment-modal');
   const btn = $('confirm-payment-btn');
-  if (!btn) return;
+  if (!modal || !btn) return;
 
-  if (!method) {
+  const totalToCharge = Number(modal.dataset.totalToCharge || 0);
+  const payments = window.__confirmPayments || [];
+
+  // Regla 1: al menos 1 pago
+  if (!payments.length) {
     btn.disabled = true;
     return;
   }
 
-  if (method === 'transferencia') {
-    const channelId = $('confirm-channel')?.value;
-    if (!channelId) {
+  // Regla 2: cada pago debe tener monto > 0
+  for (const p of payments) {
+    if (!p.amount || Number(p.amount) <= 0) {
       btn.disabled = true;
       return;
     }
   }
 
+  // Regla 3: suma debe cuadrar
+  const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  if (Math.abs(sum - totalToCharge) > 1) {
+    btn.disabled = true;
+    return;
+  }
+
+  // Regla 4: cada transferencia/crédito debe tener canal
+  for (const p of payments) {
+    if ((p.method === 'transferencia' || p.method === 'credito') && !p.channelId) {
+      btn.disabled = true;
+      return;
+    }
+  }
+
+  // Todo OK
   btn.disabled = false;
 }
 
-// Listener: al cambiar el canal, revalidar
+// 🆕 Listener global: cuando el modal se re-renderiza, revalidar
 document.addEventListener('change', (e) => {
-  if (e.target.id === 'confirm-channel') {
-    validateConfirmPayment();
+  // El modal se re-renderiza cada vez, así que validamos por si acaso
+  if (e.target.closest('#confirm-payment-modal')) {
+    setTimeout(validateConfirmPayment, 50);
   }
 });
 
@@ -6577,31 +6776,57 @@ window.submitConfirmPayment = async () => {
   const sale = sales.find(x => x.id === saleId);
   if (!sale) return alert('Venta no encontrada');
 
-  const method = $('confirm-method-value')?.value;
   const notes = $('confirm-notes')?.value.trim() || '';
+  const totalToCharge = Number(modal.dataset.totalToCharge || 0);
+  const payments = window.__confirmPayments || [];
 
-  if (!method) return alert('Debes seleccionar cómo pagó el cliente');
-
-  // Datos del canal si es transferencia
-  let channelData = null;
-  if (method === 'transferencia') {
-    const channelId = $('confirm-channel')?.value;
-    if (!channelId) return alert('Debes seleccionar la cuenta destino');
-
-    const selectedChannel = paymentChannels.find(c => c.id === channelId);
-    if (!selectedChannel) return alert('Canal no encontrado');
-
-    channelData = {
-      id: selectedChannel.id,
-      code: selectedChannel.code || null,
-      type: 'transferencia',
-      bank: selectedChannel.bank || null,
-      name: selectedChannel.customName || null,
-      accountNumber: selectedChannel.accountNumber || null,
-      icon: selectedChannel.icon || null,
-      color: selectedChannel.color || null
-    };
+  // Validar
+  if (!payments.length) return alert('Debes agregar al menos un método de pago');
+  const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  if (Math.abs(sum - totalToCharge) > 1) {
+    return alert(`⚠️ Los pagos no cuadran con el total.\n\nTotal: ${fmt(totalToCharge)}\nSuma: ${fmt(sum)}\nDiferencia: ${fmt(totalToCharge - sum)}`);
   }
+  for (const p of payments) {
+    if ((p.method === 'transferencia' || p.method === 'credito') && !p.channelId) {
+      return alert('⚠️ Cada transferencia o crédito debe tener un canal seleccionado.');
+    }
+  }
+
+  // 🆕 Construir el paymentBreakdown para guardar en Firestore
+  const paymentBreakdown = payments.map(p => {
+    const item = {
+      method: p.method,
+      amount: Number(p.amount || 0),
+    };
+    // Snapshot del canal si aplica
+    if (p.channelId) {
+      const ch = paymentChannels.find(c => c.id === p.channelId);
+      if (ch) {
+        item.channelId = ch.id;
+        item.channelCode = ch.code || null;
+        item.channelType = ch.type || null;
+        item.channelBank = ch.bank || null;
+        item.channelName = ch.customName || null;
+        item.channelAccount = ch.accountNumber || null;
+        item.channelIcon = ch.icon || null;
+        item.channelColor = ch.color || null;
+        // Para crédito: guardar la tasa de comisión
+        if (p.method === 'credito') {
+          item.creditCommissionRate = Number(ch.commissionRate || 0);
+          item.creditCommissionAmount = Number(p.amount || 0) * Number(ch.commissionRate || 0);
+        }
+      }
+    }
+    return item;
+  });
+
+  // 🆕 Método "resumen": si hay 1 solo pago, usar el método; si hay varios, "mixto"
+  const methods = payments.map(p => p.method);
+  const uniqueMethods = [...new Set(methods)];
+  const summaryMethod = uniqueMethods.length === 1 ? uniqueMethods[0] : 'mixto';
+
+  // 🆕 Comisión financiera total (suma de todos los pagos con crédito)
+  const totalCreditCommission = paymentBreakdown.reduce((s, p) => s + Number(p.creditCommissionAmount || 0), 0);
 
   const btn = $('confirm-payment-btn');
   if (btn) { btn.disabled = true; btn.innerText = '⏳ Guardando...'; }
@@ -6609,29 +6834,40 @@ window.submitConfirmPayment = async () => {
   try {
     const before = {
       paymentStatus: sale.paymentStatus || 'pending',
-      paymentMethod: sale.paymentMethod
+      paymentMethod: sale.paymentMethod,
     };
 
     const updateData = {
       paymentStatus: 'completed',
-      finalPaymentMethod: method,
+      paymentMethod: summaryMethod,   // 🆕 ahora puede ser "mixto"
+      paymentBreakdown,                // 🆕 array de pagos
+      creditCommissionAmount: totalCreditCommission,  // 🆕 total comisiones financieras
       finalPaymentAt: serverTimestamp(),
       finalPaymentBy: currentUser.email,
       finalPaymentNotes: notes || null,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
 
-    if (channelData) {
-      updateData.finalPaymentChannelId = channelData.id;
-      updateData.finalPaymentChannelCode = channelData.code;
-      updateData.finalPaymentChannelBank = channelData.bank;
-      updateData.finalPaymentChannelName = channelData.name;
-      updateData.finalPaymentChannelAccount = channelData.accountNumber;
-      updateData.finalPaymentChannelIcon = channelData.icon;
-      updateData.finalPaymentChannelColor = channelData.color;
+    // Compatibilidad con el código viejo: si hay 1 solo pago, llenar los campos final* como antes
+    if (paymentBreakdown.length === 1) {
+      const p = paymentBreakdown[0];
+      updateData.finalPaymentMethod = p.method;
+      if (p.channelId) {
+        updateData.finalPaymentChannelId = p.channelId;
+        updateData.finalPaymentChannelCode = p.channelCode;
+        updateData.finalPaymentChannelBank = p.channelBank;
+        updateData.finalPaymentChannelName = p.channelName;
+        updateData.finalPaymentChannelAccount = p.channelAccount;
+        updateData.finalPaymentChannelIcon = p.channelIcon;
+        updateData.finalPaymentChannelColor = p.channelColor;
+      }
     }
 
     await updateDoc(doc(db, 'sales', saleId), updateData);
+
+    // Nota de auditoría
+    const noteParts = paymentBreakdown.map(p => `${p.method} ${fmt(p.amount)}`);
+    const auditNote = `Cobro confirmado: ${noteParts.join(' + ')} · ${fmt(totalToCharge)}`;
 
     await audit({
       action: 'update',
@@ -6639,19 +6875,20 @@ window.submitConfirmPayment = async () => {
       docId: saleId,
       before,
       after: updateData,
-      note: `Cobro confirmado: ${method}${channelData ? ' (' + channelData.bank + ' - ' + channelData.name + ')' : ''} · ${fmt(sale.commissionBase || sale.total)}`
+      note: auditNote,
     });
 
     window.SmartecCache.invalidate('sales');
 
     closeConfirmPaymentModal();
+    window.__confirmPayments = null;
 
     // Refrescar UI
     await loadAll();
     renderReports();
 
-    alert(`✅ Cobro confirmado como ${method}${channelData ? ' a ' + channelData.bank : ''}`);
-  } catch(e) {
+    alert(`✅ Cobro confirmado.\n\n${noteParts.join('\n')}`);
+  } catch (e) {
     console.error('Error confirmando cobro:', e);
     alert('Error: ' + e.message);
     if (btn) { btn.disabled = false; btn.innerText = '✅ Confirmar cobro'; }
@@ -8697,6 +8934,26 @@ function computeSalesChartData(filtered, mode) {
     let key = 'Sin categoría';
 
     if (mode === 'paymentMethod') {
+      // 🆕 Si la venta tiene paymentBreakdown, la sumamos al método principal
+      //    (o al método con mayor monto si es mixta)
+      if (Array.isArray(s.paymentBreakdown) && s.paymentBreakdown.length) {
+        // Tomar el método con mayor monto como principal
+        const main = s.paymentBreakdown.reduce((max, p) =>
+          Number(p.amount || 0) > Number(max.amount || 0) ? p : max
+        , s.paymentBreakdown[0]);
+        const labels = {
+          efectivo: '💵 Efectivo',
+          transferencia: '🔄 Transferencia',
+          tarjeta: '💳 Tarjeta',
+          contraentrega: '📦 Contra entrega',
+          credito: '🛍️ Crédito'
+        };
+        key = labels[main.method] || main.method || 'Sin método';
+        // El monto a sumar es el del método principal, no el total de la venta
+        // Para no doble-contar. Se maneja en el byCat de abajo.
+        byCat[key] = (byCat[key] || 0) + Number(main.amount || 0);
+        return;
+      }
       const labels = {
         efectivo: '💵 Efectivo',
         transferencia: '🔄 Transferencia',
@@ -8939,8 +9196,13 @@ function renderReportByMethod(filtered) {
 
   // Agrupar por método
   const byMethod = {};
-  filtered.forEach(s => {
-    const method = s.paymentMethod || 'efectivo';
+
+  /**
+   * 🆕 Helper: registra un "pago parcial" en el byMethod.
+   * - Si la venta tiene paymentBreakdown, itera por cada pago.
+   * - Si no, usa el método principal como antes.
+   */
+  const registerPayment = (s, method, amount, channelData, isPending) => {
     if (!byMethod[method]) {
       byMethod[method] = {
         method,
@@ -8948,44 +9210,77 @@ function renderReportByMethod(filtered) {
         count: 0,
         pending: 0,
         pendingCount: 0,
-        channels: {}  // id → { bank, name, icon, total, count }
+        channels: {}
       };
     }
 
-    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
-    const ps = s.paymentStatus || 'completed';
-
-    byMethod[method].total += base;
+    byMethod[method].total += amount;
     byMethod[method].count += 1;
 
-    if (ps === 'pending') {
-      byMethod[method].pending += base;
+    if (isPending) {
+      byMethod[method].pending += amount;
       byMethod[method].pendingCount += 1;
     }
 
-    // Canal específico (solo si tiene channelId)
-    if (s.paymentChannelId) {
-      const cid = s.paymentChannelId;
+    // Canal específico
+    if (channelData && channelData.id) {
+      const cid = channelData.id;
       if (!byMethod[method].channels[cid]) {
         byMethod[method].channels[cid] = {
           id: cid,
-          bank: s.paymentChannelBank || '',
-          name: s.paymentChannelName || '',
-          icon: s.paymentChannelIcon || '',
-          color: s.paymentChannelColor || '',
+          bank: channelData.bank || '',
+          name: channelData.name || '',
+          icon: channelData.icon || '',
+          color: channelData.color || '',
           total: 0,
           count: 0,
           pending: 0,
           pendingCount: 0
         };
       }
-      byMethod[method].channels[cid].total += base;
+      byMethod[method].channels[cid].total += amount;
       byMethod[method].channels[cid].count += 1;
-      if (ps === 'pending') {
-        byMethod[method].channels[cid].pending += base;
+      if (isPending) {
+        byMethod[method].channels[cid].pending += amount;
         byMethod[method].channels[cid].pendingCount += 1;
       }
     }
+  };
+
+  filtered.forEach(s => {
+    const ps = s.paymentStatus || 'completed';
+    const isPending = ps === 'pending';
+
+    // 🆕 Caso 1: tiene paymentBreakdown (venta mixta o dividida)
+    if (Array.isArray(s.paymentBreakdown) && s.paymentBreakdown.length) {
+      s.paymentBreakdown.forEach(p => {
+        const channel = p.channelId ? {
+          id: p.channelId,
+          bank: p.channelBank || '',
+          name: p.channelName || '',
+          icon: p.channelIcon || '',
+          color: p.channelColor || ''
+        } : null;
+        registerPayment(s, p.method, Number(p.amount || 0), channel, isPending);
+      });
+      return;
+    }
+
+    // 🆕 Caso 2: venta normal (compatibilidad con ventas viejas)
+    const method = s.paymentMethod || 'efectivo';
+    const base = (s.commissionBase !== undefined)
+      ? Number(s.commissionBase)
+      : (Number(s.subtotal || 0) - Number(s.discount || 0));
+
+    const channel = s.paymentChannelId ? {
+      id: s.paymentChannelId,
+      bank: s.paymentChannelBank || '',
+      name: s.paymentChannelName || '',
+      icon: s.paymentChannelIcon || '',
+      color: s.paymentChannelColor || ''
+    } : null;
+
+    registerPayment(s, method, base, channel, isPending);
   });
 
   // Calcular total general
@@ -9089,113 +9384,109 @@ function renderReportReconciliation(filtered) {
   const emptyEl = $('rep-reconciliation-empty');
   if (!listEl) return;
 
-  // Agrupar por canal específico
-  // - transferencia con canal → agrupar por canal
-  // - credito con canal → agrupar por canal
-  // - efectivo → agrupar todos en un solo bloque "Efectivo"
-  // - tarjeta → agrupar todos en un solo bloque "Tarjeta"
-  // - contra entrega SIN confirmar → agrupar en "Por cobrar"
-  // - contra entrega CONFIRMADO → agrupar por su canal final (o efectivo/tarjeta genérico)
+  // 🆕 Mapeo de métodos a "cuentas destino" genéricas (para pagos sin canal específico)
+  const genericAccounts = {
+    efectivo:  { bank: 'Efectivo',  name: 'Caja física',          icon: '💵', color: '#22c55e', type: 'efectivo' },
+    tarjeta:   { bank: 'Tarjeta',   name: 'Datáfono / Terminal',  icon: '💳', color: '#a855f7', type: 'tarjeta' },
+    transferencia: { bank: 'Transferencia', name: 'Sin especificar', icon: '🔄', color: '#3b82f6', type: 'transferencia' },
+    credito:   { bank: 'Crédito',   name: 'Sin especificar',      icon: '🛍️', color: '#8b5cf6', type: 'credito' }
+  };
 
   const groups = {};
+
+  /** Helper: agrega un pago a un grupo */
+  const addToGroup = (key, data, amount, count = 1) => {
+    if (!groups[key]) {
+      groups[key] = { ...data, total: 0, count: 0 };
+    }
+    groups[key].total += amount;
+    groups[key].count += count;
+  };
+
+  /** Helper: clasifica un pago a su cuenta destino */
+  const classifyPayment = (s, payment, isPending) => {
+    const amount = Number(payment.amount || 0);
+    const method = payment.method;
+
+    // Si la venta está pendiente, todo va a "Por cobrar"
+    if (isPending) {
+      return {
+        key: 'pending_contraentrega',
+        data: {
+          type: 'pending',
+          bank: 'Por cobrar',
+          name: 'Contra entrega pendiente',
+          account: '',
+          icon: '⏳',
+          color: '#f59e0b'
+        },
+        amount
+      };
+    }
+
+    // Si tiene canal específico (transferencia o crédito)
+    if (payment.channelId && (method === 'transferencia' || method === 'credito')) {
+      return {
+        key: payment.channelId,
+        data: {
+          type: method,
+          bank: payment.channelBank || 'Cuenta',
+          name: payment.channelName || '',
+          account: payment.channelAccount || '',
+          icon: payment.channelIcon || (method === 'credito' ? '🛍️' : '🏦'),
+          color: payment.channelColor || '#0A2A4A'
+        },
+        amount
+      };
+    }
+
+    // Método genérico
+    const generic = genericAccounts[method] || {
+      bank: method || 'Otros', name: '', icon: '●', color: '#6b7280', type: 'otros'
+    };
+    return {
+      key: method,
+      data: {
+        type: generic.type,
+        bank: generic.bank,
+        name: generic.name,
+        account: '',
+        icon: generic.icon,
+        color: generic.color
+      },
+      amount
+    };
+  };
 
   filtered.forEach(s => {
     const base = (s.commissionBase !== undefined)
       ? Number(s.commissionBase)
       : (Number(s.subtotal||0) - Number(s.discount||0));
     const ps = s.paymentStatus || 'completed';
+    const isPending = ps === 'pending';
 
-    // Determinar la "cuenta destino" final
-    let accountKey, accountData;
-
-    if (ps === 'pending') {
-      // Pendiente de cobro
-      accountKey = 'pending_contraentrega';
-      accountData = {
-        type: 'pending',
-        bank: 'Por cobrar',
-        name: 'Contra entrega pendiente',
-        account: '',
-        icon: '⏳',
-        color: '#f59e0b'
-      };
-    } else {
-      // Cobrado → usar el método FINAL si existe, sino el original
-      const finalMethod = s.finalPaymentMethod || s.paymentMethod;
-
-      if (finalMethod === 'efectivo') {
-        accountKey = 'efectivo';
-        accountData = {
-          type: 'efectivo',
-          bank: 'Efectivo',
-          name: 'Caja física',
-          account: '',
-          icon: '💵',
-          color: '#22c55e'
-        };
-      } else if (finalMethod === 'tarjeta') {
-        accountKey = 'tarjeta';
-        accountData = {
-          type: 'tarjeta',
-          bank: 'Tarjeta',
-          name: 'Datáfono / Terminal',
-          account: '',
-          icon: '💳',
-          color: '#a855f7'
-        };
-      } else if (finalMethod === 'transferencia' || finalMethod === 'credito') {
-        // Canal específico (del cobro final si existe, sino del original)
-        const cid = s.finalPaymentChannelId || s.paymentChannelId;
-        const cBank = s.finalPaymentChannelBank || s.paymentChannelBank;
-        const cName = s.finalPaymentChannelName || s.paymentChannelName;
-        const cAccount = s.finalPaymentChannelAccount || s.paymentChannelAccount;
-        const cIcon = s.finalPaymentChannelIcon || s.paymentChannelIcon;
-        const cColor = s.finalPaymentChannelColor || s.paymentChannelColor;
-
-        if (cid) {
-          accountKey = cid;
-          accountData = {
-            type: finalMethod,
-            bank: cBank || 'Cuenta',
-            name: cName || '',
-            account: cAccount || '',
-            icon: cIcon || (finalMethod === 'credito' ? '🛍️' : '🏦'),
-            color: cColor || '#0A2A4A'
-          };
-        } else {
-          // Sin canal específico → agrupación genérica
-          accountKey = 'transferencia_generica';
-          accountData = {
-            type: 'transferencia',
-            bank: 'Transferencia',
-            name: 'Sin especificar',
-            account: '',
-            icon: '🔄',
-            color: '#3b82f6'
-          };
-        }
-      } else {
-        accountKey = 'otros';
-        accountData = {
-          type: 'otros',
-          bank: 'Otros',
-          name: '',
-          account: '',
-          icon: '●',
-          color: '#6b7280'
-        };
-      }
+    // 🆕 Si tiene paymentBreakdown → cada pago va a su cuenta
+    if (Array.isArray(s.paymentBreakdown) && s.paymentBreakdown.length) {
+      s.paymentBreakdown.forEach(p => {
+        const c = classifyPayment(s, p, isPending);
+        addToGroup(c.key, c.data, c.amount, 1);
+      });
+      return;
     }
 
-    if (!groups[accountKey]) {
-      groups[accountKey] = {
-        ...accountData,
-        total: 0,
-        count: 0
-      };
-    }
-    groups[accountKey].total += base;
-    groups[accountKey].count += 1;
+    // 🆕 Si no → usar método original (compatibilidad)
+    const method = s.finalPaymentMethod || s.paymentMethod || 'efectivo';
+    const channel = {
+      channelId: s.finalPaymentChannelId || s.paymentChannelId || null,
+      channelBank: s.finalPaymentChannelBank || s.paymentChannelBank || null,
+      channelName: s.finalPaymentChannelName || s.paymentChannelName || null,
+      channelAccount: s.finalPaymentChannelAccount || s.paymentChannelAccount || null,
+      channelIcon: s.finalPaymentChannelIcon || s.paymentChannelIcon || null,
+      channelColor: s.finalPaymentChannelColor || s.paymentChannelColor || null,
+      method: method
+    };
+    const c = classifyPayment(s, { ...channel, amount: base }, isPending);
+    addToGroup(c.key, c.data, c.amount, 1);
   });
 
   // Si no hay datos
