@@ -907,8 +907,8 @@ async function submitRegisterFingerprint() {
     // 3. Guardar en Firestore con la publicKey devuelta por la CF
     const deviceLabel = window.SmartecFingerprint.deviceLabel();
 
-    await setDoc(doc(db, 'webauthnCredentials', regResult.data.credentialId), {
-      credentialId: regResult.data.credentialId,
+    await setDoc(doc(db, 'webauthnCredentials', credential.credentialId), {
+      credentialId: credential.credentialId,
       userId: user.uid,
       userEmail: user.email,
       userName: userData.name || user.email,
@@ -927,7 +927,7 @@ async function submitRegisterFingerprint() {
     await auditFromGuard({
       action: 'create',
       collection: 'webauthnCredentials',
-      docId: regResult.data.credentialId,
+      docId: credential.credentialId,
       note: `Huella registrada: ${deviceLabel} · Motivo: ${reason}`
     });
 
