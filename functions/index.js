@@ -366,23 +366,32 @@ exports.verifyWebAuthnRegistration = onCall(
       );
     }
 
-    console.log('registrationInfo:', JSON.stringify(verification.registrationInfo, (key, val) => {
-      if (val instanceof Uint8Array) return '<Uint8Array:' + val.length + '>';
-      return val;
-    }, 2));
-
     const credInfo = verification.registrationInfo;
-    const credentialPublicKey = credInfo.credentialPublicKey;
-    // En v13+ el campo es credentialID, en v14 puede ser credential.id
-    const credentialID = credInfo.credentialID || (credInfo.credential && credInfo.credential.id);
-    const counter = credInfo.counter || 0;
 
-    if (!credentialPublicKey) {
-      throw new HttpsError('internal', 'No se obtuvo credentialPublicKey del registro');
+    // En @simplewebauthn/server v13+: la public key está en credInfo.credential.publicKey
+    // En v12 y anteriores: en credInfo.credentialPublicKey
+    let credentialPublicKey = credInfo.credentialPublicKey;
+    let credentialID = credInfo.credentialID;
+
+    if (!credentialPublicKey && credInfo.credential) {
+      credentialPublicKey = credInfo.credential.publicKey;
+      credentialID = credInfo.credential.id;
     }
 
-    const publicKeyBase64Url = isoBase64URL.fromBuffer(credentialPublicKey);
-    const credentialIdBase64Url = credentialID ? isoBase64URL.fromBuffer(credentialID) : credentialId;
+    if (!credentialPublicKey) {
+      console.error('No credentialPublicKey. registrationInfo:', credInfo);
+      throw new HttpsError('internal', 'No se obtuvo credentialPublicKey del registro. Revisa logs.');
+    }
+
+    const counter = credInfo.counter || (credInfo.credential && credInfo.credential.counter) || 0;
+
+    const publicKeyBase64Url = isoBase64URL.fromBuffer(
+      credentialPublicKey instanceof Uint8Array ? credentialPublicKey : new Uint8Array(credentialPublicKey)
+    );
+
+    const credentialIdBase64Url = credentialID
+      ? isoBase64URL.fromBuffer(credentialID instanceof Uint8Array ? credentialID : new Uint8Array(credentialID))
+      : credentialId;
 
     return {
       success: true,
