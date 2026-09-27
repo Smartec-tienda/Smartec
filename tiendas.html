@@ -1309,23 +1309,35 @@ onAuthStateChanged(auth, async user => {
       currentStore = activeStores.find(s => s.storeId === saved) || activeStores[0];
       sessionStorage.setItem('smartec_store_panel', currentStore.storeId);
 
-            // 🆕 Mostrar y poblar selector de tienda
+      // 🆕 Mostrar y poblar selector de tienda
       const sel = $('store-selector');
       if (sel) {
         sel.classList.remove('hidden');
         // Ocultar el nombre de tienda duplicado (ya está en el selector)
         const headerStore = $('header-store');
         if (headerStore) headerStore.classList.add('hidden');
-        sel.innerHTML = activeStores.map(s =>
-          `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
-        ).join('');
+
+        // 🆕 Opción "Todas las tiendas" + lista de tiendas activas
+        const saved = sessionStorage.getItem('smartec_store_panel');
+        const isAll = saved === '__all__';
+        sel.innerHTML =
+          `<option value="__all__" ${isAll ? 'selected' : ''}>🌐 Todas las tiendas</option>` +
+          activeStores.map(s =>
+            `<option value="${s.storeId}" ${!isAll && s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
+          ).join('');
 
         sel.onchange = async () => {
           const newStoreId = sel.value;
-          currentStore = stores.find(s => s.storeId === newStoreId);
           sessionStorage.setItem('smartec_store_panel', newStoreId);
 
-          // Recargar datos de la nueva tienda
+          if (newStoreId === '__all__') {
+            // Modo "Todas las tiendas": no hay tienda activa específica
+            currentStore = null;
+            await loadAllData();
+            return;
+          }
+
+          currentStore = stores.find(s => s.storeId === newStoreId);
           window.SmartecCache.invalidate(`cashRegisters_${newStoreId}`);
           await loadTodayCashRegisters();
 
@@ -1636,9 +1648,12 @@ let dashboardData = {
 };
 
 window.loadAllData = async () => {
-  if (!currentStore) return;
   showScreen('loading-screen');
-  $('loading-detail').innerText = 'Cargando datos de la tienda...';
+
+  const isAllStores = !currentStore;
+  $('loading-detail').innerText = isAllStores
+    ? 'Cargando datos de todas las tiendas...'
+    : 'Cargando datos de la tienda...';
 
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -1647,7 +1662,75 @@ window.loadAllData = async () => {
   try {
     const C = window.SmartecCache;
 
-    // 1. Ventas del mes (con cache POR tienda)
+    // ========== MODO "TODAS LAS TIENDAS" ==========
+    if (isAllStores) {
+      // Ventas: todas las tiendas
+      const allSales = await C.wrap('sales_all_stores', async () => {
+        const s = await getDocs(collection(db,'sales'));
+        return s.docs.map(d => ({id:d.id, ...d.data()}));
+      });
+      dashboardData.sales = allSales.filter(s =>
+        s.status !== 'anulada' && s.createdAt?.seconds && new Date(s.createdAt.seconds*1000) >= monthStart
+      );
+
+      // Inventario: todas las tiendas
+      dashboardData.inventory = await C.wrap('inventory_all', async () => {
+        const s = await getDocs(collection(db,'inventory'));
+        return s.docs.map(d => ({id:d.id, ...d.data()}));
+      });
+
+      // Vendedores: todos
+      const allUsers = await C.wrap('users_all', async () => {
+        const s = await getDocs(collection(db,'users'));
+        return s.docs.map(d => ({id:d.id, ...d.data()}));
+      });
+      dashboardData.sellers = allUsers.filter(u => u.role === 'vendedor' && u.active !== false);
+
+      // Meta: sin meta específica en modo "todas"
+      dashboardData.goal = { goalAmount: 0, bonusRate: 0 };
+      dashboardData.currentMonth = currentMonth;
+
+      // Apertura/cierre: no aplica
+      dashboardData.todayOpen = null;
+      dashboardData.todayClose = null;
+
+      // Productos y allInventory
+      dashboardData.products = await C.wrap('products', async () => {
+        const s = await getDocs(collection(db,'products'));
+        return s.docs.map(d => ({id:d.id, ...d.data()}));
+      });
+      dashboardData.allInventory = dashboardData.inventory;
+
+      // Settings
+      const settingsData = await C.wrap('settings', async () => {
+        const s = await getDoc(doc(db,'settings','general'));
+        return s.exists() ? s.data() : {};
+      });
+      settings = settingsData;
+      categories = settings.categories || {};
+
+      // Header: mostrar "Todas las tiendas"
+      const headerStore = $('header-store');
+      if (headerStore) {
+        headerStore.classList.remove('hidden');
+        headerStore.innerText = '🌐 Todas las tiendas';
+      }
+
+      // Renderizar
+      renderDashboard();
+      renderInventoryTab();
+      renderSellersTab();
+      renderCommissionsTab();
+      renderSalesTab();
+      renderCashTab();
+      showScreen('panel-screen');
+      stopCloseAlertChecker();
+
+      return;
+    }
+
+    // ========== MODO TIENDA ESPECÍFICA ==========
+    // 1. Ventas del mes
     const allSales = await C.wrap(`sales_${currentStore.storeId}`, async () => {
       const s = await getDocs(query(collection(db,'sales'), where('storeId','==', currentStore.storeId)));
       return s.docs.map(d => ({id:d.id, ...d.data()}));
@@ -1656,20 +1739,20 @@ window.loadAllData = async () => {
       s.status !== 'anulada' && s.createdAt?.seconds && new Date(s.createdAt.seconds*1000) >= monthStart
     );
 
-    // 2. Inventario de la tienda (con cache POR tienda)
+    // 2. Inventario de la tienda
     dashboardData.inventory = await C.wrap(`inventory_${currentStore.storeId}`, async () => {
       const s = await getDocs(query(collection(db,'inventory'), where('storeId','==', currentStore.storeId)));
       return s.docs.map(d => ({id:d.id, ...d.data()}));
     });
 
-    // 3. Vendedores de la tienda (con cache)
-    const allUsers = await C.wrap('users', async () => {
+    // 3. Vendedores de la tienda
+    const allUsers = await C.wrap(`users_store_${currentStore.storeId}`, async () => {
       const s = await getDocs(query(collection(db,'users'), where('storeId','==', currentStore.storeId)));
       return s.docs.map(d => ({id:d.id, ...d.data()}));
     });
     dashboardData.sellers = allUsers.filter(u => u.role === 'vendedor' && u.active !== false);
 
-    // 4. Meta del mes (con herencia) — SIN cache (es un solo doc)
+    // 4. Meta
     const goalRef = doc(db,'storeGoals',`${currentStore.storeId}_${currentMonth}`);
     const goalSnap = await getDoc(goalRef);
     if (goalSnap.exists()) {
@@ -1694,25 +1777,32 @@ window.loadAllData = async () => {
     dashboardData.todayOpen = cashRegisters.find(a => a.type === 'apertura' && a.dateStr === today);
     dashboardData.todayClose = cashRegisters.find(a => a.type === 'cierre' && a.dateStr === today);
 
-    // 6. Cargar productos (con cache)
+    // 6. Productos
     dashboardData.products = await C.wrap('products', async () => {
       const s = await getDocs(collection(db,'products'));
       return s.docs.map(d => ({id:d.id, ...d.data()}));
     });
 
-    // 7. Cargar allInventory (con cache)
+    // 7. allInventory
     dashboardData.allInventory = await C.wrap('inventory_all', async () => {
       const s = await getDocs(collection(db,'inventory'));
       return s.docs.map(d => ({id:d.id, ...d.data()}));
     });
 
-    // 8. Settings (con cache)
+    // 8. Settings
     const settingsData = await C.wrap('settings', async () => {
       const s = await getDoc(doc(db,'settings','general'));
       return s.exists() ? s.data() : {};
     });
     settings = settingsData;
     categories = settings.categories || {};
+
+    // Header: mostrar nombre de la tienda
+    const headerStore = $('header-store');
+    if (headerStore) {
+      headerStore.classList.remove('hidden');
+      headerStore.innerText = currentStore.name;
+    }
 
     // Renderizar
     renderDashboard();
@@ -1723,10 +1813,7 @@ window.loadAllData = async () => {
     renderCashTab();
     showScreen('panel-screen');
 
-    // 🆕 Arrancar chequeo periódico de alerta de cierre
     startCloseAlertChecker();
-
-    // 🕒 Cargar turno activo del usuario
     await loadTodayShift();
 
   } catch(e) {
