@@ -894,9 +894,10 @@ async function submitRegisterFingerprint() {
       attestationObject: credential.attestationObject,
       clientDataJSON: credential.clientDataJSON,
       expectedChallenge: credential.challenge,
-      credentialId: credential.credentialId
-    });
+      credentialId: credential.credentialId || credential.id || credential.rawId
+    });s
 
+    console.log('[HOME] Credential del navegador:', JSON.stringify(credential, null, 2));
     console.log('[HOME] Respuesta CF registro:', JSON.stringify(regResult.data, null, 2));
 
     if (!regResult.data || !regResult.data.verified) {

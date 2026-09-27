@@ -118,8 +118,10 @@ window.SmartecWebAuthn = (() => {
     try {
       const response = await lib.startRegistration({ optionsJSON: options });
 
+      console.log('[WebAuthn] response completa:', response);
+
       return {
-        credentialId: response.id,
+        credentialId: response.id || response.rawId,
         attestationObject: response.response.attestationObject,
         clientDataJSON: response.response.clientDataJSON,
         transports: response.response.transports || [],
