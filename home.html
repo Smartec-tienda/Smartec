@@ -626,6 +626,25 @@ async function submitFingerprintUnlock() {
         lastUsedAt: serverTimestamp()
       });
     } catch (e) { console.warn('No se pudo actualizar lastUsedAt:', e); }
+  
+
+    // 🆕 Historial: registrar el uso de la huella (inmutable)
+    try {
+      await addDoc(collection(db, 'deviceHistory'), {
+        deviceFingerprint: _pendingUnlockUser.fingerprint || null,
+        deviceLabel: window.SmartecFingerprint?.deviceLabel?.() || '—',
+        userId: _pendingUnlockUser.uid,
+        userEmail: _pendingUnlockUser.email,
+        userName: _pendingUnlockUser.name || _pendingUnlockUser.email,
+        credentialId: assertion.credentialId,
+        action: 'unlock',
+        userAgent: navigator.userAgent,
+        createdAt: serverTimestamp()
+      });
+    } catch (e) {
+      console.warn('[HOME] No se pudo guardar deviceHistory (unlock):', e);
+    }
+
 
     // 5. Huella OK → verificar que Firebase Auth tenga sesión
     if (!auth.currentUser || auth.currentUser.uid !== _pendingUnlockUser.uid) {
@@ -903,9 +922,14 @@ async function submitRegisterFingerprint() {
     }
 
     // 3. Guardar en Firestore con la publicKey devuelta por la CF
+    //    ⚠️ Usamos merge:true para NO sobreescribir campos existentes.
+    //    ⚠️ Solo ponemos createdAt si es credencial NUEVA.
     const deviceLabel = window.SmartecFingerprint.deviceLabel();
+    const credRef = doc(db, 'webauthnCredentials', credential.credentialId);
+    const existingCred = await getDoc(credRef);
+    const isNewCredential = !existingCred.exists();
 
-    await setDoc(doc(db, 'webauthnCredentials', credential.credentialId), {
+    const credPayload = {
       credentialId: credential.credentialId,
       userId: user.uid,
       userEmail: user.email,
@@ -917,10 +941,41 @@ async function submitRegisterFingerprint() {
       deviceLabel,
       reason,
       active: true,
-      createdAt: serverTimestamp(),
       lastUsedAt: serverTimestamp()
+    };
+
+    // Solo agregar createdAt si es nueva. Si ya existía, se conserva el original.
+    if (isNewCredential) {
+      credPayload.createdAt = serverTimestamp();
+    }
+
+    await setDoc(credRef, credPayload, { merge: true });
+
+    console.log('[HOME] Credencial guardada:', {
+      id: credential.credentialId,
+      isNew: isNewCredential,
+      deviceFingerprint: fingerprint.slice(0, 16)
     });
 
+    // 🆕 Historial: registrar el alta de la huella (inmutable, nunca se borra)
+    try {
+      await addDoc(collection(db, 'deviceHistory'), {
+        deviceFingerprint: fingerprint,
+        deviceLabel,
+        userId: user.uid,
+        userEmail: user.email,
+        userName: userData.name || user.email,
+        userRole: userData.role || null,
+        storeId: userData.storeId || null,
+        credentialId: credential.credentialId,
+        action: isNewCredential ? 'register' : 're-register',
+        reason: reason || null,
+        userAgent: navigator.userAgent,
+        createdAt: serverTimestamp()
+      });
+    } catch (e) {
+      console.warn('[HOME] No se pudo guardar deviceHistory (register):', e);
+    }
     // 4. Auditoría
     await auditFromGuard({
       action: 'create',
@@ -1423,6 +1478,24 @@ window.submitPinAccess = async () => {
 
   // ✅ PIN OK → marcar logueado hoy y continuar
   markLoggedToday(userCtx.uid, userCtx.fingerprint);
+
+  
+  // 🆕 Historial: registrar uso de PIN como fallback
+  try {
+    await addDoc(collection(db, 'deviceHistory'), {
+      deviceFingerprint: userCtx.fingerprint || null,
+      deviceLabel: window.SmartecFingerprint?.deviceLabel?.() || '—',
+      userId: userCtx.uid,
+      userEmail: userCtx.email,
+      userName: userCtx.name || userCtx.email,
+      action: 'pin_fallback',
+      reason: requiresReason ? reason : '(equipo sin biometría)',
+      userAgent: navigator.userAgent,
+      createdAt: serverTimestamp()
+    });
+  } catch (e) {
+    console.warn('[HOME] No se pudo guardar deviceHistory (pin):', e);
+  }
 
   closePinModal();
   window.__pinOrigin = null;
