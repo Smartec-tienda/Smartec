@@ -1117,7 +1117,7 @@ async function enterHomeAfterFullFlow(user, userData, fingerprint) {
   } catch (e) {
     console.warn('[HOME] Error en flujo de turnos:', e);
   }
-  
+
   if (userData.role === 'superadmin') {
     startTransfersBadgeListener();
   }
@@ -1335,11 +1335,72 @@ onAuthStateChanged(auth, async user => {
     return;
   }
   
-  // 🆕 Vendedores → siempre van a venta.html
+  // 🆕 Vendedores → van a venta.html SOLO si NO tienen turno abierto.
+  //    Si ya marcaron entrada hoy, pueden ver el home.
   if (userData.role === 'vendedor') {
-    console.log('[HOME] Vendedor detectado → redirigiendo a venta.html');
-    window.location.href = 'venta.html';
-    return;
+    console.log('[HOME] Vendedor detectado → verificando turno abierto...');
+
+    // Inicializar el módulo de turnos con el contexto actual,
+    // para poder consultar si tiene un turno abierto antes de decidir.
+    window.SmartecShift.init({
+      db,
+      auth,
+      collection,
+      getDocs,
+      query,
+      where,
+      addDoc,
+      updateDoc,
+      serverTimestamp,
+      doc,
+      $,
+      audit: window.Smartec?.audit
+        ? (entry) => window.Smartec.audit(entry, {
+            db,
+            user,
+            userData,
+            store: { storeId: userData?.storeId || null }
+          })
+        : async (entry) => {
+            try {
+              await addDoc(collection(db, 'auditLog'), {
+                ...entry,
+                userId: user?.uid || null,
+                userEmail: user?.email || null,
+                userRole: userData?.role || null,
+                storeId: userData?.storeId || null,
+                timestamp: serverTimestamp()
+              });
+            } catch (e) { console.warn('audit fail', e); }
+          },
+      getCurrentUser: () => user,
+      getCurrentUserData: () => userData,
+      getCurrentStore: () => {
+        if (!userData?.storeId) return null;
+        return {
+          storeId: userData.storeId,
+          name: userData.storeId,
+          shiftEnabled: true
+        };
+      },
+    });
+
+    // Cargar el turno activo del vendedor (si existe)
+    try {
+      await window.SmartecShift.loadTodayShift();
+    } catch (e) {
+      console.warn('[HOME] Error cargando turno del vendedor:', e);
+    }
+
+    // Si NO tiene turno abierto → redirigir al POS para que marque entrada
+    if (!window.SmartecShift.hasOpenShift()) {
+      console.log('[HOME] Vendedor SIN turno abierto → redirigiendo a venta.html');
+      window.location.href = 'venta.html';
+      return;
+    }
+
+    // Tiene turno abierto → dejarlo ver el home
+    console.log('[HOME] Vendedor CON turno abierto → puede ver el home');
   }
 
   // Guardar referencias para el flujo del guard
