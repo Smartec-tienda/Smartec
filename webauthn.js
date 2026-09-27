@@ -74,35 +74,36 @@ window.SmartecWebAuthn = (() => {
 
     const lib = await loadLib();
 
-    // El challenge debe venir como Uint8Array o base64url
-    let challengeUint8;
-    if (challenge instanceof ArrayBuffer) {
-      challengeUint8 = new Uint8Array(challenge);
+    // El challenge debe ser base64url string
+    let challengeBase64Url;
+    if (typeof challenge === 'string') {
+      challengeBase64Url = challenge;
+    } else if (challenge instanceof ArrayBuffer) {
+      challengeBase64Url = bufferToBase64Url(challenge);
     } else if (challenge instanceof Uint8Array) {
-      challengeUint8 = challenge;
-    } else if (typeof challenge === 'string') {
-      challengeUint8 = base64UrlToBuffer(challenge);
+      challengeBase64Url = bufferToBase64Url(challenge.buffer);
     } else {
       throw new Error('Challenge inválido');
     }
 
     // WebAuthn pide un userID único (máx 64 bytes)
     const userHandle = new TextEncoder().encode(userId);
+    const userHandleB64 = bufferToBase64Url(userHandle.buffer);
 
     const options = {
-      challenge: challengeUint8,
+      challenge: challengeBase64Url,
       rp: {
         name: RP_NAME,
         id: rpId
       },
       user: {
-        id: userHandle,
+        id: userHandleB64,
         name: userEmail,
         displayName: userName || userEmail
       },
       pubKeyCredParams: [
-        { alg: -7, type: 'public-key' },   // ES256
-        { alg: -257, type: 'public-key' }  // RS256
+        { alg: -7, type: 'public-key' },
+        { alg: -257, type: 'public-key' }
       ],
       authenticatorSelection: {
         authenticatorAttachment: 'platform',
@@ -115,17 +116,14 @@ window.SmartecWebAuthn = (() => {
     };
 
     try {
-      // startRegistration devuelve un objeto serializable listo para guardar
       const response = await lib.startRegistration({ optionsJSON: options });
 
       return {
         credentialId: response.id,
-        // response.response.attestationObject está en base64url (serializado por la lib)
         attestationObject: response.response.attestationObject,
         clientDataJSON: response.response.clientDataJSON,
         transports: response.response.transports || [],
-        // Guardamos también el userHandle en base64url
-        userHandle: bufferToBase64Url(userHandle)
+        userHandle: userHandleB64
       };
     } catch (e) {
       console.error('[WebAuthn] Error en registerCredential:', e);
@@ -141,22 +139,24 @@ window.SmartecWebAuthn = (() => {
 
     const lib = await loadLib();
 
-    let challengeUint8;
-    if (challenge instanceof ArrayBuffer) {
-      challengeUint8 = new Uint8Array(challenge);
+    // El challenge debe ser base64url string
+    let challengeBase64Url;
+    if (typeof challenge === 'string') {
+      challengeBase64Url = challenge;
+    } else if (challenge instanceof ArrayBuffer) {
+      challengeBase64Url = bufferToBase64Url(challenge);
     } else if (challenge instanceof Uint8Array) {
-      challengeUint8 = challenge;
-    } else if (typeof challenge === 'string') {
-      challengeUint8 = base64UrlToBuffer(challenge);
+      challengeBase64Url = bufferToBase64Url(challenge.buffer);
     } else {
       throw new Error('Challenge inválido');
     }
 
+    // allowCredentials ya viene en base64url (string), no hace falta convertir
     const options = {
-      challenge: challengeUint8,
+      challenge: challengeBase64Url,
       rpId: rpId,
       allowCredentials: (allowCredentials || []).map(id => ({
-        id: id,  // ya viene en base64url
+        id: id,
         type: 'public-key',
         transports: ['internal', 'hybrid']
       })),
@@ -165,7 +165,6 @@ window.SmartecWebAuthn = (() => {
     };
 
     try {
-      // startAuthentication devuelve la assertion serializada
       const assertion = await lib.startAuthentication({ optionsJSON: options });
 
       return {

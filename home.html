@@ -592,7 +592,7 @@ async function submitFingerprintUnlock() {
     const allowCredentials = credSnap.docs.map(d => d.id);
 
     // 2. Generar challenge y pedir assertion
-    const challenge = window.SmartecWebAuthn.generateChallenge();
+    const challenge = window.SmartecWebAuthn.generateChallenge(); // Devuelve ArrayBuffer
 
     let assertion;
     try {
