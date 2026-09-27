@@ -61,7 +61,6 @@
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="sellers">Vendedores</button>
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="products">Productos</button>
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="inventory">Inventario</button>
-    <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="promos">Promociones</button>
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="sales">Ventas</button>
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="reports">Reportes</button>
     <button class="tab-btn py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-sd whitespace-nowrap" data-tab="shifts">Turnos</button>
@@ -301,15 +300,6 @@
   </div>
   <p id="inv-empty" class="hidden text-center py-8 text-gray-400">Sin registros de inventario con esos filtros.</p>
 </section>
-
-    <!-- ============ PROMOS ============ -->
-    <section id="tab-promos" class="tab-content hidden">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-sd">Promociones</h2>
-        <button onclick="openPromoForm()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl transition">+ Nueva promoción</button>
-      </div>
-      <div id="promos-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-    </section>
 
     <!-- ============ VENTAS ============ -->
     <section id="tab-sales" class="tab-content hidden">
@@ -1775,7 +1765,7 @@ const functions = getFunctions(app, 'us-central1');
 let currentUser = null;
 let currentUserData = null;
 let stores = [], users = [], products = [], inventory = [],
-    sales = [], promos = [], auditLogs = [], settings = {},
+    sales = [], auditLogs = [], settings = {},
     storeGoals = [], cashRegisters = [], expensesAll = [];
 let shiftsAll = [];  // 🕒 todos los turnos (entradas/salidas)
 let paymentChannels = [];      // 🆕 cuentas/canales de pago
@@ -2033,11 +2023,6 @@ async function loadAll() {
     return s.docs.map(d => ({id:d.id,...d.data()}));
   }).then(v => products = v),
 
-  C.wrap('promos', async () => {
-    const s = await getDocs(collection(db,'promos'));
-    return s.docs.map(d => ({id:d.id,...d.data()}));
-  }).then(v => promos = v),
-
   C.wrap('settings', async () => {
     const s = await getDoc(doc(db,'settings','general'));
     return s.exists() ? s.data() : {};
@@ -2127,7 +2112,6 @@ async function loadAll() {
   renderSellers();
   renderProducts();
   renderInventory();
-  renderPromos();
   renderSales();
   renderCashRegisters();
   renderAudit();
@@ -3683,70 +3667,6 @@ window.delProduct = async (id) => {
   });
 
   window.SmartecCache.invalidate('products');
-  await loadAll();
-};
-/* ============================================================
-   PROMOS
-============================================================ */
-function renderPromos() {
-  const el = $('promos-list');
-  el.innerHTML = promos.length ? promos.map(p => `
-    <div class="bg-white p-5 rounded-xl shadow">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-bold text-sd">${p.title}</h3>
-        <span class="text-xs px-2 py-1 rounded ${p.active?'bg-green-100 text-green-700':'bg-gray-200 text-gray-600'}">${p.active?'Activa':'Inactiva'}</span>
-      </div>
-      <p class="text-sm text-gray-600 mb-3">${p.description||''}</p>
-      <p class="text-lg font-bold text-sl">${p.discount||0}% OFF</p>
-      <div class="mt-3 flex gap-3 text-sm">
-        <button onclick='editPromo("${p.id}")' class="text-sl hover:underline">Editar</button>
-        <button onclick='delPromo("${p.id}")' class="text-red-500 hover:underline">Borrar</button>
-      </div>
-    </div>`).join('') : '<p class="text-gray-400 col-span-full">Sin promociones.</p>';
-}
-
-window.openPromoForm = (p = null) => {
-  $('form-title').innerText = p ? 'Editar promoción' : 'Nueva promoción';
-  const v = p || { title:'', description:'', discount:0, active:true };
-  $('form-body').innerHTML = `
-    <label class="text-xs font-semibold">Título</label>
-    <input id="p-title" value="${v.title||''}" class="w-full px-3 py-2 border rounded mb-3">
-    <label class="text-xs font-semibold">Descripción</label>
-    <textarea id="p-desc" rows="2" class="w-full px-3 py-2 border rounded mb-3">${v.description||''}</textarea>
-    <label class="text-xs font-semibold">Descuento (%)</label>
-    <input id="p-discount" type="number" value="${v.discount||0}" class="w-full px-3 py-2 border rounded mb-3">
-    <label class="flex items-center gap-2 text-sm mb-3">
-      <input id="p-active" type="checkbox" ${v.active?'checked':''} class="w-4 h-4"> Activa
-    </label>
-    <button onclick="savePromo('${p?p.id:''}')" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl font-semibold">Guardar</button>
-  `;
-  openForm();
-};
-window.editPromo = id => openPromoForm(promos.find(x => x.id === id));
-
-window.savePromo = async (id) => {
-  const data = {
-    title: $('p-title').value.trim(),
-    description: $('p-desc').value.trim(),
-    discount: Number($('p-discount').value)||0,
-    active: $('p-active').checked,
-    updatedAt: serverTimestamp()
-  };
-  if (!data.title) return alert('El título es obligatorio');
-  const isNew = !id;
-  if (isNew) await addDoc(collection(db,'promos'), { ...data, createdAt: serverTimestamp() });
-  else await updateDoc(doc(db,'promos',id), data);
-  await audit({ action: isNew?'create':'update', collection:'promos', docId:id||null, after:data, note:`Promo: ${data.title}` });
-  window.SmartecCache.invalidate('promos');
-  closeForm();
-  await loadAll();
-};
-window.delPromo = async id => {
-  if (!confirm('¿Eliminar promoción?')) return;
-  const p = promos.find(x => x.id === id);
-  await deleteDoc(doc(db,'promos',id));
-  await audit({ action:'delete', collection:'promos', docId:id, before:p, note:`Promo eliminada: ${p?.title}` });
-  window.SmartecCache.invalidate('promos');
   await loadAll();
 };
 
