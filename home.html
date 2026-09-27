@@ -1291,6 +1291,15 @@ onAuthStateChanged(auth, async user => {
     console.warn('[HOME] No se pudo generar fingerprint:', e);
   }
 
+  // 🆕 Si es superadmin → SIEMPRE saltar huella y entrar directo.
+  //    Esto va ANTES del check alreadyToday para que el superadmin
+  //    nunca vea el modal de huella, aunque ya haya entrado hoy.
+  if (userData.role === 'superadmin') {
+    markLoggedToday(user.uid, fingerprint);
+    await enterHomeAfterFullFlow(user, userData, fingerprint);
+    return;
+  }
+
   // ¿Ya hizo login hoy este (usuario + dispositivo)?
   const alreadyToday = alreadyLoggedToday(user.uid, fingerprint);
 
@@ -1316,13 +1325,6 @@ onAuthStateChanged(auth, async user => {
   // 🆕 PRIMERA VEZ DEL DÍA:
   // Guardar meta para el modal de unlock de mañana/futuro
   saveLoggedUserMeta(user.uid, fingerprint, user.email, userData.name || user.email);
-
-  // Si es superadmin → saltar huella y entrar directo
-  if (userData.role === 'superadmin') {
-    markLoggedToday(user.uid, fingerprint);
-    await enterHomeAfterFullFlow(user, userData, fingerprint);
-    return;
-  }
 
   // Verificar si hay biometría disponible en el dispositivo
   const hasBio = await hasPlatformAuthenticator();
