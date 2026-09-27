@@ -341,7 +341,7 @@
             </tr>
           </thead>
           <tbody id="sales-tbody"></tbody>
-        </table>s
+        </table>
       </div>
     </section>
 <!-- ============ REPORTES ============ -->
@@ -360,6 +360,10 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
         Exportar PDF
       </button>
+      <button onclick="exportReportsExcel()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-semibold flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Exportar Excel
+      </button>
     </div>
   </div>
 
@@ -367,78 +371,113 @@
   <div id="report-customizer" class="hidden bg-sd/5 border-2 border-dashed border-sl/30 rounded-xl p-5 mb-6">
     <div class="flex justify-between items-center mb-4">
       <div>
-        <h3 class="font-bold text-sd">Personalizar reportes visibles</h3>
-        <p class="text-xs text-gray-500 mt-0.5">Selecciona qué bloques quieres ver. Los cambios se aplican al instante.</p>
+        <h3 class="font-bold text-sd">📋 Personalizar reportes</h3>
+        <p class="text-xs text-gray-500 mt-0.5">Selecciona qué bloques quieres ver. Los cambios se aplican al instante y se guardan automáticamente.</p>
       </div>
       <button onclick="toggleReportCustomizer()" class="text-gray-500 hover:text-sd p-1">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="kpis" checked>
-        <span class="text-sm font-medium text-sd">📊 KPIs generales</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="byStore" checked>
-        <span class="text-sm font-medium text-sd">🏪 Comparativa tiendas</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="topSellers" checked>
-        <span class="text-sm font-medium text-sd">🏆 Top vendedores</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="topProducts" checked>
-        <span class="text-sm font-medium text-sd">📦 Top productos</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="byMethod" checked>
-        <span class="text-sm font-medium text-sd">💳 Por método y canal</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="pending" checked>
-        <span class="text-sm font-medium text-sd">⏳ Cobros pendientes</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="reconciliation" checked>
-        <span class="text-sm font-medium text-sd">🏦 Conciliación bancaria</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="byCategory" checked>
-        <span class="text-sm font-medium text-sd">📂 Por categoría</span>
-      </label>
-      <!-- ❌ ELIMINADO: reemplazado por "Por método y canal" -->
-      <!--
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="byPayment" checked>
-        <span class="text-sm font-medium text-sd">💳 Por método pago</span>
-      </label>
-      -->
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartSales" checked>
-        <span class="text-sm font-medium text-sd">📈 Gráfico de ventas</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartCategory" checked>
-        <span class="text-sm font-medium text-sd">🥧 Gráfico categorías</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartPayment" checked>
-        <span class="text-sm font-medium text-sd">🍩 Gráfico métodos pago</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartTopSellers" checked>
-        <span class="text-sm font-medium text-sd">📊 Gráfico vendedores</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer bg-white rounded-lg p-3 hover:shadow-sm transition">
-        <input type="checkbox" class="report-toggle w-4 h-4" data-report="detail" checked>
-        <span class="text-sm font-medium text-sd">📋 Detalle de ventas</span>
-      </label>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <!-- Análisis general -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📊 Análisis general</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="comparison"> Comparativa con período anterior
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="byStore"> Comparativa por tienda
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="topSellers"> Ranking de vendedores
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="topProducts"> Top productos
+          </label>
+        </div>
+      </div>
+
+      <!-- Pagos y cobros -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">💳 Pagos y cobros</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="byMethod"> Desglose por método y canal
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="pending"> Cobros pendientes
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="reconciliation"> Conciliación bancaria
+          </label>
+        </div>
+      </div>
+
+      <!-- Categorías -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📂 Categorías</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="byCategory"> Ventas por categoría
+          </label>
+        </div>
+      </div>
+
+      <!-- Gráficos -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📈 Gráficos</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartSales"> Tendencia temporal
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartTopSellers"> Top vendedores (gráfico)
+          </label>
+        </div>
+      </div>
+
+      <!-- Clientes -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">👥 Clientes</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="topCustomers"> Top clientes
+          </label>
+        </div>
+      </div>
+
+      <!-- Impuestos y rentabilidad -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">💰 Rentabilidad</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="profitability"> Ingresos, costos, utilidad
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="taxes"> Impuestos, recargos, envíos
+          </label>
+        </div>
+      </div>
+
+      <!-- Detalle -->
+      <div class="bg-white rounded-lg p-4 shadow-sm md:col-span-2 lg:col-span-3">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📋 Detalle</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="detail"> Detalle de ventas (tabla completa)
+          </label>
+        </div>
+      </div>
+
     </div>
+
     <div class="flex gap-2 mt-4 pt-4 border-t border-sl/20">
-      <button onclick="selectAllReports(true)" class="text-xs bg-sl text-white px-3 py-1.5 rounded-lg hover:bg-sd">Ver todos</button>
-      <button onclick="selectAllReports(false)" class="text-xs bg-gray-200 text-sd px-3 py-1.5 rounded-lg hover:bg-gray-300">Ocultar todos</button>
-      <button onclick="resetReportsDefault()" class="text-xs text-sl hover:underline ml-auto">Restaurar por defecto</button>
+      <button onclick="selectAllReports(true)" class="text-xs bg-sl text-white px-3 py-1.5 rounded-lg hover:bg-sd">✅ Ver todos</button>
+      <button onclick="selectAllReports(false)" class="text-xs bg-gray-200 text-sd px-3 py-1.5 rounded-lg hover:bg-gray-300">⬜ Ocultar todos</button>
+      <button onclick="resetReportsDefault()" class="text-xs text-sl hover:underline ml-auto">🔄 Restaurar por defecto</button>
     </div>
   </div>
 
@@ -547,6 +586,72 @@
     </div>
   </div>
 
+    <!-- ========== Bloque: Rentabilidad ========== -->
+  <div id="report-block-profitability" class="report-block bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow p-5 mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-bold text-green-800 flex items-center gap-2">💰 Rentabilidad del período</h3>
+        <p class="text-[10px] text-gray-500 mt-0.5">Ingresos vs costos y utilidad</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div class="bg-white rounded-lg p-3 shadow-sm">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">Ventas</p>
+        <p id="rep-profit-sales" class="text-lg font-bold text-sl mt-1">$0</p>
+        <p id="rep-profit-sales-count" class="text-[10px] text-gray-400">0 ventas</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 shadow-sm">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">− Costo mercancía</p>
+        <p id="rep-profit-cogs" class="text-lg font-bold text-orange-500 mt-1">$0</p>
+        <p id="rep-profit-cogs-pct" class="text-[10px] text-gray-400">0% de ventas</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 shadow-sm">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">= Utilidad bruta</p>
+        <p id="rep-profit-gross" class="text-lg font-bold text-green-600 mt-1">$0</p>
+        <p id="rep-profit-gross-margin" class="text-[10px] text-gray-400">Margen 0%</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 shadow-sm">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">− Comisiones financieras</p>
+        <p id="rep-profit-financial" class="text-lg font-bold text-rose-600 mt-1">$0</p>
+        <p id="rep-profit-financial-count" class="text-[10px] text-gray-400">0 ventas con crédito</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 shadow-sm border-2 border-purple-300">
+        <p class="text-[10px] text-purple-700 uppercase font-semibold">= Utilidad neta</p>
+        <p id="rep-profit-net" class="text-lg font-bold text-purple-700 mt-1">$0</p>
+        <p id="rep-profit-net-margin" class="text-[10px] text-purple-500">Margen 0%</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Bloque: Impuestos y recargos ========== -->
+  <div id="report-block-taxes" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
+      🏷️ Impuestos, recargos y envíos
+    </h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="border-l-4 border-blue-500 bg-blue-50/40 rounded-lg p-3">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">🚚 Envíos cobrados</p>
+        <p id="rep-tax-shipping" class="text-lg font-bold text-sd mt-1">$0</p>
+        <p id="rep-tax-shipping-count" class="text-[10px] text-gray-400">0 ventas con envío</p>
+      </div>
+      <div class="border-l-4 border-purple-500 bg-purple-50/40 rounded-lg p-3">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">💳 Recargos tarjeta</p>
+        <p id="rep-tax-surcharge" class="text-lg font-bold text-sd mt-1">$0</p>
+        <p id="rep-tax-surcharge-count" class="text-[10px] text-gray-400">0 ventas con recargo</p>
+      </div>
+      <div class="border-l-4 border-red-500 bg-red-50/40 rounded-lg p-3">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">🎁 Descuentos otorgados</p>
+        <p id="rep-tax-discount" class="text-lg font-bold text-red-600 mt-1">$0</p>
+        <p id="rep-tax-discount-count" class="text-[10px] text-gray-400">0 ventas con descuento</p>
+      </div>
+      <div class="border-l-4 border-emerald-500 bg-emerald-50/40 rounded-lg p-3">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">🏛️ IVA cobrado</p>
+        <p id="rep-tax-iva" class="text-lg font-bold text-emerald-600 mt-1">$0</p>
+        <p id="rep-tax-iva-note" class="text-[10px] text-gray-400">Según configuración</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Bloque: Desglose por método y canal -->
   <div id="report-block-byMethod" class="report-block bg-white p-5 rounded-xl shadow mb-6">
     <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
@@ -626,8 +731,11 @@
         <option value="category">📂 Por categoría</option>
       </select>
     </div>
-    <div class="h-64">
+    <div class="h-64 relative">
       <canvas id="chart-sales"></canvas>
+      <p id="chart-sales-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">
+        📭 Sin ventas en el período seleccionado
+      </p>
     </div>
   </div>
 
@@ -638,38 +746,13 @@
     </h3>
     <div id="rep-by-store" class="space-y-3"></div>
   </div>
-
-  <!-- ========== Fila 1: Gráficos de vendedores y categorías ========== -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-    <div id="report-block-chartTopSellers" class="report-block bg-white p-5 rounded-xl shadow">
-      <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
-        📊 Top vendedores (gráfico)
-      </h3>
-      <div class="h-72">
-        <canvas id="chart-topsellers"></canvas>
-      </div>
-    </div>
-
-    <div id="report-block-chartCategory" class="report-block bg-white p-5 rounded-xl shadow">
-      <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
-        🥧 Ventas por categoría
-      </h3>
-      <div class="h-72">
-        <canvas id="chart-category"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========== Fila 2: Gráfico de métodos de pago ========== -->
-  <div id="report-block-chartPayment" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+  <!-- ========== Gráfico: Top vendedores ========== -->
+  <div id="report-block-chartTopSellers" class="report-block bg-white p-5 rounded-xl shadow mb-6">
     <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
-      🍩 Métodos de pago
+      📊 Top vendedores (gráfico)
     </h3>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-      <div class="h-72">
-        <canvas id="chart-payment"></canvas>
-      </div>
-      <div id="rep-by-payment" class="space-y-2"></div>
+    <div class="h-72">
+      <canvas id="chart-topsellers"></canvas>
     </div>
   </div>
 
@@ -700,6 +783,33 @@
     <div id="rep-by-payment-detail" class="grid grid-cols-2 md:grid-cols-5 gap-3"></div>
   </div>
   -->
+    <!-- ========== Bloque: Comparativa con período anterior ========== -->
+  <div id="report-block-comparison" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
+      📊 Comparativa con período anterior
+    </h3>
+    <p id="rep-comparison-subtitle" class="text-xs text-gray-400 mb-4">—</p>
+    <div id="rep-comparison-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+
+  <!-- ========== Bloque: Top clientes ========== -->
+  <div id="report-block-topCustomers" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-bold text-sd flex items-center gap-2">👥 Top clientes</h3>
+        <p class="text-[10px] text-gray-400 mt-0.5">Clientes con mayores compras en el período</p>
+      </div>
+      <div class="text-right">
+        <p class="text-[10px] text-gray-400">Clientes únicos</p>
+        <p id="rep-customers-total" class="text-lg font-bold text-sl">0</p>
+      </div>
+    </div>
+    <div id="rep-top-customers" class="space-y-3"></div>
+    <p id="rep-customers-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin clientes en el período</p>
+  </div>
+
   <!-- ========== Detalle de ventas ========== -->
   <div id="report-block-detail" class="report-block bg-white rounded-xl shadow overflow-hidden">
     <div class="p-5 border-b flex justify-between items-center">
@@ -1983,17 +2093,24 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
     // Refrescar reportes al entrar
     if (btn.dataset.tab === 'reports') {
-      // 1. Verificar que los filtros estén poblados
       populateReportFilters();
-      // 2. Si no hay rango de fechas, ponerlo al mes actual
+
       const dateFrom = $('rep-date-from');
       const dateTo = $('rep-date-to');
       if (!dateFrom.value || !dateTo.value) {
         setReportRange('month');
       } else {
-        // 3. Renderizar con los filtros actuales
         renderReports();
       }
+
+      // 🆕 Forzar re-render de gráficos DESPUÉS de que el tab sea visible
+      setTimeout(() => {
+        try {
+          renderCharts(getFilteredSales());
+        } catch(e) {
+          console.warn('Error re-renderizando charts:', e);
+        }
+      }, 200);
     }
   };
 });
@@ -6970,19 +7087,58 @@ let reportFilters = {
   paymentStatus: 'all'        // 🆕
 };
 
-let reportVisibility = {
-  kpis: true, byStore: true, topSellers: true, topProducts: true,
-  byCategory: true, byPayment: true, byMethod: true, pending: true,
+/* Lista completa de reportes con sus valores por defecto */
+const REPORT_DEFAULTS = {
+  comparison: true,
+  byStore: true,
+  topSellers: true,
+  topProducts: true,
+  byMethod: true,
+  pending: true,
   reconciliation: true,
-  chartSales: true, chartCategory: true, chartPayment: true, chartTopSellers: true,
+  byCategory: true,
+  chartSales: true,
+  chartTopSellers: true,
+  topCustomers: true,
+  profitability: true,
+  taxes: true,
   detail: true
 };
+
+/* Se carga desde localStorage o se usan los defaults */
+let reportVisibility = (() => {
+  try {
+    const saved = localStorage.getItem('smartec_report_visibility');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Merge: si hay nuevos reportes que no estaban guardados, los activamos por defecto
+      return { ...REPORT_DEFAULTS, ...parsed };
+    }
+  } catch (e) {}
+  return { ...REPORT_DEFAULTS };
+})();
+
+/* Guarda el estado actual en localStorage */
+function saveReportVisibility() {
+  try {
+    localStorage.setItem('smartec_report_visibility', JSON.stringify(reportVisibility));
+  } catch (e) {}
+}
 
 let charts = {
   sales: null, category: null, payment: null, topsellers: null
 };
 
 let salesChartGroupBy = 'day';   // 🆕 modo de agrupación del gráfico de ventas
+
+/* 🆕 Sincronizar el valor del select con la variable global */
+function syncSalesChartGroupBy() {
+  const sel = $('chart-sales-groupby');
+  if (sel && sel.value) {
+    salesChartGroupBy = sel.value;
+  }
+  return salesChartGroupBy;
+}
 
 /* ============ TOGGLE DEL PANEL ============ */
 window.toggleReportCustomizer = () => {
@@ -6991,13 +7147,14 @@ window.toggleReportCustomizer = () => {
 
 window.selectAllReports = (value) => {
   document.querySelectorAll('.report-toggle').forEach(cb => { cb.checked = value; });
+  Object.keys(reportVisibility).forEach(k => { reportVisibility[k] = value; });
   applyReportVisibility();
 };
 
 window.resetReportsDefault = () => {
-  const defaults = ['kpis','byStore','topSellers','topProducts','byCategory','byPayment','byMethod','pending','reconciliation','chartSales','chartCategory','chartPayment','chartTopSellers','detail'];
+  reportVisibility = { ...REPORT_DEFAULTS };
   document.querySelectorAll('.report-toggle').forEach(cb => {
-    cb.checked = defaults.includes(cb.dataset.report);
+    cb.checked = reportVisibility[cb.dataset.report] !== false;
   });
   applyReportVisibility();
 };
@@ -7006,16 +7163,34 @@ function applyReportVisibility() {
   document.querySelectorAll('.report-toggle').forEach(cb => {
     reportVisibility[cb.dataset.report] = cb.checked;
   });
+
+  // Guardar en localStorage
+  saveReportVisibility();
+
+  // Ocultar/mostrar bloques
   Object.entries(reportVisibility).forEach(([key, visible]) => {
     const el = $(`report-block-${key}`);
     if (el) el.classList.toggle('hidden', !visible);
   });
+
   // Redibujar los gráficos ahora visibles
   setTimeout(() => { renderCharts(getFilteredSales()); }, 50);
 }
 
 /* ============ INICIALIZACIÓN ============ */
 function populateReportFilters() {
+    // 🔄 Restaurar el estado de los checkboxes guardado en localStorage
+  document.querySelectorAll('.report-toggle').forEach(cb => {
+    const key = cb.dataset.report;
+    if (reportVisibility[key] !== undefined) {
+      cb.checked = reportVisibility[key];
+    }
+  });
+  // Aplicar visibilidad a los bloques según el estado guardado
+  Object.entries(reportVisibility).forEach(([key, visible]) => {
+    const el = document.getElementById(`report-block-${key}`);
+    if (el) el.classList.toggle('hidden', !visible);
+  });
   const storeSel = $('rep-store');
   if (storeSel) {
     const prev = storeSel.value;
@@ -7099,12 +7274,19 @@ function populateReportFilters() {
 
   // 🆕 Listener del dropdown "Agrupar por"
   const groupBySel = $('chart-sales-groupby');
-  if (groupBySel && !groupBySel.dataset.listeners) {
-    groupBySel.dataset.listeners = '1';
-    groupBySel.onchange = () => {
+  if (groupBySel) {
+    // Sincronizar el valor actual SIEMPRE (aunque el listener ya esté puesto)
+    if (groupBySel.value) {
       salesChartGroupBy = groupBySel.value;
-      renderCharts(getFilteredSales());
-    };
+    }
+    // Poner el listener solo una vez
+    if (!groupBySel.dataset.listeners) {
+      groupBySel.dataset.listeners = '1';
+      groupBySel.onchange = () => {
+        salesChartGroupBy = groupBySel.value;
+        renderCharts(getFilteredSales());
+      };
+    }
   }
 
   // Listeners de los toggles
@@ -7395,12 +7577,21 @@ function renderReports() {
   renderReportTopSellers(filtered);
   renderReportTopProducts(filtered);
   renderReportByCategory(filtered);
-  renderReportByPayment(filtered);
   renderReportDetail(filtered);
+  // 🆕 Nuevos bloques
+  renderReportComparison(filtered);
+  renderReportTopCustomers(filtered);
+  renderReportProfitability(filtered);
+  renderReportTaxes(filtered);
 
   // Gráficos
   renderCharts(filtered);
 }
+
+/* 🆕 Re-renderizar charts al redimensionar la ventana */
+window.addEventListener('resize', () => {
+  Object.values(charts).forEach(c => { if (c) c.resize(); });
+});
 
 /* ============================================================
    COMPUTE DATA PARA EL GRÁFICO DE VENTAS (agrupación dinámica)
@@ -7551,11 +7742,14 @@ function computeSalesChartData(filtered, mode) {
     colors: palette
   };
 }
+/* 🆕 Guard: no renderizar charts si el canvas no es visible */
+function isCanvasVisible(el) {
+  return el && el.offsetParent !== null && el.offsetWidth > 0 && el.offsetHeight > 0;
+}
 
-/* ============ GRÁFICOS ============ */
 function renderCharts(filtered) {
   // Destruir anteriores
-  Object.values(charts).forEach(c => { if (c) c.destroy(); });
+  Object.values(charts).forEach(c => { if (c) c.destroy(); charts[c] = null; });
 
   const palette = ['#4A7A9A','#0A2A4A','#22c55e','#f97316','#a855f7','#ef4444','#eab308','#06b6d4','#ec4899','#84cc16'];
 
@@ -7564,13 +7758,21 @@ function renderCharts(filtered) {
   // ============================================================
   const ctxSales = $('chart-sales');
   const titleEl = $('chart-sales-title');
+  const emptyMsg = $('chart-sales-empty');
 
-  if (ctxSales && reportVisibility.chartSales) {
+  if (ctxSales && reportVisibility.chartSales && isCanvasVisible(ctxSales)) {
     // Calcular datos según el modo
     const { labels, values, chartType, chartTitle, colors } = computeSalesChartData(filtered, salesChartGroupBy);
 
     // Actualizar el título
     if (titleEl) titleEl.innerText = chartTitle;
+
+    // 🆕 Si no hay datos, mostrar mensaje y salir
+    if (!values || !values.length || values.every(v => !v || v === 0)) {
+      if (emptyMsg) emptyMsg.classList.remove('hidden');
+      return;
+    }
+    if (emptyMsg) emptyMsg.classList.add('hidden');
 
     // Configuración base
     const isBar = chartType === 'bar';
@@ -7651,7 +7853,7 @@ function renderCharts(filtered) {
   const sellers = Object.values(bySeller).sort((a,b) => b.sales - a.sales).slice(0, 8);
 
   const ctxTS = $('chart-topsellers');
-  if (ctxTS && reportVisibility.chartTopSellers) {
+  if (ctxTS && reportVisibility.chartTopSellers && isCanvasVisible(ctxTS)) {
     charts.topsellers = new Chart(ctxTS, {
       type: 'bar',
       data: {
@@ -7677,73 +7879,6 @@ function renderCharts(filtered) {
           x: {
             beginAtZero: true,
             ticks: { callback: (v) => '$' + (v/1000).toFixed(0) + 'k' }
-          }
-        }
-      }
-    });
-  }
-
-  // ===== Categorías (doughnut) =====
-  const byCat = {};
-  filtered.forEach(s => {
-    (s.items || []).forEach(it => {
-      const prod = products.find(p => p.id === it.productId);
-      const cat = prod?.categoryGroupName || 'Otros';
-      if (!byCat[cat]) byCat[cat] = 0;
-      byCat[cat] += Number(it.qty || 0) * Number(it.unitPrice || 0);
-    });
-  });
-
-  const catLabels = Object.keys(byCat);
-  const catValues = Object.values(byCat);
-
-  const ctxCat = $('chart-category');
-  if (ctxCat && reportVisibility.chartCategory) {
-    charts.category = new Chart(ctxCat, {
-      type: 'doughnut',
-      data: {
-        labels: catLabels,
-        datasets: [{
-          data: catValues,
-          backgroundColor: palette,
-          borderWidth: 2,
-          borderColor: '#fff'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
-          tooltip: {
-            callbacks: { label: (ctx) => `${ctx.label}: $${Number(ctx.parsed).toLocaleString('es-CO')}` }
-          }
-        }
-      }
-    });
-  }
-
-  // ===== Métodos de pago (doughnut) =====
-  const payLabels = ['Efectivo','Transferencia','Tarjeta','Contra entrega','Crédito'];
-  const payKeys = ['efectivo','transferencia','tarjeta','contraentrega','credito'];
-  const payValues = payKeys.map(k => filtered.filter(s => s.paymentMethod === k).reduce((sum, s) => sum + Number(s.total||0), 0));
-  const payColors = ['#22c55e','#3b82f6','#a855f7','#f97316','#6b7280'];
-
-  const ctxPay = $('chart-payment');
-  if (ctxPay && reportVisibility.chartPayment) {
-    charts.payment = new Chart(ctxPay, {
-      type: 'doughnut',
-      data: {
-        labels: payLabels,
-        datasets: [{ data: payValues, backgroundColor: payColors, borderWidth: 2, borderColor: '#fff' }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
-          tooltip: {
-            callbacks: { label: (ctx) => `${ctx.label}: $${Number(ctx.parsed).toLocaleString('es-CO')}` }
           }
         }
       }
@@ -8345,6 +8480,119 @@ function renderReportPending(filtered) {
   }).join('');
 }
 
+/* ============================================================
+   🆕 BLOQUE: Comparativa con período anterior
+============================================================ */
+function renderReportComparison(filtered) {
+  const el = $('rep-comparison-grid');
+  const subtitle = $('rep-comparison-subtitle');
+  if (!el) return;
+
+  // Determinar el rango actual
+  const dateFrom = reportFilters.dateFrom;
+  const dateTo = reportFilters.dateTo;
+
+  if (!dateFrom || !dateTo) {
+    subtitle.innerText = '⚠️ Selecciona un rango de fechas para comparar';
+    el.innerHTML = '<p class="text-xs text-gray-400 col-span-full text-center py-4">Sin rango de comparación</p>';
+    return;
+  }
+
+  const fromDate = new Date(dateFrom + 'T00:00:00');
+  const toDate = new Date(dateTo + 'T23:59:59');
+  const diffDays = Math.max(1, Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)));
+
+  // Calcular el período anterior de igual duración
+  const prevTo = new Date(fromDate);
+  prevTo.setDate(prevTo.getDate() - 1);
+  prevTo.setHours(23, 59, 59);
+  const prevFrom = new Date(prevTo);
+  prevFrom.setDate(prevFrom.getDate() - diffDays + 1);
+  prevFrom.setHours(0, 0, 0);
+
+  subtitle.innerText = `Comparando ${dateFrom} → ${dateTo} con ${prevFrom.toISOString().split('T')[0]} → ${prevTo.toISOString().split('T')[0]}`;
+
+  // Filtrar las ventas del período anterior
+  let prevSales = sales.filter(s => s.status !== 'anulada');
+  prevSales = prevSales.filter(s => {
+    if (!s.createdAt?.seconds) return false;
+    const d = new Date(s.createdAt.seconds * 1000);
+    return d >= prevFrom && d <= prevTo;
+  });
+
+  // Aplicar los mismos filtros de tienda/vendedor/categoría/marca que el actual
+  if (reportFilters.storeId !== 'all') prevSales = prevSales.filter(s => s.storeId === reportFilters.storeId);
+  if (reportFilters.sellerUid !== 'all') prevSales = prevSales.filter(s => s.sellerUid === reportFilters.sellerUid);
+  if (reportFilters.paymentMethod !== 'all') prevSales = prevSales.filter(s => s.paymentMethod === reportFilters.paymentMethod);
+  if (reportFilters.paymentChannelId !== 'all') prevSales = prevSales.filter(s => s.paymentChannelId === reportFilters.paymentChannelId);
+  if (reportFilters.paymentStatus !== 'all') prevSales = prevSales.filter(s => (s.paymentStatus || 'completed') === reportFilters.paymentStatus);
+
+  // KPIs del período anterior
+  const prev = computePeriodKPIs(prevSales);
+  // KPIs del período actual
+  const curr = computePeriodKPIs(filtered);
+
+  // Función auxiliar para formatear % de cambio
+  const fmtChange = (currVal, prevVal) => {
+    if (prevVal === 0 && currVal === 0) return { text: '0%', cls: 'text-gray-400', arrow: '→' };
+    if (prevVal === 0) return { text: '+100%', cls: 'text-green-600', arrow: '↗' };
+    const pct = ((currVal - prevVal) / prevVal) * 100;
+    const arrow = pct > 0 ? '↗' : pct < 0 ? '↘' : '→';
+    const cls = pct > 0 ? 'text-green-600' : pct < 0 ? 'text-red-600' : 'text-gray-400';
+    return { text: (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%', cls, arrow };
+  };
+
+  const cards = [
+    { label: 'Ventas netas', curr: curr.sales, prev: prev.sales, icon: '💰', money: true },
+    { label: 'Transacciones', curr: curr.count, prev: prev.count, icon: '🧾', money: false },
+    { label: 'Ticket promedio', curr: curr.ticket, prev: prev.ticket, icon: '🎯', money: true },
+    { label: 'Unidades vendidas', curr: curr.units, prev: prev.units, icon: '📦', money: false },
+    { label: 'Utilidad bruta', curr: curr.profit, prev: prev.profit, icon: '📈', money: true },
+    { label: 'Comisiones', curr: curr.commission, prev: prev.commission, icon: '💵', money: true }
+  ];
+
+  el.innerHTML = cards.map(c => {
+    const ch = fmtChange(c.curr, c.prev);
+    const fmtVal = c.money ? fmt(c.curr) : Number(c.curr).toLocaleString('es-CO');
+    const fmtPrev = c.money ? fmt(c.prev) : Number(c.prev).toLocaleString('es-CO');
+    return `
+      <div class="border rounded-lg p-3 bg-white">
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-[10px] text-gray-500 uppercase font-semibold">${c.icon} ${c.label}</p>
+          <span class="${ch.cls} text-xs font-bold">${ch.arrow} ${ch.text}</span>
+        </div>
+        <p class="text-lg font-bold text-sd">${fmtVal}</p>
+        <p class="text-[10px] text-gray-400">Período anterior: ${fmtPrev}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+/**
+ * Calcula KPIs agregados de un array de ventas.
+ */
+function computePeriodKPIs(salesList) {
+  let sales = 0, count = 0, units = 0, cost = 0, profit = 0, commission = 0;
+  salesList.forEach(s => {
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    sales += base;
+    count += 1;
+    units += (s.items || []).reduce((y, i) => y + Number(i.qty || 0), 0);
+    const sCost = Number(s.totalCost) > 0
+      ? Number(s.totalCost)
+      : (s.items || []).reduce((sum, it) => sum + Number(it.unitCost || 0) * Number(it.qty || 0), 0);
+    cost += sCost;
+    profit += base - sCost;
+    commission += Number(s.poolAmount || s.commissionAmount || 0) + Number(s.bonusAmount || 0);
+  });
+  return {
+    sales, count, units, cost, profit, commission,
+    ticket: count > 0 ? sales / count : 0
+  };
+}
+
 /* ============ BLOQUES DE RENDERIZADO ============ */
 function renderReportByStore(filtered) {
   const el = $('rep-by-store');
@@ -8430,6 +8678,91 @@ function renderReportTopSellers(filtered) {
   }).join('');
 }
 
+/* ============================================================
+   🆕 BLOQUE: Top clientes
+============================================================ */
+function renderReportTopCustomers(filtered) {
+  const el = $('rep-top-customers');
+  const empty = $('rep-customers-empty');
+  const totalEl = $('rep-customers-total');
+  if (!el) return;
+
+  // Agrupar por cliente (por teléfono normalizado o nombre)
+  const byCustomer = {};
+  filtered.forEach(s => {
+    const rawPhone = s.customer?.phone || '';
+    const phone = String(rawPhone).replace(/\D/g, '');
+    const key = phone || s.customer?.name || 'sin-cliente';
+    if (!byCustomer[key]) {
+      byCustomer[key] = {
+        name: s.customer?.name || 'Sin nombre',
+        phone: s.customer?.phone || '',
+        count: 0,
+        total: 0,
+        firstPurchase: null,
+        lastPurchase: null
+      };
+    }
+    const base = (s.commissionBase !== undefined)
+      ? Number(s.commissionBase)
+      : (Number(s.subtotal || 0) - Number(s.discount || 0));
+    byCustomer[key].count += 1;
+    byCustomer[key].total += base;
+
+    if (s.createdAt?.seconds) {
+      const t = s.createdAt.seconds;
+      if (!byCustomer[key].firstPurchase || t < byCustomer[key].firstPurchase) byCustomer[key].firstPurchase = t;
+      if (!byCustomer[key].lastPurchase || t > byCustomer[key].lastPurchase) byCustomer[key].lastPurchase = t;
+    }
+  });
+
+  const list = Object.values(byCustomer).sort((a, b) => b.total - a.total);
+
+  if (totalEl) totalEl.innerText = list.length.toLocaleString('es-CO');
+
+  if (!list.length) {
+    el.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const top20 = list.slice(0, 20);
+  const maxTotal = top20[0]?.total || 1;
+  const grandTotal = list.reduce((s, c) => s + c.total, 0);
+
+  el.innerHTML = top20.map((c, i) => {
+    const pct = (c.total / maxTotal) * 100;
+    const sharePct = grandTotal > 0 ? (c.total / grandTotal) * 100 : 0;
+    const avg = c.count > 0 ? c.total / c.count : 0;
+    const lastLabel = c.lastPurchase
+      ? new Date(c.lastPurchase * 1000).toLocaleDateString('es-CO')
+      : '—';
+
+    return `
+      <div>
+        <div class="flex justify-between items-baseline mb-1 flex-wrap gap-2">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-sd truncate">
+              ${i + 1}. ${escapeHtml(c.name)}
+            </p>
+            <p class="text-[10px] text-gray-400">
+              ${escapeHtml(c.phone) || 'sin teléfono'} · Última compra: ${lastLabel} · Ticket prom.: ${fmt(avg)}
+            </p>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-bold text-sl">${fmt(c.total)}</p>
+            <p class="text-[10px] text-gray-400">${c.count} compra${c.count !== 1 ? 's' : ''} · ${sharePct.toFixed(1)}% del total</p>
+          </div>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-2">
+          <div class="h-2 rounded-full bg-gradient-to-r from-sl to-blue-400" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderReportTopProducts(filtered) {
   const el = $('rep-top-products');
   const byProduct = {};
@@ -8497,8 +8830,87 @@ function renderReportByCategory(filtered) {
   }).join('');
 }
 
+/* ============================================================
+   🆕 BLOQUE: Rentabilidad
+============================================================ */
+function renderReportProfitability(filtered) {
+  const kpis = computePeriodKPIs(filtered);
+
+  // Comisiones financieras (crédito)
+  let financialCommissions = 0;
+  let financialCount = 0;
+  filtered.forEach(s => {
+    const cc = Number(s.creditCommissionAmount || 0);
+    if (cc > 0) { financialCommissions += cc; financialCount++; }
+  });
+
+  const grossProfit = kpis.sales - kpis.cost;
+  const netProfit = grossProfit - financialCommissions;
+  const grossMargin = kpis.sales > 0 ? (grossProfit / kpis.sales) * 100 : 0;
+  const netMargin = kpis.sales > 0 ? (netProfit / kpis.sales) * 100 : 0;
+  const cogsPct = kpis.sales > 0 ? (kpis.cost / kpis.sales) * 100 : 0;
+
+  const setTxt = (id, v) => { const el = $(id); if (el) el.innerText = v; };
+  setTxt('rep-profit-sales', fmt(kpis.sales));
+  setTxt('rep-profit-sales-count', `${kpis.count} venta${kpis.count !== 1 ? 's' : ''}`);
+  setTxt('rep-profit-cogs', fmt(kpis.cost));
+  setTxt('rep-profit-cogs-pct', `${cogsPct.toFixed(1)}% de ventas`);
+  setTxt('rep-profit-gross', fmt(grossProfit));
+  setTxt('rep-profit-gross-margin', `Margen ${grossMargin.toFixed(1)}%`);
+  setTxt('rep-profit-financial', fmt(financialCommissions));
+  setTxt('rep-profit-financial-count', `${financialCount} venta${financialCount !== 1 ? 's' : ''} con crédito`);
+  setTxt('rep-profit-net', fmt(netProfit));
+  setTxt('rep-profit-net-margin', `Margen ${netMargin.toFixed(1)}%`);
+
+  // Color dinámico en utilidad neta
+  const netEl = $('rep-profit-net');
+  if (netEl) netEl.className = netProfit >= 0
+    ? 'text-lg font-bold text-purple-700 mt-1'
+    : 'text-lg font-bold text-red-600 mt-1';
+}
+
+/* ============================================================
+   🆕 BLOQUE: Impuestos y recargos
+============================================================ */
+function renderReportTaxes(filtered) {
+  let shipping = 0, shippingCount = 0;
+  let surcharge = 0, surchargeCount = 0;
+  let discount = 0, discountCount = 0;
+  let iva = 0;
+
+  filtered.forEach(s => {
+    const sh = Number(s.shipping || 0);
+    if (sh > 0) { shipping += sh; shippingCount++; }
+
+    const su = Number(s.surchargeAmount || 0);
+    if (su > 0) { surcharge += su; surchargeCount++; }
+
+    const d = Number(s.discount || 0);
+    if (d > 0) { discount += d; discountCount++; }
+
+    // IVA aproximado (si la venta tiene items con taxRate)
+    (s.items || []).forEach(it => {
+      const taxRate = Number(it.taxRate || 0);
+      if (taxRate > 0) {
+        iva += Number(it.unitPrice || 0) * Number(it.qty || 0) * taxRate;
+      }
+    });
+  });
+
+  const setTxt = (id, v) => { const el = $(id); if (el) el.innerText = v; };
+  setTxt('rep-tax-shipping', fmt(shipping));
+  setTxt('rep-tax-shipping-count', `${shippingCount} venta${shippingCount !== 1 ? 's' : ''} con envío`);
+  setTxt('rep-tax-surcharge', fmt(surcharge));
+  setTxt('rep-tax-surcharge-count', `${surchargeCount} venta${surchargeCount !== 1 ? 's' : ''} con recargo`);
+  setTxt('rep-tax-discount', fmt(discount));
+  setTxt('rep-tax-discount-count', `${discountCount} venta${discountCount !== 1 ? 's' : ''} con descuento`);
+  setTxt('rep-tax-iva', fmt(iva));
+}
+
 function renderReportByPayment(filtered) {
   const el = $('rep-by-payment');
+  if (!el) return;   // 🆕 Si no existe el contenedor, salir silenciosamente
+
   const methods = {
     efectivo:      { label: '💵 Efectivo',       color: 'green',  sales: 0, count: 0 },
     transferencia: { label: '🔄 Transferencia',  color: 'blue',   sales: 0, count: 0 },
@@ -8526,7 +8938,6 @@ function renderReportByPayment(filtered) {
       </div>
     `;
   }).join('');
-
 }
 
 function renderReportDetail(filtered) {
@@ -8580,7 +8991,807 @@ function stripEmojis(text) {
     .trim();
 }
 
-/* ============ EXPORTAR PDF ============ */
+/* ============================================================
+   EXPORTAR REPORTES A EXCEL — con formato profesional
+============================================================ */
+window.exportReportsExcel = async () => {
+  if (!window.ExcelJS) {
+    alert('⚠️ La librería de Excel aún no ha cargado. Espera unos segundos y vuelve a intentar.');
+    return;
+  }
+
+  const filtered = getFilteredSales();
+  if (!filtered.length) {
+    alert('No hay ventas para exportar con estos filtros.');
+    return;
+  }
+
+  const V = reportVisibility || {};
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Smartec';
+  wb.created = new Date();
+
+  const fechaGen = new Date().toLocaleString('es-CO');
+  const periodo = `${reportFilters.dateFrom || 'todo'} — ${reportFilters.dateTo || 'hoy'}`;
+
+  // ============================================================
+  // COLORES POR SECCIÓN (para encabezados)
+  // ============================================================
+  const COLORS = {
+    portada:       'FF0A2A4A',
+    resumen:       'FF0A2A4A',
+    comparativa:   'FF4A7A9A',
+    rentabilidad:  'FF16A34A',
+    impuestos:     'FFEA580C',
+    metodo:        'FF2563EB',
+    conciliacion:  'FF7C3AED',
+    pendientes:    'FFD97706',
+    tienda:        'FF0891B2',
+    vendedores:    'FFCA8A04',
+    productos:     'FF65A30D',
+    categoria:     'FFDB2777',
+    clientes:      'FF4F46E5',
+    detalle:       'FF334155'
+  };
+
+  // Colores de texto/fondo reutilizables
+  const MONEDA_FONT   = { color: { argb: 'FF166534' }, bold: true };
+  const CANTIDAD_FONT = { color: { argb: 'FF1E40AF' } };
+  const PORC_FONT     = { color: { argb: 'FF7C3AED' }, bold: true };
+  const ZEBRA_BG      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+  const TOTAL_BG      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+
+  // ============================================================
+  // Helpers de estilo
+  // ============================================================
+  const styleHeaderRow = (row, color = 'FF0A2A4A') => {
+    row.height = 24;
+    row.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = {
+        top:    { style: 'thin', color: { argb: color } },
+        bottom: { style: 'thin', color: { argb: color } },
+        left:   { style: 'thin', color: { argb: color } },
+        right:  { style: 'thin', color: { argb: color } }
+      };
+    });
+  };
+
+  const styleDataRow = (row, opts = {}) => {
+    const { zebra = false, wrapCols = [], total = false } = opts;
+    row.eachCell((cell, idx) => {
+      cell.border = {
+        top:    { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        left:   { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right:  { style: 'thin', color: { argb: 'FFE5E7EB' } }
+      };
+      cell.alignment = { vertical: 'middle', wrapText: wrapCols.includes(idx) };
+      if (total) {
+        cell.fill = TOTAL_BG;
+        cell.font = { ...(cell.font || {}), bold: true };
+      } else if (zebra) {
+        cell.fill = ZEBRA_BG;
+      }
+    });
+  };
+
+  const styleMetaRow = (row) => {
+    row.getCell(1).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+    row.getCell(2).font = { color: { argb: 'FF111827' } };
+    row.getCell(1).alignment = { vertical: 'middle' };
+    row.getCell(2).alignment = { vertical: 'middle' };
+  };
+
+  // Aplica formato de moneda, cantidad o porcentaje a una columna específica
+  const applyNumberFormat = (row, colIdx, type) => {
+    const cell = row.getCell(colIdx);
+    if (type === 'moneda') {
+      cell.numFmt = '"$"#,##0';
+      cell.font = MONEDA_FONT;
+      cell.alignment = { vertical: 'middle', horizontal: 'right' };
+    } else if (type === 'cantidad') {
+      cell.numFmt = '#,##0';
+      cell.font = CANTIDAD_FONT;
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    } else if (type === 'porcentaje') {
+      cell.numFmt = '0.0"%"';
+      cell.font = PORC_FONT;
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    }
+  };
+
+  const addTitleRow = (ws, title, color, colSpan = 6) => {
+    const r = ws.addRow([title]);
+    ws.mergeCells(r.number, 1, r.number, colSpan);
+    const cell = r.getCell(1);
+    cell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+    cell.alignment = { vertical: 'middle', horizontal: 'left' };
+    r.height = 28;
+    return r;
+  };
+
+  const freezeHeader = (ws, rowNumber) => {
+    ws.views = [{ state: 'frozen', ySplit: rowNumber }];
+  };
+
+  // ============================================================
+  // HOJA: PORTADA
+  // ============================================================
+  {
+    const ws = wb.addWorksheet('Portada', { properties: { defaultRowHeight: 18 } });
+    ws.mergeCells('A1:B1');
+    const t = ws.getCell('A1');
+    t.value = 'SMARTEC · Reporte consolidado';
+    t.font = { bold: true, size: 18, color: { argb: 'FFFFFFFF' } };
+    t.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.portada } };
+    t.alignment = { vertical: 'middle', horizontal: 'center' };
+    ws.getRow(1).height = 40;
+
+    ws.addRow([]);
+    const meta = [
+      ['Generado', fechaGen],
+      ['Período', periodo],
+      ['Tienda', reportFilters.storeId === 'all' ? 'Todas' : (stores.find(s => s.storeId === reportFilters.storeId)?.name || reportFilters.storeId)],
+      ['Vendedor', reportFilters.sellerUid === 'all' ? 'Todos' : (users.find(u => u.id === reportFilters.sellerUid)?.name || reportFilters.sellerUid)],
+      ['Total ventas', filtered.length],
+      ['Hojas incluidas', Object.keys(V).filter(k => V[k]).join(', ') || 'solo resumen']
+    ];
+    meta.forEach(([label, val]) => {
+      const r = ws.addRow([label, val]);
+      r.height = 22;
+      r.getCell(1).font = { bold: true, color: { argb: 'FF0A2A4A' }, size: 11 };
+      r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+      r.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      r.getCell(2).font = { color: { argb: 'FF111827' }, size: 11 };
+      r.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      r.eachCell(c => {
+        c.border = {
+          top:    { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          left:   { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          right:  { style: 'thin', color: { argb: 'FFE5E7EB' } }
+        };
+      });
+    });
+
+    ws.getColumn(1).width = 26;
+    ws.getColumn(2).width = 70;
+  }
+
+  // ============================================================
+  // HOJA: RESUMEN EJECUTIVO
+  // ============================================================
+  {
+    const ws = wb.addWorksheet('Resumen ejecutivo');
+    ws.columns = [
+      { width: 32 },
+      { width: 28 }
+    ];
+
+    addTitleRow(ws, 'RESUMEN EJECUTIVO', COLORS.resumen, 2);
+    ws.addRow([]);
+
+    const hRow = ws.addRow(['Métrica', 'Valor']);
+    styleHeaderRow(hRow, COLORS.resumen);
+
+    const totalSales = filtered.reduce((s, x) => {
+      const sub = Number(x.subtotal || 0);
+      const disc = Number(x.discount || 0);
+      return s + ((x.commissionBase !== undefined) ? Number(x.commissionBase) : (sub - disc));
+    }, 0);
+    const totalCost = filtered.reduce((sum, s) => {
+      if (Number(s.totalCost || 0) > 0) return sum + Number(s.totalCost);
+      return sum + (s.items || []).reduce((itSum, it) => itSum + (Number(it.unitCost || 0) * Number(it.qty || 0)), 0);
+    }, 0);
+    const totalProfit = totalSales - totalCost;
+    const totalPool = filtered.reduce((s, x) => s + Number(x.poolAmount || x.commissionAmount || 0), 0);
+    const totalBonus = filtered.reduce((s, x) => s + Number(x.bonusAmount || 0), 0);
+    const totalCommission = totalPool + totalBonus;
+
+    const data = [
+      ['Total vendido',    totalSales,      'moneda'],
+      ['Costo total',      totalCost,       'moneda'],
+      ['Utilidad bruta',   totalProfit,     'moneda'],
+      ['Pool tienda',      totalPool,       'moneda'],
+      ['Bonus metas',      totalBonus,      'moneda'],
+      ['Comisiones totales', totalCommission, 'moneda'],
+      ['Transacciones',    filtered.length, 'cantidad'],
+      ['Ticket promedio',  filtered.length > 0 ? totalSales / filtered.length : 0, 'moneda']
+    ];
+
+    data.forEach(([label, value, type], i) => {
+      const row = ws.addRow([label, value]);
+      styleDataRow(row, { zebra: i % 2 === 0 });
+      row.getCell(1).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+      applyNumberFormat(row, 2, type);
+    });
+
+    // Fila TOTAL destacada
+    const totalRow = ws.addRow(['Utilidad neta (ventas − costo)', totalProfit]);
+    styleDataRow(totalRow, { total: true });
+    applyNumberFormat(totalRow, 2, 'moneda');
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: COMPARATIVA CON PERÍODO ANTERIOR
+  // ============================================================
+  if (V.comparison && reportFilters.dateFrom && reportFilters.dateTo) {
+    const ws = wb.addWorksheet('Comparativa período');
+    ws.columns = [
+      { width: 28 }, { width: 20 }, { width: 20 }, { width: 15 }
+    ];
+
+    addTitleRow(ws, 'COMPARATIVA CON PERÍODO ANTERIOR', COLORS.comparativa, 4);
+    ws.addRow([]);
+    const hRow = ws.addRow(['Métrica', 'Actual', 'Anterior', 'Cambio %']);
+    styleHeaderRow(hRow, COLORS.comparativa);
+
+    const fromDate = new Date(reportFilters.dateFrom + 'T00:00:00');
+    const toDate = new Date(reportFilters.dateTo + 'T23:59:59');
+    const diffDays = Math.max(1, Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)));
+    const prevTo = new Date(fromDate); prevTo.setDate(prevTo.getDate() - 1); prevTo.setHours(23,59,59);
+    const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - diffDays + 1); prevFrom.setHours(0,0,0);
+
+    let prevSales = sales.filter(s => s.status !== 'anulada' && s.createdAt?.seconds);
+    prevSales = prevSales.filter(s => {
+      const d = new Date(s.createdAt.seconds * 1000);
+      return d >= prevFrom && d <= prevTo;
+    });
+    if (reportFilters.storeId !== 'all') prevSales = prevSales.filter(s => s.storeId === reportFilters.storeId);
+    if (reportFilters.sellerUid !== 'all') prevSales = prevSales.filter(s => s.sellerUid === reportFilters.sellerUid);
+
+    const prev = computePeriodKPIs(prevSales);
+    const curr = computePeriodKPIs(filtered);
+
+    const calcPct = (c, p) => (p === 0 ? (c === 0 ? 0 : 100) : ((c - p) / p) * 100);
+
+    const rows = [
+      ['Ventas netas',       curr.sales,      prev.sales,      'moneda'],
+      ['Transacciones',      curr.count,      prev.count,      'cantidad'],
+      ['Ticket promedio',    Math.round(curr.ticket), Math.round(prev.ticket), 'moneda'],
+      ['Unidades vendidas',  curr.units,      prev.units,      'cantidad'],
+      ['Utilidad bruta',     curr.profit,     prev.profit,     'moneda'],
+      ['Comisiones',         curr.commission, prev.commission, 'moneda']
+    ];
+
+    rows.forEach(([label, c, p, type], i) => {
+      const row = ws.addRow([label, c, p, calcPct(c, p) / 100]);
+      styleDataRow(row, { zebra: i % 2 === 0 });
+      row.getCell(1).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+      applyNumberFormat(row, 2, type);
+      applyNumberFormat(row, 3, type);
+      // Columna cambio como % con color según signo
+      const chg = row.getCell(4);
+      chg.numFmt = '+0.0%;-0.0%;0.0%';
+      chg.alignment = { vertical: 'middle', horizontal: 'center' };
+      const pct = calcPct(c, p);
+      chg.font = { bold: true, color: { argb: pct > 0 ? 'FF166534' : (pct < 0 ? 'FF991B1B' : 'FF6B7280') } };
+    });
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: RENTABILIDAD
+  // ============================================================
+  if (V.profitability) {
+    const ws = wb.addWorksheet('Rentabilidad');
+    ws.columns = [{ width: 38 }, { width: 28 }];
+
+    addTitleRow(ws, 'RENTABILIDAD DEL PERÍODO', COLORS.rentabilidad, 2);
+    ws.addRow([]);
+    const hRow = ws.addRow(['Concepto', 'Valor']);
+    styleHeaderRow(hRow, COLORS.rentabilidad);
+
+    const kpis = computePeriodKPIs(filtered);
+    let financialCommissions = 0;
+    filtered.forEach(s => { financialCommissions += Number(s.creditCommissionAmount || 0); });
+    const grossProfit = kpis.sales - kpis.cost;
+    const netProfit = grossProfit - financialCommissions;
+    const grossMargin = kpis.sales > 0 ? (grossProfit / kpis.sales) * 100 : 0;
+    const netMargin = kpis.sales > 0 ? (netProfit / kpis.sales) * 100 : 0;
+
+    const rows = [
+      ['Ventas',                    kpis.sales,             false],
+      ['− Costo mercancía',        -kpis.cost,              false],
+      ['= Utilidad bruta',          grossProfit,            true],
+      ['   Margen bruto',           grossMargin,            'pct'],
+      ['− Comisiones financieras', -financialCommissions,   false],
+      ['= Utilidad neta',           netProfit,              true],
+      ['   Margen neto',            netMargin,              'pct']
+    ];
+
+    rows.forEach(([label, value, kind], i) => {
+      const row = ws.addRow([label, value]);
+      const isTotal = kind === true;
+      styleDataRow(row, { zebra: i % 2 === 0, total: isTotal });
+      row.getCell(1).font = { bold: isTotal, color: { argb: isTotal ? 'FF166534' : 'FF0A2A4A' } };
+      if (kind === 'pct') {
+        row.getCell(2).numFmt = '0.0"%"';
+        row.getCell(2).font = { bold: true, color: { argb: 'FF7C3AED' } };
+        row.getCell(2).alignment = { horizontal: 'right', vertical: 'middle' };
+      } else {
+        applyNumberFormat(row, 2, 'moneda');
+      }
+    });
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: IMPUESTOS Y RECARGOS
+  // ============================================================
+  if (V.taxes) {
+    const ws = wb.addWorksheet('Impuestos y recargos');
+    ws.columns = [{ width: 35 }, { width: 15 }, { width: 24 }];
+
+    addTitleRow(ws, 'IMPUESTOS, RECARGOS Y ENVÍOS', COLORS.impuestos, 3);
+    ws.addRow([]);
+    const hRow = ws.addRow(['Concepto', 'Ventas', 'Total']);
+    styleHeaderRow(hRow, COLORS.impuestos);
+
+    let shipping=0, shippingCount=0, surcharge=0, surchargeCount=0, discount=0, discountCount=0, iva=0;
+    filtered.forEach(s => {
+      if (Number(s.shipping || 0) > 0) { shipping += Number(s.shipping); shippingCount++; }
+      if (Number(s.surchargeAmount || 0) > 0) { surcharge += Number(s.surchargeAmount); surchargeCount++; }
+      if (Number(s.discount || 0) > 0) { discount += Number(s.discount); discountCount++; }
+      (s.items || []).forEach(it => {
+        const tr = Number(it.taxRate || 0);
+        if (tr > 0) iva += Number(it.unitPrice || 0) * Number(it.qty || 0) * tr;
+      });
+    });
+
+    const rows = [
+      ['Envíos cobrados',      shippingCount,  shipping],
+      ['Recargos tarjeta',     surchargeCount, surcharge],
+      ['Descuentos otorgados', discountCount,  discount],
+      ['IVA cobrado',          '—',            iva]
+    ];
+
+    rows.forEach(([label, cant, total], i) => {
+      const row = ws.addRow([label, cant, total]);
+      styleDataRow(row, { zebra: i % 2 === 0 });
+      row.getCell(1).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+      if (typeof cant === 'number') applyNumberFormat(row, 2, 'cantidad');
+      applyNumberFormat(row, 3, 'moneda');
+    });
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: DESGLOSE POR MÉTODO DE PAGO
+  // ============================================================
+  if (V.byMethod) {
+    const ws = wb.addWorksheet('Por método pago');
+    ws.columns = [{ width: 26 }, { width: 14 }, { width: 24 }, { width: 12 }];
+
+    addTitleRow(ws, 'DESGLOSE POR MÉTODO DE PAGO', COLORS.metodo, 4);
+    ws.addRow([]);
+    const hRow = ws.addRow(['Método', 'Ventas', 'Total', '%']);
+    styleHeaderRow(hRow, COLORS.metodo);
+
+    const byMethod = {};
+    filtered.forEach(s => {
+      const m = s.paymentMethod || 'efectivo';
+      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+      if (!byMethod[m]) byMethod[m] = { total: 0, count: 0 };
+      byMethod[m].total += base;
+      byMethod[m].count += 1;
+    });
+    const labels = { efectivo:'💵 Efectivo', transferencia:'🔄 Transferencia', tarjeta:'💳 Tarjeta', contraentrega:'📦 Contra entrega', credito:'🛍️ Crédito', nequi:'📱 Nequi' };
+    const totalGen = Object.values(byMethod).reduce((s, m) => s + m.total, 0);
+
+    Object.entries(byMethod).sort((a,b) => b[1].total - a[1].total).forEach(([k,v], i) => {
+      const row = ws.addRow([labels[k] || k, v.count, v.total, totalGen > 0 ? v.total / totalGen : 0]);
+      styleDataRow(row, { zebra: i % 2 === 0 });
+      row.getCell(1).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+      applyNumberFormat(row, 2, 'cantidad');
+      applyNumberFormat(row, 3, 'moneda');
+      const pct = row.getCell(4);
+      pct.numFmt = '0.0%';
+      pct.font = PORC_FONT;
+      pct.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    // Fila total
+    const totalRow = ws.addRow(['TOTAL', Object.values(byMethod).reduce((s,m)=>s+m.count,0), totalGen, 1]);
+    styleDataRow(totalRow, { total: true });
+    applyNumberFormat(totalRow, 2, 'cantidad');
+    applyNumberFormat(totalRow, 3, 'moneda');
+    totalRow.getCell(4).numFmt = '0.0%';
+    totalRow.getCell(4).font = PORC_FONT;
+    totalRow.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: CONCILIACIÓN POR CUENTA
+  // ============================================================
+  if (V.reconciliation) {
+    const ws = wb.addWorksheet('Conciliación');
+    ws.columns = [{ width: 38 }, { width: 24 }, { width: 12 }, { width: 24 }];
+
+    addTitleRow(ws, 'CONCILIACIÓN POR CUENTA', COLORS.conciliacion, 4);
+    ws.addRow([]);
+    const hRow = ws.addRow(['Cuenta / Canal', 'Nº cuenta', 'Ventas', 'Total']);
+    styleHeaderRow(hRow, COLORS.conciliacion);
+
+    const groups = {};
+    filtered.forEach(s => {
+      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+      const ps = s.paymentStatus || 'completed';
+      let key, data;
+      if (ps === 'pending') { key='pending'; data={bank:'⏳ Por cobrar',name:'Contra entrega pendiente',account:''}; }
+      else {
+        const fm = s.finalPaymentMethod || s.paymentMethod;
+        if (fm === 'efectivo') { key='efectivo'; data={bank:'💵 Efectivo',name:'Caja física',account:''}; }
+        else if (fm === 'tarjeta') { key='tarjeta'; data={bank:'💳 Tarjeta',name:'Datáfono',account:''}; }
+        else if (fm === 'transferencia' || fm === 'credito') {
+          const cid = s.finalPaymentChannelId || s.paymentChannelId;
+          if (cid) { key=cid; data={ bank:s.finalPaymentChannelBank||s.paymentChannelBank||'🏦', name:s.finalPaymentChannelName||s.paymentChannelName||'', account:s.finalPaymentChannelAccount||s.paymentChannelAccount||'' }; }
+          else { key='transferencia_gen'; data={bank:'🔄 Transferencia',name:'Sin especificar',account:''}; }
+        } else { key='otros'; data={bank:'● Otros',name:'',account:''}; }
+      }
+      if (!groups[key]) groups[key] = { ...data, total:0, count:0 };
+      groups[key].total += base;
+      groups[key].count += 1;
+    });
+
+    Object.values(groups).sort((a,b) => b.total - a.total).forEach((g, i) => {
+      const row = ws.addRow([
+        `${g.bank}${g.name ? ' — ' + g.name : ''}`,
+        g.account || '-',
+        g.count,
+        g.total
+      ]);
+      styleDataRow(row, { zebra: i % 2 === 0 });
+      row.getCell(1).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+      row.getCell(2).font = { family: 3, color: { argb: 'FF6B7280' } };
+      applyNumberFormat(row, 3, 'cantidad');
+      applyNumberFormat(row, 4, 'moneda');
+    });
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: COBROS PENDIENTES
+  // ============================================================
+  if (V.pending) {
+    const pending = filtered.filter(s => (s.paymentStatus || 'completed') === 'pending');
+    if (pending.length) {
+      const ws = wb.addWorksheet('Cobros pendientes');
+      ws.columns = [
+        { width: 14 }, { width: 26 }, { width: 18 },
+        { width: 22 }, { width: 22 }, { width: 20 }
+      ];
+
+      addTitleRow(ws, `COBROS PENDIENTES (${pending.length})`, COLORS.pendientes, 6);
+      ws.addRow([]);
+      const hRow = ws.addRow(['Fecha', 'Cliente', 'Teléfono', 'Tienda', 'Vendedor', 'Monto']);
+      styleHeaderRow(hRow, COLORS.pendientes);
+
+      pending.sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)).forEach((s, i) => {
+        const store = stores.find(x => x.storeId === s.storeId);
+        const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+        const date = s.createdAt?.seconds ? new Date(s.createdAt.seconds*1000).toLocaleDateString('es-CO') : '-';
+        const row = ws.addRow([date, s.customer?.name||'', s.customer?.phone||'', store?.name||s.storeId, s.sellerName||s.sellerEmail||'', base]);
+        styleDataRow(row, { zebra: i % 2 === 0 });
+        applyNumberFormat(row, 6, 'moneda');
+      });
+
+      // Fila total
+      const total = pending.reduce((sum, s) => {
+        const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+        return sum + base;
+      }, 0);
+      const totalRow = ws.addRow(['', '', '', '', 'TOTAL', total]);
+      styleDataRow(totalRow, { total: true });
+      applyNumberFormat(totalRow, 6, 'moneda');
+
+      freezeHeader(ws, 3);
+    }
+  }
+
+  // ============================================================
+  // HOJA: COMPARATIVA POR TIENDA
+  // ============================================================
+  if (V.byStore) {
+    const ws = wb.addWorksheet('Por tienda');
+    ws.columns = [{ width: 30 }, { width: 12 }, { width: 24 }, { width: 24 }, { width: 24 }];
+
+    addTitleRow(ws, 'COMPARATIVA POR TIENDA', COLORS.tienda, 5);
+    ws.addRow([]);
+    const hRow = ws.addRow(['Tienda', 'Ventas', 'Total', 'Utilidad', 'Comisión']);
+    styleHeaderRow(hRow, COLORS.tienda);
+
+    const byStore = {};
+    filtered.forEach(s => {
+      if (!byStore[s.storeId]) byStore[s.storeId] = { sales:0, count:0, commission:0, profit:0 };
+      byStore[s.storeId].sales += Number(s.total || 0);
+      byStore[s.storeId].count += 1;
+      byStore[s.storeId].commission += Number(s.sellerCommissionAmount || 0);
+      byStore[s.storeId].profit += Number(s.profit || 0);
+    });
+
+    const sorted = Object.entries(byStore).sort((a,b) => b[1].sales - a[1].sales);
+    sorted.forEach(([sid, v], i) => {
+      const st = stores.find(s => s.storeId === sid);
+      const row = ws.addRow([st?.name || sid, v.count, v.sales, v.profit, v.commission]);
+      styleDataRow(row, { zebra: i % 2 === 0 });
+      row.getCell(1).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+      applyNumberFormat(row, 2, 'cantidad');
+      applyNumberFormat(row, 3, 'moneda');
+      applyNumberFormat(row, 4, 'moneda');
+      applyNumberFormat(row, 5, 'moneda');
+    });
+
+    // Total general
+    const totSales = sorted.reduce((s, [,v]) => s + v.sales, 0);
+    const totProfit = sorted.reduce((s, [,v]) => s + v.profit, 0);
+    const totComm = sorted.reduce((s, [,v]) => s + v.commission, 0);
+    const totCount = sorted.reduce((s, [,v]) => s + v.count, 0);
+    const totalRow = ws.addRow(['TOTAL', totCount, totSales, totProfit, totComm]);
+    styleDataRow(totalRow, { total: true });
+    applyNumberFormat(totalRow, 2, 'cantidad');
+    applyNumberFormat(totalRow, 3, 'moneda');
+    applyNumberFormat(totalRow, 4, 'moneda');
+    applyNumberFormat(totalRow, 5, 'moneda');
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: RANKING VENDEDORES
+  // ============================================================
+  if (V.topSellers) {
+    const ws = wb.addWorksheet('Ranking vendedores');
+    ws.columns = [{ width: 6 }, { width: 32 }, { width: 12 }, { width: 24 }, { width: 24 }];
+
+    addTitleRow(ws, 'RANKING VENDEDORES', COLORS.vendedores, 5);
+    ws.addRow([]);
+    const hRow = ws.addRow(['#', 'Vendedor', 'Ventas', 'Total', 'Comisión']);
+    styleHeaderRow(hRow, COLORS.vendedores);
+
+    const bySeller = {};
+    filtered.forEach(s => {
+      const k = s.sellerUid || s.sellerEmail || 'unknown';
+      if (!bySeller[k]) bySeller[k] = { name: s.sellerName || s.sellerEmail || '—', sales:0, count:0, commission:0 };
+      bySeller[k].sales += Number(s.total || 0);
+      bySeller[k].count += 1;
+      bySeller[k].commission += Number(s.sellerCommissionAmount || 0);
+    });
+
+    Object.values(bySeller).sort((a,b) => b.sales - a.sales).forEach((v, i) => {
+      const row = ws.addRow([i+1, v.name, v.count, v.sales, v.commission]);
+      styleDataRow(row, { zebra: i % 2 === 0 });
+      // Medallas
+      const medal = i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : '';
+      row.getCell(1).font = { bold: true, color: { argb: i < 3 ? 'FFCA8A04' : 'FF6B7280' } };
+      row.getCell(2).font = { bold: i < 3, color: { argb: 'FF0A2A4A' } };
+      applyNumberFormat(row, 3, 'cantidad');
+      applyNumberFormat(row, 4, 'moneda');
+      applyNumberFormat(row, 5, 'moneda');
+    });
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: TOP PRODUCTOS
+  // ============================================================
+  if (V.topProducts) {
+    const ws = wb.addWorksheet('Top productos');
+    ws.columns = [{ width: 6 }, { width: 42 }, { width: 22 }, { width: 12 }, { width: 24 }];
+
+    addTitleRow(ws, 'TOP PRODUCTOS VENDIDOS', COLORS.productos, 5);
+    ws.addRow([]);
+    const hRow = ws.addRow(['#', 'Producto', 'SKU', 'Unidades', 'Total']);
+    styleHeaderRow(hRow, COLORS.productos);
+
+    const byProduct = {};
+    filtered.forEach(s => {
+      (s.items || []).forEach(it => {
+        const k = it.productId || it.sku || it.name;
+        if (!byProduct[k]) byProduct[k] = { name: it.name, sku: it.sku || '', units:0, sales:0 };
+        byProduct[k].units += Number(it.qty || 0);
+        byProduct[k].sales += Number(it.qty || 0) * Number(it.unitPrice || 0);
+      });
+    });
+
+    Object.values(byProduct).sort((a,b) => b.sales - a.sales).forEach((p, i) => {
+      const row = ws.addRow([i+1, p.name, p.sku, p.units, p.sales]);
+      styleDataRow(row, { zebra: i % 2 === 0, wrapCols: [2] });
+      row.getCell(1).font = { bold: true, color: { argb: 'FF6B7280' } };
+      row.getCell(2).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+      row.getCell(3).font = { family: 3, color: { argb: 'FF6B7280' } };
+      applyNumberFormat(row, 4, 'cantidad');
+      applyNumberFormat(row, 5, 'moneda');
+    });
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: VENTAS POR CATEGORÍA
+  // ============================================================
+  if (V.byCategory) {
+    const ws = wb.addWorksheet('Por categoría');
+    ws.columns = [{ width: 32 }, { width: 12 }, { width: 24 }, { width: 12 }];
+
+    addTitleRow(ws, 'VENTAS POR CATEGORÍA', COLORS.categoria, 4);
+    ws.addRow([]);
+    const hRow = ws.addRow(['Categoría', 'Unidades', 'Total', '%']);
+    styleHeaderRow(hRow, COLORS.categoria);
+
+    const byCat = {};
+    filtered.forEach(s => {
+      (s.items || []).forEach(it => {
+        const prod = products.find(p => p.id === it.productId);
+        const cat = prod?.categoryGroupName || 'Sin categoría';
+        if (!byCat[cat]) byCat[cat] = { sales:0, units:0 };
+        byCat[cat].sales += Number(it.qty || 0) * Number(it.unitPrice || 0);
+        byCat[cat].units += Number(it.qty || 0);
+      });
+    });
+    const list = Object.entries(byCat).sort((a,b) => b[1].sales - a[1].sales);
+    const total = list.reduce((s,[,v]) => s + v.sales, 0);
+
+    list.forEach(([name, v], i) => {
+      const row = ws.addRow([name, v.units, v.sales, total > 0 ? v.sales / total : 0]);
+      styleDataRow(row, { zebra: i % 2 === 0 });
+      row.getCell(1).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+      applyNumberFormat(row, 2, 'cantidad');
+      applyNumberFormat(row, 3, 'moneda');
+      const pct = row.getCell(4);
+      pct.numFmt = '0.0%';
+      pct.font = PORC_FONT;
+      pct.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    const totUnits = list.reduce((s,[,v]) => s + v.units, 0);
+    const totalRow = ws.addRow(['TOTAL', totUnits, total, 1]);
+    styleDataRow(totalRow, { total: true });
+    applyNumberFormat(totalRow, 2, 'cantidad');
+    applyNumberFormat(totalRow, 3, 'moneda');
+    totalRow.getCell(4).numFmt = '0.0%';
+    totalRow.getCell(4).font = PORC_FONT;
+    totalRow.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: TOP CLIENTES
+  // ============================================================
+  if (V.topCustomers) {
+    const ws = wb.addWorksheet('Top clientes');
+    ws.columns = [{ width: 6 }, { width: 32 }, { width: 20 }, { width: 12 }, { width: 24 }];
+
+    addTitleRow(ws, 'TOP CLIENTES', COLORS.clientes, 5);
+    ws.addRow([]);
+    const hRow = ws.addRow(['#', 'Cliente', 'Teléfono', 'Compras', 'Total']);
+    styleHeaderRow(hRow, COLORS.clientes);
+
+    const byCustomer = {};
+    filtered.forEach(s => {
+      const phone = String(s.customer?.phone || '').replace(/\D/g, '');
+      const key = phone || s.customer?.name || 'sin-cliente';
+      if (!byCustomer[key]) byCustomer[key] = { name: s.customer?.name || 'Sin nombre', phone: s.customer?.phone || '', count: 0, total: 0 };
+      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+      byCustomer[key].count += 1;
+      byCustomer[key].total += base;
+    });
+
+    Object.values(byCustomer).sort((a,b) => b.total - a.total).slice(0, 50).forEach((c, i) => {
+      const row = ws.addRow([i+1, c.name, c.phone || '—', c.count, c.total]);
+      styleDataRow(row, { zebra: i % 2 === 0 });
+      row.getCell(1).font = { bold: true, color: { argb: 'FF6B7280' } };
+      row.getCell(2).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+      applyNumberFormat(row, 4, 'cantidad');
+      applyNumberFormat(row, 5, 'moneda');
+    });
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // HOJA: DETALLE DE VENTAS
+  // ============================================================
+  if (V.detail) {
+    const ws = wb.addWorksheet('Detalle ventas');
+    ws.columns = [
+      { width: 14 }, { width: 22 }, { width: 22 }, { width: 24 },
+      { width: 32 }, { width: 20 }, { width: 18 }, { width: 8 },
+      { width: 15 }, { width: 15 }, { width: 15 }, { width: 12 },
+      { width: 15 }, { width: 15 }, { width: 15 }, { width: 18 }
+    ];
+
+    addTitleRow(ws, 'DETALLE DE VENTAS', COLORS.detalle, 16);
+    ws.addRow([]);
+    const hRow = ws.addRow([
+      'Fecha','Tienda','Vendedor','Cliente','Producto','SKU','Variante',
+      'Und','Costo','Venta','Descuento','Envío','Rec. Tarjeta',
+      'Pool','Bonus','Total venta'
+    ]);
+    styleHeaderRow(hRow, COLORS.detalle);
+
+    filtered.forEach((s, sIdx) => {
+      const store = stores.find(x => x.storeId === s.storeId);
+      const date = s.createdAt?.seconds ? new Date(s.createdAt.seconds * 1000).toLocaleDateString('es-CO') : '-';
+      const items = s.items || [];
+      const subtotalVenta = items.reduce((sum, it) => sum + Number(it.qty||0) * Number(it.unitPrice||0), 0);
+      const shipping = Number(s.shipping || 0);
+      const surcharge = Number(s.surchargeAmount || 0);
+      const discount = Number(s.discount || 0);
+      const poolTotal = Number(s.poolAmount || s.commissionAmount || 0);
+      const bonusTotal = Number(s.bonusAmount || 0);
+
+      items.forEach(it => {
+        const qty = Number(it.qty || 0);
+        const lineTotal = qty * Number(it.unitPrice || 0);
+        const lineCost = qty * Number(it.unitCost || 0);
+        const ratio = subtotalVenta > 0 ? lineTotal / subtotalVenta : 0;
+        const variant = [it.colorName, it.size].filter(Boolean).join(' · ') || 'Estándar';
+
+        const row = ws.addRow([
+          date,
+          store?.name || s.storeId || '',
+          s.sellerName || s.sellerEmail || '',
+          s.customer?.name || '',
+          it.name || '',
+          it.sku || '',
+          variant,
+          qty,
+          lineCost,
+          lineTotal,
+          discount * ratio,
+          shipping * ratio,
+          surcharge * ratio,
+          poolTotal * ratio,
+          bonusTotal * ratio,
+          Number(s.total || 0)
+        ]);
+        styleDataRow(row, { zebra: sIdx % 2 === 1, wrapCols: [5] });
+        applyNumberFormat(row, 8, 'cantidad');
+        applyNumberFormat(row, 9, 'moneda');
+        applyNumberFormat(row, 10, 'moneda');
+        applyNumberFormat(row, 11, 'moneda');
+        applyNumberFormat(row, 12, 'moneda');
+        applyNumberFormat(row, 13, 'moneda');
+        applyNumberFormat(row, 14, 'moneda');
+        applyNumberFormat(row, 15, 'moneda');
+        applyNumberFormat(row, 16, 'moneda');
+      });
+    });
+
+    freezeHeader(ws, 3);
+  }
+
+  // ============================================================
+  // DESCARGAR
+  // ============================================================
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `smartec_reporte_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+/* ============ EXPORTAR PDF (respeta la selección del personalizador) ============ */
 window.exportReportsPDF = () => {
   const { jsPDF } = window.jspdf;
   const filtered = getFilteredSales();
@@ -8590,17 +9801,15 @@ window.exportReportsPDF = () => {
     return;
   }
 
+  const V = reportVisibility || {};
   const doc = new jsPDF('l', 'mm', 'a4');
   const pageH = doc.internal.pageSize.getHeight();
+  const pageW = doc.internal.pageSize.getWidth();
   const MARGIN_BOTTOM = 15;
 
   function ensureSpace(needed) {
-    if (y + needed > pageH - MARGIN_BOTTOM) {
-      doc.addPage();
-      y = 20;
-    }
+    if (y + needed > pageH - MARGIN_BOTTOM) { doc.addPage(); y = 20; }
   }
-  const pageW = doc.internal.pageSize.getWidth();
   let y = 15;
 
   // ===== Encabezado =====
@@ -8610,7 +9819,6 @@ window.exportReportsPDF = () => {
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text('SMARTEC', 14, 13);
-
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text('Reporte consolidado', pageW - 14, 13, { align: 'right' });
@@ -8627,32 +9835,27 @@ window.exportReportsPDF = () => {
     `Generado: ${new Date().toLocaleString('es-CO')}`
   ];
   filterLines.forEach(line => { doc.text(line, 14, y); y += 5; });
-
   y += 4;
 
-  // ===== KPIs =====
-  const totalSales = filtered.reduce((s, x) => s + Number(x.total || 0), 0);
-
-  // Costo real desde los items (con fallback a totalCost)
+  // ============================================================
+  // RESUMEN EJECUTIVO (siempre)
+  // ============================================================
+  const totalSales = filtered.reduce((s, x) => {
+    const sub = Number(x.subtotal || 0);
+    const disc = Number(x.discount || 0);
+    return s + ((x.commissionBase !== undefined) ? Number(x.commissionBase) : (sub - disc));
+  }, 0);
   const totalCost = filtered.reduce((sum, s) => {
     if (Number(s.totalCost || 0) > 0) return sum + Number(s.totalCost);
-    return sum + (s.items || []).reduce((itSum, it) => {
-      return itSum + (Number(it.unitCost || 0) * Number(it.qty || 0));
-    }, 0);
+    return sum + (s.items || []).reduce((itSum, it) => itSum + (Number(it.unitCost || 0) * Number(it.qty || 0)), 0);
   }, 0);
   const totalProfit = totalSales - totalCost;
-
-  const totalCommission = filtered.reduce((s, x) =>
-  s + Number(x.sellerCommissionAmount || (Number(x.poolAmount || x.commissionAmount || 0) + Number(x.bonusAmount || 0))), 0);
-
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(10, 42, 74);
-  doc.text('Resumen ejecutivo', 14, y);
-  y += 6;
-
   const totalPoolPDF = filtered.reduce((s, x) => s + Number(x.poolAmount || x.commissionAmount || 0), 0);
   const totalBonusPDF = filtered.reduce((s, x) => s + Number(x.bonusAmount || 0), 0);
+  const totalCommission = totalPoolPDF + totalBonusPDF;
+
+  doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(10, 42, 74);
+  doc.text('Resumen ejecutivo', 14, y); y += 6;
 
   doc.autoTable({
     startY: y,
@@ -8672,485 +9875,450 @@ window.exportReportsPDF = () => {
   });
   y = doc.lastAutoTable.finalY + 10;
 
-    
-  ensureSpace(60);  // si quedan menos de 60mm libres, salta a otra página
-  // ===== Comparativa por tienda =====
-  const byStore = {};
-  filtered.forEach(s => {
-    if (!byStore[s.storeId]) byStore[s.storeId] = { sales:0, count:0, commission:0, profit:0 };
-    byStore[s.storeId].sales += Number(s.total || 0);
-    byStore[s.storeId].count += 1;
-    byStore[s.storeId].commission += Number(s.sellerCommissionAmount || 0);
-    byStore[s.storeId].profit += Number(s.profit || 0);
-  });
+  // ============================================================
+  // BLOQUE: Comparativa con período anterior
+  // ============================================================
+  if (V.comparison && reportFilters.dateFrom && reportFilters.dateTo) {
+    const fromDate = new Date(reportFilters.dateFrom + 'T00:00:00');
+    const toDate = new Date(reportFilters.dateTo + 'T23:59:59');
+    const diffDays = Math.max(1, Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)));
+    const prevTo = new Date(fromDate); prevTo.setDate(prevTo.getDate() - 1); prevTo.setHours(23,59,59);
+    const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - diffDays + 1); prevFrom.setHours(0,0,0);
 
-  const storeRows = Object.entries(byStore).map(([sid, v]) => {
-    const st = stores.find(s => s.storeId === sid);
-    return [st?.name || sid, v.count, '$' + v.sales.toLocaleString('es-CO'), '$' + v.profit.toLocaleString('es-CO'), '$' + v.commission.toLocaleString('es-CO')];
-  }).sort((a,b) => Number(b[2].replace(/\D/g,'')) - Number(a[2].replace(/\D/g,'')));
+    let prevSales = sales.filter(s => s.status !== 'anulada' && s.createdAt?.seconds);
+    prevSales = prevSales.filter(s => {
+      const d = new Date(s.createdAt.seconds * 1000);
+      return d >= prevFrom && d <= prevTo;
+    });
+    if (reportFilters.storeId !== 'all') prevSales = prevSales.filter(s => s.storeId === reportFilters.storeId);
+    if (reportFilters.sellerUid !== 'all') prevSales = prevSales.filter(s => s.sellerUid === reportFilters.sellerUid);
 
-  if (storeRows.length) {
-    if (y > 240) { doc.addPage(); y = 20; }
+    const prev = computePeriodKPIs(prevSales);
+    const curr = computePeriodKPIs(filtered);
+
+    const fmtChangePDF = (c, p) => {
+      if (p === 0 && c === 0) return '0%';
+      if (p === 0) return '+100%';
+      const pct = ((c - p) / p) * 100;
+      return (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+    };
+
+    ensureSpace(50);
     doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
-    doc.text('Desempeño por tienda', 14, y); y += 3;
+    doc.text('Comparativa con período anterior', 14, y); y += 3;
 
     doc.autoTable({
       startY: y,
-      head: [['Tienda','Ventas','Total','Utilidad','Comisión']],
-      body: storeRows,
+      head: [['Métrica', 'Actual', 'Anterior', 'Cambio']],
+      body: [
+        ['Ventas netas', '$' + curr.sales.toLocaleString('es-CO'), '$' + prev.sales.toLocaleString('es-CO'), fmtChangePDF(curr.sales, prev.sales)],
+        ['Transacciones', String(curr.count), String(prev.count), fmtChangePDF(curr.count, prev.count)],
+        ['Ticket promedio', '$' + Math.round(curr.ticket).toLocaleString('es-CO'), '$' + Math.round(prev.ticket).toLocaleString('es-CO'), fmtChangePDF(curr.ticket, prev.ticket)],
+        ['Utilidad bruta', '$' + curr.profit.toLocaleString('es-CO'), '$' + prev.profit.toLocaleString('es-CO'), fmtChangePDF(curr.profit, prev.profit)]
+      ],
       theme: 'striped',
       headStyles: { fillColor: [74, 122, 154], textColor: 255 },
+      bodyStyles: { fontSize: 9 },
       margin: { left: 14, right: 14 }
     });
     y = doc.lastAutoTable.finalY + 10;
   }
 
-    
-
-  // ===== Top vendedores =====
-  const bySeller = {};
-  filtered.forEach(s => {
-    const k = s.sellerUid || s.sellerEmail || 'unknown';
-    if (!bySeller[k]) bySeller[k] = { name: s.sellerName || s.sellerEmail || '—', sales:0, count:0, commission:0 };
-    bySeller[k].sales += Number(s.total || 0);
-    bySeller[k].count += 1;
-    bySeller[k].commission += Number(s.sellerCommissionAmount || 0);
-  });
-  const sellerRows = Object.values(bySeller)
-    .sort((a,b) => b.sales - a.sales).slice(0, 15)
-    .map(v => [v.name, v.count, '$' + v.sales.toLocaleString('es-CO'), '$' + v.commission.toLocaleString('es-CO')]);
-
-   if (sellerRows.length) {
+  // ============================================================
+  // BLOQUE: Rentabilidad
+  // ============================================================
+  if (V.profitability) {
     ensureSpace(60);
+    const kpis = computePeriodKPIs(filtered);
+    let financialCommissions = 0;
+    filtered.forEach(s => { financialCommissions += Number(s.creditCommissionAmount || 0); });
+    const grossProfit = kpis.sales - kpis.cost;
+    const netProfit = grossProfit - financialCommissions;
+    const grossMargin = kpis.sales > 0 ? (grossProfit / kpis.sales) * 100 : 0;
+    const netMargin = kpis.sales > 0 ? (netProfit / kpis.sales) * 100 : 0;
+
     doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
-    doc.text('Top vendedores', 14, y); y += 3;
+    doc.text('Rentabilidad del período', 14, y); y += 3;
 
     doc.autoTable({
       startY: y,
-      head: [['Vendedor','Ventas','Total','Comisión']],
-      body: sellerRows,
-      theme: 'striped',
-      headStyles: { fillColor: [74, 122, 154], textColor: 255 },
+      head: [['Concepto', 'Valor']],
+      body: [
+        ['Ventas', '$' + kpis.sales.toLocaleString('es-CO')],
+        ['− Costo mercancía', '-' + '$' + kpis.cost.toLocaleString('es-CO')],
+        ['= Utilidad bruta', '$' + grossProfit.toLocaleString('es-CO') + ` (${grossMargin.toFixed(1)}%)`],
+        ['− Comisiones financieras', '-' + '$' + financialCommissions.toLocaleString('es-CO')],
+        ['= Utilidad neta', '$' + netProfit.toLocaleString('es-CO') + ` (${netMargin.toFixed(1)}%)`]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 10 },
+      columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 150, halign: 'right', fontStyle: 'bold' } },
       margin: { left: 14, right: 14 }
     });
     y = doc.lastAutoTable.finalY + 10;
   }
 
-    
-
-  // ===== Top productos =====
-  const byProduct = {};
-  filtered.forEach(s => {
-    (s.items || []).forEach(it => {
-      const k = it.productId || it.sku || it.name;
-      if (!byProduct[k]) byProduct[k] = { name: it.name, sku: it.sku || '', units:0, sales:0 };
-      byProduct[k].units += Number(it.qty || 0);
-      byProduct[k].sales += Number(it.qty || 0) * Number(it.unitPrice || 0);
+  // ============================================================
+  // BLOQUE: Impuestos, recargos y envíos
+  // ============================================================
+  if (V.taxes) {
+    ensureSpace(50);
+    let shipping = 0, shippingCount = 0, surcharge = 0, surchargeCount = 0;
+    let discount = 0, discountCount = 0, iva = 0;
+    filtered.forEach(s => {
+      if (Number(s.shipping || 0) > 0) { shipping += Number(s.shipping); shippingCount++; }
+      if (Number(s.surchargeAmount || 0) > 0) { surcharge += Number(s.surchargeAmount); surchargeCount++; }
+      if (Number(s.discount || 0) > 0) { discount += Number(s.discount); discountCount++; }
+      (s.items || []).forEach(it => {
+        const tr = Number(it.taxRate || 0);
+        if (tr > 0) iva += Number(it.unitPrice || 0) * Number(it.qty || 0) * tr;
+      });
     });
-  });
-  const productRows = Object.values(byProduct)
-    .sort((a,b) => b.sales - a.sales).slice(0, 15)
-    .map(p => [p.name, p.sku, p.units, '$' + p.sales.toLocaleString('es-CO')]);
 
-    if (productRows.length) {
-    ensureSpace(60);
     doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
-    doc.text('Top productos vendidos', 14, y); y += 3;
+    doc.text('Impuestos, recargos y envíos', 14, y); y += 3;
 
     doc.autoTable({
       startY: y,
-      head: [['Producto','SKU','Unidades','Total']],
-      body: productRows,
+      head: [['Concepto', 'Ventas', 'Total']],
+      body: [
+        ['Envíos cobrados', String(shippingCount), '$' + shipping.toLocaleString('es-CO')],
+        ['Recargos tarjeta', String(surchargeCount), '$' + surcharge.toLocaleString('es-CO')],
+        ['Descuentos otorgados', String(discountCount), '$' + discount.toLocaleString('es-CO')],
+        ['IVA cobrado', '—', '$' + iva.toLocaleString('es-CO')]
+      ],
       theme: 'striped',
       headStyles: { fillColor: [74, 122, 154], textColor: 255 },
-      margin: { left: 14, right: 14 },
-      columnStyles: { 0: { cellWidth: 80 } }
+      bodyStyles: { fontSize: 9 },
+      margin: { left: 14, right: 14 }
     });
     y = doc.lastAutoTable.finalY + 10;
   }
-  
+
   // ============================================================
-  // SECCIÓN NUEVA: Desglose por método de pago
+  // BLOQUE: Desglose por método y canal
   // ============================================================
-  ensureSpace(80);
+  if (V.byMethod) {
+    ensureSpace(60);
+    const byMethod = {};
+    filtered.forEach(s => {
+      const m = s.paymentMethod || 'efectivo';
+      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+      if (!byMethod[m]) byMethod[m] = { total: 0, count: 0 };
+      byMethod[m].total += base;
+      byMethod[m].count += 1;
+    });
+    const methodLabelsPDF = {
+      efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta',
+      contraentrega: 'Contra entrega', credito: 'Crédito', nequi: 'Nequi'
+    };
+    const totalGen = Object.values(byMethod).reduce((s, m) => s + m.total, 0);
+    const rows = Object.entries(byMethod)
+      .sort((a,b) => b[1].total - a[1].total)
+      .map(([k,v]) => [methodLabelsPDF[k] || k, String(v.count), '$' + v.total.toLocaleString('es-CO'), totalGen > 0 ? ((v.total/totalGen)*100).toFixed(1) + '%' : '0%']);
 
-  const byMethod = {};
-  filtered.forEach(s => {
-    const method = s.paymentMethod || 'efectivo';
-    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
-    if (!byMethod[method]) byMethod[method] = { total: 0, count: 0 };
-    byMethod[method].total += base;
-    byMethod[method].count += 1;
-  });
-
-  const methodLabelsPDF = {
-    efectivo: 'Efectivo',
-    transferencia: 'Transferencia',
-    tarjeta: 'Tarjeta',
-    contraentrega: 'Contra entrega',
-    credito: 'Crédito',
-    nequi: 'Nequi (legacy)'
-  };
-
-  const totalMethodPDF = Object.values(byMethod).reduce((s, m) => s + m.total, 0);
-
-  const methodRows = Object.entries(byMethod)
-    .sort((a, b) => b[1].total - a[1].total)
-    .map(([k, v]) => [
-      methodLabelsPDF[k] || k,
-      String(v.count),
-      '$' + v.total.toLocaleString('es-CO'),
-      totalMethodPDF > 0 ? ((v.total / totalMethodPDF) * 100).toFixed(1) + '%' : '0%'
-    ]);
-
-  if (methodRows.length) {
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(10, 42, 74);
-    doc.text('Desglose por método de pago', 14, y);
-    y += 3;
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
+    doc.text('Desglose por método de pago', 14, y); y += 3;
 
     doc.autoTable({
       startY: y,
       head: [['Método', 'Ventas', 'Total', '%']],
-      body: methodRows,
+      body: rows,
       theme: 'grid',
-      headStyles: { fillColor: [74, 122, 154], textColor: 255, fontStyle: 'bold' },
+      headStyles: { fillColor: [74, 122, 154], textColor: 255 },
       bodyStyles: { fontSize: 9 },
-      columnStyles: {
-        0: { cellWidth: 80 },
-        1: { cellWidth: 25, halign: 'center' },
-        2: { cellWidth: 40, halign: 'right', fontStyle: 'bold' },
-        3: { cellWidth: 25, halign: 'right' }
-      },
+      columnStyles: { 0:{cellWidth:80}, 1:{cellWidth:25,halign:'center'}, 2:{cellWidth:40,halign:'right',fontStyle:'bold'}, 3:{cellWidth:25,halign:'right'} },
       margin: { left: 14, right: 14 }
     });
     y = doc.lastAutoTable.finalY + 10;
   }
 
   // ============================================================
-  // SECCIÓN NUEVA: Conciliación por cuenta
+  // BLOQUE: Conciliación por cuenta
   // ============================================================
-  ensureSpace(80);
-
-  const reconcGroups = {};
-  filtered.forEach(s => {
-    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
-    const ps = s.paymentStatus || 'completed';
-
-    let key, data;
-    if (ps === 'pending') {
-      key = 'pending';
-      data = { bank: 'Por cobrar', name: 'Contra entrega pendiente', account: '', icon: '⏳' };
-    } else {
-      const fm = s.finalPaymentMethod || s.paymentMethod;
-      if (fm === 'efectivo') {
-        key = 'efectivo';
-        data = { bank: 'Efectivo', name: 'Caja física', account: '', icon: '💵' };
-      } else if (fm === 'tarjeta') {
-        key = 'tarjeta';
-        data = { bank: 'Tarjeta', name: '', account: '', icon: '💳' };
-      } else if (fm === 'transferencia' || fm === 'credito') {
-        const cid = s.finalPaymentChannelId || s.paymentChannelId;
-        if (cid) {
-          key = cid;
-          data = {
-            bank: s.finalPaymentChannelBank || s.paymentChannelBank || '',
-            name: s.finalPaymentChannelName || s.paymentChannelName || '',
-            account: s.finalPaymentChannelAccount || s.paymentChannelAccount || '',
-            icon: s.finalPaymentChannelIcon || s.paymentChannelIcon || '🏦'
-          };
-        } else {
-          key = 'transferencia_generica';
-          data = { bank: 'Transferencia', name: 'Sin especificar', account: '', icon: '🔄' };
-        }
-      } else {
-        key = 'otros';
-        data = { bank: 'Otros', name: '', account: '', icon: '●' };
-      }
-    }
-    if (!reconcGroups[key]) reconcGroups[key] = { ...data, total: 0, count: 0 };
-    reconcGroups[key].total += base;
-    reconcGroups[key].count += 1;
-  });
-
-  const reconcRows = Object.values(reconcGroups)
-    .sort((a, b) => b.total - a.total)
-    .map(g => [
-      stripEmojis(`${g.icon} ${g.bank}${g.name ? ' — ' + g.name : ''}`),
-      g.account || '-',
-      String(g.count),
-      '$' + g.total.toLocaleString('es-CO')
-    ]);
-
-  if (reconcRows.length) {
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(10, 42, 74);
-    doc.text('Conciliación por cuenta', 14, y);
-    y += 3;
-
-    doc.autoTable({
-      startY: y,
-      head: [['Cuenta / Canal', 'Nº cuenta', 'Ventas', 'Total']],
-      body: reconcRows,
-      theme: 'striped',
-      headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 9 },
-      bodyStyles: { fontSize: 9 },
-      columnStyles: {
-        0: { cellWidth: 90 },
-        1: { cellWidth: 35, font: 'courier' },
-        2: { cellWidth: 25, halign: 'center' },
-        3: { cellWidth: 35, halign: 'right', fontStyle: 'bold' }
-      },
-      margin: { left: 14, right: 14 }
-    });
-    y = doc.lastAutoTable.finalY + 10;
-  }
-
-  // ============================================================
-  // SECCIÓN NUEVA: Cobros pendientes
-  // ============================================================
-  const pendingSales = filtered.filter(s => (s.paymentStatus || 'completed') === 'pending');
-
-  if (pendingSales.length) {
-    ensureSpace(80);
-
-    const totalPendingPDF = pendingSales.reduce((sum, s) => {
-      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
-      return sum + base;
-    }, 0);
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(10, 42, 74);
-    doc.text(`Cobros pendientes (${pendingSales.length} · Total $${totalPendingPDF.toLocaleString('es-CO')})`, 14, y);
-    y += 3;
-
-    const pendingRows = pendingSales
-      .sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
-      .slice(0, 50)
-      .map(s => {
-        const store = stores.find(x => x.storeId === s.storeId);
-        const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
-        const date = s.createdAt?.seconds
-          ? new Date(s.createdAt.seconds * 1000).toLocaleDateString('es-CO')
-          : '-';
-        return [
-          date,
-          s.customer?.name || '',
-          s.customer?.phone || '',
-          store?.name || s.storeId,
-          s.sellerName || s.sellerEmail || '',
-          '$' + base.toLocaleString('es-CO')
-        ];
-      });
-
-    doc.autoTable({
-      startY: y,
-      head: [['Fecha', 'Cliente', 'Teléfono', 'Tienda', 'Vendedor', 'Monto']],
-      body: pendingRows,
-      theme: 'striped',
-      headStyles: { fillColor: [217, 119, 6], textColor: 255, fontSize: 8 },
-      bodyStyles: { fontSize: 8 },
-      margin: { left: 14, right: 14 }
-    });
-    y = doc.lastAutoTable.finalY + 10;
-  }
-
-  // ===== Detalle de ventas ULTRA detallado (una fila por producto) =====
-  const detailRows = [];
-  filtered.forEach(s => {
-    const store = stores.find(x => x.storeId === s.storeId);
-    const date = s.createdAt?.seconds
-      ? new Date(s.createdAt.seconds * 1000).toLocaleDateString('es-CO')
-      : '-';
-
-    const items = s.items || [];
-    const totalItems = items.reduce((sum, it) => sum + Number(it.qty || 0), 0);
-
-    // Repartir costos proporcionalmente entre los items (para saber cuánto del envío/tarjeta aplica a cada uno)
-    const subtotalVenta = items.reduce((sum, it) => sum + Number(it.qty || 0) * Number(it.unitPrice || 0), 0);
-    const shipping = Number(s.shipping || 0);
-    const surcharge = Number(s.surchargeAmount || 0);
-    const surchargeRate = Number(s.surchargeRate || 0);
-    const discount = Number(s.discount || 0);
-
-    items.forEach((it, idx) => {
-      const qty = Number(it.qty || 0);
-      const unitPrice = Number(it.unitPrice || 0);
-      const unitCost = Number(it.unitCost || 0);
-      const lineTotal = qty * unitPrice;
-      const lineCost = qty * unitCost;
-
-      // Repartir proporcionalmente
-      const ratio = subtotalVenta > 0 ? lineTotal / subtotalVenta : 0;
-      const lineShipping = shipping * ratio;
-      const lineSurcharge = surcharge * ratio;
-      const lineDiscount = discount * ratio;
-
-      // Variante legible
-      const variantParts = [];
-      if (it.colorName) variantParts.push(it.colorName);
-      if (it.color && !it.colorName) variantParts.push(it.color);
-      if (it.size) variantParts.push(it.size);
-      const variant = variantParts.join(' · ') || 'Estándar';
-
-            // Repartir pool y bonus proporcionalmente también
-      const poolTotal = Number(s.poolAmount || s.commissionAmount || 0);
-      const bonusTotal = Number(s.bonusAmount || 0);
-      const linePool = poolTotal * ratio;
-      const lineBonus = bonusTotal * ratio;
-
-      detailRows.push([
-        date,
-        store?.name || s.storeId || '',
-        s.sellerName || s.sellerEmail || '',
-        s.customer?.name || '',
-        it.name || '',
-        it.sku || '',
-        variant,
-        qty,
-        '$' + lineCost.toLocaleString('es-CO'),
-        '$' + lineTotal.toLocaleString('es-CO'),
-        '$' + lineDiscount.toLocaleString('es-CO'),
-        '$' + lineShipping.toLocaleString('es-CO'),
-        '$' + lineSurcharge.toLocaleString('es-CO'),
-        s.paymentMethod === 'tarjeta' ? ((surchargeRate || 0) * 100).toFixed(2) + '%' : '-',
-        '$' + linePool.toLocaleString('es-CO'),
-        '$' + lineBonus.toLocaleString('es-CO'),
-        '$' + Number(s.total || 0).toLocaleString('es-CO')
-      ]);
-    });
-  });
-
-    if (detailRows.length) {
-    ensureSpace(40);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(10, 42, 74);
-    doc.text(`Detalle de ventas ultra detallado (${detailRows.length} líneas)`, 14, y);
-
-    doc.autoTable({
-      startY: y,
-        head: [[
-        'Fecha', 'Tienda', 'Vendedor', 'Cliente',
-        'Producto', 'SKU', 'Variante',
-        'Und', 'Costo', 'Venta',
-        'Descuento', 'Envío', 'Rec. Tarjeta', '%Tarj',
-        'Pool', 'Bonus', 'Total Venta'
-      ]],
-      body: detailRows,
-      theme: 'striped',
-        headStyles: {
-        fillColor: [10, 42, 74],
-        textColor: 255,
-        fontSize: 8,
-        fontStyle: 'bold',
-        halign: 'center',
-        cellPadding: 2
-      },
-      bodyStyles: {
-        fontSize: 8,
-        cellPadding: 2
-      },
-        columnStyles: {
-        0: { cellWidth: 14 },   // Fecha
-        1: { cellWidth: 18 },   // Tienda
-        2: { cellWidth: 20 },   // Vendedor
-        3: { cellWidth: 20 },   // Cliente
-        4: { cellWidth: 36 },   // Producto
-        5: { cellWidth: 22 },   // SKU
-        6: { cellWidth: 18 },   // Variante
-        7: { cellWidth: 7,  halign: 'center' },  // Und
-        8: { cellWidth: 15, halign: 'right' },   // Costo
-        9: { cellWidth: 15, halign: 'right' },   // Venta
-        10: { cellWidth: 13, halign: 'right' },  // Descuento
-        11: { cellWidth: 11, halign: 'right' },  // Envío
-        12: { cellWidth: 14, halign: 'right' },  // Rec. Tarjeta
-        13: { cellWidth: 7,  halign: 'center' }, // %Tarj
-        14: { cellWidth: 15, halign: 'right', textColor: [74, 122, 154] },   // Pool
-        15: { cellWidth: 14, halign: 'right', textColor: [34, 197, 94] },    // Bonus
-        16: { cellWidth: 17, halign: 'right', fontStyle: 'bold' } // Total
-      },
-      margin: { left: 6, right: 6 },
-      tableWidth: 'wrap',
-      didParseCell: (data) => {
-        // Colorear filas alternas por venta (agrupar por Fecha+Cliente)
-        if (data.section === 'body') {
-          // Opcional: resaltar la columna Total
-          if (data.column.index === 14) {
-            data.cell.styles.textColor = [10, 42, 74];
-          }
-        }
-      }
-    });
-    y = doc.lastAutoTable.finalY + 10;
-  }
-  
-
-    // ===== Gráficos (al final) =====
-    const chartsToInsert = [
-    { chart: charts.sales, title: 'Ventas en el tiempo', width: 260, height: 80 },
-    { chart: charts.topsellers, title: 'Top vendedores', width: 260, height: 80 },
-    { chart: charts.category, title: 'Ventas por categoría', width: 130, height: 90 },
-    { chart: charts.payment, title: 'Métodos de pago', width: 130, height: 90 }
-  ].filter(c => c.chart);
-
-   if (chartsToInsert.length) {
+  if (V.reconciliation) {
     ensureSpace(60);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(10, 42, 74);
-    doc.text('Gráficos del reporte', 14, y);
-    y += 8;
-
-    const marginX = 14;
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    for (let i = 0; i < chartsToInsert.length; i++) {
-      const item = chartsToInsert[i];
-      ensureSpace(item.height + 15);
-      try {
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(10, 42, 74);
-        doc.text(item.title, marginX, y);
-        y += 4;
-
-        const imgData = item.chart.toBase64Image('image/png', 1.0);
-        doc.addImage(imgData, 'PNG', marginX, y, Math.min(item.width, pageWidth - marginX * 2), item.height);
-        y += item.height + 8;
-      } catch(e) {
-        console.warn('Error insertando gráfico:', item.title, e);
+    const reconcGroups = {};
+    filtered.forEach(s => {
+      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+      const ps = s.paymentStatus || 'completed';
+      let key, data;
+      if (ps === 'pending') { key = 'pending'; data = { bank: 'Por cobrar', name: 'Contra entrega pendiente', account: '' }; }
+      else {
+        const fm = s.finalPaymentMethod || s.paymentMethod;
+        if (fm === 'efectivo') { key='efectivo'; data={bank:'Efectivo',name:'Caja física',account:''}; }
+        else if (fm === 'tarjeta') { key='tarjeta'; data={bank:'Tarjeta',name:'Datáfono',account:''}; }
+        else if (fm === 'transferencia' || fm === 'credito') {
+          const cid = s.finalPaymentChannelId || s.paymentChannelId;
+          if (cid) { key=cid; data={ bank:s.finalPaymentChannelBank||s.paymentChannelBank||'', name:s.finalPaymentChannelName||s.paymentChannelName||'', account:s.finalPaymentChannelAccount||s.paymentChannelAccount||'' }; }
+          else { key='transferencia_gen'; data={bank:'Transferencia',name:'Sin especificar',account:''}; }
+        } else { key='otros'; data={bank:'Otros',name:'',account:''}; }
       }
+      if (!reconcGroups[key]) reconcGroups[key] = { ...data, total:0, count:0 };
+      reconcGroups[key].total += base;
+      reconcGroups[key].count += 1;
+    });
+    const reconcRows = Object.values(reconcGroups).sort((a,b) => b.total - a.total)
+      .map(g => [`${g.bank}${g.name ? ' — ' + g.name : ''}`, g.account || '-', String(g.count), '$' + g.total.toLocaleString('es-CO')]);
+
+    if (reconcRows.length) {
+      doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
+      doc.text('Conciliación por cuenta', 14, y); y += 3;
+      doc.autoTable({
+        startY: y,
+        head: [['Cuenta / Canal','Nº cuenta','Ventas','Total']],
+        body: reconcRows,
+        theme: 'striped',
+        headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 9 },
+        bodyStyles: { fontSize: 9 },
+        columnStyles: { 0:{cellWidth:90}, 1:{cellWidth:35,font:'courier'}, 2:{cellWidth:25,halign:'center'}, 3:{cellWidth:35,halign:'right',fontStyle:'bold'} },
+        margin: { left: 14, right: 14 }
+      });
+      y = doc.lastAutoTable.finalY + 10;
     }
   }
 
+  // ============================================================
+  // BLOQUE: Cobros pendientes
+  // ============================================================
+  if (V.pending) {
+    const pendingSales = filtered.filter(s => (s.paymentStatus || 'completed') === 'pending');
+    if (pendingSales.length) {
+      ensureSpace(60);
+      const totalPending = pendingSales.reduce((sum, s) => {
+        const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+        return sum + base;
+      }, 0);
 
+      doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
+      doc.text(`Cobros pendientes (${pendingSales.length} · $${totalPending.toLocaleString('es-CO')})`, 14, y); y += 3;
+
+      const pendingRows = pendingSales
+        .sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
+        .slice(0, 50)
+        .map(s => {
+          const store = stores.find(x => x.storeId === s.storeId);
+          const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+          const date = s.createdAt?.seconds ? new Date(s.createdAt.seconds*1000).toLocaleDateString('es-CO') : '-';
+          return [date, s.customer?.name||'', s.customer?.phone||'', store?.name||s.storeId, s.sellerName||s.sellerEmail||'', '$'+base.toLocaleString('es-CO')];
+        });
+
+      doc.autoTable({
+        startY: y,
+        head: [['Fecha','Cliente','Teléfono','Tienda','Vendedor','Monto']],
+        body: pendingRows,
+        theme: 'striped',
+        headStyles: { fillColor: [217, 119, 6], textColor: 255, fontSize: 8 },
+        bodyStyles: { fontSize: 8 },
+        margin: { left: 14, right: 14 }
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+  }
+
+  // ============================================================
+  // BLOQUE: Comparativa por tienda
+  // ============================================================
+  if (V.byStore) {
+    ensureSpace(60);
+    const byStore = {};
+    filtered.forEach(s => {
+      if (!byStore[s.storeId]) byStore[s.storeId] = { sales:0, count:0, commission:0, profit:0 };
+      byStore[s.storeId].sales += Number(s.total || 0);
+      byStore[s.storeId].count += 1;
+      byStore[s.storeId].commission += Number(s.sellerCommissionAmount || 0);
+      byStore[s.storeId].profit += Number(s.profit || 0);
+    });
+    const rows = Object.entries(byStore).map(([sid,v]) => {
+      const st = stores.find(s => s.storeId === sid);
+      return [st?.name || sid, v.count, '$'+v.sales.toLocaleString('es-CO'), '$'+v.profit.toLocaleString('es-CO'), '$'+v.commission.toLocaleString('es-CO')];
+    }).sort((a,b) => Number(b[2].replace(/\D/g,'')) - Number(a[2].replace(/\D/g,'')));
+
+    if (rows.length) {
+      doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
+      doc.text('Comparativa por tienda', 14, y); y += 3;
+      doc.autoTable({
+        startY: y,
+        head: [['Tienda','Ventas','Total','Utilidad','Comisión']],
+        body: rows,
+        theme: 'striped',
+        headStyles: { fillColor: [74, 122, 154], textColor: 255 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 14, right: 14 }
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+  }
+
+  // ============================================================
+  // BLOQUE: Ranking vendedores
+  // ============================================================
+  if (V.topSellers) {
+    ensureSpace(60);
+    const bySeller = {};
+    filtered.forEach(s => {
+      const k = s.sellerUid || s.sellerEmail || 'unknown';
+      if (!bySeller[k]) bySeller[k] = { name: s.sellerName || s.sellerEmail || '—', sales:0, count:0, commission:0 };
+      bySeller[k].sales += Number(s.total || 0);
+      bySeller[k].count += 1;
+      bySeller[k].commission += Number(s.sellerCommissionAmount || 0);
+    });
+    const rows = Object.values(bySeller).sort((a,b) => b.sales - a.sales).slice(0, 15)
+      .map(v => [v.name, v.count, '$'+v.sales.toLocaleString('es-CO'), '$'+v.commission.toLocaleString('es-CO')]);
+    if (rows.length) {
+      doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
+      doc.text('Ranking vendedores', 14, y); y += 3;
+      doc.autoTable({
+        startY: y,
+        head: [['Vendedor','Ventas','Total','Comisión']],
+        body: rows,
+        theme: 'striped',
+        headStyles: { fillColor: [74, 122, 154], textColor: 255 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 14, right: 14 }
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+  }
+
+  // ============================================================
+  // BLOQUE: Top productos
+  // ============================================================
+  if (V.topProducts) {
+    ensureSpace(60);
+    const byProduct = {};
+    filtered.forEach(s => {
+      (s.items || []).forEach(it => {
+        const k = it.productId || it.sku || it.name;
+        if (!byProduct[k]) byProduct[k] = { name: it.name, sku: it.sku || '', units:0, sales:0 };
+        byProduct[k].units += Number(it.qty || 0);
+        byProduct[k].sales += Number(it.qty || 0) * Number(it.unitPrice || 0);
+      });
+    });
+    const rows = Object.values(byProduct).sort((a,b) => b.sales - a.sales).slice(0, 15)
+      .map(p => [p.name, p.sku, p.units, '$'+p.sales.toLocaleString('es-CO')]);
+    if (rows.length) {
+      doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
+      doc.text('Top productos vendidos', 14, y); y += 3;
+      doc.autoTable({
+        startY: y,
+        head: [['Producto','SKU','Unidades','Total']],
+        body: rows,
+        theme: 'striped',
+        headStyles: { fillColor: [74, 122, 154], textColor: 255 },
+        bodyStyles: { fontSize: 9 },
+        columnStyles: { 0: { cellWidth: 80 } },
+        margin: { left: 14, right: 14 }
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+  }
+
+  // ============================================================
+  // BLOQUE: Ventas por categoría
+  // ============================================================
+  if (V.byCategory) {
+    ensureSpace(60);
+    const byCat = {};
+    filtered.forEach(s => {
+      (s.items || []).forEach(it => {
+        const prod = products.find(p => p.id === it.productId);
+        const cat = prod?.categoryGroupName || 'Sin categoría';
+        if (!byCat[cat]) byCat[cat] = { sales:0, units:0, count:0 };
+        byCat[cat].sales += Number(it.qty || 0) * Number(it.unitPrice || 0);
+        byCat[cat].units += Number(it.qty || 0);
+        byCat[cat].count += 1;
+      });
+    });
+    const list = Object.entries(byCat).sort((a,b) => b[1].sales - a[1].sales);
+    if (list.length) {
+      const total = list.reduce((s,[,v]) => s + v.sales, 0);
+      const rows = list.map(([name, v]) => [name, v.units, '$'+v.sales.toLocaleString('es-CO'), total>0 ? ((v.sales/total)*100).toFixed(1)+'%' : '0%']);
+      doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
+      doc.text('Ventas por categoría', 14, y); y += 3;
+      doc.autoTable({
+        startY: y,
+        head: [['Categoría','Unidades','Total','%']],
+        body: rows,
+        theme: 'striped',
+        headStyles: { fillColor: [74, 122, 154], textColor: 255 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 14, right: 14 }
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+  }
+
+  // ============================================================
+  // BLOQUE: Top clientes
+  // ============================================================
+  if (V.topCustomers) {
+    ensureSpace(60);
+    const byCustomer = {};
+    filtered.forEach(s => {
+      const phone = String(s.customer?.phone || '').replace(/\D/g, '');
+      const key = phone || s.customer?.name || 'sin-cliente';
+      if (!byCustomer[key]) byCustomer[key] = { name: s.customer?.name || 'Sin nombre', phone: s.customer?.phone || '', count: 0, total: 0 };
+      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+      byCustomer[key].count += 1;
+      byCustomer[key].total += base;
+    });
+    const list = Object.values(byCustomer).sort((a,b) => b.total - a.total).slice(0, 20);
+    if (list.length) {
+      const rows = list.map((c, i) => [String(i+1), c.name, c.phone || '—', String(c.count), '$'+c.total.toLocaleString('es-CO')]);
+      doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
+      doc.text(`Top clientes (${Object.keys(byCustomer).length} únicos)`, 14, y); y += 3;
+      doc.autoTable({
+        startY: y,
+        head: [['#','Cliente','Teléfono','Compras','Total']],
+        body: rows,
+        theme: 'striped',
+        headStyles: { fillColor: [74, 122, 154], textColor: 255 },
+        bodyStyles: { fontSize: 9 },
+        columnStyles: { 0:{cellWidth:10,halign:'center'}, 1:{cellWidth:60}, 2:{cellWidth:35}, 3:{cellWidth:20,halign:'center'}, 4:{cellWidth:35,halign:'right',fontStyle:'bold'} },
+        margin: { left: 14, right: 14 }
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+  }
+
+  // ============================================================
+  // BLOQUE: Detalle de ventas
+  // ============================================================
+  if (V.detail) {
+    ensureSpace(40);
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(10,42,74);
+    doc.text(`Detalle de ventas (${filtered.length})`, 14, y); y += 3;
+
+    const rows = filtered.slice(0, 500).map(s => {
+      const store = stores.find(x => x.storeId === s.storeId);
+      return [fmtDate(s.createdAt), store?.name || s.storeId, s.sellerName || s.sellerEmail || '', s.customer?.name || '', '$' + Number(s.total || 0).toLocaleString('es-CO')];
+    });
+
+    doc.autoTable({
+      startY: y,
+      head: [['Fecha','Tienda','Vendedor','Cliente','Total']],
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [10, 42, 74], textColor: 255, fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      margin: { left: 10, right: 10 }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ============================================================
   // Pie de página
+  // ============================================================
   const pages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
-    doc.text(
-      `Smartec · Reporte generado automáticamente · Página ${i} de ${pages}`,
-      pageW / 2,
-      pageH - 8,
-      { align: 'center' }
-    );
+    doc.text(`Smartec · Reporte generado automáticamente · Página ${i} de ${pages}`, pageW / 2, pageH - 8, { align: 'center' });
   }
 
-  console.log('═══════════ REPORTE PDF GENERADO ═══════════');
-  console.log('📄 Total páginas:', doc.internal.getNumberOfPages());
-  console.log('📊 Gráficos incluidos:', chartsToInsert.length);
-  console.log('📋 Líneas de detalle:', detailRows.length);
-  console.log('🏪 Tiendas en comparativa:', storeRows.length);
-  console.log('👥 Vendedores en ranking:', sellerRows.length);
-  console.log('📦 Productos en ranking:', productRows.length);
-  console.log('════════════════════════════════════════════');
-  
   const filename = `smartec_reporte_${new Date().toISOString().split('T')[0]}.pdf`;
   doc.save(filename);
 };
