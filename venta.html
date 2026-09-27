@@ -10,6 +10,7 @@
   <script src="fingerprint.js"></script>
   <script src="device-guard.js"></script>
   <script src="kiosk.js"></script>
+  <script src="shifts.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root{--sd:#0A2A4A;--sl:#4A7A9A}
@@ -92,7 +93,7 @@
           <select id="store-selector" class="hidden text-sm rounded-lg px-3 py-1.5"></select>
         </div>
       </div>
-      <button id="shift-btn" onclick="toggleShift()" class="hidden lg:flex items-center gap-2 text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded transition font-semibold">
+      <button id="shift-btn" onclick="SmartecShift.toggleShift()" class="hidden lg:flex items-center gap-2 text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded transition font-semibold">
           <span id="shift-btn-icon">🟢</span>
           <span id="shift-btn-text">Marcar entrada</span>
           <span id="shift-timer" class="hidden text-[10px] opacity-80 font-mono"></span>
@@ -123,7 +124,7 @@
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V5a2 2 0 012-2h2m0 0h2M5 3h2M3 17v2a2 2 0 002 2h2m0 0h2m-2 0h2M21 7V5a2 2 0 00-2-2h-2m0 0h-2m2 0h-2M21 17v2a2 2 0 01-2 2h-2m0 0h-2m2 0h-2M7 8v8m4-8v8m4-8v8"/></svg>
               Escanear
             </button>
-        <button id="shift-btn-mobile" onclick="toggleShift()" class="lg:hidden px-3 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition text-xs font-semibold shrink-0">
+        <button id="shift-btn-mobile" onclick="SmartecShift.toggleShift()" class="lg:hidden px-3 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition text-xs font-semibold shrink-0">
           <span id="shift-btn-icon-mobile">🟢</span>
         </button>
             <button onclick="toggleCart()" class="lg:hidden px-4 py-3 bg-sl text-white rounded-xl hover:bg-sd transition flex items-center gap-2 shrink-0 font-semibold text-sm relative">
@@ -326,9 +327,9 @@
 
     <!-- ============ MODAL MARCAR ENTRADA/SALIDA ============ -->
     <div id="shift-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
-    <div id="shift-modal-overlay" class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="onShiftOverlayClick()"></div>
+    <div id="shift-modal-overlay" class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="SmartecShift.onShiftOverlayClick()"></div>
     <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto">
-      <button onclick="closeShiftModal()" class="absolute top-3 right-3 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <button onclick="SmartecShift.closeShiftModal()" class="absolute top-3 right-3 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
         <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
       <div class="text-center mb-5">
@@ -339,7 +340,7 @@
       <div id="shift-modal-body"></div>
             <!-- 🆕 Botón de escape (solo se muestra cuando el modal es obligatorio) -->
       <div id="shift-modal-escape" class="hidden mt-3 pt-3 border-t border-gray-200">
-        <button onclick="forceLogoutFromShift()" class="w-full text-red-500 hover:text-red-700 py-2 text-xs font-semibold">
+        <button onclick="SmartecShift.forceLogoutFromShift()" class="w-full text-red-500 hover:text-red-700 py-2 text-xs font-semibold">
           🚪 Cerrar sesión (si no puedes marcar entrada)
         </button>
       </div>
@@ -503,6 +504,7 @@
   let pickerProduct = null, pickerVariant = null, pickerQtyVal = 1;
   let lastSale = null;
 
+
   /* ============ HELPERS ============ */
   const $ = id => document.getElementById(id);
   const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
@@ -612,7 +614,6 @@
     }
   };
   $('logout-btn').onclick = async () => {
-    stopShiftTimer();
     if (window.SmartecKiosk) window.SmartecKiosk.disable();
     await audit({ action:'logout', collection:'system', note:'Cierre de sesión POS' });
     window.SmartecDeviceGuard.clearValidatedToday();
@@ -987,11 +988,11 @@ document.addEventListener('change', (e) => {
       await loadPaymentChannels();
       updatePaymentUI();
 
-      // 🕒 Cargar turno activo del usuario
-      await loadTodayShift();
+      // 🕒 Cargar turno activo del usuario (vía módulo shifts.js)
+      await window.SmartecShift.loadTodayShift();
 
       // 🆕 Disparar modal obligatorio de entrada si aplica
-      maybeForceShiftModal();
+      window.SmartecShift.maybeForceShiftModal();
 
     } catch(e) {
       console.error('Error en loadData:', e);
@@ -2654,367 +2655,6 @@ document.addEventListener('change', (e) => {
     }
   }
 
-  /* ============================================================
-   🕒 SISTEMA DE TURNOS (marcar entrada/salida)
-   ============================================================ */
-
-let currentShift = null;         // turno activo del usuario
-let shiftTimerInterval = null;   // intervalo del contador de tiempo
-
-/**
- * Formatea duración en ms a "Xh Ym"
- */
-function formatDuration(ms) {
-  if (ms < 0) ms = 0;
-  const totalMin = Math.floor(ms / 60000);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
-}
-
-/**
- * Carga el turno activo del usuario actual (si existe).
- */
-async function loadTodayShift() {
-  if (!currentUser) return;
-  try {
-    const q = query(
-      collection(db, 'shifts'),
-      where('userId', '==', currentUser.uid),
-      where('storeId', '==', currentStore.storeId),
-      where('status', '==', 'open')
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) {
-      currentShift = null;
-    } else {
-      // Tomar el más reciente si hubiera varios
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0));
-      currentShift = list[0];
-    }
-    updateShiftButton();
-  } catch (e) {
-    console.warn('Error cargando turno:', e);
-  }
-}
-
-/**
- * Actualiza el botón de turno en el header.
- */
-function updateShiftButton() {
-  const btnDesktop = $('shift-btn');
-  const btnMobile = $('shift-btn-mobile');
-  const iconD = $('shift-btn-icon');
-  const iconM = $('shift-btn-icon-mobile');
-  const textD = $('shift-btn-text');
-  const timerD = $('shift-timer');
-
-  if (!btnDesktop || !btnMobile) return;
-
-  // El botón de turno solo se muestra si la tienda tiene turnos activados
-  if (currentStore?.shiftEnabled === false) {
-    btnDesktop.classList.add('hidden');
-    btnMobile.classList.add('hidden');
-    stopShiftTimer();
-    return;
-  }
-
-  btnDesktop.classList.remove('hidden');
-  btnMobile.classList.remove('hidden');
-
-  if (currentShift) {
-    // Turno abierto → botón rojo "Marcar salida"
-    if (iconD) iconD.innerText = '🔴';
-    if (iconM) iconM.innerText = '🔴';
-    if (textD) textD.innerText = 'Marcar salida';
-    btnDesktop.classList.remove('bg-white/10', 'hover:bg-white/20');
-    btnDesktop.classList.add('bg-red-500', 'hover:bg-red-600');
-    startShiftTimer();
-  } else {
-    // Sin turno → botón verde "Marcar entrada"
-    if (iconD) iconD.innerText = '🟢';
-    if (iconM) iconM.innerText = '🟢';
-    if (textD) textD.innerText = 'Marcar entrada';
-    btnDesktop.classList.remove('bg-red-500', 'hover:bg-red-600');
-    btnDesktop.classList.add('bg-white/10', 'hover:bg-white/20');
-    stopShiftTimer();
-    if (timerD) timerD.classList.add('hidden');
-  }
-}
-
-/**
- * Inicia el contador de tiempo del turno activo.
- */
-function startShiftTimer() {
-  stopShiftTimer();
-  const timerD = $('shift-timer');
-  if (!timerD || !currentShift) return;
-
-  timerD.classList.remove('hidden');
-
-  const tick = () => {
-    const startMs = (currentShift.startedAt?.seconds || 0) * 1000;
-    if (!startMs) { timerD.innerText = ''; return; }
-    const elapsed = Date.now() - startMs;
-    timerD.innerText = formatDuration(elapsed);
-  };
-
-  tick();
-  shiftTimerInterval = setInterval(tick, 60000); // cada minuto
-}
-
-function stopShiftTimer() {
-  if (shiftTimerInterval) {
-    clearInterval(shiftTimerInterval);
-    shiftTimerInterval = null;
-  }
-}
-
-/**
- * Abre el modal de marcar entrada/salida.
- */
-window.toggleShift = (options = {}) => {
-  const forced = options?.forced === true;
-
-  if (!currentStore) return;
-
-  // 🆕 Marcar el modal como forzado o no (lo usan los bloqueos)
-  const _modalRef = $('shift-modal');
-  if (_modalRef) {
-    _modalRef.dataset.forced = forced ? '1' : '0';
-  }
-
-  // Verificar que turnos estén activos en la tienda
-  if (currentStore.shiftEnabled === false) {
-    // Si es obligatorio y la tienda tiene turnos desactivados, igual no mostramos nada
-    if (forced) {
-      console.warn('[Shift] Modal obligatorio solicitado pero la tienda tiene turnos desactivados.');
-    } else {
-      alert('⛔ El control de turnos no está activado en esta tienda.');
-    }
-    return;
-  }
-
-  const modal = $('shift-modal');
-  const icon = $('shift-modal-icon');
-  const title = $('shift-modal-title');
-  const subtitle = $('shift-modal-subtitle');
-  const body = $('shift-modal-body');
-  const escapeBlock = $('shift-modal-escape');
-  const closeX = modal.querySelector('button[onclick="closeShiftModal()"]');
-
-  if (currentShift) {
-    // ==========================================
-    // MOSTRAR MODAL DE SALIDA
-    // ==========================================
-    // El cierre de turno NUNCA es obligatorio
-    // (aunque venga con forced, respetamos el cierre normal)
-    if (escapeBlock) escapeBlock.classList.add('hidden');
-    if (closeX) closeX.classList.remove('hidden');
-
-    icon.innerText = '🔴';
-    icon.className = 'w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl bg-red-100';
-    title.innerText = 'Marcar salida';
-    subtitle.innerText = `${currentStore.name} · ${currentUser.email}`;
-
-    const startMs = (currentShift.startedAt?.seconds || 0) * 1000;
-    const elapsed = startMs ? formatDuration(Date.now() - startMs) : '—';
-    const startTime = startMs
-      ? new Date(startMs).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' })
-      : '—';
-
-    body.innerHTML = `
-      <div class="bg-gray-50 rounded-lg p-4 mb-4 text-sm space-y-1">
-        <div class="flex justify-between"><span class="text-gray-500">Inicio:</span><b>${startTime}</b></div>
-        <div class="flex justify-between"><span class="text-gray-500">Tiempo transcurrido:</span><b>${elapsed}</b></div>
-        <div class="flex justify-between"><span class="text-gray-500">Turno abierto:</span><b class="font-mono text-xs">${currentShift.id.slice(-8)}</b></div>
-      </div>
-      <label class="text-xs font-semibold text-sd block mb-1">Nota (opcional)</label>
-      <textarea id="shift-notes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm mb-4" placeholder="Ej: Cerré caja, salí a almorzar..."></textarea>
-      <div class="flex gap-3">
-        <button onclick="closeShiftModal()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">Cancelar</button>
-        <button onclick="confirmCloseShift()" class="flex-1 bg-red-500 text-white py-2.5 rounded-lg hover:bg-red-600 font-semibold">🔴 Marcar salida</button>
-      </div>
-    `;
-  } else {
-    // ==========================================
-    // MOSTRAR MODAL DE ENTRADA
-    // ==========================================
-    icon.innerText = '🟢';
-    icon.className = 'w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl bg-green-100';
-    title.innerText = 'Marcar entrada';
-    subtitle.innerText = `${currentStore.name} · ${currentUser.email}`;
-
-    const now = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
-
-    if (forced) {
-      // MODO OBLIGATORIO: sin X, sin cancelar, con botón de cerrar sesión
-      if (escapeBlock) escapeBlock.classList.remove('hidden');
-      if (closeX) closeX.classList.add('hidden');
-
-      body.innerHTML = `
-        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-700">
-          <p class="font-semibold mb-1">⚠️ Debes marcar entrada para comenzar</p>
-          <p>Para garantizar el control de la jornada laboral, necesitas registrar tu hora de entrada. Si no puedes hacerlo, cierra sesión.</p>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-4 mb-4 text-sm space-y-1">
-          <div class="flex justify-between"><span class="text-gray-500">Hora actual:</span><b>${now}</b></div>
-          <div class="flex justify-between"><span class="text-gray-500">Rol:</span><b>${currentUserData.role || 'vendedor'}</b></div>
-          <div class="flex justify-between"><span class="text-gray-500">Tienda:</span><b>${currentStore.name}</b></div>
-        </div>
-        <label class="text-xs font-semibold text-sd block mb-1">Nota (opcional)</label>
-        <textarea id="shift-notes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm mb-4" placeholder="Ej: Llegué a apertura..."></textarea>
-        <button onclick="confirmOpenShift()" class="w-full bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-semibold">🟢 Marcar entrada</button>
-      `;
-    } else {
-      // MODO NORMAL: comportamiento actual
-      if (escapeBlock) escapeBlock.classList.add('hidden');
-      if (closeX) closeX.classList.remove('hidden');
-
-      body.innerHTML = `
-        <div class="bg-gray-50 rounded-lg p-4 mb-4 text-sm space-y-1">
-          <div class="flex justify-between"><span class="text-gray-500">Hora actual:</span><b>${now}</b></div>
-          <div class="flex justify-between"><span class="text-gray-500">Rol:</span><b>${currentUserData.role || 'vendedor'}</b></div>
-          <div class="flex justify-between"><span class="text-gray-500">Tienda:</span><b>${currentStore.name}</b></div>
-        </div>
-        <label class="text-xs font-semibold text-sd block mb-1">Nota (opcional)</label>
-        <textarea id="shift-notes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm mb-4" placeholder="Ej: Llegué a apertura..."></textarea>
-        <div class="flex gap-3">
-          <button onclick="closeShiftModal()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">Cancelar</button>
-          <button onclick="confirmOpenShift()" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-semibold">🟢 Marcar entrada</button>
-        </div>
-      `;
-    }
-  }
-
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
-};
-
-window.closeShiftModal = () => {
-  const modal = $('shift-modal');
-  if (!modal) return;
-
-  // 🆕 Si el modal está en modo obligatorio, NO permitir cerrarlo
-  if (modal.dataset.forced === '1') {
-    console.warn('[Shift] Cierre bloqueado: el modal es obligatorio');
-    return;
-  }
-
-  modal.classList.add('hidden');
-  modal.classList.remove('flex');
-  modal.dataset.forced = '0';
-};
-
-  /* ============================================================
-     🆕 Bloqueo del cierre del modal de entrada obligatorio
-     ============================================================ */
-
-  /**
-   * Decide si el overlay puede cerrar el modal.
-   * Si el modal está en modo obligatorio, no cierra.
-   */
-  window.onShiftOverlayClick = () => {
-    const modal = $('shift-modal');
-    if (!modal) return;
-    // Si el modal está en modo obligatorio, no cerrar
-    if (modal.dataset.forced === '1') return;
-    // Si no, comportamiento normal
-    closeShiftModal();
-  };
-
-/**
- * Confirma la apertura de turno.
- */
-window.confirmOpenShift = async () => {
-  const notes = ($('shift-notes')?.value || '').trim();
-
-  // Verificar que no haya otro turno abierto (por seguridad)
-  if (currentShift) {
-    alert('⚠️ Ya tienes un turno abierto. Cierra el anterior primero.');
-    return;
-  }
-
-  try {
-    const data = {
-      userId: currentUser.uid,
-      userEmail: currentUser.email,
-      userName: currentUserData.name || currentUser.email,
-      userRole: currentUserData.role || 'vendedor',
-      storeId: currentStore.storeId,
-      storeName: currentStore.name,
-      status: 'open',
-      startedAt: serverTimestamp(),
-      startedNotes: notes || null,
-      endedAt: null,
-      endedNotes: null,
-      durationMinutes: null
-    };
-
-    const ref = await addDoc(collection(db, 'shifts'), data);
-    currentShift = { id: ref.id, ...data };
-
-    await audit({
-      action: 'create',
-      collection: 'shifts',
-      docId: ref.id,
-      note: `Turno iniciado: ${currentStore.name} · ${currentUserData.name || currentUser.email}`
-    });
-
-    closeShiftModal();
-    updateShiftButton();
-    alert('🟢 Turno iniciado correctamente.');
-  } catch (e) {
-    console.error('Error abriendo turno:', e);
-    alert('Error: ' + e.message);
-  }
-};
-
-/**
- * Confirma el cierre de turno.
- */
-window.confirmCloseShift = async () => {
-  if (!currentShift) {
-    alert('⚠️ No hay turno abierto.');
-    return;
-  }
-
-  const notes = ($('shift-notes')?.value || '').trim();
-
-  try {
-    const startMs = (currentShift.startedAt?.seconds || 0) * 1000;
-    const durationMin = startMs ? Math.round((Date.now() - startMs) / 60000) : 0;
-
-    const updateData = {
-      status: 'closed',
-      endedAt: serverTimestamp(),
-      endedNotes: notes || null,
-      durationMinutes: durationMin
-    };
-
-    await updateDoc(doc(db, 'shifts', currentShift.id), updateData);
-
-    await audit({
-      action: 'update',
-      collection: 'shifts',
-      docId: currentShift.id,
-      before: { status: 'open' },
-      after: { status: 'closed', durationMinutes: durationMin },
-      note: `Turno cerrado: ${currentStore.name} · duración ${formatDuration(durationMin * 60000)}`
-    });
-
-    currentShift = null;
-    closeShiftModal();
-    updateShiftButton();
-    alert(`🔴 Turno cerrado. Duración: ${formatDuration(durationMin * 60000)}`);
-  } catch (e) {
-    console.error('Error cerrando turno:', e);
-    alert('Error: ' + e.message);
-  }
-};
-
 /* ============================================================
    VALIDACIÓN DE DISPOSITIVO AUTORIZADO
    ============================================================ */
@@ -3163,54 +2803,29 @@ window.solicitarAutorizacionDispositivo = async () => {
       if (!$('scanner-modal').classList.contains('hidden')) return closeScanner();
     }
   });
-  /* ============================================================
-     🆕 FUNCIÓN DE ESCAPE: cerrar sesión desde el modal obligatorio
-     ============================================================ */
-  window.forceLogoutFromShift = async () => {
-    if (!confirm('¿Cerrar sesión?\n\nNo podrás usar el POS hasta que vuelvas a ingresar y marques tu entrada.')) {
-      return;
-    }
-
-    try {
-      stopShiftTimer();
-      if (window.SmartecKiosk) window.SmartecKiosk.disable();
-      await audit({
-        action: 'logout',
-        collection: 'system',
-        note: 'Cierre de sesión desde modal obligatorio de entrada'
-      });
-      window.SmartecDeviceGuard.clearValidatedToday();
-      await signOut(auth);
-      window.location.href = 'home.html';
-    } catch (e) {
-      console.error('Error cerrando sesión:', e);
-      alert('Error: ' + e.message);
-    }
-  };
 
   /* ============================================================
-     🆕 DISPARADOR AUTOMÁTICO DEL MODAL OBLIGATORIO
-     Se llama al final de loadData(), cuando ya están:
-     - currentStore definido
-     - currentShift cargado
+     🆕 INICIALIZAR MÓDULO DE TURNOS
+     (Va aquí al final porque necesita que $ y audit ya estén definidos)
      ============================================================ */
-  function maybeForceShiftModal() {
-    // Solo para vendedores
-    if (currentUserData?.role !== 'vendedor') return;
-
-    // Si no hay tienda, no hacer nada
-    if (!currentStore) return;
-
-    // Si la tienda tiene turnos desactivados, no hacer nada
-    if (currentStore.shiftEnabled === false) return;
-
-    // Si ya tiene turno abierto, no hacer nada
-    if (currentShift) return;
-
-    // Abrir modal obligatorio
-    console.log('[Shift] Abriendo modal obligatorio para vendedor');
-    window.toggleShift({ forced: true });
-  }
+  window.SmartecShift.init({
+    db,
+    auth,
+    collection,
+    getDocs,
+    query,
+    where,
+    addDoc,
+    updateDoc,
+    serverTimestamp,
+    doc,
+    $,
+    audit,
+    // Getters para leer el estado actual (no capturar por valor)
+    getCurrentUser: () => currentUser,
+    getCurrentUserData: () => currentUserData,
+    getCurrentStore: () => currentStore,
+  });
   </script>
   </body>
   </html>
