@@ -1294,6 +1294,13 @@ onAuthStateChanged(auth, async user => {
     window.location.href = 'index.html';
     return;
   }
+  
+  // 🆕 Vendedores → siempre van a venta.html
+  if (userData.role === 'vendedor') {
+    console.log('[HOME] Vendedor detectado → redirigiendo a venta.html');
+    window.location.href = 'venta.html';
+    return;
+  }
 
   // Guardar referencias para el flujo del guard
   _deviceGuardUser = user;
