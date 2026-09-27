@@ -1109,6 +1109,59 @@ async function enterHomeAfterFullFlow(user, userData, fingerprint) {
   renderModules(userData.role);
 
   
+  // 🆕 Inicializar el módulo de turnos AHORA (no al final del script),
+  //    para asegurarnos de que ya esté listo cuando lo usemos aquí.
+  try {
+    window.SmartecShift.init({
+      db,
+      auth,
+      collection,
+      getDocs,
+      query,
+      where,
+      addDoc,
+      updateDoc,
+      serverTimestamp,
+      doc,
+      $,
+      audit: window.Smartec?.audit
+        ? (entry) => window.Smartec.audit(entry, {
+            db,
+            user: _deviceGuardUser,
+            userData: _deviceGuardUserData,
+            store: { storeId: _deviceGuardUserData?.storeId || null }
+          })
+        : async (entry) => {
+            try {
+              await addDoc(collection(db, 'auditLog'), {
+                ...entry,
+                userId: _deviceGuardUser?.uid || null,
+                userEmail: _deviceGuardUser?.email || null,
+                userRole: _deviceGuardUserData?.role || null,
+                storeId: _deviceGuardUserData?.storeId || null,
+                timestamp: serverTimestamp()
+              });
+            } catch (e) { console.warn('audit fail', e); }
+          },
+      getCurrentUser: () => _deviceGuardUser,
+      getCurrentUserData: () => _deviceGuardUserData,
+      getCurrentStore: () => {
+        const ud = _deviceGuardUserData;
+        if (!ud) return null;
+        if (ud.storeId) {
+          return {
+            storeId: ud.storeId,
+            name: ud.storeId,
+            shiftEnabled: true
+          };
+        }
+        return null;
+      },
+    });
+  } catch (e) {
+    console.warn('[HOME] Error inicializando SmartecShift:', e);
+  }
+
   // 🆕 Cargar turno activo del usuario (vía módulo shifts.js)
   try {
     await window.SmartecShift.loadTodayShift();
@@ -1817,64 +1870,6 @@ function renderModules(role) {
       : `<a href="${m.href}" class="block h-full">${content}</a>`;
   }).join('');
 }
-
-/* ============================================================
-   🆕 INICIALIZAR MÓDULO DE TURNOS (shifts.js)
-   ============================================================ */
-window.SmartecShift.init({
-  db,
-  auth,
-  collection,
-  getDocs,
-  query,
-  where,
-  addDoc,
-  updateDoc,
-  serverTimestamp,
-  doc,
-  $,           // helper de ID
-  audit: window.Smartec?.audit
-    ? (entry) => window.Smartec.audit(entry, {
-        db,
-        user: _deviceGuardUser,
-        userData: _deviceGuardUserData,
-        store: { storeId: _deviceGuardUserData?.storeId || null }
-      })
-    : async (entry) => {
-        try {
-          await addDoc(collection(db, 'auditLog'), {
-            ...entry,
-            userId: _deviceGuardUser?.uid || null,
-            userEmail: _deviceGuardUser?.email || null,
-            userRole: _deviceGuardUserData?.role || null,
-            storeId: _deviceGuardUserData?.storeId || null,
-            timestamp: serverTimestamp()
-          });
-        } catch (e) { console.warn('audit fail', e); }
-      },
-  // Getters para leer el estado actual (no capturar por valor)
-  getCurrentUser: () => _deviceGuardUser,
-  getCurrentUserData: () => _deviceGuardUserData,
-  getCurrentStore: () => {
-    // El admin/superadmin en home NO tiene currentStore como en venta.html.
-    // Necesitamos construirlo desde userData o elegir una tienda.
-    const ud = _deviceGuardUserData;
-    if (!ud) return null;
-
-    // Si el usuario tiene tienda asignada, usarla
-    if (ud.storeId) {
-      return {
-        storeId: ud.storeId,
-        name: ud.storeId,  // En home no cargamos el nombre completo
-        shiftEnabled: true // por defecto
-      };
-    }
-
-    // Si es superadmin sin tienda, no tiene sentido marcar turno
-    // (el módulo de turnos tampoco fuerza modal para superadmin)
-    return null;
-  },
-});
 </script>
 
 </body>
