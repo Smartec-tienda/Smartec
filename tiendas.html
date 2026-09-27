@@ -478,7 +478,7 @@
           <h2 class="text-2xl font-bold text-sd">Comisiones de la tienda</h2>
           <p id="comm-month-label" class="text-xs text-gray-400">—</p>
         </div>
-        <button onclick="renderCommissionsTab()" class="bg-white border border-gray-300 text-sd px-4 py-2 rounded-lg hover:bg-gray-50 text-sm">
+<button onclick="refreshCommissionsTab()" class="bg-white border border-gray-300 text-sd px-4 py-2 rounded-lg hover:bg-gray-50 text-sm">
           🔄 Actualizar
         </button>
       </div>
@@ -1665,6 +1665,7 @@ window.loadAllData = async () => {
     // ========== MODO "TODAS LAS TIENDAS" ==========
     if (isAllStores) {
       // Ventas: todas las tiendas
+      C.invalidate('sales_all_stores');
       const allSales = await C.wrap('sales_all_stores', async () => {
         const s = await getDocs(collection(db,'sales'));
         return s.docs.map(d => ({id:d.id, ...d.data()}));
@@ -1731,6 +1732,8 @@ window.loadAllData = async () => {
 
     // ========== MODO TIENDA ESPECÍFICA ==========
     // 1. Ventas del mes
+    //    ⚠️ Invalidar antes de leer para asegurar datos frescos
+    C.invalidate(`sales_${currentStore.storeId}`);
     const allSales = await C.wrap(`sales_${currentStore.storeId}`, async () => {
       const s = await getDocs(query(collection(db,'sales'), where('storeId','==', currentStore.storeId)));
       return s.docs.map(d => ({id:d.id, ...d.data()}));
@@ -2190,7 +2193,47 @@ function renderSellersTab() {
     `;
   }).join('');
 }
+/* ============================================================
+   🆕 RECARGAR comisiones (botón Actualizar)
+============================================================ */
+window.refreshCommissionsTab = async () => {
+  try {
+    const C = window.SmartecCache;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    // Invalidar cache de ventas
+    if (currentStore) {
+      C.invalidate(`sales_${currentStore.storeId}`);
+    } else {
+      C.invalidate('sales_all_stores');
+    }
+
+    // Recargar ventas del mes
+    let allSales;
+    if (currentStore) {
+      allSales = await C.wrap(`sales_${currentStore.storeId}`, async () => {
+        const s = await getDocs(query(collection(db,'sales'), where('storeId','==', currentStore.storeId)));
+        return s.docs.map(d => ({id:d.id, ...d.data()}));
+      });
+    } else {
+      allSales = await C.wrap('sales_all_stores', async () => {
+        const s = await getDocs(collection(db,'sales'));
+        return s.docs.map(d => ({id:d.id, ...d.data()}));
+      });
+    }
+
+    dashboardData.sales = allSales.filter(s =>
+      s.status !== 'anulada' && s.createdAt?.seconds && new Date(s.createdAt.seconds*1000) >= monthStart
+    );
+
+    renderCommissionsTab();
+    console.log('[Commissions] Recargado:', dashboardData.sales.length, 'ventas | currentStore:', currentStore?.storeId || '__all__');
+  } catch(e) {
+    console.error('Error recargando comisiones:', e);
+    alert('Error: ' + e.message);
+  }
+};
 /* ============================================================
    COMISIONES
 ============================================================ */
@@ -2249,9 +2292,19 @@ function renderCommissionsTab() {
     bySeller[key].count += 1;
   });
 
-  const sellerList = Object.entries(bySeller)
+  // 🆕 Si hay una tienda seleccionada (no "todas"), filtrar vendedores
+  //    que NO pertenezcan a esa tienda (por si quedó algún dato cruzado).
+  const filterByStore = currentStore ? currentStore.storeId : null;
+  const filteredSellerList = Object.entries(bySeller)
+    .filter(([uid, data]) => {
+      if (!filterByStore) return true; // modo "todas": mostrar todos
+      const seller = (dashboardData.sellers || []).find(x => x.id === uid);
+      return seller && seller.storeId === filterByStore;
+    })
     .map(([uid, data]) => ({ uid, ...data }))
     .sort((a,b) => b.total - a.total);
+
+  const sellerList = filteredSellerList;
 
   const sellerBox = $('comm-by-seller');
   const sellerEmpty = $('comm-by-seller-empty');
@@ -2285,10 +2338,20 @@ function renderCommissionsTab() {
     `).join('');
   }
 
-  // Tabla de ventas con comisión
+  // 🆕 Tabla de ventas con comisión — filtrado DOBLE por tienda
+  const targetStoreId = currentStore ? currentStore.storeId : null;
+  console.log('[Commissions] Filtrando tabla. targetStoreId:', targetStoreId, '| sales totales:', sales.length);
+
   const salesWithComm = sales
-    .filter(s => (Number(s.poolAmount||0) + Number(s.bonusAmount||0)) > 0)
+    .filter(s => {
+      // 🆕 Filtro de tienda (doble verificación)
+      if (targetStoreId && s.storeId !== targetStoreId) return false;
+      // Solo ventas con comisión
+      return (Number(s.poolAmount||0) + Number(s.bonusAmount||0)) > 0;
+    })
     .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+  console.log('[Commissions] Ventas filtradas para la tabla:', salesWithComm.length);
 
   if (!salesWithComm.length) {
     tbody.innerHTML = '';
@@ -2298,6 +2361,10 @@ function renderCommissionsTab() {
   empty.classList.add('hidden');
 
   tbody.innerHTML = salesWithComm.slice(0, 200).map(s => {
+    // 🆕 Triple verificación: si tiene storeId y no coincide, saltar
+    if (targetStoreId && s.storeId && s.storeId !== targetStoreId) {
+      return '';
+    }
     const pool = Number(s.poolAmount||0);
     const bonus = Number(s.bonusAmount||0);
     const comm = pool + bonus;
@@ -2701,10 +2768,13 @@ function renderSalesTab() {
   const lbl = $('sales-month-label');
   if (lbl) lbl.innerText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
-  // Poblar filtro de vendedores (solo una vez)
+  // 🆕 Detectar cambio de contexto (tienda o "todas") para resetear filtros
+  const currentCtx = currentStore ? currentStore.storeId : '__all__';
   const sellerSel = $('sales-seller-filter');
-  if (sellerSel && !sellerSel.dataset.loaded) {
+  if (sellerSel && sellerSel.dataset.ctx !== currentCtx) {
+    sellerSel.dataset.ctx = currentCtx;
     sellerSel.dataset.loaded = '1';
+
     const sellersSet = new Map();
     (dashboardData.sales || []).forEach(s => {
       const key = s.sellerUid || s.sellerEmail;
@@ -2714,14 +2784,15 @@ function renderSalesTab() {
     });
     sellerSel.innerHTML = '<option value="all">Todos los vendedores</option>' +
       Array.from(sellersSet.entries()).map(([k,v]) =>
-        `<option value="${k}">${v}</option>`
+        `<option value="${k}">${escapeHtml(v)}</option>`
       ).join('');
     sellerSel.onchange = renderSalesTab;
+
+    // Resetear también los otros filtros
     const statusSel = $('sales-status-filter');
-    if (statusSel) statusSel.onchange = renderSalesTab;
-    // 🆕 Filtro por estado de pago
+    if (statusSel) { statusSel.value = 'all'; statusSel.onchange = renderSalesTab; }
     const payStatusSel = $('sales-payment-status-filter');
-    if (payStatusSel) payStatusSel.onchange = renderSalesTab;
+    if (payStatusSel) { payStatusSel.value = 'all'; payStatusSel.onchange = renderSalesTab; }
   }
 
   const sellerF = sellerSel?.value || 'all';
@@ -2736,7 +2807,6 @@ function renderSalesTab() {
   if (statusF !== 'all') {
     list = list.filter(s => s.status === statusF);
   }
-  // 🆕 Filtro por estado de pago
   if (paymentStatusF !== 'all') {
     list = list.filter(s => (s.paymentStatus || 'completed') === paymentStatusF);
   }
