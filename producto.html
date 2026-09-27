@@ -4,216 +4,484 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cargando producto... | Smartec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
 <script src="cache.js"></script>
 <style>
-  :root{--sd:#0A2A4A;--sl:#4A7A9A}
-  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
-  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
-  .border-sl{border-color:#4A7A9A}
-  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
-  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  :root{
+    --bg:#F5F5F7;
+    --text:#1D1D1F;
+    --text-dim:#6E6E73;
+    --blue:#0071E3;
+    --blue-light:#5AC8FA;
+    --purple:#BF5AF2;
+    --pink:#FF375F;
+    --orange:#FF9F0A;
+    --green:#30D158;
+    --glass:rgba(255,255,255,0.72);
+    --glass-border:rgba(255,255,255,0.6);
+  }
+
+  *{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4,.font-display{font-family:'Inter Tight','Inter',sans-serif;letter-spacing:-0.03em;font-weight:700}
+
   html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);overflow-x:hidden}
+
+  /* ============ MESH GRADIENT ============ */
+  .mesh-bg{
+    position:fixed;inset:0;z-index:-1;
+    background:
+      radial-gradient(at 15% 15%, rgba(90,200,250,0.18) 0%, transparent 50%),
+      radial-gradient(at 85% 10%, rgba(191,90,242,0.14) 0%, transparent 50%),
+      radial-gradient(at 75% 85%, rgba(255,55,95,0.10) 0%, transparent 50%),
+      radial-gradient(at 10% 90%, rgba(255,159,10,0.10) 0%, transparent 50%),
+      #F5F5F7;
+  }
+
+  /* ============ SCROLLBAR ============ */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:5px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,0.25);background-clip:content-box;border:2px solid transparent}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:3px;border:none;background-clip:border-box}
+
+  /* ============ GLASS ============ */
+  .glass{background:rgba(255,255,255,0.72);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border:1px solid rgba(255,255,255,0.6)}
+  .glass-soft{background:rgba(255,255,255,0.55);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid rgba(255,255,255,0.5)}
+  .glass-strong{background:rgba(255,255,255,0.85);backdrop-filter:blur(40px) saturate(180%);-webkit-backdrop-filter:blur(40px) saturate(180%);border:1px solid rgba(255,255,255,0.7)}
+
+  /* ============ SOMBRAS APPLE ============ */
+  .shadow-apple{box-shadow:0 1px 2px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.04),0 12px 32px rgba(0,0,0,0.06)}
+  .shadow-apple-lg{box-shadow:0 1px 2px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.06),0 24px 64px rgba(0,0,0,0.08)}
+  .shadow-apple-xl{box-shadow:0 2px 4px rgba(0,0,0,0.04),0 12px 32px rgba(0,0,0,0.08),0 32px 80px rgba(0,0,0,0.12)}
+
+  /* ============ BOTONES APPLE ============ */
+  .btn-apple{background:var(--blue);color:white;font-weight:500;letter-spacing:-0.01em;transition:all .3s cubic-bezier(.2,.8,.2,1);box-shadow:0 1px 2px rgba(0,113,227,0.2),0 4px 12px rgba(0,113,227,0.3)}
+  .btn-apple:hover{background:#0077ED;transform:scale(1.02);box-shadow:0 1px 2px rgba(0,113,227,0.3),0 8px 24px rgba(0,113,227,0.4)}
+  .btn-apple:active{transform:scale(0.98)}
+
+  .btn-glass{background:rgba(255,255,255,0.7);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,0.7);color:var(--text);font-weight:500;transition:all .3s cubic-bezier(.2,.8,.2,1);box-shadow:0 1px 2px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.04)}
+  .btn-glass:hover{background:rgba(255,255,255,0.9);transform:scale(1.02);box-shadow:0 1px 2px rgba(0,0,0,0.06),0 8px 24px rgba(0,0,0,0.08)}
+  .btn-glass:active{transform:scale(0.98)}
+
+  .btn-whatsapp{
+    background:linear-gradient(135deg,#25D366,#1eb053);
+    color:white;font-weight:600;letter-spacing:-0.01em;
+    transition:all .3s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 1px 2px rgba(37,211,102,0.3),0 8px 24px rgba(37,211,102,0.35);
+  }
+  .btn-whatsapp:hover{transform:scale(1.02);box-shadow:0 1px 2px rgba(37,211,102,0.4),0 12px 32px rgba(37,211,102,0.5)}
+  .btn-whatsapp:active{transform:scale(0.98)}
+
+  .btn-dark{
+    background:linear-gradient(135deg,#1D1D1F,#3A3A3C);
+    color:white;font-weight:600;letter-spacing:-0.01em;
+    transition:all .3s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 24px rgba(0,0,0,0.25);
+  }
+  .btn-dark:hover{transform:scale(1.02);box-shadow:0 1px 2px rgba(0,0,0,0.3),0 12px 32px rgba(0,0,0,0.35)}
+  .btn-dark:active{transform:scale(0.98)}
+
+  /* ============ ACORDEONES ============ */
+  details{transition:all .3s cubic-bezier(.2,.8,.2,1)}
+  details summary{list-style:none;cursor:pointer;transition:all .25s ease}
+  details summary::-webkit-details-marker{display:none}
+  details[open] summary{border-bottom:1px solid rgba(0,0,0,0.05)}
+  details summary:hover{background:rgba(0,113,227,0.03)}
+  .group-open\:rotate-180[open] svg,
+  details[open] summary svg{transform:rotate(180deg)}
+
+  /* ============ CARD PRINCIPAL PRODUCTO ============ */
+  .product-card-main{
+    background:rgba(255,255,255,0.85);
+    backdrop-filter:blur(30px) saturate(180%);
+    -webkit-backdrop-filter:blur(30px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.7);
+    border-radius:32px;
+    overflow:hidden;
+    transition:all .5s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 1px 2px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.06),0 24px 64px rgba(0,0,0,0.08);
+  }
+  .product-card-main:hover{
+    box-shadow:0 2px 4px rgba(0,0,0,0.04),0 12px 32px rgba(0,0,0,0.08),0 32px 80px rgba(0,0,0,0.12);
+  }
+
+  /* ============ IMAGEN PRINCIPAL ============ */
+  .main-image-container{
+    background:linear-gradient(135deg, rgba(255,255,255,0.9), rgba(245,245,247,0.7));
+    border-radius:24px;
+    overflow:hidden;
+    position:relative;
+  }
+  #main-image{cursor:zoom-in;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  .main-image-container:hover #main-image{transform:scale(1.03)}
+
+  /* ============ THUMBNAILS ============ */
+  .thumb-item{
+    background:rgba(255,255,255,0.7);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1.5px solid rgba(255,255,255,0.7);
+    border-radius:14px;
+    cursor:pointer;
+    overflow:hidden;
+    transition:all .3s cubic-bezier(.2,.8,.2,1);
+  }
+  .thumb-item:hover{transform:scale(1.05);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+  .thumb-item.active{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,113,227,0.15)}
+
+  /* ============ BADGES ============ */
+  .badge-promo{
+    background:linear-gradient(135deg,#FF375F,#BF5AF2);
+    color:white;
+    font-weight:600;
+    letter-spacing:-0.01em;
+    box-shadow:0 4px 16px rgba(255,55,95,0.4);
+  }
+
+  /* ============ VARIANTES ============ */
+  .variant-color{
+    width:46px;height:46px;border-radius:50%;
+    border:2px solid rgba(255,255,255,0.9);
+    box-shadow:0 0 0 1px rgba(0,0,0,0.06),0 2px 6px rgba(0,0,0,0.08);
+    transition:all .3s cubic-bezier(.2,.8,.2,1);
+    position:relative;
+  }
+  .variant-color:hover{transform:scale(1.1);box-shadow:0 0 0 2px rgba(0,113,227,0.3),0 4px 12px rgba(0,0,0,0.1)}
+  .variant-color.selected{
+    box-shadow:0 0 0 2px var(--blue),0 0 0 5px rgba(0,113,227,0.2),0 4px 12px rgba(0,0,0,0.1);
+    transform:scale(1.08);
+  }
+
+  .variant-size{
+    padding:8px 18px;
+    border-radius:999px;
+    font-size:14px;
+    font-weight:500;
+    background:rgba(255,255,255,0.7);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1.5px solid rgba(255,255,255,0.7);
+    color:var(--text);
+    transition:all .3s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 1px 2px rgba(0,0,0,0.04),0 2px 6px rgba(0,0,0,0.04);
+  }
+  .variant-size:hover{background:white;transform:scale(1.03);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+  .variant-size.selected{
+    background:var(--text);
+    color:white;
+    border-color:var(--text);
+    box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  }
+
+  /* ============ CANTIDAD ============ */
+  .qty-btn{
+    width:44px;height:44px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;font-weight:500;
+    color:var(--text);
+    transition:all .25s cubic-bezier(.2,.8,.2,1);
+    border-radius:12px;
+  }
+  .qty-btn:hover{background:rgba(0,113,227,0.08);color:var(--blue)}
+  .qty-btn:active{transform:scale(0.92)}
+
+  .qty-wrap{
+    background:rgba(255,255,255,0.7);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1.5px solid rgba(255,255,255,0.7);
+    border-radius:16px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.04);
+    display:inline-flex;
+    align-items:center;
+    padding:4px;
+  }
+
+  /* ============ DISPONIBILIDAD ============ */
+  .availability-box{
+    background:rgba(255,255,255,0.7);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,0.7);
+    border-radius:16px;
+    padding:14px 16px;
+    display:flex;align-items:center;gap:12px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.04);
+    transition:all .3s ease;
+  }
+
+  /* ============ BENEFICIOS MINI ============ */
+  .benefit-mini{
+    background:rgba(255,255,255,0.65);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,0.7);
+    border-radius:16px;
+    padding:12px 8px;
+    text-align:center;
+    transition:all .35s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 1px 2px rgba(0,0,0,0.04),0 2px 8px rgba(0,0,0,0.04);
+  }
+  .benefit-mini:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,0.08);background:rgba(255,255,255,0.85)}
+
+  /* ============ ANIMACIONES ============ */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes float-slow{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  @keyframes pulse-soft{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.85;transform:scale(1.05)}}
+  .fade-up{animation:fadeUp .7s cubic-bezier(.2,.8,.2,1) backwards}
+  .float-slow{animation:float-slow 6s ease-in-out infinite}
+  .pulse-soft{animation:pulse-soft 2.5s ease-in-out infinite}
+
+  /* ============ ORBS ============ */
+  .orb{position:absolute;border-radius:50%;filter:blur(60px);pointer-events:none;opacity:0.6}
+
+  /* ============ FOCUS RING ============ */
+  *:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:8px}
+
+  /* ============ LOGO ============ */
+  .logo-mark{
+    background:linear-gradient(135deg,#0071E3,#BF5AF2);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    font-weight:800;letter-spacing:-0.04em;
+  }
+
+  /* ============ SPECS TABLE ============ */
+  #specs-table tr{border-radius:8px;overflow:hidden}
+  #specs-table tr:nth-child(even){background:rgba(0,0,0,0.02)}
+  #specs-table td{padding:10px 14px;font-size:13px}
+
+  /* ============ RELATED CARDS ============ */
+  .related-card{
+    background:rgba(255,255,255,0.8);
+    backdrop-filter:blur(20px) saturate(150%);
+    -webkit-backdrop-filter:blur(20px) saturate(150%);
+    border:1px solid rgba(255,255,255,0.7);
+    border-radius:20px;
+    overflow:hidden;
+    transition:all .45s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 1px 2px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.04);
+  }
+  .related-card:hover{transform:translateY(-6px) scale(1.01);box-shadow:0 2px 4px rgba(0,0,0,0.04),0 12px 32px rgba(0,0,0,0.08),0 32px 64px rgba(0,0,0,0.08);border-color:rgba(255,255,255,0.9)}
+  .related-card:hover img{transform:scale(1.08)}
+  .related-card img{transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+
+  /* ============ BACKDROP FALLBACK ============ */
+  @supports not (backdrop-filter: blur(20px)){
+    .glass,.glass-soft,.glass-strong,.product-card-main,.related-card{background:rgba(255,255,255,0.95)}
+  }
 </style>
 </head>
-<body class="bg-gray-50 font-sans">
+<body>
+
+<!-- Fondo mesh -->
+<div class="mesh-bg"></div>
 
 <!-- ============ NAVBAR ============ -->
-<header class="bg-white shadow-sm sticky top-0 z-40">
-  <div class="container mx-auto px-4 py-3 flex items-center gap-3">
-    <button onclick="history.back()" class="p-2 rounded-full hover:bg-gray-100">
-      <svg class="w-5 h-5 text-sd" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+<header class="glass-strong sticky top-0 z-40 border-b border-white/50">
+  <div class="container mx-auto px-4 lg:px-6 py-3 flex items-center gap-3">
+    <button onclick="history.back()" class="p-2.5 rounded-full hover:bg-black/5 transition text-[#1D1D1F]">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
     </button>
-    <a href="index.html" class="text-2xl font-bold text-sd">SMART<span class="text-sl">EC</span></a>
+    <a href="index.html" class="text-2xl font-extrabold logo-mark">SMARTEC</a>
     <div class="flex-1"></div>
-    <a href="index.html" class="text-xs text-sl hover:underline">← Volver al catálogo</a>
+    <a href="index.html" class="hidden md:inline-flex items-center gap-1.5 text-sm font-medium text-[#1D1D1F] hover:text-[#0071E3] transition px-4 py-2 rounded-full hover:bg-black/5">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      Volver al catálogo
+    </a>
   </div>
 </header>
 
 <!-- ============ CARGANDO ============ -->
 <div id="loading" class="container mx-auto px-4 py-20 text-center">
-  <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-sl"></div>
-  <p class="text-gray-500 mt-4 text-sm">Cargando producto...</p>
+  <div class="inline-block animate-spin rounded-full h-12 w-12 border-2 border-[#0071E3]/20 border-t-[#0071E3]"></div>
+  <p class="text-[#6E6E73] mt-4 text-sm font-medium">Cargando producto...</p>
 </div>
 
 <!-- ============ PRODUCTO ============ -->
-<main id="product-detail" class="container mx-auto px-4 py-6 md:py-10 hidden">
+<main id="product-detail" class="container mx-auto px-4 lg:px-6 py-6 md:py-10 hidden relative">
+
+  <!-- Orbes decorativos -->
+  <div class="orb w-[400px] h-[400px] bg-[#5AC8FA]/25" style="top:5%;left:-150px"></div>
+  <div class="orb w-[350px] h-[350px] bg-[#BF5AF2]/20" style="top:40%;right:-120px"></div>
 
   <!-- Breadcrumb -->
-  <nav id="breadcrumb" class="text-xs text-gray-400 mb-5 flex items-center gap-1 flex-wrap"></nav>
+  <nav id="breadcrumb" class="relative text-sm text-[#6E6E73] mb-6 flex items-center gap-2 flex-wrap font-medium"></nav>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 relative">
 
     <!-- ========== GALERÍA ========== -->
-    <div>
-      <div class="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
-        <div class="aspect-square flex items-center justify-center bg-white relative group">
-          <img id="main-image" src="" alt="" class="object-contain w-full h-full p-6 transition-opacity duration-200 cursor-zoom-in">
-          <span id="sale-badge" class="hidden absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10">🔥 PROMO</span>
-          <!-- Hint de zoom -->
-          <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur rounded-full px-3 py-1.5 text-xs text-gray-600 shadow-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition pointer-events-none">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
+    <div class="fade-up">
+      <div class="product-card-main p-4 md:p-6">
+        <div class="main-image-container aspect-square flex items-center justify-center relative group">
+          <img id="main-image" src="" alt="" class="object-contain w-full h-full p-8 relative z-10">
+          <span id="sale-badge" class="hidden badge-promo absolute top-4 left-4 text-xs px-3.5 py-1.5 rounded-full z-20">🔥 PROMO</span>
+          <div class="absolute bottom-4 right-4 glass-soft rounded-full px-3.5 py-2 text-xs text-[#1D1D1F] shadow-apple flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition pointer-events-none z-20">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
             Clic para ampliar
           </div>
         </div>
       </div>
-      <div id="thumbs" class="grid grid-cols-5 gap-2"></div>
+      <div id="thumbs" class="grid grid-cols-5 gap-2.5 mt-4"></div>
     </div>
 
     <!-- ========== INFO ========== -->
-    <div>
-      <p id="product-category" class="text-xs text-sl font-semibold uppercase tracking-wide mb-1"></p>
-      <h1 id="product-name" class="text-2xl md:text-3xl font-bold text-sd mb-2"></h1>
-      <div class="flex flex-wrap gap-3 text-xs text-gray-500 mb-4">
-        <span id="product-brand" class="hidden">🏷️ <b></b></span>
-        <span id="product-sku">SKU: —</span>
+    <div class="fade-up" style="animation-delay:.1s">
+      <p id="product-category" class="text-xs text-[#0071E3] font-semibold uppercase tracking-widest mb-2"></p>
+      <h1 id="product-name" class="text-3xl md:text-4xl font-extrabold text-[#1D1D1F] mb-3 tracking-tight leading-tight"></h1>
+      <div class="flex flex-wrap gap-3 text-sm text-[#6E6E73] mb-5">
+        <span id="product-brand" class="hidden font-medium">🏷️ <b></b></span>
+        <span id="product-sku" class="font-medium">SKU: —</span>
       </div>
 
       <!-- Precio -->
-      <div class="mb-5">
+      <div class="mb-6">
         <div class="flex items-baseline gap-3 flex-wrap">
-          <span id="product-price" class="text-3xl md:text-4xl font-bold text-sl">$0</span>
-          <span id="product-old-price" class="text-lg text-gray-400 line-through hidden"></span>
+          <span id="product-price" class="text-4xl md:text-5xl font-extrabold text-[#1D1D1F] tracking-tight">$0</span>
+          <span id="product-old-price" class="text-xl text-[#6E6E73] line-through hidden"></span>
         </div>
-        <p class="text-xs text-gray-400 mt-1">Precio sujeto a cambios · No incluye IVA</p>
+        <p class="text-xs text-[#6E6E73] mt-2 font-medium">Precio sujeto a cambios · No incluye IVA</p>
       </div>
 
       <!-- Disponibilidad -->
-      <div id="availability-box" class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-5 flex items-center gap-3">
-        <span id="availability-dot" class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+      <div id="availability-box" class="availability-box mb-6">
+        <span id="availability-dot" class="w-2.5 h-2.5 rounded-full bg-gray-400 pulse-soft"></span>
         <div class="flex-1">
-          <p id="availability-text" class="text-sm font-semibold text-sd">Verificando disponibilidad...</p>
-          <p id="availability-sub" class="text-[10px] text-gray-400"></p>
+          <p id="availability-text" class="text-sm font-semibold text-[#1D1D1F]">Verificando disponibilidad...</p>
+          <p id="availability-sub" class="text-xs text-[#6E6E73] mt-0.5"></p>
         </div>
       </div>
 
       <!-- Selector de color -->
-      <div id="colors-wrap" class="mb-5 hidden">
-        <p class="text-sm font-semibold text-sd mb-2">Color: <span id="selected-color-name" class="text-gray-500 font-normal"></span></p>
-        <div id="colors-list" class="flex flex-wrap gap-2"></div>
+      <div id="colors-wrap" class="mb-6 hidden">
+        <p class="text-sm font-semibold text-[#1D1D1F] mb-3">Color: <span id="selected-color-name" class="text-[#6E6E73] font-normal"></span></p>
+        <div id="colors-list" class="flex flex-wrap gap-3"></div>
       </div>
 
       <!-- Selector de dimensión -->
-      <div id="sizes-wrap" class="mb-5 hidden">
-        <p class="text-sm font-semibold text-sd mb-2">Dimensión: <span id="selected-size-name" class="text-gray-500 font-normal"></span></p>
-        <div id="sizes-list" class="flex flex-wrap gap-2"></div>
+      <div id="sizes-wrap" class="mb-6 hidden">
+        <p class="text-sm font-semibold text-[#1D1D1F] mb-3">Dimensión: <span id="selected-size-name" class="text-[#6E6E73] font-normal"></span></p>
+        <div id="sizes-list" class="flex flex-wrap gap-2.5"></div>
       </div>
 
       <!-- Cantidad -->
-      <div class="mb-6">
-        <p class="text-sm font-semibold text-sd mb-2">Cantidad:</p>
-        <div class="inline-flex items-center border border-gray-300 rounded-lg bg-white">
-          <button onclick="changeQty(-1)" class="px-4 py-2.5 hover:bg-gray-100 text-lg">−</button>
-          <span id="qty-value" class="px-6 py-2.5 font-semibold min-w-[3rem] text-center">1</span>
-          <button onclick="changeQty(1)" class="px-4 py-2.5 hover:bg-gray-100 text-lg">+</button>
+      <div class="mb-7">
+        <p class="text-sm font-semibold text-[#1D1D1F] mb-3">Cantidad:</p>
+        <div class="qty-wrap">
+          <button onclick="changeQty(-1)" class="qty-btn">−</button>
+          <span id="qty-value" class="px-6 py-2 font-bold min-w-[3rem] text-center text-[#1D1D1F] text-base">1</span>
+          <button onclick="changeQty(1)" class="qty-btn">+</button>
         </div>
       </div>
 
       <!-- Botones de acción -->
-      <div class="space-y-3 mb-6">
-        <button id="btn-buy" class="w-full bg-[#25D366] hover:bg-[#1eb053] text-white py-3.5 rounded-xl font-bold text-base flex justify-center items-center gap-2 transition shadow-md">
+      <div class="space-y-3 mb-7">
+        <button id="btn-buy" class="btn-whatsapp w-full py-4 rounded-full text-base flex justify-center items-center gap-2">
           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
           Comprar por WhatsApp
         </button>
-        <button id="btn-consult" class="w-full bg-sd hover:bg-sl text-white py-3.5 rounded-xl font-bold text-base flex justify-center items-center gap-2 transition">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <button id="btn-consult" class="btn-dark w-full py-4 rounded-full text-base flex justify-center items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           Consultar disponibilidad
         </button>
       </div>
 
       <!-- Beneficios rápidos -->
-      <div class="grid grid-cols-3 gap-2 mb-6 text-center">
-        <div class="bg-gray-50 rounded-lg p-2">
-          <p class="text-lg">🛡️</p>
-          <p class="text-[10px] text-gray-600 font-semibold">Garantía</p>
-          <p id="warranty-mini" class="text-[10px] text-gray-400">12 meses</p>
+      <div class="grid grid-cols-3 gap-3 mb-7">
+        <div class="benefit-mini">
+          <p class="text-2xl mb-1">🛡️</p>
+          <p class="text-xs text-[#1D1D1F] font-semibold">Garantía</p>
+          <p id="warranty-mini" class="text-[10px] text-[#6E6E73] mt-0.5">12 meses</p>
         </div>
-        <div class="bg-gray-50 rounded-lg p-2">
-          <p class="text-lg">🚚</p>
-          <p class="text-[10px] text-gray-600 font-semibold">Envío</p>
-          <p class="text-[10px] text-gray-400">A coordinar</p>
+        <div class="benefit-mini">
+          <p class="text-2xl mb-1">🚚</p>
+          <p class="text-xs text-[#1D1D1F] font-semibold">Envío</p>
+          <p class="text-[10px] text-[#6E6E73] mt-0.5">A coordinar</p>
         </div>
-        <div class="bg-gray-50 rounded-lg p-2">
-          <p class="text-lg">💬</p>
-          <p class="text-[10px] text-gray-600 font-semibold">Soporte</p>
-          <p class="text-[10px] text-gray-400">24/7</p>
+        <div class="benefit-mini">
+          <p class="text-2xl mb-1">💬</p>
+          <p class="text-xs text-[#1D1D1F] font-semibold">Soporte</p>
+          <p class="text-[10px] text-[#6E6E73] mt-0.5">24/7</p>
         </div>
       </div>
 
-      <!-- Acordeón: Descripción -->
-      <details open class="bg-white rounded-lg shadow-sm mb-2 group">
-        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
-          📋 Descripción
-          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div id="product-desc" class="px-4 pb-4 text-sm text-gray-600 leading-relaxed whitespace-pre-line"></div>
-      </details>
+      <!-- Acordeones -->
+      <div class="space-y-3">
+        <details open class="glass-strong rounded-2xl shadow-apple overflow-hidden">
+          <summary class="p-5 font-semibold text-[#1D1D1F] text-sm flex justify-between items-center">
+            📋 Descripción
+            <svg class="w-4 h-4 text-[#6E6E73] transition-transform flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </summary>
+          <div id="product-desc" class="px-5 pb-5 text-sm text-[#6E6E73] leading-relaxed whitespace-pre-line"></div>
+        </details>
 
-      <!-- Acordeón: Garantía -->
-      <details class="bg-white rounded-lg shadow-sm mb-2 group">
-        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
-          🛡️ Garantía del producto
-          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div class="px-4 pb-4 text-sm text-gray-600 leading-relaxed">
-          <p id="warranty-text" class="mb-3"></p>
-          <p class="text-xs text-gray-500">
-            <b>GARANTÍA DEL PRODUCTO:</b> Este electrodoméstico cuenta con una garantía mínima de doce (12) meses o con el término superior establecido por la marca para el producto adquirido, de acuerdo con las condiciones de garantía aplicables y la normativa colombiana de protección al consumidor. Para conocer el término específico, las coberturas y las condiciones, el cliente podrá consultar la información oficial de la marca o solicitar asesoría a nuestro equipo.
-          </p>
-          <p class="text-xs text-gray-500 mt-3">
-            <b>Atención y acompañamiento:</b> La garantía será atendida directamente por la marca fabricante o por sus centros de servicio autorizados. Nuestro equipo gestionará, asesorará y acompañará al cliente durante el proceso, facilitando la comunicación y el seguimiento con la marca.
-          </p>
-        </div>
-      </details>
+        <details class="glass-strong rounded-2xl shadow-apple overflow-hidden">
+          <summary class="p-5 font-semibold text-[#1D1D1F] text-sm flex justify-between items-center">
+            🛡️ Garantía del producto
+            <svg class="w-4 h-4 text-[#6E6E73] transition-transform flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </summary>
+          <div class="px-5 pb-5 text-sm text-[#6E6E73] leading-relaxed">
+            <p id="warranty-text" class="mb-3"></p>
+            <p class="text-xs text-[#6E6E73] leading-relaxed">
+              <b class="text-[#1D1D1F]">GARANTÍA DEL PRODUCTO:</b> Este electrodoméstico cuenta con una garantía mínima de doce (12) meses o con el término superior establecido por la marca para el producto adquirido, de acuerdo con las condiciones de garantía aplicables y la normativa colombiana de protección al consumidor. Para conocer el término específico, las coberturas y las condiciones, el cliente podrá consultar la información oficial de la marca o solicitar asesoría a nuestro equipo.
+            </p>
+            <p class="text-xs text-[#6E6E73] mt-3 leading-relaxed">
+              <b class="text-[#1D1D1F]">Atención y acompañamiento:</b> La garantía será atendida directamente por la marca fabricante o por sus centros de servicio autorizados. Nuestro equipo gestionará, asesorará y acompañará al cliente durante el proceso, facilitando la comunicación y el seguimiento con la marca.
+            </p>
+          </div>
+        </details>
 
-      <!-- Acordeón: Envío -->
-      <details class="bg-white rounded-lg shadow-sm group">
-        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
-          🚚 Envío y entrega
-          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div class="px-4 pb-4 text-sm text-gray-600 leading-relaxed">
-          <p>Envío a coordinar según la ciudad. Envío gratis en compras superiores a $200.000. Tiempo estimado de entrega: 2-5 días hábiles (varía según la ubicación).</p>
-        </div>
-      </details>
+        <details class="glass-strong rounded-2xl shadow-apple overflow-hidden">
+          <summary class="p-5 font-semibold text-[#1D1D1F] text-sm flex justify-between items-center">
+            🚚 Envío y entrega
+            <svg class="w-4 h-4 text-[#6E6E73] transition-transform flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </summary>
+          <div class="px-5 pb-5 text-sm text-[#6E6E73] leading-relaxed">
+            <p>Envío a coordinar según la ciudad. Envío gratis en compras superiores a $200.000. Tiempo estimado de entrega: 2-5 días hábiles (varía según la ubicación).</p>
+          </div>
+        </details>
 
-            <!-- Acordeón: Descripción larga -->
-      <details id="longdesc-section" class="bg-white rounded-lg shadow-sm mt-2 group hidden">
-        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
-          📖 Descripción detallada
-          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div id="longdesc-content" class="px-4 pb-4 text-sm text-gray-600 leading-relaxed whitespace-pre-line"></div>
-      </details>
+        <details id="longdesc-section" class="glass-strong rounded-2xl shadow-apple overflow-hidden hidden">
+          <summary class="p-5 font-semibold text-[#1D1D1F] text-sm flex justify-between items-center">
+            📖 Descripción detallada
+            <svg class="w-4 h-4 text-[#6E6E73] transition-transform flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </summary>
+          <div id="longdesc-content" class="px-5 pb-5 text-sm text-[#6E6E73] leading-relaxed whitespace-pre-line"></div>
+        </details>
 
-      <!-- Acordeón: Especificaciones técnicas -->
-      <details id="specs-section" class="bg-white rounded-lg shadow-sm mt-2 group hidden">
-        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
-          ⚙️ Especificaciones técnicas
-          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div class="px-4 pb-4">
-          <table id="specs-table" class="w-full text-sm"></table>
-        </div>
-      </details>
+        <details id="specs-section" class="glass-strong rounded-2xl shadow-apple overflow-hidden hidden">
+          <summary class="p-5 font-semibold text-[#1D1D1F] text-sm flex justify-between items-center">
+            ⚙️ Especificaciones técnicas
+            <svg class="w-4 h-4 text-[#6E6E73] transition-transform flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </summary>
+          <div class="px-5 pb-5">
+            <table id="specs-table" class="w-full"></table>
+          </div>
+        </details>
 
-      <!-- Acordeón: Preguntas frecuentes -->
-      <details id="faq-section" class="bg-white rounded-lg shadow-sm mt-2 group hidden">
-        <summary class="p-4 font-semibold text-sd cursor-pointer flex justify-between items-center text-sm">
-          ❓ Preguntas frecuentes
-          <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div id="faq-content" class="px-4 pb-4 space-y-2"></div>
-      </details>
-
+        <details id="faq-section" class="glass-strong rounded-2xl shadow-apple overflow-hidden hidden">
+          <summary class="p-5 font-semibold text-[#1D1D1F] text-sm flex justify-between items-center">
+            ❓ Preguntas frecuentes
+            <svg class="w-4 h-4 text-[#6E6E73] transition-transform flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </summary>
+          <div id="faq-content" class="px-5 pb-5 space-y-2.5"></div>
+        </details>
+      </div>
     </div>
   </div>
 
   <!-- ========== RELACIONADOS ========== -->
-  <section id="related-section" class="mt-16 hidden">
-    <h2 class="text-xl font-bold text-sd mb-5">También te puede interesar</h2>
-    <div id="related-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+  <section id="related-section" class="mt-20 hidden relative">
+    <div class="text-center mb-8">
+      <span class="text-xs font-semibold text-[#0071E3] uppercase tracking-widest">Descubre más</span>
+      <h2 class="text-2xl md:text-4xl font-extrabold text-[#1D1D1F] mt-2 tracking-tight">También te puede interesar</h2>
+    </div>
+    <div id="related-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
   </section>
 
 </main>
@@ -221,45 +489,45 @@
 <!-- ============ NO ENCONTRADO ============ -->
 <div id="not-found" class="hidden container mx-auto px-4 py-20 text-center">
   <p class="text-6xl mb-4">🔍</p>
-  <h1 class="text-2xl font-bold text-sd mb-2">Producto no encontrado</h1>
-  <p class="text-gray-500 text-sm mb-6">El producto que buscas no existe o fue retirado del catálogo.</p>
-  <a href="index.html" class="inline-block bg-sd text-white px-6 py-2 rounded-lg hover:bg-sl font-semibold">Volver al catálogo</a>
+  <h1 class="text-2xl font-bold text-[#1D1D1F] mb-2 tracking-tight">Producto no encontrado</h1>
+  <p class="text-[#6E6E73] text-sm mb-8">El producto que buscas no existe o fue retirado del catálogo.</p>
+  <a href="index.html" class="inline-block btn-apple px-7 py-3 rounded-full font-medium">Volver al catálogo</a>
 </div>
 
 <!-- ============ FOOTER ============ -->
-<footer class="bg-sd text-white mt-16 py-8">
-  <div class="container mx-auto px-4 text-center text-xs opacity-70">
-    <p>© 2026 Smartec. Todos los derechos reservados.</p>
+<footer class="mt-20 pt-12 pb-8 relative">
+  <div class="container mx-auto px-4 lg:px-6 text-center">
+    <h4 class="text-2xl font-extrabold logo-mark mb-3">SMARTEC</h4>
+    <p class="text-sm text-[#6E6E73] mb-6">Tecnología que transforma tu hogar</p>
+    <div class="border-t border-black/5 pt-6">
+      <p class="text-xs text-[#6E6E73]">© 2026 Smartec. Todos los derechos reservados.</p>
+    </div>
   </div>
 </footer>
 
 <!-- ============ MODAL ZOOM IMAGEN ============ -->
-<div id="zoom-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/95">
-  <button onclick="closeZoom()" class="absolute top-4 right-4 z-20 p-2 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition">
-    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+<div id="zoom-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/95 backdrop-blur-xl">
+  <button onclick="closeZoom()" class="absolute top-4 right-4 z-20 p-3 glass-soft rounded-full hover:bg-white/90 transition">
+    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
   </button>
 
-  <!-- Controles -->
   <div class="absolute top-4 left-4 z-20 flex gap-2">
-    <button onclick="zoomOut()" class="w-10 h-10 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition text-white text-xl font-bold">−</button>
-    <button onclick="zoomIn()" class="w-10 h-10 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition text-white text-xl font-bold">+</button>
-    <button onclick="resetZoom()" class="px-3 h-10 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition text-white text-xs font-semibold">100%</button>
+    <button onclick="zoomOut()" class="w-11 h-11 glass-soft rounded-full hover:bg-white/90 transition text-white text-xl font-bold">−</button>
+    <button onclick="zoomIn()" class="w-11 h-11 glass-soft rounded-full hover:bg-white/90 transition text-white text-xl font-bold">+</button>
+    <button onclick="resetZoom()" class="px-4 h-11 glass-soft rounded-full hover:bg-white/90 transition text-white text-xs font-semibold">100%</button>
   </div>
 
-  <!-- Indicador de zoom -->
-  <div id="zoom-level" class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-white/10 backdrop-blur rounded-full text-white text-xs">
+  <div id="zoom-level" class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 glass-soft rounded-full text-white text-xs font-medium">
     100%
   </div>
 
-  <!-- Navegación entre imágenes -->
-  <button id="zoom-prev" onclick="prevZoomImage()" class="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition items-center justify-center">
-    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+  <button id="zoom-prev" onclick="prevZoomImage()" class="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 glass-soft rounded-full hover:bg-white/90 transition items-center justify-center">
+    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
   </button>
-  <button id="zoom-next" onclick="nextZoomImage()" class="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition items-center justify-center">
-    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+  <button id="zoom-next" onclick="nextZoomImage()" class="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 glass-soft rounded-full hover:bg-white/90 transition items-center justify-center">
+    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
   </button>
 
-  <!-- Contenedor de imagen -->
   <div id="zoom-container" class="w-full h-full flex items-center justify-center overflow-hidden touch-none" style="cursor: grab;">
     <img id="zoom-image" src="" alt="" class="select-none transition-transform duration-100" style="transform-origin: center center; max-width: 90vw; max-height: 90vh;">
   </div>
@@ -271,7 +539,6 @@ import {
   getFirestore, collection, getDocs, doc, getDoc, query, where
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
-/* ============ CONFIG ============ */
 const firebaseConfig = {
   apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
   authDomain: "smartec-8fc19.firebaseapp.com",
@@ -286,18 +553,15 @@ const db = getFirestore(app);
 
 const WHATSAPP_NUMBER = "573104304428";
 
-/* ============ ESTADO ============ */
 let product = null;
 let allInventory = [];
 let selectedVariant = null;
 let qty = 1;
 
-/* ============ HELPERS ============ */
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
-const escapeHtml = window.Smartec.escapeHtml;   // 🆕
+const escapeHtml = window.Smartec.escapeHtml;
 
-/* Traductor hex → nombre de color */
 const COLOR_NAMES = {
   '#000000':'Negro', '#ffffff':'Blanco', '#c0c0c0':'Plateado', '#808080':'Gris',
   '#ff0000':'Rojo', '#00ff00':'Verde', '#0000ff':'Azul', '#ffff00':'Amarillo',
@@ -314,40 +578,29 @@ const colorNameFromHex = (hex, fallback) => {
   return COLOR_NAMES[k] || fallback || hex;
 };
 
-/* Stock total de una variante en todas las tiendas (para disponibilidad) */
 function getGlobalStock(variantId) {
   return allInventory
     .filter(i => i.variantId === variantId)
     .reduce((sum, i) => sum + Number(i.stock||0), 0);
 }
 
-/* ============ INICIALIZACIÓN ============ */
 async function init() {
   const params = new URLSearchParams(window.location.search);
   const productId = params.get('id');
 
-  if (!productId) {
-    showNotFound();
-    return;
-  }
+  if (!productId) { showNotFound(); return; }
 
   try {
     const snap = await getDoc(doc(db,'products', productId));
-    if (!snap.exists() || snap.data().active === false) {
-      showNotFound();
-      return;
-    }
+    if (!snap.exists() || snap.data().active === false) { showNotFound(); return; }
     product = { id: snap.id, ...snap.data() };
 
-    // Cargar inventario global (para saber si hay stock en alguna tienda)
     const invSnap = await getDocs(collection(db,'inventory'));
     allInventory = invSnap.docs.map(d => ({id:d.id, ...d.data()}));
 
     renderProduct();
     $('loading').classList.add('hidden');
     $('product-detail').classList.remove('hidden');
-
-    // Cargar relacionados (async, sin bloquear)
     loadRelated();
   } catch(e) {
     console.error('Error cargando producto:', e);
@@ -361,11 +614,9 @@ function showNotFound() {
   document.title = 'Producto no encontrado | Smartec';
 }
 
-/* ============ RENDER PRINCIPAL ============ */
 function renderProduct() {
   document.title = `${product.name} | Smartec`;
 
-  // Breadcrumb
   const crumbs = [
     { label: 'Inicio', href: 'index.html' },
     { label: product.categoryGroupName || 'Catálogo', href: `index.html?cat=${product.categoryGroup||''}` },
@@ -376,83 +627,70 @@ function renderProduct() {
   $('breadcrumb').innerHTML = crumbs.map((c, i) => {
     const isLast = i === crumbs.length - 1;
     return isLast
-      ? `<span class="text-sd font-medium truncate">${escapeHtml(c.label)}</span>`
-      : `<a href="${c.href}" class="hover:text-sl">${escapeHtml(c.label)}</a><span>›</span>`;
+      ? `<span class="text-[#1D1D1F] font-semibold truncate">${escapeHtml(c.label)}</span>`
+      : `<a href="${c.href}" class="hover:text-[#0071E3] transition">${escapeHtml(c.label)}</a><span class="text-[#6E6E73]">›</span>`;
   }).join(' ');
 
-  // Categoría
   $('product-category').innerText = [product.categoryGroupName, product.categoryName].filter(Boolean).join(' › ');
-
-  // Nombre
   $('product-name').innerText = product.name || '';
 
-  // Marca
   if (product.brand) {
     $('product-brand').classList.remove('hidden');
-    $('product-brand').innerHTML = `🏷️ <b>${escapeHtml(product.brand)}</b>`;
+    $('product-brand').innerHTML = `🏷️ <b class="text-[#1D1D1F]">${escapeHtml(product.brand)}</b>`;
   }
 
-  // SKU
   $('product-sku').innerText = 'SKU: ' + (product.sku || '—');
-
-  // Descripción
   $('product-desc').innerText = product.description || 'Sin descripción disponible.';
 
-    // Descripción larga
   if (product.longDescription) {
     $('longdesc-section').classList.remove('hidden');
     $('longdesc-content').innerText = product.longDescription;
   }
 
-  // Especificaciones
   if (product.specs && product.specs.length) {
     $('specs-section').classList.remove('hidden');
-    const rows = product.specs.map((s, i) => `
-      <tr class="${i % 2 === 0 ? 'bg-gray-50' : ''}">
-        <td class="py-2 px-3 text-xs font-semibold text-gray-500 w-2/5 align-top">${escapeHtml(s.key)}</td>
-        <td class="py-2 px-3 text-xs text-sd">${escapeHtml(s.value)}</td>
+    const rows = product.specs.map((s) => `
+      <tr>
+        <td class="font-semibold text-[#6E6E73] w-2/5 align-top">${escapeHtml(s.key)}</td>
+        <td class="text-[#1D1D1F]">${escapeHtml(s.value)}</td>
       </tr>
     `).join('');
     $('specs-table').innerHTML = `<tbody>${rows}</tbody>`;
   }
 
-  // Preguntas frecuentes
   if (product.faqs && product.faqs.length) {
     $('faq-section').classList.remove('hidden');
-    $('faq-content').innerHTML = product.faqs.map((f, i) => `
-      <details class="border border-gray-200 rounded-lg overflow-hidden group/faq ${i > 0 ? 'mt-2' : ''}">
-        <summary class="px-3 py-2.5 bg-gray-50 cursor-pointer flex justify-between items-center text-sm font-medium text-sd">
+    $('faq-content').innerHTML = product.faqs.map((f) => `
+      <details class="glass-soft rounded-xl overflow-hidden">
+        <summary class="px-4 py-3 cursor-pointer flex justify-between items-center text-sm font-semibold text-[#1D1D1F]">
           ${escapeHtml(f.question)}
-          <svg class="w-4 h-4 text-gray-400 transition-transform group-open/faq:rotate-180 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          <svg class="w-4 h-4 text-[#6E6E73] transition-transform flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
         </summary>
-        <div class="px-3 py-3 text-sm text-gray-600 leading-relaxed bg-white">${escapeHtml(f.answer)}</div>
+        <div class="px-4 py-3 text-sm text-[#6E6E73] leading-relaxed">${escapeHtml(f.answer)}</div>
       </details>
     `).join('');
   }
 
-  // Garantía
   const months = Number(product.warrantyMonths || 12);
   $('warranty-mini').innerText = `${months} meses`;
-  $('warranty-text').innerHTML = `Este producto cuenta con una garantía de <b>${months} meses</b> otorgada por la marca.`;
+  $('warranty-text').innerHTML = `Este producto cuenta con una garantía de <b class="text-[#1D1D1F]">${months} meses</b> otorgada por la marca.`;
 
-    // Imágenes
-  const images = (product.images && product.images.length) ? product.images : ['https://placehold.co/600x600/e5e7eb/9ca3af?text=Sin+imagen'];
-  zoomImages = images;   // ← NUEVO: guardar para el zoom
+  const images = (product.images && product.images.length) ? product.images : ['https://placehold.co/600x600/F5F5F7/6E6E73?text=Sin+imagen'];
+  zoomImages = images;
   $('main-image').src = images[0];
   $('main-image').alt = product.name;
 
-  // Thumbnails
   const thumbsEl = $('thumbs');
   thumbsEl.innerHTML = '';
   if (images.length > 1) {
     images.forEach((url, i) => {
       const t = document.createElement('div');
-      t.className = `aspect-square bg-white rounded-lg border-2 cursor-pointer overflow-hidden ${i===0?'border-sl':'border-gray-200 hover:border-sl'}`;
-      t.innerHTML = `<img src="${url}" class="w-full h-full object-contain p-2" alt="">`;
+      t.className = `thumb-item aspect-square ${i===0?'active':''}`;
+      t.innerHTML = `<img src="${url}" class="w-full h-full object-contain p-2.5" alt="">`;
       t.onclick = () => {
         $('main-image').src = url;
-        thumbsEl.querySelectorAll('div').forEach(x => x.className = 'aspect-square bg-white rounded-lg border-2 cursor-pointer overflow-hidden border-gray-200 hover:border-sl');
-        t.className = 'aspect-square bg-white rounded-lg border-2 cursor-pointer overflow-hidden border-sl';
+        thumbsEl.querySelectorAll('.thumb-item').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
       };
       thumbsEl.appendChild(t);
     });
@@ -460,22 +698,15 @@ function renderProduct() {
     thumbsEl.classList.add('hidden');
   }
 
-  // Precio
   renderPrice();
-
-  // Variantes
   renderVariantSelectors();
-
-  // Imagen según variante inicial
   updateSelectedVariantUI();
 }
 
 function renderPrice() {
   const hasPromo = product.onSale && Number(product.salePrice) > 0;
   const finalPrice = hasPromo ? Number(product.salePrice) : Number(product.price || 0);
-
   $('product-price').innerText = fmt(finalPrice);
-
   if (hasPromo) {
     $('product-old-price').classList.remove('hidden');
     $('product-old-price').innerText = fmt(product.price);
@@ -502,12 +733,10 @@ function renderVariantSelectors() {
     return;
   }
 
-  // Si no hay variante seleccionada, elegir la primera con stock (o la primera)
   if (!selectedVariant) {
     selectedVariant = variants.find(v => getGlobalStock(v.variantId) > 0) || variants[0];
   }
 
-  // Colores únicos
   const uniqueColors = new Map();
   variants.forEach(v => {
     if (v.color && !uniqueColors.has(v.color)) {
@@ -515,11 +744,9 @@ function renderVariantSelectors() {
     }
   });
 
-  // Sizes únicos
   const uniqueSizes = new Set();
   variants.forEach(v => { if (v.size) uniqueSizes.add(v.size); });
 
-  // ===== RENDER COLORES =====
   if (uniqueColors.size) {
     $('colors-wrap').classList.remove('hidden');
     const colorsList = $('colors-list');
@@ -527,15 +754,13 @@ function renderVariantSelectors() {
     uniqueColors.forEach(({ color, name }) => {
       const btn = document.createElement('button');
       const isSelected = selectedVariant.color === color;
-      // Mostrar si tiene stock en alguna tienda
       const hasStock = variants.some(v => v.color === color && getGlobalStock(v.variantId) > 0);
-      btn.className = `w-11 h-11 rounded-full border-2 transition relative ${isSelected ? 'border-sl ring-2 ring-sl/30 scale-105' : 'border-gray-300 hover:border-sl'}`;
+      btn.className = `variant-color ${isSelected ? 'selected' : ''}`;
       btn.style.background = color;
       btn.title = name + (hasStock ? '' : ' (sin stock)');
-      // Marca de "sin stock" con un puntito pequeño
       if (!hasStock) {
         const dot = document.createElement('span');
-        dot.className = 'absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-red-500 border-2 border-white rounded-full';
+        dot.className = 'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full';
         btn.appendChild(dot);
       }
       btn.onclick = () => selectColor(color);
@@ -546,7 +771,6 @@ function renderVariantSelectors() {
     $('colors-wrap').classList.add('hidden');
   }
 
-  // ===== RENDER SIZES =====
   if (uniqueSizes.size) {
     $('sizes-wrap').classList.remove('hidden');
     const sizesList = $('sizes-list');
@@ -555,11 +779,9 @@ function renderVariantSelectors() {
       const btn = document.createElement('button');
       const isSelected = selectedVariant.size === size;
       const hasStock = variants.some(v => v.size === size && getGlobalStock(v.variantId) > 0);
-      btn.className = `px-4 py-2 border rounded-lg text-sm font-medium transition relative ${isSelected ? 'border-sl bg-sl text-white' : 'border-gray-300 hover:border-sl bg-white'}`;
+      btn.className = `variant-size ${isSelected ? 'selected' : ''}`;
       btn.innerText = size;
-      if (!hasStock && !isSelected) {
-        btn.classList.add('opacity-60');
-      }
+      if (!hasStock && !isSelected) btn.classList.add('opacity-60');
       btn.onclick = () => selectSize(size);
       sizesList.appendChild(btn);
     });
@@ -573,40 +795,27 @@ function renderVariantSelectors() {
 
 function selectColor(color) {
   const variants = (product.variants || []).filter(v => v.active !== false);
-
-  // 1. Intentar la combinación exacta color + size actual
   let next = variants.find(v => v.color === color && v.size === selectedVariant?.size);
-
-  // 2. Si no existe, buscar cualquier variante con ese color (preferir una con stock)
   if (!next) {
     const candidates = variants.filter(v => v.color === color);
     next = candidates.find(v => getGlobalStock(v.variantId) > 0) || candidates[0];
   }
-
   if (!next) return;
-
   selectedVariant = next;
   renderVariantSelectors();
   updateSelectedVariantUI();
-  // Ajustar cantidad si el nuevo stock es menor
   qty = 1;
   $('qty-value').innerText = '1';
 }
 
 function selectSize(size) {
   const variants = (product.variants || []).filter(v => v.active !== false);
-
-  // 1. Intentar la combinación exacta size + color actual
   let next = variants.find(v => v.size === size && v.color === selectedVariant?.color);
-
-  // 2. Si no existe, buscar cualquier variante con ese size (preferir una con stock)
   if (!next) {
     const candidates = variants.filter(v => v.size === size);
     next = candidates.find(v => getGlobalStock(v.variantId) > 0) || candidates[0];
   }
-
   if (!next) return;
-
   selectedVariant = next;
   renderVariantSelectors();
   updateSelectedVariantUI();
@@ -616,8 +825,6 @@ function selectSize(size) {
 
 function updateSelectedVariantUI() {
   if (!selectedVariant) return;
-
-  // Actualizar labels
   if (selectedVariant.color) {
     $('selected-color-name').innerText = colorNameFromHex(selectedVariant.color, selectedVariant.colorName);
   } else {
@@ -628,40 +835,34 @@ function updateSelectedVariantUI() {
   } else {
     $('selected-size-name').innerText = '';
   }
-
-  // Actualizar precio (con priceDelta si aplica)
   const hasPromo = product.onSale && Number(product.salePrice) > 0;
   const base = hasPromo ? Number(product.salePrice) : Number(product.price || 0);
   const delta = Number(selectedVariant.priceDelta || 0);
   $('product-price').innerText = fmt(base + delta);
-
-  // Actualizar disponibilidad
   updateAvailability();
 }
 
-/* ============ DISPONIBILIDAD ============ */
 function updateAvailability() {
   if (!selectedVariant) return;
-
   const stock = getGlobalStock(selectedVariant.variantId);
   const dot = $('availability-dot');
   const txt = $('availability-text');
   const sub = $('availability-sub');
 
   if (stock > 5) {
-    dot.className = 'w-2.5 h-2.5 rounded-full bg-green-500';
+    dot.className = 'w-2.5 h-2.5 rounded-full bg-[#30D158] pulse-soft';
     txt.innerText = '✅ Disponible';
-    txt.className = 'text-sm font-semibold text-green-700';
+    txt.className = 'text-sm font-semibold text-[#1D1D1F]';
     sub.innerText = 'Listo para compra inmediata';
   } else if (stock > 0) {
-    dot.className = 'w-2.5 h-2.5 rounded-full bg-orange-500';
+    dot.className = 'w-2.5 h-2.5 rounded-full bg-[#FF9F0A] pulse-soft';
     txt.innerText = '⏳ Últimas unidades';
-    txt.className = 'text-sm font-semibold text-orange-700';
+    txt.className = 'text-sm font-semibold text-[#1D1D1F]';
     sub.innerText = 'Te recomendamos confirmar disponibilidad';
   } else {
-    dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500';
+    dot.className = 'w-2.5 h-2.5 rounded-full bg-[#FF375F] pulse-soft';
     txt.innerText = '🔍 Consultar disponibilidad';
-    txt.className = 'text-sm font-semibold text-red-600';
+    txt.className = 'text-sm font-semibold text-[#1D1D1F]';
     sub.innerText = 'Este producto puede estar disponible por encargo';
   }
 }
@@ -669,13 +870,11 @@ function updateAvailability() {
 window.changeQty = (delta) => {
   if (!selectedVariant) return;
   const stock = getGlobalStock(selectedVariant.variantId);
-  // Si no hay stock, permitir máximo 1 para "consultar"
   const max = stock > 0 ? stock : 1;
   qty = Math.max(1, Math.min(max, qty + delta));
   $('qty-value').innerText = qty;
 };
 
-/* ============ WHATSAPP ============ */
 function buildVariantLabel() {
   const parts = [];
   if (selectedVariant?.colorName || selectedVariant?.color) {
@@ -718,11 +917,9 @@ window.btnConsult = () => {
   window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
 };
 
-// Vincular botones
 $('btn-buy').onclick = () => window.btnBuy();
 $('btn-consult').onclick = () => window.btnConsult();
 
-/* ============ RELACIONADOS ============ */
 async function loadRelated() {
   if (!product) return;
   try {
@@ -740,19 +937,19 @@ async function loadRelated() {
 
     $('related-section').classList.remove('hidden');
     $('related-grid').innerHTML = others.map(p => {
-      const img = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/400x400/e5e7eb/9ca3af?text=Sin+imagen';
+      const img = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/400x400/F5F5F7/6E6E73?text=Sin+imagen';
       const price = (p.onSale && p.salePrice) ? p.salePrice : p.price;
       const hasPromo = p.onSale && p.salePrice > 0;
       return `
-        <a href="producto.html?id=${p.id}" class="group bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden">
-          <div class="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
-            <img src="${img}" class="object-contain w-full h-full p-4 group-hover:scale-105 transition" alt="${p.name}" loading="lazy">
+        <a href="producto.html?id=${p.id}" class="related-card group block">
+          <div class="aspect-square bg-gradient-to-br from-white/60 to-white/20 flex items-center justify-center overflow-hidden">
+            <img src="${img}" class="object-contain w-full h-full p-5" alt="${p.name}" loading="lazy">
           </div>
-          <div class="p-3">
-            <p class="text-xs font-semibold text-sd line-clamp-2 mb-1">${escapeHtml(p.name)}</p>
+          <div class="p-4">
+            <p class="text-sm font-semibold text-[#1D1D1F] leading-tight line-clamp-2 mb-2 min-h-[2.5rem] tracking-tight">${escapeHtml(p.name)}</p>
             <div class="flex items-baseline gap-2">
-              <p class="text-sm font-bold text-sl">${fmt(price)}</p>
-              ${hasPromo ? `<p class="text-[10px] text-gray-400 line-through">${fmt(p.price)}</p>` : ''}
+              <p class="text-base font-bold text-[#1D1D1F] tracking-tight">${fmt(price)}</p>
+              ${hasPromo ? `<p class="text-xs text-[#6E6E73] line-through">${fmt(p.price)}</p>` : ''}
             </div>
           </div>
         </a>
@@ -762,6 +959,7 @@ async function loadRelated() {
     console.warn('Error cargando relacionados:', e);
   }
 }
+
 /* ============================================================
    ZOOM DE IMAGEN
 ============================================================ */
@@ -776,13 +974,11 @@ function openZoom() {
   if (!zoomImages.length) return;
   zoomIndex = zoomImages.indexOf($('main-image').src);
   if (zoomIndex === -1) zoomIndex = 0;
-
   $('zoom-image').src = zoomImages[zoomIndex];
   zoomScale = 1;
   translate = { x: 0, y: 0 };
   applyZoomTransform();
   updateZoomUI();
-
   const m = $('zoom-modal');
   m.classList.remove('hidden');
   m.classList.add('flex');
@@ -846,21 +1042,16 @@ function updateZoomUI() {
   $('zoom-next').style.display = showNav && window.innerWidth >= 768 ? 'flex' : 'none';
 }
 
-/* Click en imagen principal → abrir zoom */
 $('main-image').addEventListener('click', openZoom);
 
-/* Controles dentro del modal */
 const zoomContainer = $('zoom-container');
-const zoomImageEl = $('zoom-image');
 
-/* Rueda del mouse para zoom */
 zoomContainer.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (e.deltaY < 0) zoomIn();
   else zoomOut();
 }, { passive: false });
 
-/* Drag para mover imagen cuando está zoomeada */
 zoomContainer.addEventListener('mousedown', (e) => {
   if (zoomScale <= 1) return;
   isDragging = true;
@@ -882,7 +1073,6 @@ document.addEventListener('mouseup', () => {
   }
 });
 
-/* Touch (móvil) - pinch to zoom */
 let initialPinchDistance = 0;
 let initialScale = 1;
 
@@ -924,13 +1114,12 @@ zoomContainer.addEventListener('touchend', () => {
   applyZoomTransform();
 });
 
-/* Cerrar con ESC */
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !$('zoom-modal').classList.contains('hidden')) closeZoom();
   if (e.key === 'ArrowRight' && !$('zoom-modal').classList.contains('hidden')) nextZoomImage();
   if (e.key === 'ArrowLeft' && !$('zoom-modal').classList.contains('hidden')) prevZoomImage();
 });
-/* ============ INICIAR ============ */
+
 init();
 </script>
 </body>
