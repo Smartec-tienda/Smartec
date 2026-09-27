@@ -77,76 +77,287 @@
 
   <main class="container mx-auto p-4 md:p-6">
 
-    <!-- ============ DASHBOARD ============ -->
+    <!-- ============ DASHBOARD SÚPER ============ -->
     <section id="tab-dashboard" class="tab-content">
-      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-        <h2 class="text-2xl font-bold text-sd">Resumen General</h2>
-        <select id="dash-store" class="px-3 py-2 border rounded-lg text-sm">
-          <option value="all">Todas las tiendas</option>
-          <option value="active">Solo tiendas activas</option>
-        </select>
-      </div>
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white p-5 rounded-xl shadow">
-          <p class="text-xs text-gray-500">Valor inventario (costo)</p>
-          <p id="kpi-inv-cost" class="text-2xl font-bold text-sd mt-1">$0</p>
-        </div>
-        <div class="bg-white p-5 rounded-xl shadow">
-          <p class="text-xs text-gray-500">Valor inventario (venta)</p>
-          <p id="kpi-inv-price" class="text-2xl font-bold text-sl mt-1">$0</p>
-        </div>
-        <div class="bg-white p-5 rounded-xl shadow">
-          <p class="text-xs text-gray-500">Ganancia potencial</p>
-          <p id="kpi-margin" class="text-2xl font-bold text-green-600 mt-1">$0</p>
-        </div>
-        <div class="bg-white p-5 rounded-xl shadow">
-          <p class="text-xs text-gray-500">Unidades en stock</p>
-          <p id="kpi-units" class="text-2xl font-bold text-sd mt-1">0</p>
-        </div>
-      </div>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div class="bg-white p-5 rounded-xl shadow">
-  <h3 class="font-bold text-sd mb-4">Ventas del período</h3>
-  <table class="w-full text-sm">
-    <tbody>
-      <tr class="border-b border-gray-100">
-        <td class="py-2 text-gray-500">Total vendido</td>
-        <td class="py-2 text-right font-bold text-sl text-lg" id="kpi-sales-total">$0</td>
-      </tr>
-      <tr class="border-b border-gray-100">
-        <td class="py-2 text-gray-500"># Transacciones</td>
-        <td class="py-2 text-right font-bold text-sd text-lg" id="kpi-sales-count">0</td>
-      </tr>
-      <tr class="bg-gray-50/50">
-        <td class="py-1.5 pl-6 text-xs text-gray-400">└ 🚚 Envíos cobrados</td>
-        <td class="py-1.5 text-right text-xs font-semibold text-sd" id="kpi-sales-shipping">$0</td>
-      </tr>
-      <tr class="bg-gray-50/50 border-b border-gray-100">
-        <td class="py-1.5 pl-6 text-xs text-gray-400">└ 💳 Recargos tarjeta</td>
-        <td class="py-1.5 text-right text-xs font-semibold text-sd" id="kpi-sales-surcharge">$0</td>
-      </tr>
-      <tr class="border-b border-gray-100">
-        <td class="py-2 text-gray-500">Costo total</td>
-        <td class="py-2 text-right font-bold text-gray-600 text-lg" id="kpi-sales-cost">$0</td>
-      </tr>
-      <tr class="border-t-2 border-green-200">
-        <td class="py-2 font-semibold text-green-700">Utilidad real</td>
-        <td class="py-2 text-right font-bold text-green-600 text-lg" id="kpi-sales-profit">$0</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-        <div class="bg-white p-5 rounded-xl shadow">
-          <h3 class="font-bold text-sd mb-4">🔔 Alertas de stock bajo</h3>
-          <ul id="low-stock-list" class="space-y-2 text-sm max-h-48 overflow-y-auto scrollbar-thin"></ul>
-        </div>
-      </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <h3 class="font-bold text-sd mb-4">Desempeño por tienda</h3>
-        <div id="store-performance" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-      </div>
-    </section>
 
+      <!-- ========== BARRA DE FILTROS + ACCIONES ========== -->
+      <div class="bg-white rounded-xl shadow p-4 mb-6">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <!-- Filtros -->
+          <div class="flex flex-wrap gap-3 flex-1 min-w-0">
+            <div>
+              <label class="text-[10px] font-semibold text-sd block mb-1">📅 Período</label>
+              <select id="dash-period" class="px-3 py-2 border rounded-lg text-sm min-w-[160px]">
+                <option value="today">Hoy</option>
+                <option value="yesterday">Ayer</option>
+                <option value="week">Esta semana</option>
+                <option value="month" selected>Este mes</option>
+                <option value="lastmonth">Mes pasado</option>
+                <option value="year">Este año</option>
+                <option value="all">Todo el histórico</option>
+                <option value="custom">Personalizado…</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-semibold text-sd block mb-1">🏪 Tienda</label>
+              <select id="dash-store-filter" class="px-3 py-2 border rounded-lg text-sm min-w-[160px]">
+                <option value="all">Todas las tiendas</option>
+                <option value="active">Solo tiendas activas</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-semibold text-sd block mb-1">👤 Vendedor</label>
+              <select id="dash-seller-filter" class="px-3 py-2 border rounded-lg text-sm min-w-[160px]">
+                <option value="all">Todos los vendedores</option>
+              </select>
+            </div>
+
+            <!-- Rango personalizado (oculto por defecto) -->
+            <div id="dash-custom-range" class="hidden flex gap-2">
+              <div>
+                <label class="text-[10px] font-semibold text-sd block mb-1">Desde</label>
+                <input id="dash-date-from" type="date" class="px-3 py-2 border rounded-lg text-sm">
+              </div>
+              <div>
+                <label class="text-[10px] font-semibold text-sd block mb-1">Hasta</label>
+                <input id="dash-date-to" type="date" class="px-3 py-2 border rounded-lg text-sm">
+              </div>
+            </div>
+          </div>
+
+          <!-- Acciones rápidas -->
+          <div class="flex flex-wrap gap-2">
+            <a href="venta.html" target="_blank" class="bg-sd hover:bg-sl text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+              🛒 Nueva venta
+            </a>
+            <button onclick="openProductForm()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+              📦 Producto
+            </button>
+            <button onclick="document.querySelector('[data-tab=reports]').click()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+              📊 Reportes
+            </button>
+            <button onclick="renderDashboard()" class="bg-gray-100 hover:bg-gray-200 text-sd text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+              🔄 Refrescar
+            </button>
+          </div>
+        </div>
+
+        <!-- Info del rango activo -->
+        <p id="dash-range-info" class="text-[10px] text-gray-400 mt-3 pt-3 border-t"></p>
+      </div>
+
+      <!-- ========== KPIs DEL PERÍODO ========== -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+
+        <!-- KPI 1: Ventas netas -->
+        <div class="bg-gradient-to-br from-white to-blue-50/30 p-5 rounded-xl shadow border-l-4 border-sl">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">💰 Ventas netas</p>
+            <span id="dash-kpi-sales-trend" class="text-[10px] font-bold"></span>
+          </div>
+          <p id="dash-kpi-sales" class="text-2xl font-bold text-sl">$0</p>
+          <p id="dash-kpi-sales-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: $0</p>
+        </div>
+
+        <!-- KPI 2: Transacciones -->
+        <div class="bg-gradient-to-br from-white to-purple-50/30 p-5 rounded-xl shadow border-l-4 border-purple-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">🧾 Transacciones</p>
+            <span id="dash-kpi-count-trend" class="text-[10px] font-bold"></span>
+          </div>
+          <p id="dash-kpi-count" class="text-2xl font-bold text-purple-600">0</p>
+          <p id="dash-kpi-count-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: 0</p>
+        </div>
+
+        <!-- KPI 3: Ticket promedio -->
+        <div class="bg-gradient-to-br from-white to-cyan-50/30 p-5 rounded-xl shadow border-l-4 border-cyan-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">🎯 Ticket promedio</p>
+            <span id="dash-kpi-ticket-trend" class="text-[10px] font-bold"></span>
+          </div>
+          <p id="dash-kpi-ticket" class="text-2xl font-bold text-cyan-600">$0</p>
+          <p id="dash-kpi-ticket-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: $0</p>
+        </div>
+
+        <!-- KPI 4: Unidades -->
+        <div class="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-xl shadow border-l-4 border-emerald-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">📦 Unidades vendidas</p>
+            <span id="dash-kpi-units-trend" class="text-[10px] font-bold"></span>
+          </div>
+          <p id="dash-kpi-units-sold" class="text-2xl font-bold text-emerald-600">0</p>
+          <p id="dash-kpi-units-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: 0</p>
+        </div>
+
+        <!-- KPI 5: Utilidad bruta -->
+        <div class="bg-gradient-to-br from-white to-green-50/30 p-5 rounded-xl shadow border-l-4 border-green-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">📈 Utilidad bruta</p>
+            <span id="dash-kpi-profit-trend" class="text-[10px] font-bold"></span>
+          </div>
+          <p id="dash-kpi-profit" class="text-2xl font-bold text-green-600">$0</p>
+          <p id="dash-kpi-profit-margin" class="text-[10px] text-gray-400 mt-1">Margen 0%</p>
+        </div>
+
+        <!-- KPI 6: Comisiones -->
+        <div class="bg-gradient-to-br from-white to-orange-50/30 p-5 rounded-xl shadow border-l-4 border-orange-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">💵 Comisiones</p>
+          </div>
+          <p id="dash-kpi-commission" class="text-2xl font-bold text-orange-500">$0</p>
+          <p class="text-[10px] text-gray-400 mt-1">
+            Pool: <b id="dash-kpi-pool" class="text-sl">$0</b> · Bonus: <b id="dash-kpi-bonus" class="text-green-600">$0</b>
+          </p>
+        </div>
+
+        <!-- KPI 7: Cobrado -->
+        <div class="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-xl shadow border-l-4 border-emerald-600">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">✅ Cobrado</p>
+          </div>
+          <p id="dash-kpi-collected" class="text-2xl font-bold text-emerald-700">$0</p>
+          <p id="dash-kpi-collected-pct" class="text-[10px] text-gray-400 mt-1">0% del total</p>
+        </div>
+
+        <!-- KPI 8: Pendiente de cobro -->
+        <div class="bg-gradient-to-br from-white to-amber-50/30 p-5 rounded-xl shadow border-l-4 border-amber-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">⏳ Pendiente</p>
+          </div>
+          <p id="dash-kpi-pending" class="text-2xl font-bold text-amber-600">$0</p>
+          <p id="dash-kpi-pending-pct" class="text-[10px] text-gray-400 mt-1">0% del total</p>
+        </div>
+      </div>
+
+      <!-- ========== GRÁFICOS ========== -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+
+        <!-- Gráfico: Ventas últimos 30 días -->
+        <div class="bg-white p-5 rounded-xl shadow lg:col-span-2">
+          <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+            <div>
+              <h3 class="font-bold text-sd flex items-center gap-2">📈 Ventas últimos 30 días</h3>
+              <p class="text-[10px] text-gray-400 mt-0.5">Evolución diaria de la venta neta</p>
+            </div>
+            <span class="text-[10px] bg-sl/10 text-sl px-2 py-1 rounded-full font-semibold">Últimos 30 días</span>
+          </div>
+          <div class="h-64 relative">
+            <canvas id="dash-chart-sales"></canvas>
+            <p id="dash-chart-sales-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">
+              📭 Sin ventas en el período
+            </p>
+          </div>
+        </div>
+
+        <!-- Gráfico: Por método de pago -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">💳 Por método de pago</h3>
+          <div class="h-64 relative">
+            <canvas id="dash-chart-methods"></canvas>
+            <p id="dash-chart-methods-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">
+              📭 Sin datos
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== TOP TIENDAS Y VENDEDORES ========== -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+
+        <!-- Top tiendas -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sd flex items-center gap-2">🏪 Top tiendas</h3>
+            <span id="dash-top-stores-count" class="text-[10px] text-gray-400"></span>
+          </div>
+          <div id="dash-top-stores" class="space-y-3">
+            <!-- Dinámico -->
+          </div>
+          <p id="dash-top-stores-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin datos en el período</p>
+        </div>
+
+        <!-- Top vendedores -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sd flex items-center gap-2">👤 Top vendedores</h3>
+            <span id="dash-top-sellers-count" class="text-[10px] text-gray-400"></span>
+          </div>
+          <div id="dash-top-sellers" class="space-y-3">
+            <!-- Dinámico -->
+          </div>
+          <p id="dash-top-sellers-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin datos en el período</p>
+        </div>
+      </div>
+
+      <!-- ========== ALERTAS + ACTIVIDAD ========== -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+
+        <!-- Alertas inteligentes -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sd flex items-center gap-2">⚠️ Alertas inteligentes</h3>
+            <span id="dash-alerts-count" class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold hidden">0</span>
+          </div>
+          <div id="dash-alerts-list" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
+            <!-- Dinámico -->
+          </div>
+          <p id="dash-alerts-empty" class="hidden text-center py-6 text-gray-400 text-sm">
+            🎉 Todo en orden, sin alertas
+          </p>
+        </div>
+
+        <!-- Actividad reciente -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sd flex items-center gap-2">🕒 Actividad reciente</h3>
+            <button onclick="document.querySelector('[data-tab=audit]').click()" class="text-[10px] text-sl hover:underline">Ver toda →</button>
+          </div>
+          <div id="dash-recent-activity" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
+            <!-- Dinámico -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== INVENTARIO: KPIs + STOCK BAJO + RENDIMIENTO ========== -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sd">
+          <p class="text-xs text-gray-500">Valor inventario (costo)</p>
+          <p id="kpi-inv-cost" class="text-xl font-bold text-sd mt-1">$0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
+          <p class="text-xs text-gray-500">Valor inventario (venta)</p>
+          <p id="kpi-inv-price" class="text-xl font-bold text-sl mt-1">$0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-green-500">
+          <p class="text-xs text-gray-500">Ganancia potencial</p>
+          <p id="kpi-margin" class="text-xl font-bold text-green-600 mt-1">$0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sd">
+          <p class="text-xs text-gray-500">Unidades en stock</p>
+          <p id="kpi-units" class="text-xl font-bold text-sd mt-1">0</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <!-- Stock bajo -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sd flex items-center gap-2">🔔 Alertas de stock bajo</h3>
+            <button onclick="document.querySelector('[data-tab=inventory]').click()" class="text-[10px] text-sl hover:underline">Ver inventario →</button>
+          </div>
+          <ul id="low-stock-list" class="space-y-2 text-sm max-h-64 overflow-y-auto scrollbar-thin"></ul>
+        </div>
+
+        <!-- Desempeño por tienda (resumen) -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">🏪 Desempeño por tienda</h3>
+          <div id="store-performance" class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin"></div>
+        </div>
+      </div>
+
+    </section>
     <!-- ============ TIENDAS ============ -->
     <section id="tab-stores" class="tab-content hidden">
       <div class="flex justify-between items-center mb-6">
@@ -2112,6 +2323,17 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         }
       }, 200);
     }
+
+    // 🆕 Refrescar dashboard al entrar (para gráficos y alertas en tiempo real)
+    if (btn.dataset.tab === 'dashboard') {
+      setTimeout(() => {
+        try {
+          renderDashboard();
+        } catch(e) {
+          console.warn('Error re-renderizando dashboard:', e);
+        }
+      }, 100);
+    }
   };
 });
 
@@ -2257,30 +2479,253 @@ async function loadAll() {
 /* ============================================================
    DASHBOARD
 ============================================================ */
+/* ============================================================
+   DASHBOARD SÚPER
+============================================================ */
+let dashCharts = { sales: null, methods: null };
+
+/* ============ Filtros ============ */
+window.dashFilters = {
+  period: 'month',
+  dateFrom: null,
+  dateTo: null,
+  storeId: 'all',
+  sellerUid: 'all'
+};
+
+function getDashDateRange() {
+  const now = new Date();
+  const f = window.dashFilters;
+
+  if (f.period === 'custom' && f.dateFrom && f.dateTo) {
+    return {
+      from: new Date(f.dateFrom + 'T00:00:00'),
+      to: new Date(f.dateTo + 'T23:59:59'),
+      prevFrom: (() => {
+        const d = new Date(f.dateFrom + 'T00:00:00');
+        const days = Math.ceil((new Date(f.dateTo + 'T23:59:59') - d) / 86400000);
+        d.setDate(d.getDate() - days);
+        return d;
+      })(),
+      prevTo: (() => {
+        const d = new Date(f.dateFrom + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        d.setHours(23, 59, 59);
+        return d;
+      })(),
+      label: `${f.dateFrom} → ${f.dateTo}`
+    };
+  }
+
+  const startOfDay = d => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+  const endOfDay = d => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+
+  switch (f.period) {
+    case 'today':
+      return { from: startOfDay(now), to: endOfDay(now), prevFrom: startOfDay(new Date(now.getTime() - 86400000)), prevTo: endOfDay(new Date(now.getTime() - 86400000)), label: 'Hoy' };
+    case 'yesterday': {
+      const y = new Date(now.getTime() - 86400000);
+      const py = new Date(now.getTime() - 2 * 86400000);
+      return { from: startOfDay(y), to: endOfDay(y), prevFrom: startOfDay(py), prevTo: endOfDay(py), label: 'Ayer' };
+    }
+    case 'week': {
+      const day = now.getDay() || 7;
+      const start = new Date(now); start.setDate(now.getDate() - day + 1); start.setHours(0,0,0,0);
+      const prevStart = new Date(start); prevStart.setDate(prevStart.getDate() - 7);
+      const prevEnd = new Date(start); prevEnd.setDate(prevEnd.getDate() - 1); prevEnd.setHours(23,59,59,999);
+      return { from: start, to: endOfDay(now), prevFrom: prevStart, prevTo: prevEnd, label: 'Esta semana' };
+    }
+    case 'month': {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0); prevEnd.setHours(23,59,59,999);
+      return { from: start, to: endOfDay(now), prevFrom: prevStart, prevTo: prevEnd, label: 'Este mes' };
+    }
+    case 'lastmonth': {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0); end.setHours(23,59,59,999);
+      const pStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      const pEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0); pEnd.setHours(23,59,59,999);
+      return { from: start, to: end, prevFrom: pStart, prevTo: pEnd, label: 'Mes pasado' };
+    }
+    case 'year':
+      return { from: new Date(now.getFullYear(), 0, 1), to: endOfDay(now), prevFrom: new Date(now.getFullYear() - 1, 0, 1), prevTo: new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59), label: 'Este año' };
+    case 'all':
+    default:
+      return { from: null, to: null, prevFrom: null, prevTo: null, label: 'Todo el histórico' };
+  }
+}
+
+function getDashSalesFiltered() {
+  const range = getDashDateRange();
+  const f = window.dashFilters;
+  let list = sales.filter(s => s.status !== 'anulada');
+
+  if (range.from) list = list.filter(s => s.createdAt?.seconds && new Date(s.createdAt.seconds * 1000) >= range.from);
+  if (range.to) list = list.filter(s => s.createdAt?.seconds && new Date(s.createdAt.seconds * 1000) <= range.to);
+
+  if (f.storeId !== 'all') {
+    if (f.storeId === 'active') {
+      const activeIds = stores.filter(s => s.active).map(s => s.storeId);
+      list = list.filter(s => activeIds.includes(s.storeId));
+    } else {
+      list = list.filter(s => s.storeId === f.storeId);
+    }
+  }
+  if (f.sellerUid !== 'all') list = list.filter(s => s.sellerUid === f.sellerUid);
+
+  return { list, range };
+}
+
+function getPrevSalesFiltered() {
+  const range = getDashDateRange();
+  if (!range.prevFrom || !range.prevTo) return [];
+  const f = window.dashFilters;
+  let list = sales.filter(s => s.status !== 'anulada');
+  list = list.filter(s => s.createdAt?.seconds && new Date(s.createdAt.seconds * 1000) >= range.prevFrom && new Date(s.createdAt.seconds * 1000) <= range.prevTo);
+
+  if (f.storeId !== 'all') {
+    if (f.storeId === 'active') {
+      const activeIds = stores.filter(s => s.active).map(s => s.storeId);
+      list = list.filter(s => activeIds.includes(s.storeId));
+    } else {
+      list = list.filter(s => s.storeId === f.storeId);
+    }
+  }
+  if (f.sellerUid !== 'all') list = list.filter(s => s.sellerUid === f.sellerUid);
+  return list;
+}
+
+function computeDashKPIs(salesList) {
+  let salesTotal = 0, costTotal = 0, count = 0, units = 0;
+  let pool = 0, bonus = 0, collected = 0, pending = 0, pendingCount = 0;
+
+  salesList.forEach(s => {
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    salesTotal += base;
+
+    const sCost = Number(s.totalCost) > 0
+      ? Number(s.totalCost)
+      : (s.items || []).reduce((sum, it) => sum + Number(it.unitCost || 0) * Number(it.qty || 0), 0);
+    costTotal += sCost;
+    count++;
+    units += (s.items || []).reduce((y, i) => y + Number(i.qty || 0), 0);
+    pool += Number(s.poolAmount || s.commissionAmount || 0);
+    bonus += Number(s.bonusAmount || 0);
+
+    const ps = s.paymentStatus || 'completed';
+    if (ps === 'pending') { pending += base; pendingCount++; }
+    else { collected += base; }
+  });
+
+  return {
+    sales: salesTotal, cost: costTotal, profit: salesTotal - costTotal,
+    count, units, pool, bonus, commission: pool + bonus,
+    collected, pending, pendingCount,
+    ticket: count > 0 ? salesTotal / count : 0
+  };
+}
+
+function pctChange(curr, prev) {
+  if (prev === 0 && curr === 0) return { pct: 0, arrow: '→', cls: 'text-gray-400' };
+  if (prev === 0) return { pct: 100, arrow: '↗', cls: 'text-green-600' };
+  const p = ((curr - prev) / prev) * 100;
+  const arrow = p > 0 ? '↗' : p < 0 ? '↘' : '→';
+  const cls = p > 0 ? 'text-green-600' : p < 0 ? 'text-red-600' : 'text-gray-400';
+  return { pct: p, arrow, cls };
+}
+
+/* ============ Render principal ============ */
 function renderDashboard() {
-  const storeFilter = $('dash-store').value;
-  const isSuper = currentUserData.role === 'superadmin';
+  // Sincronizar filtros
+  const periodSel = $('dash-period');
+  const storeSel = $('dash-store-filter');
+  const sellerSel = $('dash-seller-filter');
 
-  // Tiendas visibles según filtro
-const activeStoreIds = stores.filter(s => s.active).map(s => s.storeId);
+  if (periodSel) window.dashFilters.period = periodSel.value;
+  if (storeSel) window.dashFilters.storeId = storeSel.value;
+  if (sellerSel) window.dashFilters.sellerUid = sellerSel.value;
+  if (window.dashFilters.period === 'custom') {
+    const df = $('dash-date-from'); const dt = $('dash-date-to');
+    if (df && dt && df.value && dt.value) {
+      window.dashFilters.dateFrom = df.value;
+      window.dashFilters.dateTo = dt.value;
+    }
+  }
 
-const invFiltered = (() => {
-  if (!isSuper) return inventory.filter(i => i.storeId === currentUserData.storeId);
-  if (storeFilter === 'all') return inventory;
-  if (storeFilter === 'active') return inventory.filter(i => activeStoreIds.includes(i.storeId));
-  return inventory.filter(i => i.storeId === storeFilter);
-})();
+  // Poblar selects (una sola vez)
+  populateDashFilters();
 
-const salesFiltered = (() => {
-  const base = sales.filter(s => s.status !== 'anulada');
-  if (!isSuper) return base.filter(s => s.storeId === currentUserData.storeId);
-  if (storeFilter === 'all') return base;
-  if (storeFilter === 'active') return base.filter(s => activeStoreIds.includes(s.storeId));
-  return base.filter(s => s.storeId === storeFilter);
-})();
+  const { list: salesPeriod, range } = getDashSalesFiltered();
+  const salesPrev = getPrevSalesFiltered();
+  const kpi = computeDashKPIs(salesPeriod);
+  const kpiPrev = computeDashKPIs(salesPrev);
 
-  // KPIs inventario
-  let invCost = 0, invPrice = 0, units = 0;
+  // Info del rango
+  const rangeInfo = $('dash-range-info');
+  if (rangeInfo) {
+    const fmtD = d => d ? d.toLocaleDateString('es-CO', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+    rangeInfo.innerText = `📅 Mostrando: ${range.label} · ${range.from ? fmtD(range.from) + ' → ' + fmtD(range.to) : 'todos los datos'} · ${salesPeriod.length} ventas`;
+  }
+
+  // ============================================================
+  // KPIs
+  // ============================================================
+  const setTxt = (id, v) => { const el = $(id); if (el) el.innerText = v; };
+  const setTrend = (id, curr, prev) => {
+    const el = $(id);
+    if (!el) return;
+    const t = pctChange(curr, prev);
+    el.innerText = `${t.arrow} ${Math.abs(t.pct).toFixed(1)}%`;
+    el.className = `text-[10px] font-bold ${t.cls}`;
+  };
+
+  setTxt('dash-kpi-sales', fmt(kpi.sales));
+  setTxt('dash-kpi-sales-prev', `vs período anterior: ${fmt(kpiPrev.sales)}`);
+  setTrend('dash-kpi-sales-trend', kpi.sales, kpiPrev.sales);
+
+  setTxt('dash-kpi-count', kpi.count);
+  setTxt('dash-kpi-count-prev', `vs período anterior: ${kpiPrev.count}`);
+  setTrend('dash-kpi-count-trend', kpi.count, kpiPrev.count);
+
+  setTxt('dash-kpi-ticket', fmt(kpi.ticket));
+  setTxt('dash-kpi-ticket-prev', `vs período anterior: ${fmt(kpiPrev.ticket)}`);
+  setTrend('dash-kpi-ticket-trend', kpi.ticket, kpiPrev.ticket);
+
+  setTxt('dash-kpi-units-sold', kpi.units.toLocaleString('es-CO'));
+  setTxt('dash-kpi-units-prev', `vs período anterior: ${kpiPrev.units}`);
+  setTrend('dash-kpi-units-trend', kpi.units, kpiPrev.units);
+
+  setTxt('dash-kpi-profit', fmt(kpi.profit));
+  setTxt('dash-kpi-profit-margin', `Margen ${kpi.sales > 0 ? ((kpi.profit/kpi.sales)*100).toFixed(1) : 0}%`);
+  setTrend('dash-kpi-profit-trend', kpi.profit, kpiPrev.profit);
+
+  setTxt('dash-kpi-commission', fmt(kpi.commission));
+  setTxt('dash-kpi-pool', fmt(kpi.pool));
+  setTxt('dash-kpi-bonus', fmt(kpi.bonus));
+
+  setTxt('dash-kpi-collected', fmt(kpi.collected));
+  setTxt('dash-kpi-collected-pct', `${kpi.sales > 0 ? ((kpi.collected/kpi.sales)*100).toFixed(1) : 0}% del total`);
+
+  setTxt('dash-kpi-pending', fmt(kpi.pending));
+  setTxt('dash-kpi-pending-pct', kpi.pendingCount > 0
+    ? `${kpi.sales > 0 ? ((kpi.pending/kpi.sales)*100).toFixed(1) : 0}% · ${kpi.pendingCount} venta${kpi.pendingCount !== 1 ? 's' : ''}`
+    : 'Sin pendientes');
+
+  // ============================================================
+  // Inventario KPIs
+  // ============================================================
+  let invFiltered = inventory.slice();
+  if (window.dashFilters.storeId !== 'all' && window.dashFilters.storeId !== 'active') {
+    invFiltered = invFiltered.filter(i => i.storeId === window.dashFilters.storeId);
+  } else if (window.dashFilters.storeId === 'active') {
+    const activeIds = stores.filter(s => s.active).map(s => s.storeId);
+    invFiltered = invFiltered.filter(i => activeIds.includes(i.storeId));
+  }
+
+  let invCost = 0, invPrice = 0, unitsStock = 0;
   invFiltered.forEach(i => {
     const p = products.find(x => x.id === i.productId);
     if (!p) return;
@@ -2289,142 +2734,637 @@ const salesFiltered = (() => {
     const st = Number(i.stock || 0);
     invCost += cost * st;
     invPrice += price * st;
-    units += st;
+    unitsStock += st;
   });
-  $('kpi-inv-cost').innerText = fmt(invCost);
-  $('kpi-inv-price').innerText = fmt(invPrice);
-  $('kpi-margin').innerText = fmt(invPrice - invCost);
-  $('kpi-units').innerText = units.toLocaleString('es-CO');
+  setTxt('kpi-inv-cost', fmt(invCost));
+  setTxt('kpi-inv-price', fmt(invPrice));
+  setTxt('kpi-margin', fmt(invPrice - invCost));
+  setTxt('kpi-units', unitsStock.toLocaleString('es-CO'));
 
-    // KPIs ventas (venta neta SIN envío ni recargo tarjeta)
-  let totalSalesNet = 0;    // Venta neta (subtotal - descuento)
-  let totalShipping = 0;    // Envíos cobrados
-  let totalSurcharge = 0;   // Recargos por tarjeta
-  let totalCost = 0;
-  let totalProfit = 0;
-
-  salesFiltered.forEach(s => {
-    const subtotal = Number(s.subtotal || 0);
-    const discount = Number(s.discount || 0);
-    const shipping = Number(s.shipping || 0);
-    const surcharge = Number(s.surchargeAmount || 0);
-    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (subtotal - discount);
-
-    totalSalesNet += base;
-    totalShipping += shipping;
-    totalSurcharge += surcharge;
-    totalCost += Number(s.totalCost || 0);
-    totalProfit += Number(s.profit || 0);
-  });
-
-  $('kpi-sales-total').innerText = fmt(totalSalesNet);
-  $('kpi-sales-count').innerText = salesFiltered.length;
-  $('kpi-sales-shipping').innerText = fmt(totalShipping);
-  $('kpi-sales-surcharge').innerText = fmt(totalSurcharge);
-  $('kpi-sales-cost').innerText = fmt(totalCost);
-  $('kpi-sales-profit').innerText = fmt(totalProfit);
-
-  // Alertas stock bajo
+  // ============================================================
+  // Stock bajo
+  // ============================================================
   const low = invFiltered.filter(i => Number(i.stock||0) <= Number(i.minStock||settings.minStock||5));
   const ul = $('low-stock-list');
-  ul.innerHTML = low.length ? low.slice(0,30).map(i => {
-    const store = stores.find(s => s.storeId === i.storeId);
-    const color = i.colorName ? ' · ' + i.colorName : '';
-    const size = i.size ? ' · ' + i.size : '';
-    return `<li class="flex justify-between border-b border-gray-100 pb-1">
-      <div class="min-w-0 flex-1">
-        <p class="truncate text-xs font-medium text-sd">${i.productName}</p>
-        <p class="text-[10px] text-gray-400">${store?.name||i.storeId} · ${i.sku}${color}${size}</p>
+  if (ul) {
+    ul.innerHTML = low.length ? low.slice(0, 30).map(i => {
+      const store = stores.find(s => s.storeId === i.storeId);
+      const color = i.colorName ? ' · ' + i.colorName : '';
+      const size = i.size ? ' · ' + i.size : '';
+      return `<li class="flex justify-between border-b border-gray-100 pb-1 last:border-0">
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-xs font-medium text-sd">${escapeHtml(i.productName)}</p>
+          <p class="text-[10px] text-gray-400">${escapeHtml(store?.name||i.storeId)} · ${escapeHtml(i.sku)}${color}${size}</p>
+        </div>
+        <span class="${Number(i.stock)===0?'text-red-600 font-bold':'text-orange-500 font-bold'} text-xs whitespace-nowrap ml-2">${i.stock} und</span>
+      </li>`;
+    }).join('') : '<li class="text-gray-400 text-xs text-center py-4">🎉 Sin alertas de stock</li>';
+  }
+
+  // ============================================================
+  // Top tiendas
+  // ============================================================
+  renderDashTopStores(salesPeriod);
+  renderDashTopSellers(salesPeriod);
+
+  // ============================================================
+  // Gráficos
+  // ============================================================
+  renderDashCharts(salesPeriod);
+
+  // ============================================================
+  // Alertas inteligentes
+  // ============================================================
+  renderDashAlerts(invFiltered, salesPeriod);
+
+  // ============================================================
+  // Actividad reciente
+  // ============================================================
+  renderDashRecentActivity();
+
+  // ============================================================
+  // Desempeño por tienda (versión compacta)
+  // ============================================================
+  renderDashStorePerformance(salesPeriod);
+}
+
+/* ============ Poblar filtros ============ */
+function populateDashFilters() {
+  const storeSel = $('dash-store-filter');
+  if (storeSel && !storeSel.dataset.loaded) {
+    storeSel.dataset.loaded = '1';
+    const opts = stores.map(s => `<option value="${s.storeId}">${escapeHtml(s.name)}${!s.active?' (inactiva)':''}</option>`).join('');
+    storeSel.innerHTML = `<option value="all">Todas las tiendas</option><option value="active">Solo tiendas activas</option>${opts}`;
+    storeSel.onchange = renderDashboard;
+  }
+
+  const sellerSel = $('dash-seller-filter');
+  if (sellerSel && !sellerSel.dataset.loaded) {
+    sellerSel.dataset.loaded = '1';
+    const sellers = users.filter(u => ['vendedor','admin','superadmin'].includes(u.role));
+    sellerSel.innerHTML = '<option value="all">Todos los vendedores</option>' +
+      sellers.map(u => `<option value="${u.id}">${escapeHtml(u.name || u.email)}</option>`).join('');
+    sellerSel.onchange = renderDashboard;
+  }
+
+  const periodSel = $('dash-period');
+  if (periodSel && !periodSel.dataset.loaded) {
+    periodSel.dataset.loaded = '1';
+    periodSel.onchange = () => {
+      const custom = $('dash-custom-range');
+      if (periodSel.value === 'custom') custom.classList.remove('hidden');
+      else custom.classList.add('hidden');
+      renderDashboard();
+    };
+  }
+
+  ['dash-date-from','dash-date-to'].forEach(id => {
+    const el = $(id);
+    if (el && !el.dataset.loaded) {
+      el.dataset.loaded = '1';
+      el.onchange = renderDashboard;
+    }
+  });
+}
+
+/* ============ Top tiendas ============ */
+function renderDashTopStores(salesList) {
+  const el = $('dash-top-stores');
+  const empty = $('dash-top-stores-empty');
+  const count = $('dash-top-stores-count');
+  if (!el) return;
+
+  const byStore = {};
+  salesList.forEach(s => {
+    const k = s.storeId;
+    if (!byStore[k]) byStore[k] = { sales:0, count:0, profit:0 };
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    byStore[k].sales += base;
+    byStore[k].count += 1;
+    byStore[k].profit += Number(s.profit || 0);
+  });
+
+  const list = Object.entries(byStore)
+    .map(([sid, v]) => ({ storeId: sid, ...v, name: stores.find(s => s.storeId === sid)?.name || sid }))
+    .sort((a, b) => b.sales - a.sales)
+    .slice(0, 8);
+
+  if (count) count.innerText = `${list.length} tienda${list.length !== 1 ? 's' : ''}`;
+
+  if (!list.length) {
+    el.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+
+  const max = list[0].sales || 1;
+  el.innerHTML = list.map((v, i) => {
+    const pct = (v.sales / max) * 100;
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+    return `
+      <div>
+        <div class="flex justify-between items-baseline mb-1">
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-semibold text-sd truncate">${medal} ${escapeHtml(v.name)}</p>
+            <p class="text-[10px] text-gray-400">${v.count} venta${v.count !== 1 ? 's' : ''} · ${fmt(v.profit)} utilidad</p>
+          </div>
+          <p class="text-xs font-bold text-sl ml-2 whitespace-nowrap">${fmt(v.sales)}</p>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5">
+          <div class="h-1.5 rounded-full bg-gradient-to-r from-sl to-blue-400" style="width:${pct}%"></div>
+        </div>
       </div>
-      <span class="${Number(i.stock)===0?'text-red-600 font-bold':'text-orange-500 font-bold'} text-xs whitespace-nowrap ml-2">${i.stock} und</span>
-    </li>`;
-  }).join('') : '<li class="text-gray-400 text-xs">Sin alertas 🎉</li>';
+    `;
+  }).join('');
+}
 
-   // Desempeño por tienda
-  const perf = $('store-performance');
-  if (currentUserData.role === 'admin') {
-    perf.innerHTML = '<p class="text-gray-400 text-sm">Solo el superadmin ve el consolidado por tienda.</p>';
-  } else {
-    const storesToShow = storeFilter === 'active'
-      ? stores.filter(s => s.active)
-      : storeFilter === 'all'
-        ? stores
-        : stores.filter(s => s.storeId === storeFilter);
+/* ============ Top vendedores ============ */
+function renderDashTopSellers(salesList) {
+  const el = $('dash-top-sellers');
+  const empty = $('dash-top-sellers-empty');
+  const count = $('dash-top-sellers-count');
+  if (!el) return;
 
-    perf.innerHTML = storesToShow.map(s => {
-      const sSales = sales.filter(x => x.storeId === s.storeId && x.status !== 'anulada');
+  const bySeller = {};
+  salesList.forEach(s => {
+    const k = s.sellerUid || s.sellerEmail || 'unknown';
+    if (!bySeller[k]) bySeller[k] = { name: s.sellerName || s.sellerEmail || '—', sales:0, count:0, commission:0 };
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    bySeller[k].sales += base;
+    bySeller[k].count += 1;
+    bySeller[k].commission += Number(s.sellerCommissionAmount || 0);
+  });
 
-      // Venta neta (sin envío ni recargo tarjeta)
-      let total = 0, shippingTotal = 0, surchargeTotal = 0;
-      sSales.forEach(x => {
-        const sub = Number(x.subtotal || 0);
-        const disc = Number(x.discount || 0);
-        const base = (x.commissionBase !== undefined) ? Number(x.commissionBase) : (sub - disc);
-        total += base;
-        shippingTotal += Number(x.shipping || 0);
-        surchargeTotal += Number(x.surchargeAmount || 0);
+  const list = Object.values(bySeller).sort((a, b) => b.sales - a.sales).slice(0, 8);
+  if (count) count.innerText = `${list.length} vendedor${list.length !== 1 ? 'es' : ''}`;
+
+  if (!list.length) {
+    el.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+
+  const max = list[0].sales || 1;
+  el.innerHTML = list.map((v, i) => {
+    const pct = (v.sales / max) * 100;
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+    return `
+      <div>
+        <div class="flex justify-between items-baseline mb-1">
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-semibold text-sd truncate">${medal} ${escapeHtml(v.name)}</p>
+            <p class="text-[10px] text-gray-400">${v.count} venta${v.count !== 1 ? 's' : ''} · ${fmt(v.commission)} comisión</p>
+          </div>
+          <p class="text-xs font-bold text-sl ml-2 whitespace-nowrap">${fmt(v.sales)}</p>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5">
+          <div class="h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-purple-600" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============ Gráficos ============ */
+function renderDashCharts(salesList) {
+  if (typeof Chart === 'undefined') return;
+
+  // Destruir previos
+  Object.values(dashCharts).forEach(c => { if (c) c.destroy(); });
+  dashCharts = { sales: null, methods: null };
+
+  // ========== Gráfico 1: Ventas últimos 30 días ==========
+  const canvasSales = $('dash-chart-sales');
+  const emptySales = $('dash-chart-sales-empty');
+  if (canvasSales && canvasSales.offsetParent !== null) {
+    // Traer los últimos 30 días del histórico completo (no solo del filtro)
+    const now = new Date();
+    const start30 = new Date(now); start30.setDate(start30.getDate() - 29); start30.setHours(0,0,0,0);
+
+    let baseList = sales.filter(s => s.status !== 'anulada' && s.createdAt?.seconds);
+    baseList = baseList.filter(s => new Date(s.createdAt.seconds * 1000) >= start30);
+    if (window.dashFilters.storeId !== 'all') {
+      if (window.dashFilters.storeId === 'active') {
+        const activeIds = stores.filter(s => s.active).map(s => s.storeId);
+        baseList = baseList.filter(s => activeIds.includes(s.storeId));
+      } else {
+        baseList = baseList.filter(s => s.storeId === window.dashFilters.storeId);
+      }
+    }
+    if (window.dashFilters.sellerUid !== 'all') baseList = baseList.filter(s => s.sellerUid === window.dashFilters.sellerUid);
+
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i); d.setHours(0,0,0,0);
+      days.push(d);
+    }
+
+    const values = days.map(day => {
+      const dayEnd = new Date(day); dayEnd.setHours(23,59,59,999);
+      return baseList.reduce((sum, s) => {
+        const sd = new Date(s.createdAt.seconds * 1000);
+        if (sd >= day && sd <= dayEnd) {
+          const sub = Number(s.subtotal || 0);
+          const disc = Number(s.discount || 0);
+          return sum + ((s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc));
+        }
+        return sum;
+      }, 0);
+    });
+
+    const labels = days.map(d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`);
+
+    if (values.every(v => v === 0)) {
+      if (emptySales) emptySales.classList.remove('hidden');
+    } else {
+      if (emptySales) emptySales.classList.add('hidden');
+      dashCharts.sales = new Chart(canvasSales, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Ventas ($)',
+            data: values,
+            borderColor: '#4A7A9A',
+            backgroundColor: 'rgba(74,122,154,0.15)',
+            tension: 0.35,
+            fill: true,
+            pointBackgroundColor: '#0A2A4A',
+            pointRadius: 3,
+            pointHoverRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => '$' + Number(ctx.parsed.y).toLocaleString('es-CO')
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: (v) => '$' + (v/1000).toFixed(0) + 'k' }
+            }
+          }
+        }
       });
-      const cnt = sSales.length;
-      const sInv = inventory.filter(i => i.storeId === s.storeId);
-      const stockTotal = sInv.reduce((sum,i) => sum + Number(i.stock||0), 0);
+    }
+  }
 
-      // 🔥 Comisión real: pool + bonus, con fallback para ventas viejas
-      const pool = sSales.reduce((sum, x) =>
-        sum + Number(x.poolAmount || x.commissionAmount || 0), 0);
-      const bonus = sSales.reduce((sum, x) =>
-        sum + Number(x.bonusAmount || 0), 0);
-      const totalCommission = pool + bonus;
+  // ========== Gráfico 2: Por método de pago ==========
+  const canvasMethods = $('dash-chart-methods');
+  const emptyMethods = $('dash-chart-methods-empty');
+  if (canvasMethods && canvasMethods.offsetParent !== null) {
+    const byMethod = {};
+    salesList.forEach(s => {
+      const m = s.paymentMethod || 'efectivo';
+      const sub = Number(s.subtotal || 0);
+      const disc = Number(s.discount || 0);
+      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+      byMethod[m] = (byMethod[m] || 0) + base;
+    });
 
-      // % efectivo sobre ventas (para referencia visual)
-      const effectivePct = total > 0 ? (totalCommission / total) * 100 : 0;
+    const labelsMap = {
+      efectivo: '💵 Efectivo',
+      transferencia: '🔄 Transferencia',
+      tarjeta: '💳 Tarjeta',
+      contraentrega: '📦 Contra entrega',
+      credito: '🛍️ Crédito',
+      nequi: '📱 Nequi'
+    };
 
-      return `<div class="border rounded-lg p-4 hover:shadow transition ${!s.active?'opacity-60 bg-gray-50':''}">
-          <div class="flex justify-between items-start mb-1">
-            <div class="min-w-0">
-              <p class="text-xs text-gray-400 truncate">${s.storeId}</p>
-              <p class="font-bold text-sd">${s.name}</p>
-            </div>
-            <span class="text-[10px] px-2 py-0.5 rounded whitespace-nowrap ${s.active?'bg-green-100 text-green-700':'bg-gray-200 text-gray-600'}">
-              ${s.active?'Activa':'Inactiva'}
-            </span>
-          </div>
-          <div class="mt-3 grid grid-cols-2 gap-3 text-xs">
-            <div>
-              <p class="text-gray-500">Venta neta</p>
-              <p class="font-semibold text-sl">${fmt(total)}</p>
-            </div>
-            <div>
-              <p class="text-gray-500">Ventas</p>
-              <p class="font-semibold text-sd">${cnt}</p>
-            </div>
-            <div>
-              <p class="text-gray-500">Stock total</p>
-              <p class="font-semibold text-sd">${stockTotal} und</p>
-            </div>
-            <div>
-              <p class="text-gray-500">Comisiones</p>
-              <p class="font-semibold text-orange-500">${fmt(totalCommission)}</p>
-            </div>
-          </div>
-          <div class="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2 text-[10px]">
-            <div class="flex justify-between">
-              <span class="text-gray-400">Pool</span>
-              <span class="font-semibold text-sl">${fmt(pool)}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-gray-400">Bonus</span>
-              <span class="font-semibold text-green-600">${fmt(bonus)}</span>
-            </div>
-            <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between text-[10px] text-gray-400">
-            <span>Envíos: <b class="text-sd">${fmt(shippingTotal)}</b></span>
-            <span>Recargos tarjeta: <b class="text-sd">${fmt(surchargeTotal)}</b></span>
-          </div>
-          </div>
-          <p class="text-[10px] text-gray-400 mt-2 text-center">${effectivePct.toFixed(2)}% efectivo sobre ventas</p>
-        </div>`;
-    }).join('');
+    const entries = Object.entries(byMethod).sort((a,b) => b[1] - a[1]);
+    if (!entries.length) {
+      if (emptyMethods) emptyMethods.classList.remove('hidden');
+    } else {
+      if (emptyMethods) emptyMethods.classList.add('hidden');
+      const palette = ['#22c55e','#3b82f6','#a855f7','#f97316','#eab308','#06b6d4','#ef4444','#ec4899'];
+      dashCharts.methods = new Chart(canvasMethods, {
+        type: 'doughnut',
+        data: {
+          labels: entries.map(([k]) => labelsMap[k] || k),
+          datasets: [{
+            data: entries.map(([,v]) => v),
+            backgroundColor: palette.slice(0, entries.length),
+            borderWidth: 2,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { font: { size: 10 }, padding: 8, boxWidth: 12 }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const total = ctx.dataset.data.reduce((s, v) => s + v, 0);
+                  const pct = total > 0 ? (ctx.parsed / total) * 100 : 0;
+                  return `${ctx.label}: $${Number(ctx.parsed).toLocaleString('es-CO')} (${pct.toFixed(1)}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
   }
 }
+
+/* ============ Alertas inteligentes ============ */
+function renderDashAlerts(invFiltered, salesPeriod) {
+  const listEl = $('dash-alerts-list');
+  const emptyEl = $('dash-alerts-empty');
+  const countEl = $('dash-alerts-count');
+  if (!listEl) return;
+
+  const alerts = [];
+
+  // 1. Stock bajo / agotado
+  const lowStock = invFiltered.filter(i => Number(i.stock||0) <= Number(i.minStock||settings.minStock||5));
+  const zeroStock = lowStock.filter(i => Number(i.stock||0) === 0);
+  if (zeroStock.length > 0) {
+    alerts.push({
+      icon: '🔴', color: 'red',
+      title: `${zeroStock.length} producto${zeroStock.length !== 1 ? 's' : ''} agotado${zeroStock.length !== 1 ? 's' : ''}`,
+      detail: zeroStock.slice(0, 3).map(i => i.productName).join(', ') + (zeroStock.length > 3 ? `… +${zeroStock.length - 3}` : ''),
+      tab: 'inventory'
+    });
+  }
+  const lowOnly = lowStock.filter(i => Number(i.stock||0) > 0);
+  if (lowOnly.length > 0) {
+    alerts.push({
+      icon: '🟠', color: 'orange',
+      title: `${lowOnly.length} producto${lowOnly.length !== 1 ? 's' : ''} con stock bajo`,
+      detail: lowOnly.slice(0, 3).map(i => i.productName).join(', ') + (lowOnly.length > 3 ? `… +${lowOnly.length - 3}` : ''),
+      tab: 'inventory'
+    });
+  }
+
+  // 2. Cobros pendientes
+  const pendingSales = sales.filter(s => s.status !== 'anulada' && (s.paymentStatus || 'completed') === 'pending');
+  if (pendingSales.length > 0) {
+    const totalPending = pendingSales.reduce((sum, s) => {
+      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+      return sum + base;
+    }, 0);
+    alerts.push({
+      icon: '⏳', color: 'amber',
+      title: `${pendingSales.length} cobro${pendingSales.length !== 1 ? 's' : ''} pendiente${pendingSales.length !== 1 ? 's' : ''} · ${fmt(totalPending)}`,
+      detail: 'Ventas contra entrega u otras sin confirmar',
+      tab: 'reports'
+    });
+  }
+
+  // 3. Arqueos pendientes
+  const pendingArqueos = cashRegisters.filter(a => a.status === 'pending_approval');
+  if (pendingArqueos.length > 0) {
+    alerts.push({
+      icon: '🌅', color: 'blue',
+      title: `${pendingArqueos.length} arqueo${pendingArqueos.length !== 1 ? 's' : ''} por aprobar`,
+      detail: 'Requieren revisión del superadmin',
+      tab: 'cashregisters'
+    });
+  }
+
+  // 4. Solicitudes pendientes
+  const pendingT = (transferRequestsAll || []).filter(r => r.status === 'pendiente').length;
+  const pendingD = (deviceRequestsAll || []).filter(r => r.status === 'pendiente').length;
+  const pendingA = (deviceAttemptsAll || []).filter(r => r.status !== 'resuelto').length;
+  const totalSolicitudes = pendingT + pendingD + pendingA;
+  if (totalSolicitudes > 0) {
+    alerts.push({
+      icon: '📤', color: 'purple',
+      title: `${totalSolicitudes} solicitud${totalSolicitudes !== 1 ? 'es' : ''} pendiente${totalSolicitudes !== 1 ? 's' : ''}`,
+      detail: `${pendingT} traslados · ${pendingD} dispositivos · ${pendingA} intentos`,
+      tab: 'transfers'
+    });
+  }
+
+  // 5. Turnos abiertos > 12h
+  const longShifts = (shiftsAll || []).filter(s => {
+    if (s.status !== 'open' || !s.startedAt?.seconds) return false;
+    const hours = (Date.now() - s.startedAt.seconds * 1000) / 3600000;
+    return hours > 12;
+  });
+  if (longShifts.length > 0) {
+    alerts.push({
+      icon: '⏰', color: 'red',
+      title: `${longShifts.length} turno${longShifts.length !== 1 ? 's' : ''} abierto${longShifts.length !== 1 ? 's' : ''} > 12h`,
+      detail: longShifts.slice(0, 3).map(s => s.userName || s.userEmail).join(', '),
+      tab: 'shifts'
+    });
+  }
+
+  // 6. Productos sin movimiento (stock sin venderse en 60 días)
+  const hace60 = new Date(); hace60.setDate(hace60.getDate() - 60);
+  const productosVendidos = new Set();
+  sales.forEach(s => {
+    if (!s.createdAt?.seconds) return;
+    if (new Date(s.createdAt.seconds * 1000) >= hace60) {
+      (s.items || []).forEach(it => { if (it.productId) productosVendidos.add(it.productId); });
+    }
+  });
+  const stockParado = inventory.filter(i => Number(i.stock || 0) > 0 && !productosVendidos.has(i.productId));
+  if (stockParado.length > 5) {
+    const unidadesParadas = stockParado.reduce((s, i) => s + Number(i.stock || 0), 0);
+    alerts.push({
+      icon: '🐌', color: 'gray',
+      title: `${stockParado.length} SKU sin movimiento en 60 días`,
+      detail: `${unidadesParadas} unidades paradas · Considera promocionarlas`,
+      tab: 'inventory'
+    });
+  }
+
+  // Render
+  if (countEl) {
+    if (alerts.length > 0) {
+      countEl.classList.remove('hidden');
+      countEl.innerText = alerts.length;
+    } else {
+      countEl.classList.add('hidden');
+    }
+  }
+
+  if (!alerts.length) {
+    listEl.innerHTML = '';
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    return;
+  }
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  const colorMap = {
+    red:    { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    icon: 'bg-red-100' },
+    orange: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', icon: 'bg-orange-100' },
+    amber:  { bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  icon: 'bg-amber-100' },
+    blue:   { bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700',   icon: 'bg-blue-100' },
+    purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', icon: 'bg-purple-100' },
+    gray:   { bg: 'bg-gray-50',   border: 'border-gray-200',   text: 'text-gray-700',   icon: 'bg-gray-100' }
+  };
+
+  listEl.innerHTML = alerts.map(a => {
+    const c = colorMap[a.color] || colorMap.gray;
+    return `
+      <div class="border ${c.border} ${c.bg} rounded-lg p-3 flex items-start gap-3 cursor-pointer hover:shadow transition"
+           onclick="document.querySelector('[data-tab=${a.tab}]')?.click()">
+        <div class="w-9 h-9 rounded-full ${c.icon} flex items-center justify-center shrink-0 text-lg">
+          ${a.icon}
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-bold ${c.text}">${escapeHtml(a.title)}</p>
+          <p class="text-[10px] text-gray-500 mt-0.5 truncate">${escapeHtml(a.detail)}</p>
+        </div>
+        <span class="text-gray-300 text-xs shrink-0">→</span>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============ Actividad reciente ============ */
+function renderDashRecentActivity() {
+  const el = $('dash-recent-activity');
+  if (!el) return;
+
+  // Últimas 10 ventas + últimas 5 acciones de auditoría
+  const recentSales = sales
+    .filter(s => s.createdAt?.seconds)
+    .sort((a, b) => (b.createdAt.seconds || 0) - (a.createdAt.seconds || 0))
+    .slice(0, 10);
+
+  const recentAudit = (auditLogs || [])
+    .filter(a => a.timestamp?.seconds && a.action !== 'login' && a.action !== 'logout')
+    .sort((a, b) => (b.timestamp.seconds || 0) - (a.timestamp.seconds || 0))
+    .slice(0, 5);
+
+  const combined = [];
+
+  recentSales.forEach(s => {
+    const store = stores.find(x => x.storeId === s.storeId);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+    combined.push({
+      when: s.createdAt.seconds,
+      icon: s.status === 'anulada' ? '❌' : '💰',
+      color: s.status === 'anulada' ? 'red' : 'green',
+      title: `${s.customer?.name || 'Cliente'} compró ${fmt(base)}`,
+      detail: `${store?.name || s.storeId} · ${s.sellerName || s.sellerEmail || '—'}`,
+      onClick: `viewSale('${s.id}')`
+    });
+  });
+
+  recentAudit.forEach(a => {
+    const icon = { create:'🆕', update:'✏️', delete:'🗑', sale:'💰', cancel:'📉', seed:'🌱', cleanup:'🧹' }[a.action] || '📋';
+    combined.push({
+      when: a.timestamp.seconds,
+      icon,
+      color: a.action === 'delete' ? 'red' : a.action === 'cancel' ? 'orange' : 'blue',
+      title: a.note || a.changeSummary || `${a.action} en ${a.collection}`,
+      detail: `${a.userName || a.userEmail || '—'} · ${fmtDate(a.timestamp)}`,
+      onClick: `viewAudit('${a.id}')`
+    });
+  });
+
+  combined.sort((a, b) => b.when - a.when);
+
+  if (!combined.length) {
+    el.innerHTML = '<p class="text-center text-gray-400 text-xs py-6">Sin actividad reciente</p>';
+    return;
+  }
+
+  const colorMap = {
+    green:  'bg-green-100 text-green-700',
+    red:    'bg-red-100 text-red-700',
+    orange: 'bg-orange-100 text-orange-700',
+    blue:   'bg-blue-100 text-blue-700'
+  };
+
+  el.innerHTML = combined.slice(0, 15).map(a => {
+    const cls = colorMap[a.color] || colorMap.blue;
+    const timeAgo = (() => {
+      const diff = Math.floor((Date.now() - a.when * 1000) / 1000);
+      if (diff < 60) return `${diff}s`;
+      if (diff < 3600) return `${Math.floor(diff/60)}min`;
+      if (diff < 86400) return `${Math.floor(diff/3600)}h`;
+      return `${Math.floor(diff/86400)}d`;
+    })();
+    return `
+      <div class="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-50 rounded px-1"
+           onclick='${a.onClick}'>
+        <div class="w-7 h-7 rounded-full ${cls} flex items-center justify-center shrink-0 text-xs">
+          ${a.icon}
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-sd truncate">${escapeHtml(a.title)}</p>
+          <p class="text-[10px] text-gray-400 truncate">${escapeHtml(a.detail)}</p>
+        </div>
+        <span class="text-[10px] text-gray-400 whitespace-nowrap shrink-0">${timeAgo}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============ Desempeño por tienda (compacto) ============ */
+function renderDashStorePerformance(salesPeriod) {
+  const perf = $('store-performance');
+  if (!perf) return;
+
+  if (currentUserData.role === 'admin') {
+    perf.innerHTML = '<p class="text-gray-400 text-xs text-center py-4">Solo el superadmin ve el consolidado por tienda.</p>';
+    return;
+  }
+
+  const storesToShow = window.dashFilters.storeId === 'active'
+    ? stores.filter(s => s.active)
+    : window.dashFilters.storeId === 'all'
+      ? stores
+      : stores.filter(s => s.storeId === window.dashFilters.storeId);
+
+  if (!storesToShow.length) {
+    perf.innerHTML = '<p class="text-gray-400 text-xs text-center py-4">Sin tiendas para mostrar.</p>';
+    return;
+  }
+
+  perf.innerHTML = storesToShow.map(s => {
+    const sSales = salesPeriod.filter(x => x.storeId === s.storeId);
+    let total = 0, shippingTotal = 0, surchargeTotal = 0;
+    sSales.forEach(x => {
+      const sub = Number(x.subtotal || 0);
+      const disc = Number(x.discount || 0);
+      total += (x.commissionBase !== undefined) ? Number(x.commissionBase) : (sub - disc);
+      shippingTotal += Number(x.shipping || 0);
+      surchargeTotal += Number(x.surchargeAmount || 0);
+    });
+    const cnt = sSales.length;
+
+    return `
+      <div class="flex items-center justify-between border-b border-gray-100 py-2 last:border-0">
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-semibold text-sd truncate">${escapeHtml(s.name)}</p>
+          <p class="text-[10px] text-gray-400">${cnt} venta${cnt !== 1 ? 's' : ''} · Envíos ${fmt(shippingTotal)} · Recargos ${fmt(surchargeTotal)}</p>
+        </div>
+        <p class="text-xs font-bold text-sl ml-3 whitespace-nowrap">${fmt(total)}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ESC cierra modales si aplica */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { /* ya manejado por otros modales */ }
+});
 
 /* ============================================================
    TIENDAS
