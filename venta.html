@@ -325,7 +325,7 @@
   </div>
 
     <!-- ============ MODAL MARCAR ENTRADA/SALIDA ============ -->
-  <div id="shift-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+    <div id="shift-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
     <div id="shift-modal-overlay" class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="onShiftOverlayClick()"></div>
     <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto">
       <button onclick="closeShiftModal()" class="absolute top-3 right-3 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
@@ -2875,12 +2875,17 @@ window.toggleShift = (options = {}) => {
 window.closeShiftModal = () => {
   const modal = $('shift-modal');
   if (!modal) return;
+
+  // 🆕 Si el modal está en modo obligatorio, NO permitir cerrarlo
+  if (modal.dataset.forced === '1') {
+    console.warn('[Shift] Cierre bloqueado: el modal es obligatorio');
+    return;
+  }
+
   modal.classList.add('hidden');
   modal.classList.remove('flex');
-  // 🆕 Limpiar el flag de obligatorio
   modal.dataset.forced = '0';
 };
-
 
   /* ============================================================
      🆕 Bloqueo del cierre del modal de entrada obligatorio
@@ -2899,21 +2904,6 @@ window.closeShiftModal = () => {
     closeShiftModal();
   };
 
-  /**
-   * Refuerzo del cierre: si el modal está en modo obligatorio,
-   * NO permite cerrarlo (ni por Escape, ni por X, ni por ningún lado).
-   */
-  const _originalCloseShiftModal = window.closeShiftModal;
-  window.closeShiftModal = () => {
-    const modal = $('shift-modal');
-    if (modal && modal.dataset.forced === '1') {
-      // Bloqueado: no hacer nada
-      console.warn('[Shift] Cierre bloqueado: el modal es obligatorio');
-      return;
-    }
-    // Comportamiento normal
-    _originalCloseShiftModal();
-  };
 /**
  * Confirma la apertura de turno.
  */
@@ -3139,13 +3129,19 @@ window.solicitarAutorizacionDispositivo = async () => {
 };
 
 /* ============ ESC cierra modales ============ */
+  /* ============ ESC cierra modales ============ */
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      // 🆕 Si el modal de turno está obligatorio, NO hacer nada con Escape
+      const shiftModal = $('shift-modal');
+      if (shiftModal && shiftModal.dataset.forced === '1' && !shiftModal.classList.contains('hidden')) {
+        console.warn('[Shift] Escape bloqueado: el modal es obligatorio');
+        return;
+      }
       if (!$('print-format-modal').classList.contains('hidden')) return closePrintModal();
       if (!$('scanner-modal').classList.contains('hidden')) return closeScanner();
     }
   });
-  
   /* ============================================================
      🆕 FUNCIÓN DE ESCAPE: cerrar sesión desde el modal obligatorio
      ============================================================ */
