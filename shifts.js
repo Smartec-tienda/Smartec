@@ -308,7 +308,7 @@ window.SmartecShift = (() => {
   /* ============================================================
      CONFIRMAR ENTRADA
   ============================================================ */
-  async function confirmOpenShift() {
+   async function confirmOpenShift() {
     _require();
     const $ = _ctx.$;
     const user = _u();
@@ -347,6 +347,13 @@ window.SmartecShift = (() => {
         docId: ref.id,
         note: `Turno iniciado: ${store.name} · ${ud.name || user.email}`
       });
+
+      // 🆕 Quitar el modo obligatorio ANTES de cerrar
+      // (si no, closeShiftModal bloquea el cierre y el modal queda pegado)
+      const modal = $('shift-modal');
+      if (modal) {
+        modal.dataset.forced = '0';
+      }
 
       closeShiftModal();
       updateShiftButton();
