@@ -96,34 +96,41 @@ window.SmartecShift = (() => {
     const textD = $('shift-btn-text');
     const timerD = $('shift-timer');
 
-    if (!btnDesktop || !btnMobile) return;
+    // 🆕 Tolerante: basta con que exista AL MENOS UNO de los botones.
+    //    (En home.html no hay "shift-btn-mobile", solo en venta.html)
+    if (!btnDesktop && !btnMobile) return;
+
+    const buttons = [btnDesktop, btnMobile].filter(Boolean);
 
     // Ocultar si la tienda tiene turnos desactivados
     if (store?.shiftEnabled === false) {
-      btnDesktop.classList.add('hidden');
-      btnMobile.classList.add('hidden');
+      buttons.forEach(b => b.classList.add('hidden'));
       stopShiftTimer();
       return;
     }
 
-    btnDesktop.classList.remove('hidden');
-    btnMobile.classList.remove('hidden');
+    // Mostrar todos los botones existentes
+    buttons.forEach(b => b.classList.remove('hidden'));
 
     if (currentShift) {
       // Turno abierto → rojo "Marcar salida"
       if (iconD) iconD.innerText = '🔴';
       if (iconM) iconM.innerText = '🔴';
       if (textD) textD.innerText = 'Marcar salida';
-      btnDesktop.classList.remove('bg-white/10', 'hover:bg-white/20');
-      btnDesktop.classList.add('bg-red-500', 'hover:bg-red-600');
+      buttons.forEach(b => {
+        b.classList.remove('bg-white/10', 'hover:bg-white/20');
+        b.classList.add('bg-red-500', 'hover:bg-red-600');
+      });
       startShiftTimer();
     } else {
       // Sin turno → verde "Marcar entrada"
       if (iconD) iconD.innerText = '🟢';
       if (iconM) iconM.innerText = '🟢';
       if (textD) textD.innerText = 'Marcar entrada';
-      btnDesktop.classList.remove('bg-red-500', 'hover:bg-red-600');
-      btnDesktop.classList.add('bg-white/10', 'hover:bg-white/20');
+      buttons.forEach(b => {
+        b.classList.remove('bg-red-500', 'hover:bg-red-600');
+        b.classList.add('bg-white/10', 'hover:bg-white/20');
+      });
       stopShiftTimer();
       if (timerD) timerD.classList.add('hidden');
     }
