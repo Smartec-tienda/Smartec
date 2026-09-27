@@ -366,14 +366,23 @@ exports.verifyWebAuthnRegistration = onCall(
       );
     }
 
-    const {
-      credentialPublicKey,
-      credentialID,
-      counter
-    } = verification.registrationInfo;
+    console.log('registrationInfo:', JSON.stringify(verification.registrationInfo, (key, val) => {
+      if (val instanceof Uint8Array) return '<Uint8Array:' + val.length + '>';
+      return val;
+    }, 2));
+
+    const credInfo = verification.registrationInfo;
+    const credentialPublicKey = credInfo.credentialPublicKey;
+    // En v13+ el campo es credentialID, en v14 puede ser credential.id
+    const credentialID = credInfo.credentialID || (credInfo.credential && credInfo.credential.id);
+    const counter = credInfo.counter || 0;
+
+    if (!credentialPublicKey) {
+      throw new HttpsError('internal', 'No se obtuvo credentialPublicKey del registro');
+    }
 
     const publicKeyBase64Url = isoBase64URL.fromBuffer(credentialPublicKey);
-    const credentialIdBase64Url = isoBase64URL.fromBuffer(credentialID);
+    const credentialIdBase64Url = credentialID ? isoBase64URL.fromBuffer(credentialID) : credentialId;
 
     return {
       success: true,
