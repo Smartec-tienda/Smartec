@@ -1602,6 +1602,59 @@
         </button>
       </div>
 
+      <!-- ============================================================ -->
+      <!-- 🆕 HISTORIAL DE DISPOSITIVOS (deviceHistory) -->
+      <!-- ============================================================ -->
+      <div class="bg-white rounded-xl shadow p-5 mb-6">
+        <div class="flex justify-between items-start mb-4 flex-wrap gap-3">
+          <div>
+            <h3 class="font-bold text-sd flex items-center gap-2">📱 Historial de dispositivos</h3>
+            <p class="text-xs text-gray-400 mt-1">Registro inmutable: altas de huella, desbloqueos, uso de PIN y liberaciones de cupo.</p>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <select id="dh-filter-action" class="px-3 py-1.5 border rounded-lg text-xs">
+              <option value="all">Todas las acciones</option>
+              <option value="register">🆕 Registro de huella</option>
+              <option value="re-register">🔄 Re-registro</option>
+              <option value="unlock">🔐 Desbloqueo con huella</option>
+              <option value="pin_fallback">🔢 Uso de PIN</option>
+              <option value="release">🗑 Liberación de cupo</option>
+            </select>
+            <select id="dh-filter-user" class="px-3 py-1.5 border rounded-lg text-xs">
+              <option value="all">Todos los usuarios</option>
+            </select>
+            <input id="dh-search" type="text" placeholder="Buscar..." class="px-3 py-1.5 border rounded-lg text-xs w-40">
+            <button onclick="renderDeviceHistory()" class="bg-sl text-white px-3 py-1.5 rounded-lg hover:bg-sd text-xs font-semibold">
+              🔄 Refrescar
+            </button>
+          </div>
+        </div>
+
+        <div id="dh-results-count" class="text-xs text-gray-400 mb-2">— eventos</div>
+
+        <div class="overflow-x-auto scrollbar-thin max-h-96">
+          <table class="w-full text-sm min-w-[900px]">
+            <thead class="bg-gray-50 text-sd sticky top-0">
+              <tr>
+                <th class="p-3 text-left">Fecha / hora</th>
+                <th class="p-3 text-left">Acción</th>
+                <th class="p-3 text-left">Usuario</th>
+                <th class="p-3 text-left">Dispositivo</th>
+                <th class="p-3 text-left">Motivo</th>
+                <th class="p-3 text-right"></th>
+              </tr>
+            </thead>
+            <tbody id="dh-tbody">
+              <tr>
+                <td colspan="6" class="p-6 text-center text-gray-400 text-xs">
+                  Presiona "Refrescar" para cargar el historial.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- KPIs de auditoría -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         <div class="bg-white p-4 rounded-xl shadow border-l-4 border-sl">
@@ -4236,15 +4289,33 @@ window.releaseDevice = async (sellerUid, fingerprint, index) => {
   }
 
   const label = device.label || 'Dispositivo desconocido';
-  const confirmMsg =
-    `⚠️ ¿Liberar cupo de este dispositivo?\n\n` +
+  const remaining = devices.length - 1;
+  const isLastDevice = remaining === 0;
+
+  let confirmMsg =
+    `⚠️ ¿Liberar este dispositivo?\n\n` +
     `Usuario: ${seller.name || seller.email}\n` +
     `Dispositivo: ${label}\n` +
     `ID: ${fingerprint.slice(0, 16)}…\n\n` +
-    `El dispositivo deberá autorizarse de nuevo al iniciar sesión desde ese equipo.\n\n` +
-    `¿Continuar?`;
+    `Dispositivos autorizados: ${devices.length} → quedará(n) ${remaining}\n\n` +
+    `El dispositivo deberá autorizarse de nuevo al iniciar sesión desde ese equipo.\n\n`;
+
+  if (isLastDevice) {
+    confirmMsg +=
+      `🔴 ATENCIÓN: este es el ÚLTIMO dispositivo autorizado.\n` +
+      `El usuario NO podrá iniciar sesión hasta que registre otro.\n\n` +
+      `¿Continuar de todas formas?`;
+  } else {
+    confirmMsg += `Esta acción quedará registrada en el historial de dispositivos.\n\n¿Continuar?`;
+  }
 
   if (!confirm(confirmMsg)) return;
+
+  // 🆕 Pedir motivo de liberación (opcional, pero útil para auditar)
+  const reason = prompt(
+    'Motivo de la liberación (opcional pero recomendado).\n\n' +
+    'Ej: "El empleado ya no trabaja aquí", "Cambio de equipo", "Por seguridad"'
+  ) || '';
 
   try {
     // Filtrar el dispositivo fuera del array
@@ -4255,15 +4326,37 @@ window.releaseDevice = async (sellerUid, fingerprint, index) => {
       updatedAt: serverTimestamp()
     });
 
-    // Auditoría
+    // Auditoría general
     await audit({
       action: 'update',
       collection: 'users',
       docId: sellerUid,
       before: { authorizedDevices: devices.length },
       after: { authorizedDevices: newDevices.length },
-      note: `Dispositivo liberado: ${label} (${fingerprint.slice(0, 12)}…) · Usuario: ${seller.name || seller.email}`
+      note: `Dispositivo liberado: ${label} (${fingerprint.slice(0, 12)}…) · Usuario: ${seller.name || seller.email}${reason ? ' · Motivo: ' + reason : ''}`
     });
+
+    // 🆕 Historial inmutable en deviceHistory
+    try {
+      await addDoc(collection(db, 'deviceHistory'), {
+        deviceFingerprint: fingerprint,
+        deviceLabel: label,
+        userId: sellerUid,
+        userEmail: seller.email || null,
+        userName: seller.name || seller.email || null,
+        userRole: seller.role || null,
+        storeId: seller.storeId || null,
+        credentialId: null,  // No hay credencial específica al liberar
+        action: 'release',
+        reason: reason || null,
+        releasedBy: currentUser?.uid || null,
+        releasedByEmail: currentUser?.email || null,
+        userAgent: navigator.userAgent,
+        createdAt: serverTimestamp()
+      });
+    } catch (e) {
+      console.warn('[releaseDevice] No se pudo guardar deviceHistory:', e);
+    }
 
     // Invalidar cache
     window.SmartecCache.invalidate('users');
@@ -13682,6 +13775,271 @@ window.viewTransfer = (id) => {
   alert(info);
 };
 
+/* ============================================================
+   🆕 HISTORIAL DE DISPOSITIVOS (deviceHistory)
+   ============================================================ */
+
+// Cache local de eventos cargados
+let _deviceHistoryCache = [];
+
+/**
+ * Carga y renderiza el historial de dispositivos.
+ */
+window.renderDeviceHistory = async function () {
+  const tbody = document.getElementById('dh-tbody');
+  const countEl = document.getElementById('dh-results-count');
+  if (!tbody) return;
+
+  // Bloquear durante la carga
+  tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-gray-400 text-xs">⏳ Cargando...</td></tr>';
+  if (countEl) countEl.innerText = '— eventos';
+
+  try {
+    // Solo superadmin puede leer todo el historial
+    if (currentUserData?.role !== 'superadmin') {
+      tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-gray-400 text-xs">Solo el superadmin puede ver el historial de dispositivos.</td></tr>';
+      return;
+    }
+
+    // Traer los últimos 500 eventos (ordenados por fecha desc)
+    const { orderBy, limit } = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const q = query(
+      collection(db, 'deviceHistory'),
+      orderBy('createdAt', 'desc'),
+      limit(500)
+    );
+    const snap = await getDocs(q);
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    _deviceHistoryCache = list;
+
+    // Poblar el filtro de usuarios (una sola vez si está vacío)
+    populateDeviceHistoryUserFilter(list);
+
+    // Aplicar filtros
+    const filtered = applyDeviceHistoryFilters(list);
+
+    // Contador
+    if (countEl) {
+      countEl.innerText = `${filtered.length} evento${filtered.length !== 1 ? 's' : ''} (de ${list.length} totales)`;
+    }
+
+    // Render
+    renderDeviceHistoryTable(filtered);
+
+  } catch (e) {
+    console.error('Error cargando deviceHistory:', e);
+    tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-red-500 text-xs">Error: ${e.message}</td></tr>`;
+  }
+};
+
+/**
+ * Pobla el selector de usuarios con los usuarios presentes en el historial.
+ */
+function populateDeviceHistoryUserFilter(list) {
+  const sel = document.getElementById('dh-filter-user');
+  if (!sel) return;
+
+  // Si ya tiene más de 1 opción, no repoblar
+  if (sel.options.length > 1) return;
+
+  const map = new Map();
+  list.forEach(ev => {
+    if (ev.userEmail && !map.has(ev.userEmail)) {
+      map.set(ev.userEmail, ev.userName || ev.userEmail);
+    }
+  });
+
+  const sorted = Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+
+  sorted.forEach(([email, name]) => {
+    const opt = document.createElement('option');
+    opt.value = email;
+    opt.textContent = `${name} — ${email}`;
+    sel.appendChild(opt);
+  });
+
+  // Listener (una sola vez)
+  if (!sel.dataset.listeners) {
+    sel.dataset.listeners = '1';
+    sel.onchange = () => {
+      const filtered = applyDeviceHistoryFilters(_deviceHistoryCache);
+      const countEl = document.getElementById('dh-results-count');
+      if (countEl) countEl.innerText = `${filtered.length} evento${filtered.length !== 1 ? 's' : ''}`;
+      renderDeviceHistoryTable(filtered);
+    };
+  }
+}
+
+/**
+ * Aplica los filtros al array de eventos.
+ */
+function applyDeviceHistoryFilters(list) {
+  const actionF = document.getElementById('dh-filter-action')?.value || 'all';
+  const userF = document.getElementById('dh-filter-user')?.value || 'all';
+  const searchF = (document.getElementById('dh-search')?.value || '').toLowerCase().trim();
+
+  let filtered = list.slice();
+
+  if (actionF !== 'all') {
+    filtered = filtered.filter(ev => ev.action === actionF);
+  }
+
+  if (userF !== 'all') {
+    filtered = filtered.filter(ev => ev.userEmail === userF);
+  }
+
+  if (searchF) {
+    filtered = filtered.filter(ev =>
+      (ev.userName || '').toLowerCase().includes(searchF) ||
+      (ev.userEmail || '').toLowerCase().includes(searchF) ||
+      (ev.deviceLabel || '').toLowerCase().includes(searchF) ||
+      (ev.reason || '').toLowerCase().includes(searchF)
+    );
+  }
+
+  return filtered;
+}
+
+/**
+ * Renderiza la tabla de eventos.
+ */
+function renderDeviceHistoryTable(list) {
+  const tbody = document.getElementById('dh-tbody');
+  if (!tbody) return;
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-gray-400 text-xs">Sin eventos con esos filtros.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.slice(0, 300).map(ev => {
+    const action = ev.action || '—';
+    const actionMeta = {
+      register:      { label: '🆕 Registro', color: 'bg-green-100 text-green-700' },
+      're-register': { label: '🔄 Re-registro', color: 'bg-blue-100 text-blue-700' },
+      unlock:        { label: '🔐 Desbloqueo', color: 'bg-purple-100 text-purple-700' },
+      pin_fallback:  { label: '🔢 PIN', color: 'bg-amber-100 text-amber-700' },
+      release:       { label: '🗑 Liberación', color: 'bg-red-100 text-red-700' },
+    }[action] || { label: action, color: 'bg-gray-100 text-gray-700' };
+
+    const fecha = ev.createdAt?.seconds
+      ? new Date(ev.createdAt.seconds * 1000).toLocaleString('es-CO', {
+          day: '2-digit', month: '2-digit', year: '2-digit',
+          hour: '2-digit', minute: '2-digit'
+        })
+      : '—';
+
+    const user = ev.userName || ev.userEmail || '—';
+    const device = ev.deviceLabel || '—';
+    const reason = ev.reason || '—';
+
+    return `
+      <tr class="border-b hover:bg-gray-50">
+        <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${fecha}</td>
+        <td class="p-3">
+          <span class="text-[10px] px-2 py-0.5 rounded ${actionMeta.color} font-semibold whitespace-nowrap">
+            ${actionMeta.label}
+          </span>
+        </td>
+        <td class="p-3 text-xs">
+          <p class="font-medium text-sd truncate max-w-[180px]">${escapeHtml(user)}</p>
+          <p class="text-[10px] text-gray-400 truncate max-w-[180px]">${escapeHtml(ev.userEmail) || ''}</p>
+        </td>
+        <td class="p-3 text-xs">
+          <p class="truncate max-w-[180px]">${escapeHtml(device)}</p>
+          <p class="text-[10px] text-gray-400 font-mono truncate max-w-[180px]">${escapeHtml((ev.deviceFingerprint || '').slice(0, 16))}…</p>
+        </td>
+        <td class="p-3 text-xs text-gray-600 max-w-md truncate">${escapeHtml(reason)}</td>
+        <td class="p-3 text-right whitespace-nowrap">
+          <button onclick='viewDeviceHistoryDetail("${ev.id}")' class="text-sl hover:underline text-xs">Ver →</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/**
+ * Muestra el detalle de un evento del historial.
+ */
+window.viewDeviceHistoryDetail = function (id) {
+  const ev = _deviceHistoryCache.find(x => x.id === id);
+  if (!ev) return;
+
+  const fecha = ev.createdAt?.seconds
+    ? new Date(ev.createdAt.seconds * 1000).toLocaleString('es-CO')
+    : '—';
+
+  const actionLabels = {
+    register: '🆕 Registro de huella',
+    're-register': '🔄 Re-registro de huella',
+    unlock: '🔐 Desbloqueo con huella',
+    pin_fallback: '🔢 Uso de PIN como fallback',
+    release: '🗑 Liberación de cupo'
+  };
+
+  const lines = [
+    `Acción:       ${actionLabels[ev.action] || ev.action || '—'}`,
+    `Fecha:        ${fecha}`,
+    `Usuario:      ${ev.userName || ev.userEmail || '—'}`,
+    `Email:        ${ev.userEmail || '—'}`,
+    `Rol:          ${ev.userRole || '—'}`,
+    `Tienda:       ${ev.storeId || '—'}`,
+    ``,
+    `Dispositivo:  ${ev.deviceLabel || '—'}`,
+    `Fingerprint:  ${ev.deviceFingerprint || '—'}`,
+    ``,
+    `Credencial:   ${ev.credentialId || '—'}`,
+    `Motivo:       ${ev.reason || '—'}`,
+  ];
+
+  if (ev.releasedBy) {
+    lines.push('');
+    lines.push(`Liberado por: ${ev.releasedByEmail || ev.releasedBy}`);
+  }
+
+  if (ev.userAgent) {
+    lines.push('');
+    lines.push(`User Agent:   ${ev.userAgent}`);
+  }
+
+  alert(lines.join('\n'));
+};
+
+/**
+ * Configurar listeners de filtros (una sola vez).
+ */
+function setupDeviceHistoryListeners() {
+  const actionSel = document.getElementById('dh-filter-action');
+  const searchInput = document.getElementById('dh-search');
+
+  if (actionSel && !actionSel.dataset.listeners) {
+    actionSel.dataset.listeners = '1';
+    actionSel.onchange = () => {
+      const filtered = applyDeviceHistoryFilters(_deviceHistoryCache);
+      const countEl = document.getElementById('dh-results-count');
+      if (countEl) countEl.innerText = `${filtered.length} evento${filtered.length !== 1 ? 's' : ''}`;
+      renderDeviceHistoryTable(filtered);
+    };
+  }
+
+  if (searchInput && !searchInput.dataset.listeners) {
+    searchInput.dataset.listeners = '1';
+    let timer = null;
+    searchInput.oninput = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const filtered = applyDeviceHistoryFilters(_deviceHistoryCache);
+        const countEl = document.getElementById('dh-results-count');
+        if (countEl) countEl.innerText = `${filtered.length} evento${filtered.length !== 1 ? 's' : ''}`;
+        renderDeviceHistoryTable(filtered);
+      }, 250);
+    };
+  }
+}
+
+// Configurar listeners apenas carga el script
+setupDeviceHistoryListeners();
 </script>
 
 </body>

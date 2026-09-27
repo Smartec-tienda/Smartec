@@ -1808,12 +1808,17 @@ window.closeSessionCompletely = closeSessionCompletely;
 let transfersUnsubscribe = null;
 
 function startTransfersBadgeListener() {
-  if (transfersUnsubscribe) transfersUnsubscribe();
+  if (transfersUnsubscribe) {
+    try { transfersUnsubscribe(); } catch(e) {}
+    transfersUnsubscribe = null;
+  }
 
   const q = query(
     collection(db,'transferRequests'),
     where('status','==','pendiente')
   );
+
+  let errorLogged = false;
 
   transfersUnsubscribe = onSnapshot(q, (snap) => {
     const count = snap.size;
@@ -1826,7 +1831,23 @@ function startTransfersBadgeListener() {
       badge.classList.add('hidden');
     }
   }, (err) => {
-    console.warn('Badge listener error:', err);
+    // 🆕 Silenciar el error de permisos. No es crítico.
+    //    (El badge simplemente no se actualizará en tiempo real)
+    if (!errorLogged) {
+      errorLogged = true;
+      const code = err?.code || '';
+      if (code === 'permission-denied' || String(err).includes('insufficient permissions')) {
+        // Silencioso: las reglas no permiten esta query, pero la app sigue funcionando
+        console.info('[Badge] Listener no autorizado (se ignora, no es crítico)');
+      } else {
+        console.warn('[Badge] Error no crítico:', err);
+      }
+    }
+    // Detener el listener para no acumular errores
+    if (transfersUnsubscribe) {
+      try { transfersUnsubscribe(); } catch(e) {}
+      transfersUnsubscribe = null;
+    }
   });
 }
 
