@@ -229,7 +229,18 @@ exports.verifyWebAuthnAssertion = onCall(
         expectedRPID,
         credential: {
           id: credentialId,
-          publicKey: Buffer.from(credData.publicKey, 'base64url'),
+          publicKey: (() => {
+            // SimpleWebAuthn espera la public key en formato COSE (Uint8Array).
+            // La extraemos del attestationObject usando @simplewebauthn/server.
+            const { isoBase64URL, isoCBOR } = require('@simplewebauthn/server/helpers');
+            const attestationBuffer = isoBase64URL.toBuffer(credData.attestationObject);
+            const decoded = isoCBOR.decodeFirst(attestationBuffer);
+            const authData = decoded.authData;
+            const credIdLen = (authData[53] << 8) | authData[54];
+            const publicKeyOffset = 55 + credIdLen;
+            const publicKeyBytes = authData.slice(publicKeyOffset);
+            return publicKeyBytes;
+          })(),
           counter: Number(credData.counter || 0),
           transports: credData.transports || []
         },
