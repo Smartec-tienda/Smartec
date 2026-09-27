@@ -1205,11 +1205,27 @@ $('reset-email')?.addEventListener('keypress', (e) => {
 });
 
 /* ============================================================
-   BOTÓN "SALIR" (no cierra sesión real — solo bloquea la UI)
+   BOTÓN "SALIR"
+   - Superadmin: cierra sesión directo (no tiene huella)
+   - Otros: bloquea la UI y pide huella/PIN
 ============================================================ */
 $('logout-btn').onclick = async () => {
-  // 🆕 No cerramos sesión de Firebase. Solo bloqueamos la UI y pedimos huella/PIN.
-  // Esto permite que al día siguiente la sesión siga activa y se pueda pedir huella directamente.
+  // 🆕 Si es superadmin → cerrar sesión directo (no tiene huella registrada)
+  if (_deviceGuardUserData?.role === 'superadmin') {
+    try {
+      await signOut(auth);
+      // onAuthStateChanged se encarga de mostrar el login
+    } catch (e) {
+      console.error('Error cerrando sesión de superadmin:', e);
+      alert('Error: ' + e.message);
+    }
+    return;
+  }
+
+  // 🆕 Otros roles: no cerramos sesión de Firebase.
+  // Solo bloqueamos la UI y pedimos huella/PIN.
+  // Esto permite que al día siguiente la sesión siga activa
+  // y se pueda pedir huella directamente.
 
   // 1. Generar fingerprint para saber quién es
   let fingerprint = '';
