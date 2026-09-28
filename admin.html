@@ -2081,6 +2081,62 @@
           <h3 class="font-bold text-sd mb-4">Categorías estacionales</h3>
           <div id="seasonal-categories" class="space-y-3 text-sm"></div>
         </div>
+
+        <!-- 🆕 IDENTIDAD VISUAL -->
+        <div class="bg-white p-6 rounded-xl shadow lg:col-span-2">
+          <h3 class="font-bold text-sd mb-4">🎨 Identidad visual</h3>
+          <p class="text-xs text-gray-500 mb-4">Sube el logo de tu empresa. Se mostrará en el header del catálogo público y en las pantallas internas.</p>
+
+          <div class="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-5 items-start">
+            <!-- Previsualización -->
+            <div class="bg-gray-50 rounded-xl p-4 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center min-h-[160px]">
+              <p class="text-[10px] text-gray-400 uppercase font-semibold mb-2">Vista previa</p>
+              <div id="logo-preview-container" class="w-full flex items-center justify-center">
+                <p class="text-xs text-gray-400 italic">Sin logo</p>
+              </div>
+            </div>
+
+            <!-- Controles -->
+            <div class="flex flex-col gap-3">
+              <input type="file" id="logo-file-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
+
+              <div id="logo-dropzone" class="img-dropzone">
+                <p class="text-xs text-gray-500">
+                  Arrastra tu logo aquí o haz clic en <b>"Subir logo"</b>
+                </p>
+                <p class="text-[10px] text-gray-400 mt-1">
+                  JPG, PNG, WebP o SVG · máx 5MB
+                </p>
+              </div>
+
+              <div class="flex gap-2 flex-wrap">
+                <button type="button" onclick="document.getElementById('logo-file-input').click()"
+                  class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
+                  📤 Subir logo
+                </button>
+                <button type="button" id="logo-remove-btn"
+                  class="hidden bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-100 text-sm font-semibold">
+                  🗑 Eliminar logo
+                </button>
+                <button type="button" id="logo-save-btn"
+                  class="hidden bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-semibold">
+                  💾 Guardar logo
+                </button>
+              </div>
+
+              <div id="logo-progress-wrap" class="upload-progress-wrap">
+                <div class="flex justify-between items-center text-xs font-semibold text-sd">
+                  <span id="logo-progress-text">📤 Subiendo logo…</span>
+                </div>
+                <div class="upload-progress-bar">
+                  <div id="logo-progress-fill" class="upload-progress-fill"></div>
+                </div>
+              </div>
+
+              <p id="logo-status-msg" class="text-xs hidden"></p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -2278,7 +2334,7 @@ import { getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { getStorage, ref, uploadBytes, getDownloadURL }
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
 
@@ -2682,6 +2738,7 @@ async function loadAll() {
   renderCashRegisters();
   renderAudit();
   renderSettings();
+  initLogoListeners();
   populateStoreSelects();
   populateInventoryFilters();
   populateArqueoFilters();
@@ -7812,6 +7869,8 @@ function renderSettings() {
   $('set-companyAddress').value = settings.companyAddress || '';
   $('set-companyPhone').value = settings.companyPhone || '';
   $('set-companyEmail').value = settings.companyEmail || '';
+  // 🆕 Render logo
+   renderLogoPreview();
 
   // Categorías estacionales
   const el = $('seasonal-categories');
@@ -7823,6 +7882,297 @@ function renderSettings() {
       ${g.name} <span class="text-xs text-gray-400">(estacional)</span>
     </label>
   `).join('') : '<p class="text-gray-400 text-xs">Sin categorías estacionales</p>';
+}
+
+/* ============================================================
+   🆕 LOGO — Identidad visual
+============================================================ */
+
+let _pendingLogoFile = null;      // Archivo seleccionado pendiente de guardar
+let _currentLogoUrl = null;       // URL del logo guardado en Firestore
+
+/**
+ * Renderiza la vista previa del logo según el estado actual.
+ */
+function renderLogoPreview() {
+  const container = $('logo-preview-container');
+  const removeBtn = $('logo-remove-btn');
+  const saveBtn = $('logo-save-btn');
+  if (!container) return;
+
+  // Prioridad: archivo pendiente > logo guardado > sin logo
+  if (_pendingLogoFile) {
+    const blobUrl = URL.createObjectURL(_pendingLogoFile);
+    container.innerHTML = `<img src="${blobUrl}" class="max-h-32 max-w-full object-contain" id="logo-preview-img">`;
+    removeBtn?.classList.remove('hidden');
+    saveBtn?.classList.remove('hidden');
+    removeBtn.innerText = '↩️ Descartar';
+    return;
+  }
+
+  // Leer logo guardado desde settings
+  _currentLogoUrl = settings.logoUrl || null;
+
+  if (_currentLogoUrl) {
+    container.innerHTML = `<img src="${_currentLogoUrl}" class="max-h-32 max-w-full object-contain" alt="Logo">`;
+    removeBtn?.classList.remove('hidden');
+    saveBtn?.classList.add('hidden');
+    removeBtn.innerText = '🗑 Eliminar logo';
+  } else {
+    container.innerHTML = '<p class="text-xs text-gray-400 italic">Sin logo</p>';
+    removeBtn?.classList.add('hidden');
+    saveBtn?.classList.add('hidden');
+  }
+}
+
+/**
+ * Inicializa los listeners del logo (llamar una sola vez al cargar el panel).
+ */
+function initLogoListeners() {
+  const fileInput = $('logo-file-input');
+  const dropzone = $('logo-dropzone');
+  const removeBtn = $('logo-remove-btn');
+  const saveBtn = $('logo-save-btn');
+  if (!fileInput || fileInput.dataset.listeners) return;
+  fileInput.dataset.listeners = '1';
+
+  // Click en input
+  fileInput.onchange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) handleLogoFile(file);
+    fileInput.value = '';
+  };
+
+  // Click en dropzone → abrir selector
+  dropzone.onclick = () => fileInput.click();
+
+  // Drag & drop sobre dropzone
+  ['dragenter', 'dragover'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove('dragover');
+    });
+  });
+  dropzone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer?.files?.[0];
+    if (file) handleLogoFile(file);
+  });
+
+  // Botón descartar/eliminar
+  removeBtn.onclick = async () => {
+    if (_pendingLogoFile) {
+      // Descartar archivo pendiente
+      _pendingLogoFile = null;
+      renderLogoPreview();
+      showLogoStatus('', '');
+      return;
+    }
+    // Eliminar logo guardado
+    if (!confirm('¿Eliminar el logo actual?\n\nEl catálogo volverá a mostrar el texto "SMARTEC".')) return;
+    await deleteLogo();
+  };
+
+  // Botón guardar
+  saveBtn.onclick = () => saveLogo();
+}
+
+/**
+ * Valida el archivo seleccionado y lo deja pendiente de guardar.
+ */
+function handleLogoFile(file) {
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+  const maxSizeMB = 5;
+
+  if (!validTypes.includes(file.type)) {
+    showLogoStatus('⚠️ Formato no soportado. Usa JPG, PNG, WebP o SVG.', 'error');
+    return;
+  }
+  if (file.size > maxSizeMB * 1024 * 1024) {
+    showLogoStatus(`⚠️ El archivo supera ${maxSizeMB}MB.`, 'error');
+    return;
+  }
+
+  _pendingLogoFile = file;
+  renderLogoPreview();
+  showLogoStatus('✅ Listo para guardar. Clic en "Guardar logo".', 'ok');
+}
+
+/**
+ * Sube el logo pendiente a Storage y lo guarda en Firestore.
+ */
+async function saveLogo() {
+  if (!_pendingLogoFile) return;
+
+  const wrap = $('logo-progress-wrap');
+  const fill = $('logo-progress-fill');
+  const text = $('logo-progress-text');
+  const saveBtn = $('logo-save-btn');
+
+  wrap?.classList.add('active');
+  if (fill) fill.style.width = '10%';
+  if (text) text.innerText = '📤 Procesando logo…';
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.innerText = '⏳ Subiendo…'; }
+
+  try {
+    // Si es SVG, subir directo (no lo convertimos a WebP).
+    // Si es JPG/PNG/WebP, convertir a WebP 92% máx 2000px (mismo flujo de productos).
+    let blob, contentType;
+    if (_pendingLogoFile.type === 'image/svg+xml') {
+      blob = _pendingLogoFile;
+      contentType = 'image/svg+xml';
+    } else {
+      const result = await convertImageToWebp(_pendingLogoFile);
+      blob = result.blob;
+      contentType = 'image/webp';
+    }
+
+    if (fill) fill.style.width = '50%';
+    if (text) text.innerText = '📤 Subiendo a Storage…';
+
+    // Ruta fija: se sobreescribe cada vez
+    const ext = contentType === 'image/svg+xml' ? 'svg' : 'webp';
+    const path = `settings/logo.${ext}`;
+    const storageRef = ref(storage, path);
+
+    await uploadBytes(storageRef, blob, {
+      contentType,
+      cacheControl: 'public, max-age=3600'
+    });
+
+    if (fill) fill.style.width = '85%';
+    if (text) text.innerText = '💾 Guardando URL…';
+
+    const url = await getDownloadURL(storageRef);
+
+    // Guardar en Firestore
+    await updateDoc(doc(db, 'settings', 'general'), {
+      logoUrl: url,
+      logoUpdatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    // Auditoría
+    await audit({
+      action: 'update',
+      collection: 'settings',
+      docId: 'general',
+      note: 'Logo actualizado'
+    });
+
+    // Actualizar cache local
+    window.SmartecCache.invalidate('settings');
+    settings.logoUrl = url;
+    _pendingLogoFile = null;
+
+    if (fill) fill.style.width = '100%';
+    if (text) text.innerText = '✅ Logo guardado';
+    showLogoStatus('✅ Logo actualizado correctamente.', 'ok');
+
+    renderLogoPreview();
+
+    // Refrescar el resto del panel
+    setTimeout(() => {
+      wrap?.classList.remove('active');
+      if (fill) fill.style.width = '0%';
+    }, 1500);
+
+  } catch (e) {
+    console.error('Error guardando logo:', e);
+    showLogoStatus('❌ Error: ' + e.message, 'error');
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.innerText = '💾 Guardar logo'; }
+  }
+}
+
+/**
+ * Elimina el logo actual de Storage y de Firestore.
+ */
+async function deleteLogo() {
+  try {
+    // Intentar borrar ambos posibles archivos (webp y svg) por si acaso
+    const paths = ['settings/logo.webp', 'settings/logo.svg'];
+    for (const p of paths) {
+      try {
+        await deleteObject(ref(storage, p));
+      } catch (e) {
+        // Silencioso: si el archivo no existe, no es problema
+      }
+    }
+
+    // Quitar el campo de Firestore
+    await updateDoc(doc(db, 'settings', 'general'), {
+      logoUrl: null,
+      logoUpdatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'settings',
+      docId: 'general',
+      note: 'Logo eliminado'
+    });
+
+    window.SmartecCache.invalidate('settings');
+    settings.logoUrl = null;
+    _pendingLogoFile = null;
+    _currentLogoUrl = null;
+
+    renderLogoPreview();
+    showLogoStatus('✅ Logo eliminado.', 'ok');
+
+  } catch (e) {
+    console.error('Error eliminando logo:', e);
+    showLogoStatus('❌ Error eliminando: ' + e.message, 'error');
+  }
+}
+
+/**
+ * Convierte una imagen a WebP optimizado (92%, máx 2000px).
+ * Reutilizable para logo y otros usos.
+ */
+async function convertImageToWebp(file) {
+  const imageBitmap = await loadImageFromFile(file);
+  const MAX_DIM = 2000;
+  let { width, height } = imageBitmap;
+  if (width > MAX_DIM || height > MAX_DIM) {
+    const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imageBitmap, 0, 0, width, height);
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (b) => b ? resolve(b) : reject(new Error('No se pudo convertir a WebP')),
+      'image/webp',
+      0.92
+    );
+  });
+  return { blob };
+}
+
+/**
+ * Muestra un mensaje de estado debajo de los botones.
+ */
+function showLogoStatus(msg, type) {
+  const el = $('logo-status-msg');
+  if (!el) return;
+  if (!msg) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerText = msg;
+  el.className = 'text-xs ' + (type === 'error' ? 'text-red-600' : 'text-green-600');
 }
 
 $('save-general-settings').onclick = async () => {
