@@ -7882,10 +7882,15 @@ document.querySelectorAll('[data-seasonal]').forEach(cb => {
 /* ============================================================
    SELECTS GLOBALES
 ============================================================ */
+/* ============================================================
+   SELECTS GLOBALES
+============================================================ */
 function populateStoreSelects() {
   const opts = stores.map(s =>
     `<option value="${s.storeId}">${s.name}${!s.active?' (inactiva)':''}</option>`
   ).join('');
+
+  // === Filtros de la pestaña Vendedores y Ventas ===
   ['sellers-store-filter','sales-store-filter'].forEach(id => {
     const sel = $(id);
     if (!sel) return;
@@ -7893,20 +7898,34 @@ function populateStoreSelects() {
     sel.innerHTML = `<option value="all">Todas las tiendas</option>${opts}`;
     sel.value = prev || 'all';
   });
-  // Dashboard tiene opción extra "solo activas"
-  const dashSel = $('dash-store');
-  const prev = dashSel.value;
-  dashSel.innerHTML = `<option value="all">Todas las tiendas</option>
-                       <option value="active">Solo tiendas activas</option>
-                       ${opts}`;
-  dashSel.value = prev || 'all';
-  $('dash-store').onchange = renderDashboard;
-  $('sellers-store-filter').onchange = renderSellers;
-  $('sales-store-filter').onchange = renderSales;
-  // 🆕 Nuevos filtros de pago
+
+  // === Filtros del Dashboard ===
+  const dashFilter = $('dash-store-filter');
+  if (dashFilter) {
+    const prev = dashFilter.value;
+    dashFilter.innerHTML = `<option value="all">Todas las tiendas</option>
+                            <option value="active">Solo tiendas activas</option>
+                            ${opts}`;
+    dashFilter.value = prev || 'all';
+  }
+
+  const dashSellerFilter = $('dash-seller-filter');
+  if (dashSellerFilter && !dashSellerFilter.dataset.loaded) {
+    // El filtro de vendedores lo llena populateDashFilters, aquí solo aseguramos que exista
+    dashSellerFilter.dataset.loaded = '1';
+  }
+
+  // === onchange handlers ===
+  const sellersFilter = $('sellers-store-filter');
+  if (sellersFilter) sellersFilter.onchange = renderSellers;
+
+  const salesFilter = $('sales-store-filter');
+  if (salesFilter) salesFilter.onchange = renderSales;
+
   const pmf = $('sales-payment-method-filter');
-  const psf = $('sales-payment-status-filter');
   if (pmf) pmf.onchange = renderSales;
+
+  const psf = $('sales-payment-status-filter');
   if (psf) psf.onchange = renderSales;
 }
 /* ============================================================

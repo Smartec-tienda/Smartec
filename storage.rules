@@ -53,7 +53,7 @@ service firebase.storage {
     // ============================================================
     match /products/{productId}/{fileName} {
       allow read: if true;
-      allow write: if isSuperAdmin()
+      allow write: if isAuth()
                    && isUnder5MB()
                    && isImage();
     }
