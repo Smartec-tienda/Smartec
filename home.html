@@ -238,7 +238,7 @@
     opacity: 0;
     pointer-events: none;
   }
-  
+
   /* ============ MOBILE FIXES ============ */
   @media (max-width: 768px) {
     .glass, .glass-soft, .glass-strong {
@@ -609,6 +609,17 @@ let settingsGlobal = {};   // 🆕 cache de settings para leer logoUrl
 const WEBAUTHN_RP_ID = 'smartec-tienda.github.io';
 const WEBAUTHN_RP_NAME = 'Smartec';
 
+/**
+ * Quita el splash screen (una sola vez, aunque se llame varias veces).
+ * Se llama cuando la pantalla final ya está lista con su logo aplicado.
+ */
+function hideSplash() {
+  if (document.body.classList.contains('app-loading')) {
+    document.body.classList.remove('app-loading');
+    console.log('[SPLASH] Oculto. App lista.');
+  }
+}
+
 /* Estado del flujo de huella */
 let _pendingRegister = null;      // Datos para registrar huella tras login
 let _pendingUnlockUser = null;    // Usuario detectado en el dispositivo
@@ -888,7 +899,11 @@ async function openUnlockModal() {
   const modal = $('unlock-fingerprint-modal');
   modal.classList.remove('hidden');
   modal.classList.add('flex');
+
+  // 🆕 Quitar splash: el modal ya está listo
+  hideSplash();
 }
+
 
 /**
  * Cierra el modal de unlock.
@@ -1169,6 +1184,9 @@ function openRegisterFingerprintModal() {
   const modal = $('register-fingerprint-modal');
   modal.classList.remove('hidden');
   modal.classList.add('flex');
+
+  // 🆕 Quitar splash: el modal ya está listo
+  hideSplash();
 }
 
 /**
@@ -1407,6 +1425,9 @@ async function enterHomeAfterFullFlow(user, userData, fingerprint) {
   // Todo OK → mostrar home
   $('login-screen').classList.add('hidden');
   $('home-screen').classList.remove('hidden');
+
+  // 🆕 Quitar splash: el home ya está listo
+  hideSplash();
 
   $('user-name').innerText = userData.name || user.email;
   $('user-role').innerText = ROLE_LABELS[userData.role] || userData.role;
@@ -1671,6 +1692,17 @@ onAuthStateChanged(auth, async user => {
   $('login-screen').classList.add('hidden');
   $('home-screen').classList.add('hidden');
 
+  // 🆕 Esperar a que los logos estén aplicados antes de mostrar cualquier pantalla.
+  //    Timeout de seguridad de 5s para no dejar al usuario atrapado.
+  try {
+    await Promise.race([
+      window.__logoReadyPromise || Promise.resolve(),
+      new Promise(resolve => setTimeout(resolve, 5000))
+    ]);
+  } catch (e) {
+    console.warn('[HOME] Error esperando logos:', e);
+  }
+
   if (!user) {
     // Sin sesión → SIEMPRE mostrar login normal.
     // La huella solo se pide cuando YA hay sesión activa de Firebase Auth.
@@ -1678,6 +1710,9 @@ onAuthStateChanged(auth, async user => {
     _deviceGuardUserData = null;
     _pendingUnlockUser = null;
     $('login-screen').classList.remove('hidden');
+
+    // 🆕 Quitar el splash: ya tenemos el login listo con su logo
+    document.body.classList.remove('app-loading');
     return;
   }
 
@@ -1900,7 +1935,10 @@ window.openPinModal = (origin) => {
   modal.classList.add('flex');
 
   setTimeout(() => $('pin-input')?.focus(), 100);
-};
+
+  // 🆕 Quitar splash: el modal ya está listo
+  hideSplash();
+}
 
 window.closePinModal = () => {
   const modal = $('pin-modal');
@@ -2184,17 +2222,26 @@ async function loadAndApplyLogo() {
 
     // ============ LOGIN (logo del header) ============
     const loginContainer = $('login-logo-container');
-    if (loginContainer && settingsGlobal.logoUrl) {
-      loginContainer.innerHTML = `
-        <img src="${settingsGlobal.logoUrl}" alt="Smartec"
-             class="max-h-16 mx-auto object-contain">
-      `;
+    if (loginContainer) {
+      if (settingsGlobal.logoUrl) {
+        loginContainer.innerHTML = `
+          <img src="${settingsGlobal.logoUrl}" alt="Smartec"
+               class="max-h-16 mx-auto object-contain" decoding="async">
+        `;
+      } else {
+        loginContainer.innerHTML = `
+          <h1 class="text-3xl font-extrabold text-center logo-mark mb-2">SMARTEC</h1>
+        `;
+      }
     }
+
+    // ============ HEADER DEL HOME ============
+    applyLogoToHomeHeader();
 
     // ============ FOOTER ============
     const footerContainer = $('footer-logo');
     if (footerContainer && settingsGlobal.footerLogoUrl) {
-      footerContainer.innerHTML = `<img src="${settingsGlobal.footerLogoUrl}" alt="Smartec" class="h-16 md:h-20 object-contain mx-auto">`;
+      footerContainer.innerHTML = `<img src="${settingsGlobal.footerLogoUrl}" alt="Smartec" class="h-16 md:h-20 object-contain mx-auto" decoding="async">`;
 
       // Ocultar slogan si el logo del footer ya lo incluye
       const slogan = footerContainer.parentElement.querySelector('p');
@@ -2204,6 +2251,14 @@ async function loadAndApplyLogo() {
     }
   } catch (e) {
     console.warn('[HOME] No se pudo cargar el logo:', e);
+
+    // Fallback: mostrar texto si falla la carga
+    const loginContainer = $('login-logo-container');
+    if (loginContainer) {
+      loginContainer.innerHTML = `
+        <h1 class="text-3xl font-extrabold text-center logo-mark mb-2">SMARTEC</h1>
+      `;
+    }
   }
 }
 
@@ -2217,14 +2272,15 @@ function applyLogoToHomeHeader() {
 
   if (settingsGlobal.logoUrl) {
     headerLogo.innerHTML = `<img src="${settingsGlobal.logoUrl}" alt="Smartec"
-                                   class="h-9 md:h-10 object-contain">`;
+                                   class="h-9 md:h-10 object-contain" decoding="async">`;
   } else {
     headerLogo.innerHTML = `<h1 class="text-lg md:text-xl font-extrabold tracking-tight">SMART<span style="color:#5AC8FA">EC</span></h1>`;
   }
 }
 
 // Cargar el logo al iniciar (para el login)
-loadAndApplyLogo();
+// Guardamos la promesa globalmente para poder esperarla antes de quitar el splash
+window.__logoReadyPromise = loadAndApplyLogo();
 
 function renderModules(role) {
   const grid = $('modules-grid');
