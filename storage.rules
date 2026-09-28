@@ -57,7 +57,15 @@ service firebase.storage {
                    && isUnder5MB()
                    && isImage();
     }
-
+    // ============================================================
+    // SETTINGS (logo y otros recursos de identidad visual)
+    // ============================================================
+    match /settings/{fileName} {
+      allow read: if true;
+      allow write: if isAuth()
+                   && isUnder5MB()
+                   && request.resource.contentType.matches('image/.*');
+    }
     // ============================================================
     // WARRANTIES (adjuntos de garantías)
     // ============================================================
