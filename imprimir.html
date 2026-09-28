@@ -7,110 +7,412 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
 <script src="cache.js"></script>
-<style>
-  :root{--sd:#0A2A4A;--sl:#4A7A9A}
-  body { font-family: Arial, Helvetica, sans-serif; }
+<script src="header-app.js"></script>
+<script src="favicon.js"></script>
 
-  /* ============ BOTONES EN PANTALLA ============ */
+
+<style>
+  :root{
+    --sd:#0A2A4A;
+    --sl:#4A7A9A;
+    --apple-blue:#0071E3;
+    --apple-pink:#FF375F;
+    --apple-green:#30D158;
+    --apple-orange:#FF9F0A;
+    --apple-text:#1D1D1F;
+    --apple-dim:#6E6E73;
+    --apple-border:rgba(0,0,0,0.08);
+  }
+
+  /* ============ BASE ============ */
+  *{ -webkit-font-smoothing:antialiased; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, Helvetica, sans-serif;
+    margin: 0;
+    background: #F5F5F7;
+    color: var(--apple-text);
+  }
+
+  /* ============ TOOLBAR (SOLO PANTALLA) ============ */
   .toolbar {
     position: fixed; top: 0; left: 0; right: 0;
-    background: #0A2A4A; color: white;
-    padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
-    z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    color: var(--apple-text);
+    padding: 12px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px;
+    z-index: 100;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
   }
-  .toolbar h1 { font-size: 15px; font-weight: bold; }
-  .toolbar button {
-    background: #4A7A9A; color: white; border: none; padding: 8px 16px;
-    border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+  .toolbar h1 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--apple-text);
+    letter-spacing: -0.01em;
+    margin: 0;
+    display: flex; align-items: center; gap: 8px;
   }
-  .toolbar button:hover { background: #5d8aab; }
-  .toolbar .btn-close { background: #dc2626; }
-  .toolbar .btn-close:hover { background: #b91c1c; }
+  .toolbar .format-switch {
+    display: flex; gap: 6px;
+    background: rgba(0,0,0,0.04);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .toolbar .format-switch button {
+    background: transparent;
+    color: var(--apple-dim);
+    border: none;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .25s cubic-bezier(.2,.8,.2,1);
+  }
+  .toolbar .format-switch button.active {
+    background: white;
+    color: var(--apple-text);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.08);
+  }
+  .toolbar .format-switch button:hover:not(.active) {
+    color: var(--apple-text);
+  }
+  .toolbar .actions {
+    display: flex; gap: 8px;
+  }
+  .toolbar .btn-print {
+    background: var(--apple-blue);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .25s cubic-bezier(.2,.8,.2,1);
+    box-shadow: 0 1px 2px rgba(0,113,227,0.2), 0 4px 12px rgba(0,113,227,0.3);
+  }
+  .toolbar .btn-print:hover {
+    background: #0077ED;
+    transform: scale(1.02);
+  }
+  .toolbar .btn-close {
+    background: rgba(0,0,0,0.05);
+    color: var(--apple-text);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .25s cubic-bezier(.2,.8,.2,1);
+  }
+  .toolbar .btn-close:hover { background: rgba(0,0,0,0.1); }
 
+  /* ============ WRAPPER ============ */
   .doc-wrapper {
-    padding: 80px 20px 40px;
-    max-width: 900px; margin: 0 auto;
-    background: #f3f4f6; min-height: 100vh;
+    padding: 96px 20px 40px;
+    min-height: 100vh;
+    background:
+      radial-gradient(at 20% 20%, rgba(90,200,250,0.10) 0%, transparent 50%),
+      radial-gradient(at 80% 10%, rgba(191,90,242,0.08) 0%, transparent 50%),
+      #F5F5F7;
   }
 
+  /* ============ DOCUMENTO (REMISIÓN / MEDIA CARTA) ============ */
   .doc {
-    background: white; padding: 40px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-    border-radius: 4px;
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06), 0 24px 64px rgba(0,0,0,0.08);
+    max-width: 216mm;
+    margin: 0 auto;
+  }
+  /* Media carta: ancho reducido (140mm) */
+  .doc.doc-mediacarta {
+    max-width: 140mm;
+    padding: 32px;
   }
 
-  /* ============ ESTILOS DEL DOCUMENTO ============ */
-  .doc-header { border-bottom: 2px solid #0A2A4A; padding-bottom: 16px; margin-bottom: 24px; }
-  .doc-header h1 { color: #0A2A4A; font-size: 28px; font-weight: bold; margin: 0; }
-  .doc-header .sub { color: #4A7A9A; font-size: 12px; font-weight: bold; letter-spacing: 1px; margin-top: 2px; }
-  .doc-header .company-info { font-size: 11px; color: #555; margin-top: 10px; line-height: 1.5; }
+  /* ============ CABECERA DEL DOCUMENTO ============ */
+  .doc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--apple-blue);
+  }
+  .doc-header .brand h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0;
+    color: var(--apple-blue);
+  }
+  .doc-header .brand h1 span { color: var(--apple-text); }
+  .doc-header .brand .sub {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--apple-dim);
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+  .doc-header .brand .company-info {
+    font-size: 11px;
+    color: #555;
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+  .doc-header .brand .company-info b { color: var(--apple-text); }
   .doc-header .doc-type { text-align: right; }
-  .doc-header .doc-type .t { font-size: 20px; font-weight: bold; color: #0A2A4A; }
-  .doc-header .doc-type .num { font-size: 12px; color: #666; margin-top: 4px; }
-  .doc-header .doc-type .date { font-size: 11px; color: #888; }
+  .doc-header .doc-type .t {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--apple-text);
+    letter-spacing: -0.02em;
+  }
+  .doc-header .doc-type .num {
+    font-size: 12px;
+    color: var(--apple-text);
+    margin-top: 4px;
+  }
+  .doc-header .doc-type .num b { font-weight: 700; }
+  .doc-header .doc-type .date {
+    font-size: 11px;
+    color: var(--apple-dim);
+    margin-top: 2px;
+  }
+  .doc-header .doc-type .store {
+    font-size: 11px;
+    color: var(--apple-dim);
+    margin-top: 6px;
+  }
+  .doc-header .doc-type .store b { color: var(--apple-text); }
 
+  /* ============ SECCIONES ============ */
   .section { margin-bottom: 20px; }
-  .section-title { font-size: 11px; font-weight: bold; color: #0A2A4A; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
-  .section-body { font-size: 12px; color: #333; line-height: 1.6; }
-  .section-body b { color: #0A2A4A; }
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--apple-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(0,113,227,0.15);
+  }
+  .section-body {
+    font-size: 12px;
+    color: #333;
+    line-height: 1.6;
+  }
+  .section-body b { color: var(--apple-text); font-weight: 600; }
 
-  table.items { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }
-  table.items th { background: #0A2A4A; color: white; padding: 8px; text-align: left; font-weight: 600; }
+  /* ============ TABLA DE ITEMS ============ */
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 11px;
+  }
+  table.items th {
+    background: var(--apple-blue);
+    color: white;
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  table.items th:first-child { border-top-left-radius: 6px; }
+  table.items th:last-child { border-top-right-radius: 6px; }
   table.items th.r { text-align: right; }
   table.items th.c { text-align: center; }
-  table.items td { padding: 7px 8px; border-bottom: 1px solid #e5e7eb; }
+  table.items td {
+    padding: 9px 8px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    color: #333;
+  }
   table.items td.r { text-align: right; }
   table.items td.c { text-align: center; }
-  table.items tr:nth-child(even) td { background: #fafafa; }
+  table.items tr:nth-child(even) td { background: #FAFBFC; }
+  table.items tr:last-child td { border-bottom: 1px solid rgba(0,0,0,0.1); }
 
-  .totals { margin-top: 16px; display: flex; justify-content: flex-end; }
-  .totals table { width: 280px; font-size: 12px; }
-  .totals table td { padding: 4px 8px; }
-  .totals table td.r { text-align: right; }
-  .totals .total-row td { font-size: 16px; font-weight: bold; color: #0A2A4A; border-top: 2px solid #0A2A4A; padding-top: 8px; }
+  /* ============ TOTALES ============ */
+  .totals {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .totals table { width: 300px; font-size: 12px; }
+  .totals table td {
+    padding: 6px 10px;
+    color: #333;
+  }
+  .totals table td.r { text-align: right; font-weight: 500; }
+  .totals .total-row td {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--apple-text);
+    border-top: 2px solid var(--apple-blue);
+    padding-top: 10px;
+    letter-spacing: -0.01em;
+  }
+  .totals .total-row td:first-child { color: var(--apple-blue); }
 
-  .garantia { font-size: 10px; color: #666; margin-top: 24px; padding: 12px; background: #f9fafb; border-left: 3px solid #4A7A9A; line-height: 1.6; }
+  /* ============ GARANTÍA ============ */
+  .garantia {
+    font-size: 10px;
+    color: #555;
+    margin-top: 28px;
+    padding: 12px 14px;
+    background: #F5F7FA;
+    border-left: 3px solid var(--apple-blue);
+    line-height: 1.6;
+    border-radius: 0 6px 6px 0;
+  }
+  .garantia b { color: var(--apple-text); }
 
-  .firmas { margin-top: 60px; display: flex; justify-content: space-between; gap: 40px; }
+  /* ============ FIRMAS ============ */
+  .firmas {
+    margin-top: 64px;
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+  }
   .firma { flex: 1; text-align: center; }
-  .firma .linea { border-top: 1px solid #333; margin-bottom: 4px; }
-  .firma .label { font-size: 10px; color: #666; }
-  .firma .nombre { font-size: 11px; font-weight: bold; color: #0A2A4A; margin-top: 2px; }
+  .firma .linea {
+    border-top: 1px solid #333;
+    margin-bottom: 6px;
+  }
+  .firma .label {
+    font-size: 10px;
+    color: var(--apple-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .firma .nombre {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--apple-text);
+    margin-top: 3px;
+  }
 
-  .footer { text-align: center; font-size: 10px; color: #999; margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+  /* ============ FOOTER DEL DOCUMENTO ============ */
+  .footer {
+    text-align: center;
+    font-size: 10px;
+    color: var(--apple-dim);
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0,0,0,0.06);
+  }
 
   /* ============ TIRILLA POS (58mm) ============ */
+  .tirilla-wrapper {
+    display: flex;
+    justify-content: center;
+  }
   .tirilla {
     width: 58mm;
     background: white;
-    padding: 4mm;
-    font-family: 'Courier New', monospace;
+    padding: 4mm 3mm;
+    font-family: 'Courier New', 'Courier', monospace;
     font-size: 10px;
-    line-height: 1.3;
+    line-height: 1.35;
     color: #000;
-    margin: 0 auto;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08);
+    border-radius: 4px;
   }
   .tirilla.center { text-align: center; }
   .tirilla .bold { font-weight: bold; }
-  .tirilla .linea { border-top: 1px dashed #000; margin: 4px 0; }
-  .tirilla .fila { display: flex; justify-content: space-between; }
-  .tirilla .producto { margin: 4px 0; }
-  .tirilla .producto .nombre { word-wrap: break-word; }
-  .tirilla .producto .detalle { display: flex; justify-content: space-between; font-size: 10px; }
-  .tirilla .total-final { font-size: 14px; font-weight: bold; text-align: center; margin: 6px 0; }
-  .tirilla .garantia-mini { font-size: 8px; margin-top: 8px; text-align: justify; }
+  .tirilla .linea { border-top: 1px dashed #000; margin: 5px 0; }
+  .tirilla .doble-linea { border-top: 1px solid #000; margin: 5px 0; }
+  .tirilla .fila { display: flex; justify-content: space-between; gap: 4px; }
+  .tirilla .fila span:first-child { flex: 1; }
+  .tirilla .fila span:last-child { font-weight: bold; white-space: nowrap; }
+  .tirilla .producto { margin: 5px 0; }
+  .tirilla .producto .nombre { word-wrap: break-word; font-weight: bold; }
+  .tirilla .producto .variant { font-size: 9px; color: #333; margin-top: 1px; }
+  .tirilla .producto .detalle {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    margin-top: 1px;
+  }
+  .tirilla .total-final {
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    margin: 8px 0;
+    letter-spacing: 0.5px;
+  }
+  .tirilla .garantia-mini {
+    font-size: 8px;
+    margin-top: 8px;
+    text-align: justify;
+    line-height: 1.4;
+  }
+  .tirilla .gracias {
+    text-align: center;
+    font-size: 11px;
+    font-weight: bold;
+    margin-top: 10px;
+  }
+  .tirilla .nota-final {
+    text-align: center;
+    font-size: 8px;
+    margin-top: 4px;
+    color: #333;
+  }
 
   /* ============ IMPRESIÓN ============ */
   @media print {
+    body { background: white; }
     .toolbar { display: none !important; }
-    .doc-wrapper { padding: 0; background: white; max-width: none; }
-    .doc { box-shadow: none; padding: 0; border-radius: 0; }
-    .tirilla { box-shadow: none; width: 58mm; }
+    .doc-wrapper {
+      padding: 0;
+      background: white;
+      min-height: auto;
+    }
+    .doc {
+      box-shadow: none;
+      padding: 0;
+      border-radius: 0;
+      max-width: none;
+    }
+    .tirilla {
+      box-shadow: none;
+      border-radius: 0;
+      width: 58mm;
+      padding: 2mm 1mm;
+    }
     @page { margin: 10mm; }
   }
+
+  /* Tirilla: márgenes de impresión específicos */
   @media print and (max-width: 80mm) {
     @page { margin: 2mm; }
+  }
+
+  /* ============ RESPONSIVE (pantalla) ============ */
+  @media (max-width: 768px) {
+    .doc-wrapper { padding: 88px 12px 24px; }
+    .doc { padding: 24px 18px; border-radius: 8px; }
+    .doc-header { flex-direction: column; gap: 12px; }
+    .doc-header .doc-type { text-align: left; }
+    .toolbar { padding: 10px 12px; }
+    .toolbar h1 { font-size: 12px; }
+    .toolbar .format-switch button { padding: 5px 10px; font-size: 11px; }
+    .toolbar .actions { gap: 6px; }
+    .toolbar .btn-print, .toolbar .btn-close { padding: 6px 12px; font-size: 11px; }
   }
 </style>
 </head>
@@ -119,8 +421,15 @@
 <!-- Toolbar (solo visible en pantalla) -->
 <div class="toolbar">
   <h1 id="toolbar-title">Smartec · Previsualización</h1>
-  <div class="flex gap-2">
-    <button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+
+  <div class="format-switch">
+    <button data-format="remision" class="active" onclick="switchFormat('remision')">📄 Remisión</button>
+    <button data-format="tirilla" onclick="switchFormat('tirilla')">🧾 Tirilla</button>
+    <button data-format="mediacarta" onclick="switchFormat('mediacarta')">📋 Media carta</button>
+  </div>
+
+  <div class="actions">
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
     <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
   </div>
 </div>
@@ -266,24 +575,21 @@ async function init() {
     }
 
     // ============================================================
-    // 3. Cargar settings (para datos de empresa)
+    // 3. Cargar settings (para datos de empresa + logos)
     // ============================================================
     const setSnap = await getDoc(doc(db, 'settings', 'general'));
     const settings = setSnap.exists() ? setSnap.data() : {};
 
-    // Render según formato
-    $('toolbar-title').innerText = `Smartec · ${FORMAT_LABELS[format] || 'Documento'}`;
+    // Guardar en window para acceso global (render functions + switch)
+    window.__sale = sale;
+    window.__settings = settings;
+    window.__currentFormat = format;
 
-    let html = '';
-    if (format === 'tirilla') {
-      html = renderTirilla(sale, settings);
-    } else if (format === 'mediacarta') {
-      html = renderMediaCarta(sale, settings);
-    } else {
-      html = renderRemision(sale, settings);
-    }
+    // ============================================================
+    // 4. Renderizar el documento con el formato inicial
+    // ============================================================
+    renderCurrentFormat();
 
-    $('doc-container').innerHTML = html;
     $('doc-container').classList.remove('hidden');
     $('loading').classList.add('hidden');
   } catch(e) {
@@ -291,6 +597,46 @@ async function init() {
     showError(e.message);
   }
 }
+
+/* ============================================================
+   🆕 RENDERIZAR EL FORMATO ACTUAL
+   Usa window.__sale, window.__settings, window.__currentFormat
+============================================================ */
+function renderCurrentFormat() {
+  const sale = window.__sale;
+  const settings = window.__settings;
+  const format = window.__currentFormat || 'remision';
+
+  // Actualizar título
+  $('toolbar-title').innerHTML = `Smartec · ${FORMAT_LABELS[format] || 'Documento'}`;
+
+  // Actualizar botones del switch
+  document.querySelectorAll('.format-switch button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.format === format);
+  });
+
+  // Render según formato
+  let html = '';
+  if (format === 'tirilla') {
+    html = renderTirilla(sale, settings);
+  } else if (format === 'mediacarta') {
+    html = renderMediaCarta(sale, settings);
+  } else {
+    html = renderRemision(sale, settings);
+  }
+
+  $('doc-container').innerHTML = html;
+}
+
+/* ============================================================
+   🆕 CAMBIAR DE FORMATO SIN RECARGAR
+============================================================ */
+window.switchFormat = (newFormat) => {
+  if (!['remision', 'tirilla', 'mediacarta'].includes(newFormat)) return;
+  if (newFormat === window.__currentFormat) return;
+  window.__currentFormat = newFormat;
+  renderCurrentFormat();
+};
 
 function showError(msg) {
   $('loading').classList.add('hidden');
@@ -320,13 +666,19 @@ function getCompanyInfo(sale, settings) {
 function renderRemision(sale, settings) {
   const c = getCompanyInfo(sale, settings);
   const docNumber = sale.documentNumber || 'SIN-NÚMERO';
+  const logoUrl = settings.logoUrl || null;
+
+  // Cabecera del logo: imagen si existe, texto si no
+  const logoHtml = logoUrl
+    ? `<img src="${logoUrl}" alt="Smartec" style="max-height:56px; max-width:220px; object-fit:contain;">`
+    : `<h1 style="font-size:28px; font-weight:800; letter-spacing:-0.03em; margin:0; color:#0071E3;">SMART<span style="color:#1D1D1F;">EC</span></h1>`;
 
   return `
     <div class="doc">
-      <div class="doc-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
-        <div>
-          <h1>SMART<span style="color:#4A7A9A;">EC</span></h1>
-          <div class="sub">${c.razonSocial}</div>
+      <div class="doc-header">
+        <div class="brand">
+          ${logoHtml}
+          <div class="sub" style="margin-top:8px;">${c.razonSocial}</div>
           <div class="company-info">
             NIT: <b>${c.nit}</b>${c.regimen ? ' · ' + c.regimen : ''}<br>
             ${c.address ? c.address + '<br>' : ''}
@@ -338,7 +690,7 @@ function renderRemision(sale, settings) {
           <div class="t">REMISIÓN</div>
           <div class="num">No. <b>${docNumber}</b></div>
           <div class="date">${fmtDate(sale.createdAt)}</div>
-          ${c.storeName ? `<div class="date" style="margin-top:6px;">Sede: <b>${c.storeName}</b></div>` : ''}
+          ${c.storeName ? `<div class="store">Sede: <b>${c.storeName}</b></div>` : ''}
         </div>
       </div>
 
@@ -357,9 +709,9 @@ function renderRemision(sale, settings) {
         <table class="items">
           <thead>
             <tr>
-              <th style="width:60px;">SKU</th>
+              <th style="width:70px;">SKU</th>
               <th>Producto</th>
-               <th style="width:80px;">Características</th>>
+              <th style="width:110px;">Variante</th>
               <th class="c" style="width:50px;">Cant.</th>
               <th class="r" style="width:90px;">V. Unit.</th>
               <th class="r" style="width:100px;">Subtotal</th>
@@ -427,17 +779,22 @@ function renderRemision(sale, settings) {
 
 /* ============ RENDER MEDIA CARTA ============ */
 function renderMediaCarta(sale, settings) {
-  // Mismo contenido que remisión pero con estilo más compacto
   const c = getCompanyInfo(sale, settings);
   const docNumber = sale.documentNumber || 'SIN-NÚMERO';
+  const logoUrl = settings.logoUrl || null;
+
+  // Cabecera del logo: imagen si existe, texto si no
+  const logoHtml = logoUrl
+    ? `<img src="${logoUrl}" alt="Smartec" style="max-height:44px; max-width:170px; object-fit:contain;">`
+    : `<h1 style="font-size:22px; font-weight:800; letter-spacing:-0.03em; margin:0; color:#0071E3;">SMART<span style="color:#1D1D1F;">EC</span></h1>`;
 
   return `
-    <div class="doc" style="max-width: 700px;">
-      <div class="doc-header" style="display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:12px; margin-bottom:16px;">
-        <div>
-          <h1 style="font-size:22px;">SMART<span style="color:#4A7A9A;">EC</span></h1>
-          <div class="sub" style="font-size:10px;">${c.razonSocial}</div>
-          <div class="company-info" style="font-size:10px;">
+    <div class="doc doc-mediacarta">
+      <div class="doc-header">
+        <div class="brand">
+          ${logoHtml}
+          <div class="sub" style="margin-top:6px;">${c.razonSocial}</div>
+          <div class="company-info">
             NIT: <b>${c.nit}</b>${c.regimen ? ' · ' + c.regimen : ''}<br>
             ${c.address ? c.address + '<br>' : ''}
             ${c.phone ? 'Tel: ' + c.phone : ''}
@@ -445,62 +802,65 @@ function renderMediaCarta(sale, settings) {
         </div>
         <div class="doc-type">
           <div class="t" style="font-size:16px;">DOCUMENTO COMERCIAL</div>
-          <div class="num" style="font-size:11px;">No. <b>${docNumber}</b></div>
-          <div class="date" style="font-size:10px;">${fmtDate(sale.createdAt)}</div>
-          ${c.storeName ? `<div class="date" style="margin-top:4px; font-size:10px;">Sede: <b>${c.storeName}</b></div>` : ''}
+          <div class="num">No. <b>${docNumber}</b></div>
+          <div class="date">${fmtDate(sale.createdAt)}</div>
+          ${c.storeName ? `<div class="store">Sede: <b>${c.storeName}</b></div>` : ''}
         </div>
       </div>
 
-      <div class="section" style="margin-bottom:14px;">
-        <div class="section-title" style="font-size:10px;">Cliente</div>
-        <div class="section-body" style="font-size:11px;">
+      <div class="section">
+        <div class="section-title">Cliente</div>
+        <div class="section-body">
           <b>${sale.customer?.name || '-'}</b>
           ${sale.customer?.phone ? ' · Tel: ' + sale.customer.phone : ''}
           ${sale.customer?.address ? '<br>' + sale.customer.address + (sale.customer.city ? ', ' + sale.customer.city : '') : ''}
         </div>
       </div>
 
-      <table class="items" style="font-size:10px;">
-        <thead>
-          <tr>
-            <th style="width:50px;">SKU</th>
-            <th>Producto</th>
-            <th class="c" style="width:40px;">Cant.</th>
-            <th class="r" style="width:80px;">V. Unit.</th>
-            <th class="r" style="width:90px;">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${(sale.items || []).map(it => {
-            const variantParts = [];
-            if (it.colorName) variantParts.push(it.colorName);
-            if (it.size) variantParts.push(it.size);
-            const variant = variantParts.join(' · ');
-            return `<tr>
-              <td>${it.sku || '-'}</td>
-              <td>${it.name || '-'}${variant ? '<br><span style="font-size:9px; color:#888;">' + variant + '</span>' : ''}</td>
-              <td class="c">${it.qty || 0}</td>
-              <td class="r">${fmt(it.unitPrice)}</td>
-              <td class="r">${fmt((it.qty||0) * (it.unitPrice||0))}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
+      <div class="section">
+        <div class="section-title">Productos</div>
+        <table class="items" style="font-size:10px;">
+          <thead>
+            <tr>
+              <th style="width:50px;">SKU</th>
+              <th>Producto</th>
+              <th class="c" style="width:40px;">Cant.</th>
+              <th class="r" style="width:80px;">V. Unit.</th>
+              <th class="r" style="width:90px;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(sale.items || []).map(it => {
+              const variantParts = [];
+              if (it.colorName) variantParts.push(it.colorName);
+              if (it.size) variantParts.push(it.size);
+              const variant = variantParts.join(' · ');
+              return `<tr>
+                <td>${it.sku || '-'}</td>
+                <td>${it.name || '-'}${variant ? '<br><span style="font-size:9px; color:#888;">' + variant + '</span>' : ''}</td>
+                <td class="c">${it.qty || 0}</td>
+                <td class="r">${fmt(it.unitPrice)}</td>
+                <td class="r">${fmt((it.qty||0) * (it.unitPrice||0))}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
 
       ${renderTotals(sale, true)}
 
-      <div class="section" style="margin-top:14px;">
-        <div class="section-title" style="font-size:10px;">Pago</div>
-        <div class="section-body" style="font-size:11px;">
+      <div class="section">
+        <div class="section-title">Pago</div>
+        <div class="section-body">
           Método: <b style="text-transform:capitalize;">${sale.paymentMethod || '-'}</b> · Vendedor: <b>${sale.sellerName || sale.sellerEmail || '-'}</b>
         </div>
       </div>
 
-      <div class="garantia" style="font-size:9px; padding:8px; margin-top:16px;">
-        <b>GARANTÍA:</b> Productos con garantía mínima de 12 meses o la superior de fábrica. No cubre daños por mal uso.
+      <div class="garantia" style="font-size:9px; padding:8px 10px; margin-top:20px;">
+        <b>GARANTÍA:</b> Productos con garantía mínima de 12 meses o la superior de fábrica. No cubre daños por mal uso. Presente este documento para hacerla efectiva.
       </div>
 
-      <div class="firmas" style="margin-top:40px;">
+      <div class="firmas" style="margin-top:48px;">
         <div class="firma">
           <div class="linea"></div>
           <div class="label">Firma del cliente</div>
@@ -511,7 +871,7 @@ function renderMediaCarta(sale, settings) {
         </div>
       </div>
 
-      <div class="footer" style="margin-top:20px; font-size:9px;">
+      <div class="footer">
         Documento no válido como factura electrónica · Smartec · ${c.nit}
       </div>
     </div>
@@ -530,68 +890,84 @@ function renderTirilla(sale, settings) {
   const timeStr = date.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
 
   return `
-    <div class="tirilla">
-      <div class="center bold" style="font-size:14px;">SMARTEC</div>
-      <div class="center">${c.razonSocial}</div>
-      <div class="center" style="font-size:9px;">NIT: ${c.nit}</div>
-      ${c.address ? `<div class="center" style="font-size:9px;">${c.address}</div>` : ''}
-      ${c.phone ? `<div class="center" style="font-size:9px;">Tel: ${c.phone}</div>` : ''}
-      <div class="linea"></div>
+    <div class="tirilla-wrapper">
+      <div class="tirilla">
 
-      <div class="center bold">COMPROBANTE DE VENTA</div>
-      <div class="center">No. ${docNumber}</div>
-      <div class="linea"></div>
+        <!-- CABECERA -->
+        <div class="center bold" style="font-size:14px; letter-spacing:1px;">SMARTEC</div>
+        <div class="center" style="font-size:10px;">${c.razonSocial || ''}</div>
+        <div class="center" style="font-size:9px;">NIT: ${c.nit || '—'}</div>
+        ${c.address ? `<div class="center" style="font-size:9px;">${c.address}</div>` : ''}
+        ${c.phone ? `<div class="center" style="font-size:9px;">Tel: ${c.phone}</div>` : ''}
 
-      <div>Fecha: ${dateStr} ${timeStr}</div>
-      ${c.storeName ? `<div>Sede: ${c.storeName}</div>` : ''}
-      <div class="linea"></div>
+        <div class="doble-linea"></div>
 
-      <div class="bold">CLIENTE</div>
-      <div>${sale.customer?.name || '-'}</div>
-      ${sale.customer?.phone ? `<div>Tel: ${sale.customer.phone}</div>` : ''}
-      ${sale.customer?.address ? `<div>${sale.customer.address}</div>` : ''}
-      <div class="linea"></div>
+        <div class="center bold" style="font-size:11px; letter-spacing:0.5px;">COMPROBANTE DE VENTA</div>
+        <div class="center bold" style="font-size:11px;">No. ${docNumber}</div>
+        <div class="center" style="font-size:9px; margin-top:2px;">${dateStr} · ${timeStr}</div>
+        ${c.storeName ? `<div class="center" style="font-size:9px;">Sede: ${c.storeName}</div>` : ''}
 
-      <div class="bold">PRODUCTOS</div>
-      ${(sale.items || []).map(it => {
-        const variantParts = [];
-        if (it.colorName) variantParts.push(it.colorName);
-        if (it.size) variantParts.push(it.size);
-        const variant = variantParts.join(' · ');
-        return `
-          <div class="producto">
-            <div class="nombre">${it.name || '-'}</div>
-            ${variant ? `<div style="font-size:9px;">${variant}</div>` : ''}
-            <div class="detalle">
-              <span>${it.qty} × ${fmt(it.unitPrice)}</span>
-              <span class="bold">${fmt((it.qty||0) * (it.unitPrice||0))}</span>
+        <div class="doble-linea"></div>
+
+        <!-- CLIENTE -->
+        <div class="bold" style="font-size:10px;">CLIENTE</div>
+        <div style="font-size:10px;">${sale.customer?.name || '-'}</div>
+        ${sale.customer?.phone ? `<div style="font-size:9px;">Tel: ${sale.customer.phone}</div>` : ''}
+        ${sale.customer?.address ? `<div style="font-size:9px;">${sale.customer.address}${sale.customer.city ? ', ' + sale.customer.city : ''}</div>` : ''}
+
+        <div class="linea"></div>
+
+        <!-- PRODUCTOS -->
+        <div class="bold" style="font-size:10px; margin-bottom:2px;">PRODUCTOS</div>
+        ${(sale.items || []).map(it => {
+          const variantParts = [];
+          if (it.colorName) variantParts.push(it.colorName);
+          if (it.size) variantParts.push(it.size);
+          const variant = variantParts.join(' · ');
+          return `
+            <div class="producto">
+              <div class="nombre">${it.name || '-'}</div>
+              ${variant ? `<div class="variant">${variant}</div>` : ''}
+              <div class="detalle">
+                <span>${it.qty} × ${fmt(it.unitPrice)}</span>
+                <span class="bold">${fmt((it.qty||0) * (it.unitPrice||0))}</span>
+              </div>
             </div>
-          </div>
-        `;
-      }).join('')}
-      <div class="linea"></div>
+          `;
+        }).join('')}
 
-      <div class="fila"><span>Subtotal</span><span>${fmt(sale.subtotal)}</span></div>
-      ${sale.discount ? `<div class="fila"><span>Descuento</span><span>-${fmt(sale.discount)}</span></div>` : ''}
-      ${sale.shipping ? `<div class="fila"><span>Envío</span><span>${fmt(sale.shipping)}</span></div>` : ''}
-      ${sale.surchargeAmount ? `<div class="fila"><span>Rec. tarjeta</span><span>${fmt(sale.surchargeAmount)}</span></div>` : ''}
-      <div class="linea"></div>
+        <div class="linea"></div>
 
-      <div class="total-final">TOTAL: ${fmt(sale.total)}</div>
-      <div class="linea"></div>
+        <!-- TOTALES -->
+        <div class="fila"><span>Subtotal</span><span>${fmt(sale.subtotal)}</span></div>
+        ${sale.discount ? `<div class="fila"><span>Descuento</span><span>-${fmt(sale.discount)}</span></div>` : ''}
+        ${sale.shipping ? `<div class="fila"><span>Envío</span><span>${fmt(sale.shipping)}</span></div>` : ''}
+        ${sale.surchargeAmount ? `<div class="fila"><span>Rec. tarjeta</span><span>${fmt(sale.surchargeAmount)}</span></div>` : ''}
 
-      <div>Pago: ${sale.paymentMethod || '-'}</div>
-      <div>Vendedor: ${sale.sellerName || sale.sellerEmail || '-'}</div>
+        <div class="doble-linea"></div>
 
-      ${sale.customer?.notes ? `<div class="linea"></div><div style="font-size:9px;">Nota: ${sale.customer.notes}</div>` : ''}
+        <div class="total-final">TOTAL ${fmt(sale.total)}</div>
 
-      <div class="garantia-mini">
-        <b>GARANTÍA:</b> Garantía mínima de 12 meses o la superior de fábrica. Presente este recibo para hacerla efectiva. No cubre daños por mal uso.
+        <div class="doble-linea"></div>
+
+        <!-- PAGO -->
+        <div class="fila"><span>Pago:</span><span>${sale.paymentMethod || '-'}</span></div>
+        <div class="fila"><span>Vendedor:</span><span>${(sale.sellerName || sale.sellerEmail || '-').substring(0, 18)}</span></div>
+
+        ${sale.customer?.notes ? `<div class="linea"></div><div style="font-size:9px;">Nota: ${sale.customer.notes}</div>` : ''}
+
+        <!-- GARANTÍA -->
+        <div class="linea"></div>
+        <div class="garantia-mini">
+          <b>GARANTÍA:</b> Garantía mínima de 12 meses o la superior de fábrica. Presente este recibo para hacerla efectiva. No cubre daños por mal uso.
+        </div>
+
+        <div class="doble-linea"></div>
+
+        <div class="gracias">¡GRACIAS POR SU COMPRA!</div>
+        <div class="nota-final">Este documento no es factura electrónica</div>
+
       </div>
-
-      <div class="linea"></div>
-      <div class="center" style="margin-top:8px; font-size:10px;">¡Gracias por su compra!</div>
-      <div class="center" style="font-size:8px; margin-top:4px;">Este documento no es factura electrónica</div>
     </div>
   `;
 }

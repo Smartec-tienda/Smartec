@@ -8,8 +8,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="theme.css">
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="favicon.js"></script>
+<script src="header-public.js"></script>
+
 <script src="footer.js"></script>
 <style>
   :root{
@@ -467,55 +471,8 @@
   🚚 Envío gratis en compras superiores a $200.000 &nbsp;·&nbsp; 🔧 Instalación profesional disponible
 </div>
 
-<!-- Header -->
-<header class="glass-strong sticky top-0 z-40 border-b border-white/50">
-  <div class="container mx-auto px-4 lg:px-6 py-3 flex items-center justify-between gap-4">
-    <a href="index.html" id="header-logo-link" class="shrink-0 flex items-center">
-      <span id="header-logo" class="text-2xl md:text-3xl font-extrabold logo-mark">
-        SMARTEC
-      </span>
-    </a>
-
-    <!-- Buscador -->
-    <div class="flex-1 max-w-xl hidden md:flex relative">
-      <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-      </div>
-      <input id="search-input" type="text" placeholder="Buscar productos" class="w-full pl-11 pr-4 py-2.5 rounded-full text-sm">
-    </div>
-
-    <div class="flex items-center gap-2">
-      <button id="mobile-search-toggle" class="md:hidden text-[#1D1D1F] p-2 hover:bg-black/5 rounded-full transition">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-      </button>
-      <a href="venta.html" class="hidden lg:inline-flex items-center gap-1.5 text-sm font-medium text-[#1D1D1F] hover:text-[#0071E3] transition px-4 py-2 rounded-full hover:bg-black/5">
-        Punto de venta
-      </a>
-    </div>
-  </div>
-
-  <!-- Buscador móvil -->
-  <div id="mobile-search" class="hidden md:hidden px-4 pb-3">
-    <input id="search-input-mobile" type="text" placeholder="Buscar productos" class="w-full px-4 py-2.5 rounded-full text-sm">
-  </div>
-
-  <!-- Nav categorías -->
-  <nav class="border-t border-black/5">
-    <div class="container mx-auto px-4 lg:px-6">
-      <ul id="categories-nav" class="flex gap-1 py-3 text-sm overflow-x-auto scrollbar-thin">
-        <li><button data-group="all" class="cat-nav-btn active whitespace-nowrap px-4 py-1.5 rounded-full">Todos</button></li>
-        <!-- Se llena dinámicamente -->
-      </ul>
-    </div>
-  </nav>
-
-  <!-- Subcategorías -->
-  <div id="subcategories-bar" class="hidden border-t border-black/5 bg-white/40 backdrop-blur">
-    <div class="container mx-auto px-4 lg:px-6 py-3">
-      <div id="subcategories-list" class="flex gap-2 overflow-x-auto scrollbar-thin"></div>
-    </div>
-  </div>
-</header>
+<!-- Header público (inyectado por header-public.js) -->
+<div id="smartec-header-public"></div>
 
 <!-- Hero -->
 <section class="relative overflow-hidden hero-mobile-compact">
@@ -899,13 +856,19 @@ async function init() {
     allProducts = prodSnap.docs.map(d => ({id:d.id, ...d.data()})).filter(p => p.active !== false);
     allInventory = invSnap.docs.map(d => ({id:d.id, ...d.data()}));
 
-    // 🆕 Aplicar logo dinámico al header
-    applyLogoToHeader();
+    // 🆕 Inyectar header público dinámico vía header-public.js
+    if (window.SmartecHeaderPublic) {
+      window.SmartecHeaderPublic.render({
+        settings: settings
+      });
+    }
 
     // 🆕 Inyectar footer dinámico vía footer.js
-    window.SmartecFooter.render({
-      settings: settings
-    });
+    if (window.SmartecFooter) {
+      window.SmartecFooter.render({
+        settings: settings
+      });
+    }
 
     renderCategoryNav();
     renderProducts();
@@ -1539,19 +1502,6 @@ if (sortSelectMobile) sortSelectMobile.onchange = (e) => onSortChange(e.target.v
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !$('filters-drawer').classList.contains('hidden')) closeFiltersDrawer();
 });
-
-/* ============================================================
-   LOGO DINÁMICO — Solo header
-   (el footer lo maneja footer.js)
-============================================================ */
-function applyLogoToHeader() {
-  const container = $('header-logo');
-  if (!container) return;
-
-  if (settings.logoUrl) {
-    container.outerHTML = `<img id="header-logo" src="${settings.logoUrl}" alt="Smartec" class="h-8 md:h-10 object-contain" decoding="async">`;
-  }
-}
 
 init();
 </script>

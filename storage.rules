@@ -9,7 +9,7 @@ service firebase.storage {
       return request.auth != null;
     }
     function userDoc() {
-      return get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
     }
     function userRole() {
       return isAuth() ? userDoc().role : null;
@@ -76,6 +76,20 @@ service firebase.storage {
                    || (isStaff() && userStore() == storeId)
                    && isUnder5MB()
                    && isImageOrPdf();
+    }
+
+    // ============================================================
+    // DOCUMENTS (PDFs de venta: remisión, tirilla, media carta)
+    // Ruta: documents/{storeId}/{saleId}/{fileName}
+    // ============================================================
+    match /documents/{storeId}/{saleId}/{fileName} {
+      allow read: if isSuperAdmin()
+                  || (isStaff() && userStore() == storeId);
+
+      allow write: if (isSuperAdmin()
+                   || (isStaff() && userStore() == storeId))
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType == 'application/pdf';
     }
 
     // ============================================================

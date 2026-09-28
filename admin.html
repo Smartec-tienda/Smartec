@@ -7,6 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="favicon.js"></script>
 <script src="fingerprint.js"></script>
 <script src="device-guard.js"></script>
 <script src="kiosk.js"></script>
@@ -14,6 +15,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="pdf-generator.js"></script>
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
@@ -684,45 +688,80 @@
 
     <!-- ============ VENTAS ============ -->
     <section id="tab-sales" class="tab-content hidden">
-      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-        <h2 class="text-2xl font-bold text-sd">Ventas</h2>
+
+      <!-- Título + filtros principales -->
+      <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight">Ventas</h2>
         <div class="flex gap-2 flex-wrap">
-          <select id="sales-store-filter" class="px-3 py-2 border rounded-lg text-sm">
+          <select id="sales-store-filter" class="px-3 py-2 rounded-xl text-sm">
             <option value="all">Todas las tiendas</option>
           </select>
-          <select id="sales-payment-method-filter" class="px-3 py-2 border rounded-lg text-sm">
+          <select id="sales-payment-method-filter" class="px-3 py-2 rounded-xl text-sm">
             <option value="all">Todos los métodos</option>
             <option value="efectivo">💵 Efectivo</option>
             <option value="transferencia">🔄 Transferencia</option>
             <option value="tarjeta">💳 Tarjeta</option>
             <option value="contraentrega">📦 Contra entrega</option>
             <option value="credito">🛍️ Crédito</option>
+            <option value="mixto">🔀 Pago mixto</option>
           </select>
-          <select id="sales-payment-status-filter" class="px-3 py-2 border rounded-lg text-sm">
+          <select id="sales-payment-status-filter" class="px-3 py-2 rounded-xl text-sm">
             <option value="all">Todos los pagos</option>
             <option value="completed">✅ Pagados</option>
             <option value="pending">⏳ Pendientes de pago</option>
           </select>
         </div>
       </div>
-      <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
-        <table class="w-full text-sm min-w-[1100px]">
-          <thead class="bg-gray-100 text-sd">
-            <tr>
-              <th class="p-3 text-left">Fecha</th>
-              <th class="p-3 text-left">Cliente</th>
-              <th class="p-3 text-left">Tienda</th>
-              <th class="p-3 text-left">Vendedor</th>
-              <th class="p-3 text-left">Pago</th>
-              <th class="p-3 text-center">Items</th>
-              <th class="p-3 text-right">Venta neta</th>
-              <th class="p-3 text-right">Com. financ.</th>
-              <th class="p-3 text-center">Estado</th>
-              <th class="p-3"></th>
-            </tr>
-          </thead>
-          <tbody id="sales-tbody"></tbody>
-        </table>
+
+      <!-- 🆕 Filtro de fecha de pago -->
+      <div class="glass-strong rounded-2xl shadow-apple-lg p-4 mb-4 border border-white/60">
+        <div class="flex justify-between items-center flex-wrap gap-3">
+          <div class="flex flex-wrap gap-3 flex-1 min-w-0">
+            <div>
+              <label class="text-[10px] font-semibold text-[#1D1D1F]">📅 Fecha de pago desde</label>
+              <input id="sales-paid-date-from" type="date" class="px-3 py-2 rounded-xl text-sm mt-1">
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-[#1D1D1F]">📅 Fecha de pago hasta</label>
+              <input id="sales-paid-date-to" type="date" class="px-3 py-2 rounded-xl text-sm mt-1">
+            </div>
+            <div class="flex items-end">
+              <button onclick="clearSalesPaidDate()" class="text-xs text-[#FF375F] hover:underline font-semibold pb-2">
+                Limpiar fecha
+              </button>
+            </div>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="setSalesPaidRange('today')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Hoy</button>
+            <button onclick="setSalesPaidRange('week')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Esta semana</button>
+            <button onclick="setSalesPaidRange('month')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Este mes</button>
+            <button onclick="setSalesPaidRange('lastmonth')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Mes pasado</button>
+            <button onclick="setSalesPaidRange('year')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Este año</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="glass-strong rounded-2xl shadow-apple-lg overflow-hidden border border-white/60">
+        <div class="overflow-x-auto scrollbar-thin">
+          <table class="w-full text-sm min-w-[1100px]">
+            <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
+              <tr>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Fecha / Pago</th>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Cliente</th>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Tienda</th>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Vendedor</th>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Pago</th>
+                <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Items</th>
+                <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Venta neta</th>
+                <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Com. financ.</th>
+                <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Estado</th>
+                <th class="p-3"></th>
+              </tr>
+            </thead>
+            <tbody id="sales-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 <!-- ============ REPORTES ============ -->
@@ -872,6 +911,13 @@
       <div>
         <label class="text-[10px] font-semibold text-sd">Hasta</label>
         <input id="rep-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">📅 Filtrar por</label>
+        <select id="rep-date-mode" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="created">Fecha de creación</option>
+          <option value="paid">Fecha de pago</option>
+        </select>
       </div>
       <div>
         <label class="text-[10px] font-semibold text-sd">Tienda</label>
@@ -1425,6 +1471,13 @@
           <div>
             <label class="text-[10px] font-semibold text-sd">Hasta</label>
             <input id="acc-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">📅 Ventas por</label>
+            <select id="acc-date-mode" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="created">Fecha de creación</option>
+              <option value="paid">Fecha de pago</option>
+            </select>
           </div>
           <div>
             <label class="text-[10px] font-semibold text-sd">Estado de pago</label>
@@ -2185,6 +2238,69 @@
               <p id="footer-logo-status-msg" class="text-xs hidden mt-2"></p>
             </div>
 
+                      <!-- ============ FAVICON (ícono de la pestaña) ============ -->
+            <div class="border border-gray-200 rounded-xl p-4 lg:col-span-2">
+              <h4 class="font-bold text-sd text-sm mb-3 flex items-center gap-2">
+                ⭐ Favicon (ícono de la pestaña)
+              </h4>
+              <p class="text-[10px] text-gray-500 mb-4">
+                Es el ícono que aparece en la pestaña del navegador y en los marcadores. Recomendado: PNG cuadrado 512×512 o 32×32.
+              </p>
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- Vista previa -->
+                <div>
+                  <div class="bg-gray-50 rounded-xl p-4 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center min-h-[140px] mb-4">
+                    <p class="text-[10px] text-gray-400 uppercase font-semibold mb-2">Vista previa</p>
+                    <div id="favicon-preview-container" class="w-full flex items-center justify-center">
+                      <p class="text-xs text-gray-400 italic">Sin favicon</p>
+                    </div>
+                  </div>
+                  <p class="text-[10px] text-gray-400 text-center">
+                    Así se verá en la pestaña (aprox. 32×32)
+                  </p>
+                </div>
+
+                <!-- Controles -->
+                <div>
+                  <input type="file" id="favicon-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon" class="hidden">
+
+                  <div id="favicon-dropzone" class="img-dropzone mb-3">
+                    <p class="text-xs text-gray-500">Arrastra o haz clic para subir</p>
+                    <p class="text-[10px] text-gray-400 mt-1">PNG, JPG, WebP, SVG o ICO · máx 2MB</p>
+                  </div>
+
+                  <div class="flex gap-2 flex-wrap">
+                    <button type="button" onclick="document.getElementById('favicon-file-input').click()"
+                      class="bg-sd text-white px-3 py-2 rounded-lg hover:bg-sl text-xs font-semibold">
+                      📤 Subir favicon
+                    </button>
+                    <button type="button" id="favicon-remove-btn"
+                      class="hidden bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 text-xs font-semibold">
+                      🗑 Eliminar
+                    </button>
+                    <button type="button" id="favicon-save-btn"
+                      class="hidden bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-xs font-semibold">
+                      💾 Guardar
+                    </button>
+                  </div>
+
+                  <div id="favicon-progress-wrap" class="upload-progress-wrap">
+                    <div class="flex justify-between items-center text-xs font-semibold text-sd">
+                      <span id="favicon-progress-text">📤 Subiendo favicon…</span>
+                    </div>
+                    <div class="upload-progress-bar">
+                      <div id="favicon-progress-fill" class="upload-progress-fill"></div>
+                    </div>
+                  </div>
+
+                  <p id="favicon-status-msg" class="text-xs hidden mt-2"></p>
+                </div>
+
+              </div>
+            </div>
+          
           </div>
         </div>
       </div>
@@ -5525,10 +5641,76 @@ window.delProduct = async (id) => {
 /* ============================================================
    VENTAS
 ============================================================ */
+/* ============================================================
+   🆕 FILTRO DE FECHA DE PAGO EN LA PESTAÑA VENTAS
+============================================================ */
+window.setSalesPaidRange = (range) => {
+  const now = new Date();
+  let from, to;
+
+  switch(range) {
+    case 'today': from = to = now; break;
+    case 'week': {
+      const day = now.getDay() || 7;
+      from = new Date(now);
+      from.setDate(now.getDate() - day + 1);
+      to = now;
+      break;
+    }
+    case 'month':
+      from = new Date(now.getFullYear(), now.getMonth(), 1);
+      to = now;
+      break;
+    case 'lastmonth':
+      from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      to = new Date(now.getFullYear(), now.getMonth(), 0);
+      break;
+    case 'year':
+      from = new Date(now.getFullYear(), 0, 1);
+      to = now;
+      break;
+    default:
+      return;
+  }
+
+  const fmtD = d => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  $('sales-paid-date-from').value = fmtD(from);
+  $('sales-paid-date-to').value = fmtD(to);
+  renderSales();
+};
+
+window.clearSalesPaidDate = () => {
+  $('sales-paid-date-from').value = '';
+  $('sales-paid-date-to').value = '';
+  renderSales();
+};
+
+/* Listeners de los inputs de fecha */
+document.addEventListener('DOMContentLoaded', () => {
+  ['sales-paid-date-from', 'sales-paid-date-to'].forEach(id => {
+    const el = $(id);
+    if (el && !el.dataset.listeners) {
+      el.dataset.listeners = '1';
+      el.addEventListener('change', renderSales);
+    }
+  });
+});
+
+/* ============================================================
+   RENDER DE LA PESTAÑA VENTAS
+============================================================ */
 function renderSales() {
   const storeF = $('sales-store-filter')?.value || 'all';
   const methodF = $('sales-payment-method-filter')?.value || 'all';
   const statusF = $('sales-payment-status-filter')?.value || 'all';
+  const paidFrom = $('sales-paid-date-from')?.value || '';
+  const paidTo = $('sales-paid-date-to')?.value || '';
 
   const tb = $('sales-tbody');
   let list = sales.slice();
@@ -5539,6 +5721,25 @@ function renderSales() {
     list = list.filter(s => {
       const ps = s.paymentStatus || 'completed';
       return ps === statusF;
+    });
+  }
+
+  // 🆕 Filtro por fecha de pago (paidAt con fallback a createdAt)
+  if (paidFrom || paidTo) {
+    list = list.filter(s => {
+      // Fecha de pago: paidAt si existe, si no createdAt
+      const ts = s.paidAt?.seconds
+        ? s.paidAt.seconds * 1000
+        : (s.createdAt?.seconds ? s.createdAt.seconds * 1000 : null);
+
+      if (!ts) return false;
+
+      const d = new Date(ts);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+      if (paidFrom && dateStr < paidFrom) return false;
+      if (paidTo && dateStr > paidTo) return false;
+      return true;
     });
   }
 
@@ -5553,8 +5754,17 @@ function renderSales() {
 
     const paymentCell = renderPaymentCell(s);
 
+    // 🆕 Fecha de pago (con formato corto o "sin cobrar")
+    const paidAtLabel = s.paidAt?.seconds
+      ? `💰 ${new Date(s.paidAt.seconds * 1000).toLocaleDateString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit' })} ${new Date(s.paidAt.seconds * 1000).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' })}`
+      : (s.paymentStatus === 'pending' ? '⏳ Sin cobrar' : '');
+    const paidAtClass = s.paidAt?.seconds ? 'text-green-600' : 'text-amber-600';
+
     return `<tr class="border-b hover:bg-gray-50 ${s.paymentStatus==='pending'?'bg-amber-50/40':''}">
-      <td class="p-3 text-xs text-gray-500">${fmtDate(s.createdAt)}</td>
+      <td class="p-3 text-xs text-gray-500">
+        ${fmtDate(s.createdAt)}
+        ${paidAtLabel ? `<br><span class="${paidAtClass} text-[10px] font-semibold">${paidAtLabel}</span>` : ''}
+      </td>
       <td class="p-3 font-medium text-sd">${escapeHtml(s.customer?.name)||'-'}<br><span class="text-[10px] text-gray-400">${s.customer?.phone||''}</span></td>
       <td class="p-3 text-xs">${escapeHtml(store?.name)||s.storeId}</td>
       <td class="p-3 text-xs">${escapeHtml(seller?.name)||s.sellerEmail||'-'}</td>
@@ -5655,6 +5865,10 @@ window.viewSale = async (id) => {
       <div class="flex justify-between text-xs text-green-600 font-semibold"><span>Utilidad</span><span>${fmt(s.profit)}</span></div>
     </div>
     ${renderPaymentDetail(s)}
+
+    <!-- 🆕 Documentos PDF (remisión, tirilla, media carta) -->
+    ${renderDocumentsSection(s)}
+
     <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm mb-4">
       <p class="font-bold text-orange-700 mb-2">💰 Comisiones generadas</p>
       <div class="flex justify-between text-xs">
@@ -5688,6 +5902,76 @@ window.viewSale = async (id) => {
   const m = $('sale-modal');
   m.classList.remove('hidden'); m.classList.add('flex');
 };
+
+/* ============================================================
+   🆕 DOCUMENTOS PDF EN EL DETALLE DE VENTA
+   Muestra los botones para abrir remisión, tirilla y media carta.
+   Si aún no se han generado, muestra un botón "Regenerar".
+============================================================ */
+function renderDocumentsSection(s) {
+  const docs = s.documents || null;
+
+  // Si no hay documentos, mostrar aviso + botón para regenerar
+  if (!docs) {
+    return `
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm mb-4">
+        <div class="flex justify-between items-start mb-2 flex-wrap gap-2">
+          <div>
+            <p class="font-bold text-amber-700">📄 Documentos</p>
+            <p class="text-xs text-amber-600 mt-0.5">Los PDFs aún no se han generado para esta venta.</p>
+          </div>
+          <button onclick="regenerateDocuments('${s.id}')"
+            class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition shadow-apple">
+            🔄 Regenerar documentos
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  const docTypes = [
+    { key: 'remision',   icon: '📄', label: 'Remisión',     color: 'blue'   },
+    { key: 'tirilla',    icon: '🧾', label: 'Tirilla POS',  color: 'green'  },
+    { key: 'mediacarta', icon: '📋', label: 'Media carta',  color: 'purple' },
+  ];
+
+  const buttonsHtml = docTypes.map(dt => {
+    const d = docs[dt.key];
+    if (!d || !d.url) {
+      return `
+        <div class="flex-1 min-w-[120px] bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+          <p class="text-xs text-gray-400">${dt.icon} ${dt.label}</p>
+          <p class="text-[10px] text-gray-400 mt-1">No generado</p>
+        </div>
+      `;
+    }
+    return `
+      <a href="${d.url}" target="_blank"
+         class="flex-1 min-w-[120px] bg-white border border-${dt.color}-200 rounded-lg p-3 text-center hover:border-${dt.color}-400 hover:shadow-md transition">
+        <p class="text-xs font-semibold text-${dt.color}-700">${dt.icon} ${dt.label}</p>
+        <p class="text-[10px] text-gray-500 mt-1">${Math.round((d.size || 0) / 1024)} KB · Ver PDF</p>
+      </a>
+    `;
+  }).join('');
+
+  return `
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm mb-4">
+      <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+        <div>
+          <p class="font-bold text-blue-700">📄 Documentos</p>
+          <p class="text-xs text-blue-600 mt-0.5">Descargar los 3 formatos generados</p>
+        </div>
+        <button onclick="regenerateDocuments('${s.id}')"
+          class="text-xs text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1">
+          🔄 Regenerar
+        </button>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        ${buttonsHtml}
+      </div>
+    </div>
+  `;
+}
 
 /* Helper: sección de detalle de pago para el modal */
 function renderPaymentDetail(s) {
@@ -7942,6 +8226,8 @@ let _pendingLogoFile = null;      // Archivo seleccionado pendiente de guardar
 let _currentLogoUrl = null;       // URL del logo guardado en Firestore
 let _pendingFooterLogoFile = null; // Archivo del logo del footer pendiente
 let _currentFooterLogoUrl = null;  // URL del logo del footer guardado
+let _pendingFaviconFile = null;   // Archivo del favicon pendiente de guardar
+let _currentFaviconUrl = null;    // URL del favicon guardado en Firestore
 
 /**
  * Renderiza la vista previa del logo según el estado actual.
@@ -8000,6 +8286,38 @@ function renderLogoPreview() {
       }
     }
   }
+
+  // ============ FAVICON ============
+  const favContainer = $('favicon-preview-container');
+  const favRemoveBtn = $('favicon-remove-btn');
+  const favSaveBtn = $('favicon-save-btn');
+
+  if (favContainer) {
+    if (_pendingFaviconFile) {
+      const blobUrl = URL.createObjectURL(_pendingFaviconFile);
+      favContainer.innerHTML = `<img src="${blobUrl}" class="max-h-24 max-w-full object-contain" style="image-rendering: crisp-edges">`;
+      favRemoveBtn?.classList.remove('hidden');
+      favSaveBtn?.classList.remove('hidden');
+      if (favRemoveBtn) favRemoveBtn.innerText = '↩️ Descartar';
+    } else {
+      _currentFaviconUrl = settings.faviconUrl || null;
+      if (_currentFaviconUrl) {
+        favContainer.innerHTML = `
+          <div class="flex items-center gap-3">
+            <img src="${_currentFaviconUrl}" class="h-8 w-8 object-contain" style="image-rendering: crisp-edges">
+            <span class="text-[10px] text-gray-500">${_currentFaviconUrl.split('/').pop().split('?')[0]}</span>
+          </div>
+        `;
+        favRemoveBtn?.classList.remove('hidden');
+        favSaveBtn?.classList.add('hidden');
+        if (favRemoveBtn) favRemoveBtn.innerText = '🗑 Eliminar';
+      } else {
+        favContainer.innerHTML = '<p class="text-xs text-gray-400 italic">Sin favicon</p>';
+        favRemoveBtn?.classList.add('hidden');
+        favSaveBtn?.classList.add('hidden');
+      }
+    }
+  }
 }
 
 /**
@@ -8044,6 +8362,26 @@ function initLogoListeners() {
       await deleteLogo('footer');
     },
     onSave: () => saveLogo('footer')
+  });
+
+  // ============ FAVICON ============
+  initSingleLogoListeners({
+    fileInputId: 'favicon-file-input',
+    dropzoneId: 'favicon-dropzone',
+    removeBtnId: 'favicon-remove-btn',
+    saveBtnId: 'favicon-save-btn',
+    onFile: (file) => handleLogoFile(file, 'favicon'),
+    onRemove: async () => {
+      if (_pendingFaviconFile) {
+        _pendingFaviconFile = null;
+        renderLogoPreview();
+        showLogoStatus('', 'favicon');
+        return;
+      }
+      if (!confirm('¿Eliminar el favicon?\n\nLas pestañas volverán a mostrar el ícono por defecto.')) return;
+      await deleteLogo('favicon');
+    },
+    onSave: () => saveLogo('favicon')
   });
 }
 
@@ -8098,11 +8436,16 @@ function initSingleLogoListeners({ fileInputId, dropzoneId, removeBtnId, saveBtn
  * Valida el archivo seleccionado y lo deja pendiente de guardar.
  */
 function handleLogoFile(file, type = 'header') {
-  const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
-  const maxSizeMB = 5;
+  // Valores por tipo
+  const isFavicon = type === 'favicon';
+  const validTypes = isFavicon
+    ? ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'image/x-icon', 'image/vnd.microsoft.icon']
+    : ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+  const maxSizeMB = isFavicon ? 2 : 5;
 
   if (!validTypes.includes(file.type)) {
-    showLogoStatus('⚠️ Formato no soportado. Usa JPG, PNG, WebP o SVG.', 'error', type);
+    const formats = isFavicon ? 'PNG, JPG, WebP, SVG o ICO' : 'JPG, PNG, WebP o SVG';
+    showLogoStatus(`⚠️ Formato no soportado. Usa ${formats}.`, 'error', type);
     return;
   }
   if (file.size > maxSizeMB * 1024 * 1024) {
@@ -8112,6 +8455,8 @@ function handleLogoFile(file, type = 'header') {
 
   if (type === 'footer') {
     _pendingFooterLogoFile = file;
+  } else if (type === 'favicon') {
+    _pendingFaviconFile = file;
   } else {
     _pendingLogoFile = file;
   }
@@ -8124,28 +8469,43 @@ function handleLogoFile(file, type = 'header') {
  * Sube el logo pendiente a Storage y lo guarda en Firestore.
  */
 async function saveLogo(type = 'header') {
-  const pending = type === 'footer' ? _pendingFooterLogoFile : _pendingLogoFile;
+  const pending = type === 'footer' ? _pendingFooterLogoFile
+                 : type === 'favicon' ? _pendingFaviconFile
+                 : _pendingLogoFile;
   if (!pending) return;
 
   // IDs dinámicos según tipo
-  const wrap = $(type === 'footer' ? 'footer-logo-progress-wrap' : 'logo-progress-wrap');
-  const fill = $(type === 'footer' ? 'footer-logo-progress-fill' : 'logo-progress-fill');
-  const text = $(type === 'footer' ? 'footer-logo-progress-text' : 'logo-progress-text');
-  const saveBtn = $(type === 'footer' ? 'footer-logo-save-btn' : 'logo-save-btn');
+  const wrap = $(type === 'footer' ? 'footer-logo-progress-wrap'
+              : type === 'favicon' ? 'favicon-progress-wrap'
+              : 'logo-progress-wrap');
+  const fill = $(type === 'footer' ? 'footer-logo-progress-fill'
+              : type === 'favicon' ? 'favicon-progress-fill'
+              : 'logo-progress-fill');
+  const text = $(type === 'footer' ? 'footer-logo-progress-text'
+              : type === 'favicon' ? 'favicon-progress-text'
+              : 'logo-progress-text');
+  const saveBtn = $(type === 'footer' ? 'footer-logo-save-btn'
+                  : type === 'favicon' ? 'favicon-save-btn'
+                  : 'logo-save-btn');
 
   wrap?.classList.add('active');
   if (fill) fill.style.width = '10%';
-  if (text) text.innerText = '📤 Procesando logo…';
+  if (text) text.innerText = '📤 Procesando…';
   if (saveBtn) { saveBtn.disabled = true; saveBtn.innerText = '⏳ Subiendo…'; }
 
   try {
-    // Convertir a WebP si no es SVG
+    // Convertir a WebP si no es SVG ni ICO
     let blob, contentType;
     if (pending.type === 'image/svg+xml') {
       blob = pending;
       contentType = 'image/svg+xml';
+    } else if (pending.type === 'image/x-icon' || pending.type === 'image/vnd.microsoft.icon') {
+      blob = pending;
+      contentType = 'image/x-icon';
     } else {
-      const result = await convertImageToWebp(pending);
+      // El favicon conviene optimizarlo a un tamaño pequeño también
+      const maxDim = type === 'favicon' ? 512 : 2000;
+      const result = await convertImageToWebp(pending, maxDim);
       blob = result.blob;
       contentType = 'image/webp';
     }
@@ -8154,8 +8514,14 @@ async function saveLogo(type = 'header') {
     if (text) text.innerText = '📤 Subiendo a Storage…';
 
     // Nombre del archivo según tipo
-    const ext = contentType === 'image/svg+xml' ? 'svg' : 'webp';
-    const fileName = type === 'footer' ? `logo-footer.${ext}` : `logo.${ext}`;
+    let ext;
+    if (contentType === 'image/svg+xml') ext = 'svg';
+    else if (contentType === 'image/x-icon') ext = 'ico';
+    else ext = 'webp';
+
+    const fileName = type === 'footer' ? `logo-footer.${ext}`
+                    : type === 'favicon' ? `favicon.${ext}`
+                    : `logo.${ext}`;
     const path = `settings/${fileName}`;
     const storageRef = ref(storage, path);
 
@@ -8170,40 +8536,42 @@ async function saveLogo(type = 'header') {
     const url = await getDownloadURL(storageRef);
 
     // Campo de Firestore según tipo
-    const fieldName = type === 'footer' ? 'footerLogoUrl' : 'logoUrl';
+    const fieldName = type === 'footer' ? 'footerLogoUrl'
+                    : type === 'favicon' ? 'faviconUrl'
+                    : 'logoUrl';
+
     const updatePayload = {
       [fieldName]: url,
       updatedAt: serverTimestamp()
     };
-    if (type === 'footer') {
-      updatePayload.footerLogoUpdatedAt = serverTimestamp();
-    } else {
-      updatePayload.logoUpdatedAt = serverTimestamp();
-    }
+    if (type === 'footer') updatePayload.footerLogoUpdatedAt = serverTimestamp();
+    else if (type === 'favicon') updatePayload.faviconUpdatedAt = serverTimestamp();
+    else updatePayload.logoUpdatedAt = serverTimestamp();
 
     await updateDoc(doc(db, 'settings', 'general'), updatePayload);
 
     // Auditoría
+    const auditLabel = type === 'footer' ? 'Logo del footer actualizado'
+                       : type === 'favicon' ? 'Favicon actualizado'
+                       : 'Logo del header actualizado';
     await audit({
       action: 'update',
       collection: 'settings',
       docId: 'general',
-      note: type === 'footer' ? 'Logo del footer actualizado' : 'Logo del header actualizado'
+      note: auditLabel
     });
 
     // Cache local
     window.SmartecCache.invalidate('settings');
     settings[fieldName] = url;
 
-    if (type === 'footer') {
-      _pendingFooterLogoFile = null;
-    } else {
-      _pendingLogoFile = null;
-    }
+    if (type === 'footer') _pendingFooterLogoFile = null;
+    else if (type === 'favicon') _pendingFaviconFile = null;
+    else _pendingLogoFile = null;
 
     if (fill) fill.style.width = '100%';
-    if (text) text.innerText = '✅ Logo guardado';
-    showLogoStatus('✅ Logo actualizado correctamente.', 'ok', type);
+    if (text) text.innerText = '✅ Guardado';
+    showLogoStatus('✅ Actualizado correctamente.', 'ok', type);
 
     renderLogoPreview();
 
@@ -8226,8 +8594,14 @@ async function saveLogo(type = 'header') {
 async function deleteLogo(type = 'header') {
   try {
     // Rutas a intentar borrar
-    const fileBase = type === 'footer' ? 'logo-footer' : 'logo';
-    const paths = [`settings/${fileBase}.webp`, `settings/${fileBase}.svg`];
+    const fileBase = type === 'footer' ? 'logo-footer'
+                    : type === 'favicon' ? 'favicon'
+                    : 'logo';
+    const paths = [
+      `settings/${fileBase}.webp`,
+      `settings/${fileBase}.svg`,
+      `settings/${fileBase}.ico`
+    ];
 
     for (const p of paths) {
       try {
@@ -8238,24 +8612,27 @@ async function deleteLogo(type = 'header') {
     }
 
     // Quitar el campo de Firestore
-    const fieldName = type === 'footer' ? 'footerLogoUrl' : 'logoUrl';
+    const fieldName = type === 'footer' ? 'footerLogoUrl'
+                    : type === 'favicon' ? 'faviconUrl'
+                    : 'logoUrl';
     const updatePayload = {
       [fieldName]: null,
       updatedAt: serverTimestamp()
     };
-    if (type === 'footer') {
-      updatePayload.footerLogoUpdatedAt = serverTimestamp();
-    } else {
-      updatePayload.logoUpdatedAt = serverTimestamp();
-    }
+    if (type === 'footer') updatePayload.footerLogoUpdatedAt = serverTimestamp();
+    else if (type === 'favicon') updatePayload.faviconUpdatedAt = serverTimestamp();
+    else updatePayload.logoUpdatedAt = serverTimestamp();
 
     await updateDoc(doc(db, 'settings', 'general'), updatePayload);
 
+    const auditLabel = type === 'footer' ? 'Logo del footer eliminado'
+                       : type === 'favicon' ? 'Favicon eliminado'
+                       : 'Logo del header eliminado';
     await audit({
       action: 'update',
       collection: 'settings',
       docId: 'general',
-      note: type === 'footer' ? 'Logo del footer eliminado' : 'Logo del header eliminado'
+      note: auditLabel
     });
 
     window.SmartecCache.invalidate('settings');
@@ -8264,27 +8641,29 @@ async function deleteLogo(type = 'header') {
     if (type === 'footer') {
       _pendingFooterLogoFile = null;
       _currentFooterLogoUrl = null;
+    } else if (type === 'favicon') {
+      _pendingFaviconFile = null;
+      _currentFaviconUrl = null;
     } else {
       _pendingLogoFile = null;
       _currentLogoUrl = null;
     }
 
     renderLogoPreview();
-    showLogoStatus('✅ Logo eliminado.', 'ok', type);
+    showLogoStatus('✅ Eliminado.', 'ok', type);
 
   } catch (e) {
     console.error('Error eliminando logo:', e);
     showLogoStatus('❌ Error eliminando: ' + e.message, 'error', type);
   }
 }
-
 /**
  * Convierte una imagen a WebP optimizado (92%, máx 2000px).
  * Reutilizable para logo y otros usos.
  */
-async function convertImageToWebp(file) {
+async function convertImageToWebp(file, maxDim = 2000) {
   const imageBitmap = await loadImageFromFile(file);
-  const MAX_DIM = 2000;
+  const MAX_DIM = Number(maxDim) || 2000;
   let { width, height } = imageBitmap;
   if (width > MAX_DIM || height > MAX_DIM) {
     const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
@@ -9638,6 +10017,22 @@ function populateReportFilters() {
   if (dateFrom) dateFrom.onchange = () => { reportFilters.dateFrom = dateFrom.value || null; renderReports(); };
   if (dateTo) dateTo.onchange = () => { reportFilters.dateTo = dateTo.value || null; renderReports(); };
 
+  // 🆕 Listener del toggle "Filtrar por"
+  const dateModeSel = $('rep-date-mode');
+  if (dateModeSel && !dateModeSel.dataset.listeners) {
+    dateModeSel.dataset.listeners = '1';
+    dateModeSel.onchange = () => {
+      // Guardar en localStorage para persistir entre sesiones
+      try { localStorage.setItem('smartec_rep_date_mode', dateModeSel.value); } catch (e) {}
+      renderReports();
+    };
+    // Restaurar el valor guardado
+    try {
+      const saved = localStorage.getItem('smartec_rep_date_mode');
+      if (saved) dateModeSel.value = saved;
+    } catch (e) {}
+  }
+
   // 🆕 Listener del dropdown "Agrupar por"
   const groupBySel = $('chart-sales-groupby');
   if (groupBySel) {
@@ -9805,13 +10200,32 @@ window.clearReportFilters = () => {
 function getFilteredSales() {
   let list = sales.filter(s => s.status !== 'anulada');
 
+  // 🆕 Determinar qué fecha usar como referencia
+  const dateMode = $('rep-date-mode')?.value || 'created';
+  const getRefDate = (s) => {
+    if (dateMode === 'paid') {
+      // Fecha de pago: paidAt si existe, si no createdAt (fallback)
+      return s.paidAt?.seconds
+        ? new Date(s.paidAt.seconds * 1000)
+        : (s.createdAt?.seconds ? new Date(s.createdAt.seconds * 1000) : null);
+    }
+    // Fecha de creación (comportamiento original)
+    return s.createdAt?.seconds ? new Date(s.createdAt.seconds * 1000) : null;
+  };
+
   if (reportFilters.dateFrom) {
     const from = new Date(reportFilters.dateFrom + 'T00:00:00');
-    list = list.filter(s => s.createdAt?.seconds && new Date(s.createdAt.seconds * 1000) >= from);
+    list = list.filter(s => {
+      const d = getRefDate(s);
+      return d && d >= from;
+    });
   }
   if (reportFilters.dateTo) {
     const to = new Date(reportFilters.dateTo + 'T23:59:59');
-    list = list.filter(s => s.createdAt?.seconds && new Date(s.createdAt.seconds * 1000) <= to);
+    list = list.filter(s => {
+      const d = getRefDate(s);
+      return d && d <= to;
+    });
   }
   if (reportFilters.storeId !== 'all') {
     list = list.filter(s => s.storeId === reportFilters.storeId);
@@ -12774,6 +13188,76 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+/* ============================================================
+   🆕 REGENERAR DOCUMENTOS PDF
+   Vuelve a generar los 3 PDFs y a subirlos a Storage.
+   Usa window.SmartecPdf (debe estar cargado en la página).
+============================================================ */
+window.regenerateDocuments = async (saleId) => {
+  const sale = sales.find(x => x.id === saleId);
+  if (!sale) return alert('Venta no encontrada.');
+
+  if (!window.SmartecPdf || typeof window.SmartecPdf.generateAndUploadAll !== 'function') {
+    return alert('⚠️ El generador de PDFs no está cargado. Recarga la página.');
+  }
+
+  if (!confirm('¿Regenerar los 3 documentos PDF de esta venta?\n\nSe sobrescribirán los existentes.')) return;
+
+  // Bloquear el botón
+  const btns = document.querySelectorAll(`button[onclick="regenerateDocuments('${saleId}')"]`);
+  btns.forEach(b => { b.disabled = true; b.textContent = '⏳ Generando...'; });
+
+  try {
+    // Cargar settings
+    const setSnap = await getDoc(doc(db, 'settings', 'general'));
+    const pdfSettings = setSnap.exists() ? setSnap.data() : {};
+
+    // Preparar venta para PDF
+    const saleForPdf = {
+      id: sale.id,
+      documentNumber: sale.documentNumber,
+      storeId: sale.storeId,
+      storeName: sale.storeName || '',
+      customer: sale.customer || {},
+      items: sale.items || [],
+      subtotal: Number(sale.subtotal || 0),
+      discount: Number(sale.discount || 0),
+      shipping: Number(sale.shipping || 0),
+      surchargeRate: Number(sale.surchargeRate || 0),
+      surchargeAmount: Number(sale.surchargeAmount || 0),
+      total: Number(sale.total || 0),
+      paymentMethod: sale.paymentMethod || '',
+      sellerName: sale.sellerName || '',
+      sellerEmail: sale.sellerEmail || '',
+      createdAt: sale.createdAt || null,
+    };
+
+    await window.SmartecPdf.generateAndUploadAll(saleForPdf, pdfSettings, {
+      storage,
+      ref,
+      uploadBytes,
+      getDownloadURL,
+      db,
+      doc,
+      updateDoc,
+      serverTimestamp,
+    });
+
+    alert('✅ Documentos regenerados correctamente.');
+
+    // Recargar la venta en memoria
+    window.SmartecCache.invalidate('sales');
+    await loadAll();
+
+    // Reabrir el detalle con datos actualizados
+    viewSale(saleId);
+  } catch (e) {
+    console.error('Error regenerando documentos:', e);
+    alert('❌ Error: ' + e.message);
+    btns.forEach(b => { b.disabled = false; b.textContent = '🔄 Regenerar'; });
+  }
+};
+
 window.forceRefreshCache = async () => {
   const btn = $('refresh-cache-btn');
   if (btn) {
@@ -13079,7 +13563,7 @@ window.renderAccounting = () => {
 
   // Conectar listeners (solo una vez)
   ['acc-status-filter','acc-supplier-filter','acc-terms-filter','acc-search',
-   'acc-date-from','acc-date-to','acc-category-filter'].forEach(id => {
+   'acc-date-from','acc-date-to','acc-category-filter','acc-date-mode'].forEach(id => {
     const el = $(id);
     if (el && !el.dataset.listeners) {
       el.dataset.listeners = '1';
@@ -13095,10 +13579,71 @@ window.renderAccounting = () => {
     }
   });
 
+  // 🆕 Persistir el toggle de fecha
+  const accDateMode = $('acc-date-mode');
+  if (accDateMode && !accDateMode.dataset.persist) {
+    accDateMode.dataset.persist = '1';
+    try {
+      const saved = localStorage.getItem('smartec_acc_date_mode');
+      if (saved) accDateMode.value = saved;
+    } catch (e) {}
+    accDateMode.addEventListener('change', () => {
+      try { localStorage.setItem('smartec_acc_date_mode', accDateMode.value); } catch (e) {}
+    });
+  }
+
   // Aplicar vista actual
   setAccView(currentAccView || 'summary');
 };
 
+  /* ============================================================
+   🆕 HELPER: Filtrar ventas por rango de fechas de Contabilidad
+   Usa el toggle "acc-date-mode" para decidir si filtra por
+   createdAt o paidAt.
+============================================================ */
+function getAccSalesFiltered() {
+  const dateMode = $('acc-date-mode')?.value || 'created';
+  const dateFrom = $('acc-date-from')?.value || '';
+  const dateTo = $('acc-date-to')?.value || '';
+
+  let list = (sales || []).filter(s => s.status !== 'anulada');
+
+  const getRefDate = (s) => {
+    if (dateMode === 'paid') {
+      return s.paidAt?.seconds
+        ? new Date(s.paidAt.seconds * 1000)
+        : (s.createdAt?.seconds ? new Date(s.createdAt.seconds * 1000) : null);
+    }
+    return s.createdAt?.seconds ? new Date(s.createdAt.seconds * 1000) : null;
+  };
+
+  if (dateFrom) {
+    const from = new Date(dateFrom + 'T00:00:00');
+    list = list.filter(s => {
+      const d = getRefDate(s);
+      return d && d >= from;
+    });
+  }
+  if (dateTo) {
+    const to = new Date(dateTo + 'T23:59:59');
+    list = list.filter(s => {
+      const d = getRefDate(s);
+      return d && d <= to;
+    });
+  }
+
+  // Filtro por tienda (si aplica)
+  const storeF = $('acc-store-filter')?.value || 'all';
+  if (storeF !== 'all') {
+    if (storeF === 'general') {
+      list = list.filter(s => !s.storeId);
+    } else {
+      list = list.filter(s => s.storeId === storeF);
+    }
+  }
+
+  return list;
+}
 /* ============================================================
    VISTA: RESUMEN FINANCIERO
 ============================================================ */
@@ -13108,7 +13653,7 @@ function renderAccSummary() {
   // ============================================================
   // 1. KPIs DE RENTABILIDAD (Ventas vs Costos vs Gastos)
   // ============================================================
-  const salesFiltered = getFilteredSales();
+  const salesFiltered = getAccSalesFiltered();
   const totalSales = salesFiltered.reduce((s, x) => {
     const sub = Number(x.subtotal || 0);
     const disc = Number(x.discount || 0);

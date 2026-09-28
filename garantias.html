@@ -7,9 +7,12 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="header-app.js"></script>
+<script src="favicon.js"></script>
 <script src="fingerprint.js"></script>
 <script src="device-guard.js"></script>
 <script src="kiosk.js"></script>
+<link rel="stylesheet" href="theme.css">
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
@@ -35,87 +38,85 @@
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
 
+<!-- Mesh gradient de fondo -->
+<div class="mesh-bg"></div>
+
 <!-- LOGIN -->
-<div id="login-screen" class="hidden min-h-screen items-center justify-center bg-sd p-4">
-  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
-    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
-    <p class="text-center text-sm text-gray-500 mb-6">Garantías</p>
-    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
-    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
-    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
-    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
+<div id="login-screen" class="hidden min-h-screen items-center justify-center p-4 relative overflow-hidden">
+  <div class="hero-orb w-[500px] h-[500px] bg-[#5AC8FA]/30" style="top:-200px;left:-150px;"></div>
+  <div class="hero-orb w-[400px] h-[400px] bg-[#BF5AF2]/25" style="bottom:-100px;right:-100px;"></div>
+
+  <div class="relative glass-strong p-8 rounded-3xl shadow-apple-xl w-full max-w-sm border border-white/70 fade-up">
+    <div class="text-center mb-6">
+      <h1 class="text-3xl font-extrabold text-center logo-mark mb-2">SMARTEC</h1>
+      <p class="text-center text-sm text-[#6E6E73] mt-2 font-medium">Garantías</p>
+    </div>
+
+    <div class="space-y-3">
+      <input id="login-email" type="email" placeholder="Correo electrónico" class="w-full px-4 py-3 rounded-xl text-sm">
+      <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-3 rounded-xl text-sm">
+    </div>
+
+    <button id="login-btn" class="btn-apple w-full py-3 rounded-xl font-semibold mt-5">Ingresar</button>
+
+    <p id="login-error" class="text-red-500 text-xs mt-3 hidden text-center"></p>
   </div>
 </div>
 
 <!-- VERIFICANDO SESIÓN -->
-<div id="loading-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
-  <div class="text-center">
-    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
-    <p class="text-white font-semibold text-sm">Verificando sesión...</p>
+<div id="loading-screen" class="min-h-screen flex items-center justify-center p-4">
+  <div class="text-center fade-up">
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-[#0071E3]/20 border-t-[#0071E3] mb-4"></div>
+    <p class="text-[#1D1D1F] font-semibold text-sm">Verificando sesión...</p>
   </div>
 </div>
 
 <!-- PANEL -->
 <div id="panel-screen" class="hidden min-h-screen flex flex-col">
 
-  <header class="bg-sd text-white px-4 py-4 flex justify-between items-center shrink-0">
-    <div class="flex items-center gap-3 min-w-0">
-      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap">SMART<span class="text-sl">EC</span></h1>
-      <div class="hidden md:block w-px h-6 bg-white/20"></div>
-      <div class="min-w-0">
-        <p id="header-title" class="text-sm md:text-base font-semibold truncate">Garantías</p>
-        <p id="header-role" class="text-[10px] opacity-70">—</p>
-        <select id="store-selector" class="hidden mt-1 text-sm rounded-lg px-3 py-1.5 cursor-pointer focus:outline-none border border-white/30"></select>
-      </div>
-    </div>
-    <div class="flex items-center gap-3 text-sm shrink-0">
-      <span id="user-info" class="hidden lg:inline opacity-80 text-xs"></span>
-      <button onclick="forceRefresh()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition" title="Refrescar datos">🔄</button>
-      <a href="home.html" class="hover:text-sl transition text-xs">← Inicio</a>
-      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
-    </div>
-  </header>
+  <!-- Header (inyectado por header-app.js) -->
+  <div id="smartec-header-app"></div>
 
   <main class="flex-1 container mx-auto p-4 md:p-6">
 
     <!-- KPIs -->
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Total tickets</p>
-        <p id="kpi-total" class="text-2xl font-bold text-sd mt-1">0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up">
+        <p class="text-xs text-[#6E6E73] font-medium">🎫 Total tickets</p>
+        <p id="kpi-total" class="text-2xl font-bold text-[#1D1D1F] mt-1 tracking-tight">0</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Abiertos</p>
-        <p id="kpi-abierto" class="text-2xl font-bold text-blue-600 mt-1">0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up" style="animation-delay:.05s">
+        <p class="text-xs text-[#6E6E73] font-medium">🔵 Abiertos</p>
+        <p id="kpi-abierto" class="text-2xl font-bold text-[#0071E3] mt-1 tracking-tight">0</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">En proceso</p>
-        <p id="kpi-proceso" class="text-2xl font-bold text-orange-500 mt-1">0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up" style="animation-delay:.1s">
+        <p class="text-xs text-[#6E6E73] font-medium">🟠 En proceso</p>
+        <p id="kpi-proceso" class="text-2xl font-bold text-[#FF9F0A] mt-1 tracking-tight">0</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Resueltos</p>
-        <p id="kpi-resuelto" class="text-2xl font-bold text-green-600 mt-1">0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up" style="animation-delay:.15s">
+        <p class="text-xs text-[#6E6E73] font-medium">🟢 Resueltos</p>
+        <p id="kpi-resuelto" class="text-2xl font-bold text-[#30D158] mt-1 tracking-tight">0</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Rechazados</p>
-        <p id="kpi-rechazado" class="text-2xl font-bold text-red-500 mt-1">0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up" style="animation-delay:.2s">
+        <p class="text-xs text-[#6E6E73] font-medium">🔴 Rechazados</p>
+        <p id="kpi-rechazado" class="text-2xl font-bold text-[#FF375F] mt-1 tracking-tight">0</p>
       </div>
     </div>
 
     <!-- Filtros -->
-    <div class="bg-white rounded-xl shadow p-4 mb-4">
+    <div class="glass-strong rounded-2xl shadow-apple-lg p-4 mb-4 border border-white/60">
       <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div>
-          <label class="text-[10px] font-semibold text-sd">Buscar</label>
-          <input id="f-search" type="text" placeholder="Ticket, cliente, producto..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <label class="text-[10px] font-semibold text-[#1D1D1F]">Buscar</label>
+          <input id="f-search" type="text" placeholder="Ticket, cliente, producto..." class="w-full px-3 py-2 rounded-xl text-xs mt-1">
         </div>
         <div>
-          <label class="text-[10px] font-semibold text-sd">Responsable</label>
-          <input id="f-responsible" type="text" placeholder="Buscar..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <label class="text-[10px] font-semibold text-[#1D1D1F]">Responsable</label>
+          <input id="f-responsible" type="text" placeholder="Buscar..." class="w-full px-3 py-2 rounded-xl text-xs mt-1">
         </div>
         <div>
-          <label class="text-[10px] font-semibold text-sd">Estado</label>
-          <select id="f-status" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <label class="text-[10px] font-semibold text-[#1D1D1F]">Estado</label>
+          <select id="f-status" class="w-full px-3 py-2 rounded-xl text-xs mt-1">
             <option value="all">Todos</option>
             <option value="abierto">Abiertos</option>
             <option value="en_proceso">En proceso</option>
@@ -124,8 +125,8 @@
           </select>
         </div>
         <div>
-          <label class="text-[10px] font-semibold text-sd">Prioridad</label>
-          <select id="f-priority" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <label class="text-[10px] font-semibold text-[#1D1D1F]">Prioridad</label>
+          <select id="f-priority" class="w-full px-3 py-2 rounded-xl text-xs mt-1">
             <option value="all">Todas</option>
             <option value="baja">Baja</option>
             <option value="media">Media</option>
@@ -133,67 +134,71 @@
           </select>
         </div>
         <div>
-          <label class="text-[10px] font-semibold text-sd">Ordenar</label>
-          <select id="f-sort" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <label class="text-[10px] font-semibold text-[#1D1D1F]">Ordenar</label>
+          <select id="f-sort" class="w-full px-3 py-2 rounded-xl text-xs mt-1">
             <option value="recent">Más recientes</option>
             <option value="priority">Prioridad (alta primero)</option>
             <option value="oldest">Más antiguos</option>
           </select>
         </div>
       </div>
-      <div class="flex justify-between items-center mt-3 pt-3 border-t">
-        <p id="results-count" class="text-xs text-gray-500">0 tickets</p>
-        <button onclick="clearFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+      <div class="flex justify-between items-center mt-3 pt-3 border-t border-black/5">
+        <p id="results-count" class="text-xs text-[#6E6E73]">0 tickets</p>
+        <button onclick="clearFilters()" class="text-xs text-[#FF375F] hover:underline font-semibold">Limpiar filtros</button>
       </div>
     </div>
 
     <!-- Acciones -->
     <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
-      <h2 class="text-xl font-bold text-sd">Tickets de garantía</h2>
-      <button onclick="openTicketForm()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold">+ Nuevo ticket</button>
+      <h2 class="text-xl md:text-2xl font-extrabold text-[#1D1D1F] tracking-tight">Tickets de garantía</h2>
+      <button onclick="openTicketForm()" class="btn-apple px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-2">
+        + Nuevo ticket
+      </button>
     </div>
 
     <!-- Tabla -->
-    <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
-      <table class="w-full text-sm min-w-[1000px]">
-        <thead class="bg-gray-100 text-sd">
-          <tr>
-            <th class="p-3 text-left">Ticket</th>
-            <th class="p-3 text-left">Fecha</th>
-            <th class="p-3 text-left">Cliente</th>
-            <th class="p-3 text-left">Producto</th>
-            <th class="p-3 text-left">Responsable</th>
-            <th class="p-3 text-center">Prioridad</th>
-            <th class="p-3 text-center">Estado</th>
-            <th class="p-3"></th>
-          </tr>
-        </thead>
-        <tbody id="tickets-tbody"></tbody>
-      </table>
+    <div class="glass-strong rounded-2xl shadow-apple-lg overflow-hidden border border-white/60">
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[1000px]">
+          <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Ticket</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Fecha</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Cliente</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Producto</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Responsable</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Prioridad</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Estado</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="tickets-tbody"></tbody>
+        </table>
+      </div>
     </div>
-    <p id="tickets-empty" class="hidden text-center py-8 text-gray-400">Sin tickets con esos filtros.</p>
+    <p id="tickets-empty" class="hidden text-center py-8 text-[#6E6E73]">Sin tickets con esos filtros.</p>
 
   </main>
 </div>
 
 <!-- MODAL FORMULARIO -->
 <div id="ticket-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
-  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeTicketForm()"></div>
-  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
-    <button onclick="closeTicketForm()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
-      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto" onclick="closeTicketForm()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeTicketForm()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
-    <h3 id="ticket-title" class="text-xl font-bold text-sd mb-4 pr-10">Nuevo ticket de garantía</h3>
+    <h3 id="ticket-title" class="text-xl font-bold text-[#1D1D1F] mb-4 pr-10 tracking-tight">Nuevo ticket de garantía</h3>
     <div id="ticket-body"></div>
   </div>
 </div>
 
 <!-- MODAL DETALLE -->
 <div id="detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
-  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeDetail()"></div>
-  <div class="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
-    <button onclick="closeDetail()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
-      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto" onclick="closeDetail()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeDetail()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
     <div id="detail-body"></div>
   </div>
@@ -239,6 +244,66 @@ let users = [];
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
 const escapeHtml = window.Smartec.escapeHtml;   // 🆕
+/* ============================================================
+   🆕 RENDER DEL HEADER-APP
+============================================================ */
+function renderHeaderApp() {
+  if (!window.SmartecHeaderApp) return;
+  if (!currentUser || !currentUserData) return;
+
+  const settingsData = window.__garSettings || {};
+  const isSuper = currentUserData.role === 'superadmin';
+
+  const activeStores = isSuper
+    ? (stores || []).filter(s => s.active).sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+
+  let titleText = 'Garantías';
+  if (currentStore && currentStore.storeId !== 'all') {
+    titleText = `Garantías · ${currentStore.name}`;
+  } else if (isSuper && currentStore?.storeId === 'all') {
+    titleText = 'Garantías · Todas las tiendas';
+  }
+
+  window.SmartecHeaderApp.render({
+    settings: settingsData,
+    user: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      name: currentUserData.name || currentUser.email,
+      role: currentUserData.role,
+      storeId: currentUserData.storeId || null
+    },
+    stores: activeStores,
+    currentStore: currentStore,
+    showTitle: true,
+    titleText: titleText,
+    showRole: true,
+    showShiftButton: true,
+    showSellerInfo: true,
+    showHomeLink: true,
+    showRefreshButton: true,
+    showLogoutButton: true,
+    showStoreSelector: isSuper,
+    storeSelectorIncludeAll: true,
+    extraLinks: [],
+    onRefresh: () => { if (window.forceRefresh) window.forceRefresh(); },
+    onLogout: async () => {
+      if (window.SmartecKiosk) window.SmartecKiosk.disable();
+      await audit({ action: 'logout', collection: 'system', note: 'Cierre de sesión' });
+      window.SmartecDeviceGuard.clearValidatedToday();
+      await signOut(auth);
+      window.location.href = 'home.html';
+    },
+    onStoreChange: async (store) => {
+      currentStore = store;
+      sessionStorage.setItem('smartec_garantias_store', store.storeId);
+      await loadWarrantiesAndCustomers();
+      renderAll();
+      renderHeaderApp();
+    }
+  });
+}
 const fmtDate = ts => {
   if (!ts) return '-';
   const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
@@ -319,13 +384,6 @@ $('login-btn').onclick = async () => {
   }
 };
 
-$('logout-btn').onclick = async () => {
-  if (window.SmartecKiosk) window.SmartecKiosk.disable();
-  await audit({ action:'logout', collection:'system', note:'Cierre de sesión' });
-  window.SmartecDeviceGuard.clearValidatedToday();
-  await signOut(auth);
-  window.location.href = 'home.html';
-};
 
 onAuthStateChanged(auth, async user => {
       // 🚧 GUARD: solo se entra a esta página desde home.html
@@ -390,9 +448,16 @@ onAuthStateChanged(auth, async user => {
   $('login-screen').classList.add('hidden');
   $('panel-screen').classList.remove('hidden');
 
-  $('user-info').innerText = '👤 ' + user.email;
-  const roleLabels = { superadmin:'Superadmin', admin:'Admin de tienda', vendedor:'Vendedor' };
-  $('header-role').innerText = roleLabels[currentUserData.role] || currentUserData.role;
+  // Cargar settings (logo)
+  let settingsData = {};
+  try {
+    const setSnap = await getDoc(doc(db, 'settings', 'general'));
+    settingsData = setSnap.exists() ? setSnap.data() : {};
+  } catch (e) { console.warn('No se pudo cargar settings:', e); }
+
+  window.__garSettings = settingsData;
+
+  renderHeaderApp();
 
   await loadAll();
 });
@@ -408,30 +473,21 @@ async function loadAll() {
     return s.docs.map(d => ({id:d.id, ...d.data()}));
   });
 
-  // Configurar tienda
+  // Configurar tienda actual (el selector lo maneja header-app.js)
   if (isSuper) {
     const activeStores = stores.filter(s => s.active).sort((a,b) => a.name.localeCompare(b.name));
     if (!activeStores.length) {
       alert('⛔ No hay tiendas activas.');
       return;
     }
-    const saved = sessionStorage.getItem('smartec_garantias_store');
-    currentStore = activeStores.find(s => s.storeId === saved) || activeStores[0];
+    const saved = sessionStorage.getItem('smartec_garantias_store') || 'all';
+    if (saved === 'all') {
+      currentStore = { storeId: 'all', name: 'Todas las tiendas' };
+    } else {
+      currentStore = activeStores.find(s => s.storeId === saved)
+                  || { storeId: 'all', name: 'Todas las tiendas' };
+    }
     sessionStorage.setItem('smartec_garantias_store', currentStore.storeId);
-
-    const sel = $('store-selector');
-    sel.classList.remove('hidden');
-    sel.innerHTML = activeStores.map(s =>
-      `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
-    ).join('');
-    $('header-title').classList.add('hidden');
-
-    sel.onchange = async () => {
-      currentStore = stores.find(s => s.storeId === sel.value);
-      sessionStorage.setItem('smartec_garantias_store', sel.value);
-      await loadWarrantiesAndCustomers();
-      renderAll();
-    };
   } else {
     currentStore = stores.find(s => s.storeId === myStoreId);
     if (!currentStore) {
@@ -440,12 +496,13 @@ async function loadAll() {
       window.location.href = 'home.html';
       return;
     }
-    $('store-selector').classList.add('hidden');
-    $('header-title').innerText = 'Garantías · ' + currentStore.name;
   }
 
   await loadWarrantiesAndCustomers();
   renderAll();
+
+  // 🆕 Re-render del header
+  renderHeaderApp();
 }
 
 async function loadWarrantiesAndCustomers() {
@@ -496,9 +553,10 @@ function getFiltered() {
   // Filtro por tienda según rol
   if (currentUserData.role !== 'superadmin') {
     list = list.filter(w => w.storeId === currentUserData.storeId);
-  } else {
+  } else if (currentStore.storeId !== 'all') {
     list = list.filter(w => w.storeId === currentStore.storeId);
   }
+  // Si es superadmin y currentStore.storeId === 'all', no filtra
 
   const search = ($('f-search').value || '').toLowerCase().trim();
   if (search) {
@@ -549,10 +607,10 @@ function renderKPIs() {
   let base = warranties.slice();
   if (currentUserData.role !== 'superadmin') {
     base = base.filter(w => w.storeId === currentUserData.storeId);
-  } else {
+  } else if (currentStore.storeId !== 'all') {
     base = base.filter(w => w.storeId === currentStore.storeId);
   }
-
+  // Si es superadmin y currentStore.storeId === 'all', no filtra
   $('kpi-total').innerText = base.length;
   $('kpi-abierto').innerText = base.filter(w => w.status === 'abierto').length;
   $('kpi-proceso').innerText = base.filter(w => w.status === 'en_proceso').length;

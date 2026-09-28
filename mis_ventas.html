@@ -6,7 +6,10 @@
 <title>Smartec · Mis Ventas</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
+<link rel="stylesheet" href="theme.css">
 <script src="cache.js"></script>
+<script src="header-app.js"></script>
+<script src="favicon.js"></script>
 <script src="fingerprint.js"></script>
 <script src="device-guard.js"></script>
 <script src="kiosk.js"></script>
@@ -35,52 +38,52 @@
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
 
+<!-- Mesh gradient de fondo -->
+<div class="mesh-bg"></div>
+
 <!-- LOGIN -->
-<div id="login-screen" class="hidden min-h-screen items-center justify-center bg-sd p-4">
-  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
-    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
-    <p class="text-center text-sm text-gray-500 mb-6">Mis Ventas</p>
-    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
-    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
-    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
-    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
-    <a href="index.html" class="block text-center text-xs text-gray-400 hover:text-sl mt-4">← Ir a la tienda</a>
+<div id="login-screen" class="hidden min-h-screen items-center justify-center p-4 relative overflow-hidden">
+  <!-- Orbes de fondo -->
+  <div class="hero-orb w-[500px] h-[500px] bg-[#5AC8FA]/30" style="top:-200px;left:-150px;"></div>
+  <div class="hero-orb w-[400px] h-[400px] bg-[#BF5AF2]/25" style="bottom:-100px;right:-100px;"></div>
+
+  <div class="relative glass-strong p-8 rounded-3xl shadow-apple-xl w-full max-w-sm border border-white/70 fade-up">
+    <div class="text-center mb-6">
+      <h1 class="text-3xl font-extrabold text-center logo-mark mb-2">SMARTEC</h1>
+      <p class="text-center text-sm text-[#6E6E73] mt-2 font-medium">Mis Ventas</p>
+    </div>
+
+    <div class="space-y-3">
+      <input id="login-email" type="email" placeholder="Correo electrónico" class="w-full px-4 py-3 rounded-xl text-sm">
+      <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-3 rounded-xl text-sm">
+    </div>
+
+    <button id="login-btn" class="btn-apple w-full py-3 rounded-xl font-semibold mt-5">Ingresar</button>
+
+    <p id="login-error" class="text-red-500 text-xs mt-3 hidden text-center"></p>
+
+    <a href="index.html" class="block text-center text-xs text-[#0071E3] hover:underline mt-5 font-medium">← Ir a la tienda</a>
   </div>
 </div>
 
 <!-- VERIFICANDO SESIÓN -->
-<div id="loading-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
-  <div class="text-center">
-    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
-    <p class="text-white font-semibold text-sm">Verificando sesión...</p>
+<div id="loading-screen" class="min-h-screen flex items-center justify-center p-4">
+  <div class="text-center fade-up">
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-[#0071E3]/20 border-t-[#0071E3] mb-4"></div>
+    <p class="text-[#1D1D1F] font-semibold text-sm">Verificando sesión...</p>
   </div>
 </div>
 
 <!-- PANEL -->
 <div id="panel-screen" class="hidden min-h-screen flex flex-col">
 
-  <header class="bg-sd text-white px-4 py-4 flex justify-between items-center shrink-0">
-    <div class="flex items-center gap-3 min-w-0">
-      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap">SMART<span class="text-sl">EC</span></h1>
-      <div class="hidden md:block w-px h-6 bg-white/20"></div>
-      <div class="min-w-0">
-        <p id="header-title" class="text-sm md:text-base font-semibold truncate">Mis Ventas</p>
-        <p id="header-role" class="text-[10px] opacity-70">—</p>
-        <select id="store-selector" class="hidden mt-1 text-sm rounded-lg px-3 py-1.5 cursor-pointer focus:outline-none border border-white/30"></select>
-      </div>
-    </div>
-    <div class="flex items-center gap-3 text-sm shrink-0">
-      <span id="user-info" class="hidden lg:inline opacity-80 text-xs"></span>
-      <button onclick="forceRefresh()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition" title="Refrescar datos">🔄</button>
-      <a href="home.html" class="hover:text-sl transition text-xs">← Inicio</a>
-      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
-    </div>
-  </header>
+  <!-- Header (inyectado por header-app.js) -->
+  <div id="smartec-header-app"></div>
 
-  <main class="flex-1 container mx-auto p-4 md:p-6">
+  <main class="flex-1 container mx-auto p-4 md:p-6 relative">
 
     <!-- Filtros -->
-    <div class="bg-white rounded-xl shadow p-4 mb-6">
+    <div class="glass-strong rounded-2xl shadow-apple-lg p-4 mb-6 border border-white/60">
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
         <div>
           <label class="text-[10px] font-semibold text-sd">Desde</label>
@@ -117,62 +120,62 @@
           </select>
         </div>
       </div>
-      <div class="flex justify-between items-center flex-wrap gap-2 pt-3 border-t">
+      <div class="flex justify-between items-center flex-wrap gap-2 pt-3 border-t border-black/5">
         <div class="flex gap-2 flex-wrap">
-          <button onclick="setRange('today')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Hoy</button>
-          <button onclick="setRange('week')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Esta semana</button>
-          <button onclick="setRange('month')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este mes</button>
-          <button onclick="setRange('lastmonth')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes pasado</button>
-          <button onclick="setRange('year')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este año</button>
+          <button onclick="setRange('today')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Hoy</button>
+          <button onclick="setRange('week')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Esta semana</button>
+          <button onclick="setRange('month')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Este mes</button>
+          <button onclick="setRange('lastmonth')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Mes pasado</button>
+          <button onclick="setRange('year')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Este año</button>
         </div>
-        <button onclick="clearFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+        <button onclick="clearFilters()" class="text-xs text-[#FF375F] hover:underline font-semibold">Limpiar filtros</button>
       </div>
     </div>
 
     <!-- KPIs del período -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Total vendido</p>
-        <p id="kpi-total" class="text-2xl font-bold text-sl mt-1">$0</p>
-        <p id="kpi-count" class="text-[10px] text-gray-400 mt-1">0 transacciones</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up">
+        <p class="text-xs text-[#6E6E73] font-medium">💰 Total vendido</p>
+        <p id="kpi-total" class="text-2xl font-bold text-[#0071E3] mt-1 tracking-tight">$0</p>
+        <p id="kpi-count" class="text-[10px] text-[#6E6E73] mt-1">0 transacciones</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Ticket promedio</p>
-        <p id="kpi-ticket" class="text-2xl font-bold text-sd mt-1">$0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up" style="animation-delay:.05s">
+        <p class="text-xs text-[#6E6E73] font-medium">🎯 Ticket promedio</p>
+        <p id="kpi-ticket" class="text-2xl font-bold text-[#1D1D1F] mt-1 tracking-tight">$0</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Unidades vendidas</p>
-        <p id="kpi-units" class="text-2xl font-bold text-sd mt-1">0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up" style="animation-delay:.1s">
+        <p class="text-xs text-[#6E6E73] font-medium">📦 Unidades vendidas</p>
+        <p id="kpi-units" class="text-2xl font-bold text-[#1D1D1F] mt-1 tracking-tight">0</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Comisiones del período</p>
-        <p id="kpi-commission" class="text-2xl font-bold text-orange-500 mt-1">$0</p>
-        <p id="kpi-commission-detail" class="text-[10px] text-gray-400 mt-1">Pool: $0 · Bonus: $0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up" style="animation-delay:.15s">
+        <p class="text-xs text-[#6E6E73] font-medium">💵 Comisiones del período</p>
+        <p id="kpi-commission" class="text-2xl font-bold text-[#FF9F0A] mt-1 tracking-tight">$0</p>
+        <p id="kpi-commission-detail" class="text-[10px] text-[#6E6E73] mt-1">Pool: $0 · Bonus: $0</p>
       </div>
     </div>
 
     <!-- Bloque mensual: comisiones y meta -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-      <div class="bg-white p-5 rounded-xl shadow">
-        <h3 class="font-bold text-sd mb-4">💰 Comisiones del mes</h3>
+      <div class="glass-strong rounded-2xl shadow-apple-lg p-5 border border-white/60">
+        <h3 class="font-bold text-[#1D1D1F] mb-4 tracking-tight">💰 Comisiones del mes</h3>
         <div class="space-y-3">
-          <div class="flex justify-between items-center pb-2 border-b">
-            <span class="text-sm text-gray-600">Pool acumulado</span>
-            <span id="m-pool" class="text-lg font-bold text-sl">$0</span>
+          <div class="flex justify-between items-center pb-2 border-b border-black/5">
+            <span class="text-sm text-[#6E6E73]">Pool acumulado</span>
+            <span id="m-pool" class="text-lg font-bold text-[#0071E3]">$0</span>
           </div>
-          <div class="flex justify-between items-center pb-2 border-b">
-            <span class="text-sm text-gray-600">Bonus acumulado</span>
-            <span id="m-bonus" class="text-lg font-bold text-green-600">$0</span>
+          <div class="flex justify-between items-center pb-2 border-b border-black/5">
+            <span class="text-sm text-[#6E6E73]">Bonus acumulado</span>
+            <span id="m-bonus" class="text-lg font-bold text-[#30D158]">$0</span>
           </div>
           <div class="flex justify-between items-center pt-1">
-            <span class="text-sm font-semibold text-sd">Total del mes</span>
-            <span id="m-total" class="text-xl font-bold text-orange-500">$0</span>
+            <span class="text-sm font-semibold text-[#1D1D1F]">Total del mes</span>
+            <span id="m-total" class="text-xl font-bold text-[#FF9F0A]">$0</span>
           </div>
         </div>
       </div>
 
-      <div class="bg-white p-5 rounded-xl shadow">
-        <h3 class="font-bold text-sd mb-4">🎯 Meta mensual</h3>
+      <div class="glass-strong rounded-2xl shadow-apple-lg p-5 border border-white/60">
+        <h3 class="font-bold text-[#1D1D1F] mb-4 tracking-tight">🎯 Meta mensual</h3>
         <div id="goal-block">
           <div class="flex justify-between items-center mb-2">
             <p class="text-sm text-gray-500">Progreso</p>
@@ -201,48 +204,50 @@
     </div>
 
     <!-- Desglose por método de pago -->
-    <div class="bg-white p-5 rounded-xl shadow mb-6">
-      <h3 class="font-bold text-sd mb-4">💳 Desglose por método de pago (período filtrado)</h3>
+    <div class="glass-strong rounded-2xl shadow-apple-lg p-5 border border-white/60 mb-6">
+      <h3 class="font-bold text-[#1D1D1F] mb-4 tracking-tight">💳 Desglose por método de pago (período filtrado)</h3>
       <div id="payment-breakdown" class="grid grid-cols-2 md:grid-cols-5 gap-3"></div>
     </div>
 
     <!-- Tabla -->
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-bold text-sd">Detalle de ventas</h2>
-      <p id="table-count" class="text-xs text-gray-400">0 ventas</p>
+      <h2 class="text-xl md:text-2xl font-extrabold text-[#1D1D1F] tracking-tight">Detalle de ventas</h2>
+      <p id="table-count" class="text-xs text-[#6E6E73]">0 ventas</p>
     </div>
 
-    <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
-      <table class="w-full text-sm min-w-[1000px]">
-        <thead class="bg-gray-100 text-sd">
-          <tr>
-            <th class="p-3 text-left">Fecha</th>
-            <th class="p-3 text-left">Cliente</th>
-            <th class="p-3 text-left">Vendedor</th>
-            <th class="p-3 text-left">Pago</th>
-            <th class="p-3 text-center">Items</th>
-            <th class="p-3 text-right">Total</th>
-            <th class="p-3 text-right">Comisión</th>
-            <th class="p-3 text-center">Estado</th>
-            <th class="p-3"></th>
-          </tr>
-        </thead>
-        <tbody id="sales-tbody"></tbody>
-      </table>
+    <div class="glass-strong rounded-2xl shadow-apple-lg overflow-hidden border border-white/60">
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[1000px]">
+          <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Fecha</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Cliente</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Vendedor</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Pago</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Items</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Total</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Comisión</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Estado</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="sales-tbody"></tbody>
+        </table>
+      </div>
     </div>
-    <p id="sales-empty" class="hidden text-center py-8 text-gray-400">Sin ventas con esos filtros.</p>
+    <p id="sales-empty" class="hidden text-center py-8 text-[#6E6E73]">Sin ventas con esos filtros.</p>
 
   </main>
 </div>
 
 <!-- MODAL DETALLE -->
 <div id="sale-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
-  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeSaleModal()"></div>
-  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
-    <button onclick="closeSaleModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
-      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto" onclick="closeSaleModal()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeSaleModal()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
-    <h3 class="text-xl font-bold text-sd mb-4 pr-10">Detalle de venta</h3>
+    <h3 class="text-xl font-bold text-[#1D1D1F] mb-4 pr-10 tracking-tight">Detalle de venta</h3>
     <div id="sale-detail"></div>
   </div>
 </div>
@@ -282,6 +287,70 @@ let myStoreGoal = null;
 /* ============ HELPERS ============ */
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+/* ============================================================
+   🆕 RENDER DEL HEADER-APP
+   Se llama desde onAuthStateChanged y desde el onchange del
+   selector de tienda (para re-renderizar con la tienda actual).
+============================================================ */
+function renderHeaderApp() {
+  if (!window.SmartecHeaderApp) return;
+  if (!currentUser || !currentUserData) return;
+
+  const settingsData = window.__mvSettings || {};
+  const isSuper = currentUserData.role === 'superadmin';
+
+  // Tiendas activas (solo para superadmin)
+  const activeStores = isSuper
+    ? (stores || []).filter(s => s.active).sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+
+  // Título contextual
+  let titleText = 'Mis Ventas';
+  if (currentStore && currentStore.storeId !== 'all') {
+    titleText = `Mis Ventas · ${currentStore.name}`;
+  } else if (isSuper && currentStore?.storeId === 'all') {
+    titleText = 'Mis Ventas · Todas las tiendas';
+  }
+
+  window.SmartecHeaderApp.render({
+    settings: settingsData,
+    user: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      name: currentUserData.name || currentUser.email,
+      role: currentUserData.role,
+      storeId: currentUserData.storeId || null
+    },
+    stores: activeStores,
+    currentStore: currentStore,
+    showTitle: true,
+    titleText: titleText,
+    showRole: true,
+    showShiftButton: true,
+    showSellerInfo: true,
+    showHomeLink: true,
+    showRefreshButton: true,
+    showLogoutButton: true,
+    showStoreSelector: isSuper,
+    storeSelectorIncludeAll: true,
+    extraLinks: [],
+    onRefresh: () => { if (window.forceRefresh) window.forceRefresh(); },
+    onLogout: async () => {
+      if (window.SmartecKiosk) window.SmartecKiosk.disable();
+      await audit({ action: 'logout', collection: 'system', note: 'Cierre de sesión' });
+      window.SmartecDeviceGuard.clearValidatedToday();
+      await signOut(auth);
+      window.location.href = 'home.html';
+    },
+    onStoreChange: async (store) => {
+      currentStore = store;
+      sessionStorage.setItem('smartec_misventas_store', store.storeId);
+      await loadSales();
+      renderAll();
+      renderHeaderApp();   // re-render para actualizar el título
+    }
+  });
+}
 const escapeHtml = window.Smartec.escapeHtml;   // 🆕
 const fmtDate = ts => {
   if (!ts) return '-';
@@ -312,14 +381,6 @@ $('login-btn').onclick = async () => {
     err.innerText = 'Error: ' + e.message;
     err.classList.remove('hidden');
   }
-};
-
-$('logout-btn').onclick = async () => {
-  if (window.SmartecKiosk) window.SmartecKiosk.disable();
-  await audit({ action:'logout', collection:'system', note:'Cierre de sesión' });
-  window.SmartecDeviceGuard.clearValidatedToday();
-  await signOut(auth);
-  window.location.href = 'home.html';
 };
 
 onAuthStateChanged(auth, async user => {
@@ -386,9 +447,17 @@ onAuthStateChanged(auth, async user => {
   $('login-screen').classList.add('hidden');
   $('panel-screen').classList.remove('hidden');
 
-  $('user-info').innerText = '👤 ' + user.email;
-  const roleLabels = { superadmin:'Superadmin', admin:'Admin de tienda', vendedor:'Vendedor' };
-  $('header-role').innerText = roleLabels[currentUserData.role] || currentUserData.role;
+  // Cargar settings (logo) y renderizar header-app
+  let settingsData = {};
+  try {
+    const setSnap = await getDoc(doc(db, 'settings', 'general'));
+    settingsData = setSnap.exists() ? setSnap.data() : {};
+  } catch (e) { console.warn('No se pudo cargar settings:', e); }
+
+  window.__mvSettings = settingsData;
+  window.__mvUserData = currentUserData;
+
+  renderHeaderApp();
 
   await loadAll();
 });
@@ -410,31 +479,25 @@ async function loadAll() {
   const isSuper = currentUserData.role === 'superadmin';
   const myStoreId = currentUserData.storeId;
 
-  // Configurar tienda y selector
+  // Configurar tienda actual (el selector lo maneja header-app.js)
   if (isSuper) {
     const activeStores = stores.filter(s => s.active).sort((a,b) => a.name.localeCompare(b.name));
     if (!activeStores.length) {
       alert('⛔ No hay tiendas activas.');
       return;
     }
-    const saved = sessionStorage.getItem('smartec_misventas_store');
-    currentStore = activeStores.find(s => s.storeId === saved) || activeStores[0];
+
+    // Recuperar tienda guardada
+    const saved = sessionStorage.getItem('smartec_misventas_store') || 'all';
+    if (saved === 'all') {
+      currentStore = { storeId: 'all', name: 'Todas las tiendas' };
+    } else {
+      currentStore = activeStores.find(s => s.storeId === saved)
+                  || { storeId: 'all', name: 'Todas las tiendas' };
+    }
     sessionStorage.setItem('smartec_misventas_store', currentStore.storeId);
-
-    const sel = $('store-selector');
-    sel.classList.remove('hidden');
-    sel.innerHTML = activeStores.map(s =>
-      `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
-    ).join('');
-    $('header-title').classList.add('hidden');
-
-    sel.onchange = async () => {
-      currentStore = stores.find(s => s.storeId === sel.value);
-      sessionStorage.setItem('smartec_misventas_store', sel.value);
-      await loadSales();
-      renderAll();
-    };
   } else {
+    // Admin / vendedor: solo su tienda asignada
     currentStore = stores.find(s => s.storeId === myStoreId);
     if (!currentStore) {
       alert('⛔ Tu tienda no existe.');
@@ -442,8 +505,6 @@ async function loadAll() {
       window.location.href = 'home.html';
       return;
     }
-    $('store-selector').classList.add('hidden');
-    $('header-title').innerText = 'Mis Ventas · ' + currentStore.name;
   }
 
   // Configurar filtro de vendedor
@@ -456,6 +517,10 @@ async function loadAll() {
     $('f-seller').innerHTML = '<option value="all">Todos</option>' +
       team.map(u => `<option value="${u.id}">${u.name || u.email}</option>`).join('');
   }
+
+  // 🆕 Re-renderizar el header-app ahora que tenemos las tiendas cargadas
+  //    y la currentStore definida
+  renderHeaderApp();
 
   // Cargar meta de la tienda (mes actual)
   await loadStoreGoal();
@@ -486,16 +551,23 @@ async function loadSales() {
   const C = window.SmartecCache;
   const isSuper = currentUserData.role === 'superadmin';
   const myStoreId = currentUserData.storeId;
+  const isAllStores = currentStore?.storeId === 'all';
 
   let allSales;
-  if (isSuper) {
-    // Superadmin: ventas de la tienda seleccionada
+  if (isSuper && isAllStores) {
+    // Superadmin viendo TODAS las tiendas
+    allSales = await C.wrap('sales_ALL', async () => {
+      const s = await getDocs(collection(db,'sales'));
+      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    });
+  } else if (isSuper) {
+    // Superadmin viendo UNA tienda específica
     allSales = await C.wrap(`sales_${currentStore.storeId}`, async () => {
       const s = await getDocs(query(collection(db,'sales'), where('storeId','==', currentStore.storeId)));
       return s.docs.map(d => ({id:d.id, ...d.data()}));
     });
   } else {
-    // Admin y vendedor: ventas de su tienda
+    // Admin y vendedor: ventas de su tienda asignada
     allSales = await C.wrap(`sales_${myStoreId}`, async () => {
       const s = await getDocs(query(collection(db,'sales'), where('storeId','==', myStoreId)));
       return s.docs.map(d => ({id:d.id, ...d.data()}));

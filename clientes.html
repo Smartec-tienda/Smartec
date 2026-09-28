@@ -7,9 +7,15 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="header-app.js"></script>
+<script src="favicon.js"></script>
 <script src="fingerprint.js"></script>
 <script src="device-guard.js"></script>
 <script src="kiosk.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="pdf-generator.js"></script>
+<link rel="stylesheet" href="theme.css">
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
@@ -35,92 +41,91 @@
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
 
+<!-- Mesh gradient de fondo -->
+<div class="mesh-bg"></div>
+
 <!-- LOGIN -->
-<div id="login-screen" class="hidden min-h-screen items-center justify-center bg-sd p-4">
-  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
-    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
-    <p class="text-center text-sm text-gray-500 mb-6">Clientes</p>
-    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
-    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
-    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
-    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
-    <a href="index.html" class="block text-center text-xs text-gray-400 hover:text-sl mt-4">← Ir a la tienda</a>
+<div id="login-screen" class="hidden min-h-screen items-center justify-center p-4 relative overflow-hidden">
+  <div class="hero-orb w-[500px] h-[500px] bg-[#5AC8FA]/30" style="top:-200px;left:-150px;"></div>
+  <div class="hero-orb w-[400px] h-[400px] bg-[#BF5AF2]/25" style="bottom:-100px;right:-100px;"></div>
+
+  <div class="relative glass-strong p-8 rounded-3xl shadow-apple-xl w-full max-w-sm border border-white/70 fade-up">
+    <div class="text-center mb-6">
+      <h1 class="text-3xl font-extrabold text-center logo-mark mb-2">SMARTEC</h1>
+      <p class="text-center text-sm text-[#6E6E73] mt-2 font-medium">Clientes</p>
+    </div>
+
+    <div class="space-y-3">
+      <input id="login-email" type="email" placeholder="Correo electrónico" class="w-full px-4 py-3 rounded-xl text-sm">
+      <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-3 rounded-xl text-sm">
+    </div>
+
+    <button id="login-btn" class="btn-apple w-full py-3 rounded-xl font-semibold mt-5">Ingresar</button>
+
+    <p id="login-error" class="text-red-500 text-xs mt-3 hidden text-center"></p>
+
+    <a href="index.html" class="block text-center text-xs text-[#0071E3] hover:underline mt-5 font-medium">← Ir a la tienda</a>
   </div>
 </div>
 
 <!-- VERIFICANDO SESIÓN -->
-<div id="loading-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
-  <div class="text-center">
-    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
-    <p class="text-white font-semibold text-sm">Verificando sesión...</p>
+<div id="loading-screen" class="min-h-screen flex items-center justify-center p-4">
+  <div class="text-center fade-up">
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-[#0071E3]/20 border-t-[#0071E3] mb-4"></div>
+    <p class="text-[#1D1D1F] font-semibold text-sm">Verificando sesión...</p>
   </div>
 </div>
 
 <!-- PANEL -->
 <div id="panel-screen" class="hidden min-h-screen flex flex-col">
 
-  <header class="bg-sd text-white px-4 py-4 flex justify-between items-center shrink-0">
-    <div class="flex items-center gap-3 min-w-0">
-      <h1 class="text-lg md:text-xl font-bold whitespace-nowrap">SMART<span class="text-sl">EC</span></h1>
-      <div class="hidden md:block w-px h-6 bg-white/20"></div>
-      <div class="min-w-0">
-        <p id="header-title" class="text-sm md:text-base font-semibold truncate">Clientes</p>
-        <p id="header-role" class="text-[10px] opacity-70">—</p>
-        <select id="store-selector" class="hidden mt-1 text-sm rounded-lg px-3 py-1.5 cursor-pointer focus:outline-none border border-white/30"></select>
-      </div>
-    </div>
-    <div class="flex items-center gap-3 text-sm shrink-0">
-      <span id="user-info" class="hidden lg:inline opacity-80 text-xs"></span>
-      <button onclick="forceRefresh()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition" title="Refrescar datos">🔄</button>
-      <a href="home.html" class="hover:text-sl transition text-xs">← Inicio</a>
-      <button id="logout-btn" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-xs">Salir</button>
-    </div>
-  </header>
+  <!-- Header (inyectado por header-app.js) -->
+  <div id="smartec-header-app"></div>
 
   <main class="flex-1 container mx-auto p-4 md:p-6">
 
     <!-- KPIs -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Total clientes</p>
-        <p id="kpi-total" class="text-2xl font-bold text-sd mt-1">0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up">
+        <p class="text-xs text-[#6E6E73] font-medium">👥 Total clientes</p>
+        <p id="kpi-total" class="text-2xl font-bold text-[#1D1D1F] mt-1 tracking-tight">0</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Nuevos este mes</p>
-        <p id="kpi-new-month" class="text-2xl font-bold text-green-600 mt-1">0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up" style="animation-delay:.05s">
+        <p class="text-xs text-[#6E6E73] font-medium">✨ Nuevos este mes</p>
+        <p id="kpi-new-month" class="text-2xl font-bold text-[#30D158] mt-1 tracking-tight">0</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Recurrentes (+3 compras)</p>
-        <p id="kpi-recurrent" class="text-2xl font-bold text-sl mt-1">0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up" style="animation-delay:.1s">
+        <p class="text-xs text-[#6E6E73] font-medium">🔁 Recurrentes (+3 compras)</p>
+        <p id="kpi-recurrent" class="text-2xl font-bold text-[#0071E3] mt-1 tracking-tight">0</p>
       </div>
-      <div class="bg-white p-5 rounded-xl shadow">
-        <p class="text-xs text-gray-500">Ticket promedio global</p>
-        <p id="kpi-ticket" class="text-2xl font-bold text-sd mt-1">$0</p>
+      <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60 fade-up" style="animation-delay:.15s">
+        <p class="text-xs text-[#6E6E73] font-medium">🎯 Ticket promedio global</p>
+        <p id="kpi-ticket" class="text-2xl font-bold text-[#1D1D1F] mt-1 tracking-tight">$0</p>
       </div>
     </div>
 
     <!-- Filtros -->
-    <div class="bg-white rounded-xl shadow p-4 mb-4">
+    <div class="glass-strong rounded-2xl shadow-apple-lg p-4 mb-4 border border-white/60">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div>
-          <label class="text-[10px] font-semibold text-sd">Buscar</label>
-          <input id="f-search" type="text" placeholder="Nombre, teléfono, email..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <label class="text-[10px] font-semibold text-[#1D1D1F]">Buscar</label>
+          <input id="f-search" type="text" placeholder="Nombre, teléfono, email..." class="w-full px-3 py-2 rounded-xl text-xs mt-1">
         </div>
         <div>
-          <label class="text-[10px] font-semibold text-sd">Ciudad</label>
-          <input id="f-city" type="text" placeholder="Todas" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <label class="text-[10px] font-semibold text-[#1D1D1F]">Ciudad</label>
+          <input id="f-city" type="text" placeholder="Todas" class="w-full px-3 py-2 rounded-xl text-xs mt-1">
         </div>
         <div>
-          <label class="text-[10px] font-semibold text-sd">Tag</label>
-          <select id="f-tag" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <label class="text-[10px] font-semibold text-[#1D1D1F]">Tag</label>
+          <select id="f-tag" class="w-full px-3 py-2 rounded-xl text-xs mt-1">
             <option value="all">Todos</option>
             <option value="Cliente">Cliente</option>
             <option value="Mayorista">Mayorista</option>
           </select>
         </div>
         <div>
-          <label class="text-[10px] font-semibold text-sd">Ordenar por</label>
-          <select id="f-sort" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <label class="text-[10px] font-semibold text-[#1D1D1F]">Ordenar por</label>
+          <select id="f-sort" class="w-full px-3 py-2 rounded-xl text-xs mt-1">
             <option value="recent">Última compra</option>
             <option value="spent">Total gastado</option>
             <option value="count"># Compras</option>
@@ -129,63 +134,69 @@
           </select>
         </div>
       </div>
-      <div class="flex justify-between items-center mt-3 pt-3 border-t">
-        <p id="results-count" class="text-xs text-gray-500">0 clientes</p>
-        <button onclick="clearFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+      <div class="flex justify-between items-center mt-3 pt-3 border-t border-black/5">
+        <p id="results-count" class="text-xs text-[#6E6E73]">0 clientes</p>
+        <button onclick="clearFilters()" class="text-xs text-[#FF375F] hover:underline font-semibold">Limpiar filtros</button>
       </div>
     </div>
 
     <!-- Acciones -->
-       <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
-      <h2 class="text-xl font-bold text-sd">Base de clientes</h2>
+    <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+      <h2 class="text-xl md:text-2xl font-extrabold text-[#1D1D1F] tracking-tight">Base de clientes</h2>
       <div class="flex gap-2 flex-wrap">
-        <button onclick="recalcCustomerStats()" class="bg-white border border-gray-300 text-sd px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-semibold">🔄 Recalcular estadísticas</button>
-        <button onclick="openCustomerForm()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold">+ Nuevo cliente</button>
+        <button onclick="recalcCustomerStats()" class="btn-glass px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-2">
+          🔄 Recalcular estadísticas
+        </button>
+        <button onclick="openCustomerForm()" class="btn-apple px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-2">
+          + Nuevo cliente
+        </button>
       </div>
     </div>
 
     <!-- Tabla -->
-    <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
-      <table class="w-full text-sm min-w-[1000px]">
-        <thead class="bg-gray-100 text-sd">
-          <tr>
-            <th class="p-3 text-left">Nombre</th>
-            <th class="p-3 text-left">Teléfono</th>
-            <th class="p-3 text-left">Ciudad</th>
-            <th class="p-3 text-center">Tags</th>
-            <th class="p-3 text-center"># Compras</th>
-            <th class="p-3 text-right">Total gastado</th>
-            <th class="p-3 text-right">Ticket prom.</th>
-            <th class="p-3 text-left">Última compra</th>
-            <th class="p-3"></th>
-          </tr>
-        </thead>
-        <tbody id="customers-tbody"></tbody>
-      </table>
+    <div class="glass-strong rounded-2xl shadow-apple-lg overflow-hidden border border-white/60">
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[1000px]">
+          <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Nombre</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Teléfono</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Ciudad</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Tags</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold"># Compras</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Total gastado</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Ticket prom.</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Última compra</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="customers-tbody"></tbody>
+        </table>
+      </div>
     </div>
-    <p id="customers-empty" class="hidden text-center py-8 text-gray-400">Sin clientes con esos filtros.</p>
+    <p id="customers-empty" class="hidden text-center py-8 text-[#6E6E73]">Sin clientes con esos filtros.</p>
 
   </main>
 </div>
 
 <!-- MODAL FORMULARIO -->
 <div id="customer-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
-  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeCustomerForm()"></div>
-  <div class="relative bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
-    <button onclick="closeCustomerForm()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
-      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto" onclick="closeCustomerForm()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeCustomerForm()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
-    <h3 id="customer-title" class="text-xl font-bold text-sd mb-4 pr-10">Nuevo cliente</h3>
+    <h3 id="customer-title" class="text-xl font-bold text-[#1D1D1F] mb-4 pr-10 tracking-tight">Nuevo cliente</h3>
     <div id="customer-body"></div>
   </div>
 </div>
 
 <!-- MODAL DETALLE -->
 <div id="detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
-  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeDetail()"></div>
-  <div class="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
-    <button onclick="closeDetail()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
-      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto" onclick="closeDetail()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeDetail()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
     <div id="detail-body"></div>
   </div>
@@ -199,6 +210,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
 /* ============ CONFIG ============ */
 const firebaseConfig = {
@@ -213,6 +226,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 
 /* ============ ESTADO ============ */
 let currentUser = null;
@@ -227,6 +241,66 @@ let users = [];
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
 const escapeHtml = window.Smartec.escapeHtml;   // 🆕
+/* ============================================================
+   🆕 RENDER DEL HEADER-APP
+============================================================ */
+function renderHeaderApp() {
+  if (!window.SmartecHeaderApp) return;
+  if (!currentUser || !currentUserData) return;
+
+  const settingsData = window.__cliSettings || {};
+  const isSuper = currentUserData.role === 'superadmin';
+
+  const activeStores = isSuper
+    ? (stores || []).filter(s => s.active).sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+
+  let titleText = 'Clientes';
+  if (currentStore && currentStore.storeId !== 'all') {
+    titleText = `Clientes · ${currentStore.name}`;
+  } else if (isSuper && currentStore?.storeId === 'all') {
+    titleText = 'Clientes · Todas las tiendas';
+  }
+
+  window.SmartecHeaderApp.render({
+    settings: settingsData,
+    user: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      name: currentUserData.name || currentUser.email,
+      role: currentUserData.role,
+      storeId: currentUserData.storeId || null
+    },
+    stores: activeStores,
+    currentStore: currentStore,
+    showTitle: true,
+    titleText: titleText,
+    showRole: true,
+    showShiftButton: true,
+    showSellerInfo: true,
+    showHomeLink: true,
+    showRefreshButton: true,
+    showLogoutButton: true,
+    showStoreSelector: isSuper,
+    storeSelectorIncludeAll: true,
+    extraLinks: [],
+    onRefresh: () => { if (window.forceRefresh) window.forceRefresh(); },
+    onLogout: async () => {
+      if (window.SmartecKiosk) window.SmartecKiosk.disable();
+      await audit({ action: 'logout', collection: 'system', note: 'Cierre de sesión' });
+      window.SmartecDeviceGuard.clearValidatedToday();
+      await signOut(auth);
+      window.location.href = 'home.html';
+    },
+    onStoreChange: async (store) => {
+      currentStore = store;
+      sessionStorage.setItem('smartec_clientes_store', store.storeId);
+      await loadCustomersAndSales();
+      renderAll();
+      renderHeaderApp();
+    }
+  });
+}
 const fmtDate = ts => {
   if (!ts) return '-';
   const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
@@ -264,14 +338,6 @@ $('login-btn').onclick = async () => {
     err.innerText = 'Error: ' + e.message;
     err.classList.remove('hidden');
   }
-};
-
-$('logout-btn').onclick = async () => {
-  if (window.SmartecKiosk) window.SmartecKiosk.disable();
-  await audit({ action:'logout', collection:'system', note:'Cierre de sesión' });
-  window.SmartecDeviceGuard.clearValidatedToday();
-  await signOut(auth);
-  window.location.href = 'home.html';
 };
 
 onAuthStateChanged(auth, async user => {
@@ -338,9 +404,16 @@ onAuthStateChanged(auth, async user => {
   $('login-screen').classList.add('hidden');
   $('panel-screen').classList.remove('hidden');
 
-  $('user-info').innerText = '👤 ' + user.email;
-  const roleLabels = { superadmin:'Superadmin', admin:'Admin de tienda', vendedor:'Vendedor' };
-  $('header-role').innerText = roleLabels[currentUserData.role] || currentUserData.role;
+  // Cargar settings (logo)
+  let settingsData = {};
+  try {
+    const setSnap = await getDoc(doc(db, 'settings', 'general'));
+    settingsData = setSnap.exists() ? setSnap.data() : {};
+  } catch (e) { console.warn('No se pudo cargar settings:', e); }
+
+  window.__cliSettings = settingsData;
+
+  renderHeaderApp();
 
   await loadAll();
 });
@@ -386,30 +459,21 @@ async function loadAll() {
     }];
   }
 
-  // Configurar tienda y selector
+  // Configurar tienda actual (el selector lo maneja header-app.js)
   if (isSuper) {
     const activeStores = stores.filter(s => s.active).sort((a,b) => a.name.localeCompare(b.name));
     if (!activeStores.length) {
       alert('⛔ No hay tiendas activas.');
       return;
     }
-    const saved = sessionStorage.getItem('smartec_clientes_store');
-    currentStore = activeStores.find(s => s.storeId === saved) || activeStores[0];
+    const saved = sessionStorage.getItem('smartec_clientes_store') || 'all';
+    if (saved === 'all') {
+      currentStore = { storeId: 'all', name: 'Todas las tiendas' };
+    } else {
+      currentStore = activeStores.find(s => s.storeId === saved)
+                  || { storeId: 'all', name: 'Todas las tiendas' };
+    }
     sessionStorage.setItem('smartec_clientes_store', currentStore.storeId);
-
-    const sel = $('store-selector');
-    sel.classList.remove('hidden');
-    sel.innerHTML = activeStores.map(s =>
-      `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏪 ${s.name}</option>`
-    ).join('');
-    $('header-title').classList.add('hidden');
-
-    sel.onchange = async () => {
-      currentStore = stores.find(s => s.storeId === sel.value);
-      sessionStorage.setItem('smartec_clientes_store', sel.value);
-      await loadCustomersAndSales();
-      renderAll();
-    };
   } else {
     currentStore = stores.find(s => s.storeId === myStoreId);
     if (!currentStore) {
@@ -418,18 +482,20 @@ async function loadAll() {
       window.location.href = 'home.html';
       return;
     }
-    $('store-selector').classList.add('hidden');
-    $('header-title').innerText = 'Clientes · ' + currentStore.name;
   }
 
   await loadCustomersAndSales();
   renderAll();
+
+  // 🆕 Re-render del header ahora que tenemos tiendas + currentStore
+  renderHeaderApp();
 }
 
 async function loadCustomersAndSales() {
   const C = window.SmartecCache;
 
   const isSuper = currentUserData.role === 'superadmin';
+  const isAllStores = currentStore?.storeId === 'all';
   const myStoreId = currentStore?.storeId || currentUserData.storeId;
 
   // 1. Cargar clientes (todos, se filtran después)
@@ -438,15 +504,25 @@ async function loadCustomersAndSales() {
     return s.docs.map(d => ({id:d.id, ...d.data()}));
   });
 
-  // 2. Cargar ventas (con filtro si NO es superadmin)
+  // 2. Cargar ventas
   let allSales;
 
-  if (isSuper) {
-    allSales = await C.wrap('sales_all_for_customers', async () => {
+  if (isSuper && isAllStores) {
+    // Superadmin viendo TODAS las tiendas
+    allSales = await C.wrap('sales_ALL_for_customers', async () => {
       const s = await getDocs(collection(db,'sales'));
       return s.docs.map(d => ({id:d.id, ...d.data()})).filter(x => x.status !== 'anulada');
     });
+  } else if (isSuper) {
+    // Superadmin viendo UNA tienda
+    const storeId = currentStore.storeId;
+    allSales = await C.wrap(`sales_${storeId}_for_customers`, async () => {
+      const q = query(collection(db,'sales'), where('storeId','==',storeId));
+      const s = await getDocs(q);
+      return s.docs.map(d => ({id:d.id, ...d.data()})).filter(x => x.status !== 'anulada');
+    });
   } else {
+    // Admin / vendedor
     if (!myStoreId) {
       console.error('⛔ No hay tienda asignada');
       customers = [];
@@ -454,20 +530,31 @@ async function loadCustomersAndSales() {
       return;
     }
     allSales = await C.wrap(`sales_${myStoreId}_for_customers`, async () => {
-      const q = query(
-        collection(db,'sales'),
-        where('storeId', '==', myStoreId)
-      );
+      const q = query(collection(db,'sales'), where('storeId', '==', myStoreId));
       const s = await getDocs(q);
       return s.docs.map(d => ({id:d.id, ...d.data()})).filter(x => x.status !== 'anulada');
     });
   }
 
   // 3. Filtrar clientes por rol
-  if (isSuper) {
+  if (isSuper && isAllStores) {
+    // Superadmin viendo TODO: muestra todos los clientes
     customers = allCustomers;
     sales = allSales;
+  } else if (isSuper) {
+    // Superadmin viendo UNA tienda: filtra clientes por teléfonos que compraron en esa tienda
+    const storePhones = new Set();
+    allSales.forEach(s => {
+      const raw = s.customer?.phone;
+      if (!raw) return;
+      let p = String(raw).replace(/\D/g, '');
+      if (p.length === 10) p = '57' + p;
+      storePhones.add(p);
+    });
+    customers = allCustomers.filter(c => storePhones.has(c.id));
+    sales = allSales;
   } else {
+    // Admin / vendedor: filtra por teléfonos de las ventas de su tienda
     const myPhones = new Set();
     allSales.forEach(s => {
       const raw = s.customer?.phone;
@@ -785,8 +872,9 @@ window.viewDetail = (id) => {
     return `<span class="text-xs px-2 py-0.5 rounded ${color} font-semibold mr-1">${t}</span>`;
   }).join('');
 
+  $('detail-body').dataset.customerId = c.id;
   $('detail-body').innerHTML = `
-    <h3 class="text-2xl font-bold text-sd mb-2">${escapeHtml(c.name)}</h3>
+    <h3 class="text-2xl font-bold text-[#1D1D1F] mb-2 tracking-tight">${escapeHtml(c.name)}</h3>
     <div class="mb-4">${tagsHtml}</div>
 
     <div class="grid grid-cols-2 gap-3 text-sm mb-4">
@@ -823,16 +911,26 @@ window.viewDetail = (id) => {
       <div class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
         ${cSales.length ? cSales.map(s => {
           const items = (s.items||[]).reduce((sum,i) => sum + (i.qty||0), 0);
+          const hasDocs = s.documents && (s.documents.remision || s.documents.tirilla || s.documents.mediacarta);
+          const docsIcon = hasDocs ? '📄' : '📄+';
+          const docsLabel = hasDocs ? 'Ver documentos' : 'Generar documentos';
+          const docsColor = hasDocs ? 'text-[#0071E3]' : 'text-[#FF9F0A]';
           return `
-            <div class="border rounded-lg p-3 text-sm flex justify-between items-center">
+            <div class="border rounded-lg p-3 text-sm flex justify-between items-center gap-3 flex-wrap">
               <div class="min-w-0 flex-1">
-                <p class="font-semibold text-sd text-xs">${escapeHtml(s.documentNumber) || s.id.slice(-6)}</p>
-                <p class="text-[10px] text-gray-400">${fmtDate(s.createdAt)} · ${items} item(s) · ${escapeHtml(s.storeName) || ''}</p>
+                <p class="font-semibold text-[#1D1D1F] text-xs">${escapeHtml(s.documentNumber) || s.id.slice(-6)}</p>
+                <p class="text-[10px] text-[#6E6E73]">${fmtDate(s.createdAt)} · ${items} item(s) · ${escapeHtml(s.storeName) || ''}</p>
               </div>
-              <p class="font-bold text-sl ml-3">${fmt((s.commissionBase !== undefined) ? s.commissionBase : (Number(s.subtotal||0) - Number(s.discount||0)))}</p>
+              <div class="flex items-center gap-3 ml-auto">
+                <p class="font-bold text-[#0071E3]">${fmt((s.commissionBase !== undefined) ? s.commissionBase : (Number(s.subtotal||0) - Number(s.discount||0)))}</p>
+                <button onclick="showSaleDocuments('${s.id}')"
+                  class="text-xs font-semibold ${docsColor} hover:underline whitespace-nowrap">
+                  ${docsIcon} ${docsLabel}
+                </button>
+              </div>
             </div>
           `;
-        }).join('') : '<p class="text-xs text-gray-400 text-center py-4">Sin compras registradas</p>'}
+        }).join('') : '<p class="text-xs text-[#6E6E73] text-center py-4">Sin compras registradas</p>'}
       </div>
     </div>
 
@@ -939,7 +1037,106 @@ window.forceRefresh = async () => {
   await loadAll();
   alert('✅ Datos actualizados');
 };
+/* ============================================================
+   🆕 MOSTRAR MODAL DE DOCUMENTOS DE VENTA
+   Muestra los 3 PDFs si existen, o genera si no.
+============================================================ */
+window.showSaleDocuments = (saleId) => {
+  const sale = sales.find(x => x.id === saleId);
+  if (!sale) return alert('Venta no encontrada.');
 
+  const docs = sale.documents || null;
+
+  // Si no hay documentos → preguntar si generar
+  if (!docs) {
+    if (!confirm('Los documentos aún no se han generado.\n\n¿Generarlos ahora?')) return;
+    return window.regenerateDocuments(saleId);
+  }
+
+  // Si ya existen → abrir los que estén
+  const available = [];
+  if (docs.remision && docs.remision.url) available.push({ name: 'Remisión', url: docs.remision.url });
+  if (docs.tirilla && docs.tirilla.url) available.push({ name: 'Tirilla POS', url: docs.tirilla.url });
+  if (docs.mediacarta && docs.mediacarta.url) available.push({ name: 'Media carta', url: docs.mediacarta.url });
+
+  if (!available.length) {
+    if (!confirm('No se encontraron documentos válidos.\n\n¿Regenerarlos ahora?')) return;
+    return window.regenerateDocuments(saleId);
+  }
+
+  // Preguntar cuál abrir (por simplicidad, abrir todos en pestañas)
+  const labels = available.map(a => a.name).join(', ');
+  if (confirm(`¿Abrir los documentos de esta venta?\n\n${labels}\n\nSe abrirán en pestañas nuevas.`)) {
+    available.forEach(a => window.open(a.url, '_blank'));
+  }
+};
+
+/* ============================================================
+   🆕 REGENERAR DOCUMENTOS DE VENTA
+============================================================ */
+window.regenerateDocuments = async (saleId) => {
+  const sale = sales.find(x => x.id === saleId);
+  if (!sale) return alert('Venta no encontrada.');
+
+  if (!window.SmartecPdf || typeof window.SmartecPdf.generateAndUploadAll !== 'function') {
+    return alert('⚠️ El generador de PDFs no está cargado. Recarga la página.');
+  }
+
+  if (!confirm('¿Regenerar los 3 documentos PDF de esta venta?\n\nSe sobrescribirán los existentes.')) return;
+
+  try {
+    const setSnap = await getDoc(doc(db, 'settings', 'general'));
+    const pdfSettings = setSnap.exists() ? setSnap.data() : {};
+
+    const saleForPdf = {
+      id: sale.id,
+      documentNumber: sale.documentNumber,
+      storeId: sale.storeId,
+      storeName: sale.storeName || '',
+      customer: sale.customer || {},
+      items: sale.items || [],
+      subtotal: Number(sale.subtotal || 0),
+      discount: Number(sale.discount || 0),
+      shipping: Number(sale.shipping || 0),
+      surchargeRate: Number(sale.surchargeRate || 0),
+      surchargeAmount: Number(sale.surchargeAmount || 0),
+      total: Number(sale.total || 0),
+      paymentMethod: sale.paymentMethod || '',
+      sellerName: sale.sellerName || '',
+      sellerEmail: sale.sellerEmail || '',
+      createdAt: sale.createdAt || null,
+    };
+
+    await window.SmartecPdf.generateAndUploadAll(saleForPdf, pdfSettings, {
+      storage,
+      ref: storageRef,
+      uploadBytes,
+      getDownloadURL,
+      db,
+      doc,
+      updateDoc,
+      serverTimestamp,
+    });
+
+    alert('✅ Documentos regenerados correctamente.');
+
+    // Invalidar caché y recargar
+    window.SmartecCache.invalidate('customers_all');
+    window.SmartecCache.invalidate('sales_all_for_customers');
+
+    await loadCustomersAndSales();
+    renderAll();
+
+    // Si el modal de detalle está abierto, refrescarlo
+    if (!$('detail-modal').classList.contains('hidden')) {
+      const customerId = $('detail-body')?.dataset.customerId;
+      if (customerId) viewDetail(customerId);
+    }
+  } catch (e) {
+    console.error('Error regenerando documentos:', e);
+    alert('❌ Error: ' + e.message);
+  }
+};
 
 /* Cerrar con ESC */
 document.addEventListener('keydown', (e) => {

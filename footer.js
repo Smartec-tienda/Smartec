@@ -155,4 +155,4 @@
   window.SmartecFooter = { render };
 
   console.log('[Smartec] footer.js cargado');
-})();s
+})();

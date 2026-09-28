@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="theme.css">
   <script src="common.js"></script>
   <script src="cache.js"></script>
   <script src="fingerprint.js"></script>
@@ -15,6 +16,9 @@
   <script src="kiosk.js"></script>
   <script src="shifts.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="pdf-generator.js"></script>
   <style>
   :root{
     --bg:#F5F5F7;
@@ -685,14 +689,16 @@
   </div>
 
   <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  import {
-    getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
-    updateDoc, serverTimestamp, query, where
-  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
-    from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-  import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
+  updateDoc, serverTimestamp, query, where
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
   /* ============ CONFIG ============ */
   const firebaseConfig = {
@@ -704,10 +710,11 @@
     appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
     measurementId: "G-127MH9ZCN1"
   };
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-  const appCheck = initializeAppCheck(app, {
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+const appCheck = initializeAppCheck(app, {
   provider: new ReCaptchaEnterpriseProvider('6Lf5ls8tAAAAAFg4fPnRJg4xNgdVgo2Enl9FgZIP'),
   isTokenAutoRefreshEnabled: true
 });
@@ -2505,6 +2512,11 @@ function initPosPayments() {
         paymentStatus,                  // 'completed' | 'pending'
         paymentBreakdown,               // 🆕 array de pagos
 
+        // 🆕 Fecha de pago unificada
+        // Si la venta se cobra al momento → paidAt = ahora
+        // Si es contraentrega → paidAt = null (se llenará cuando se cobre)
+        paidAt: paymentStatus === 'completed' ? serverTimestamp() : null,
+
         // 🆕 Snapshot del primer canal (compatibilidad con código viejo)
         paymentChannelId: paymentChannelData?.id || null,
         paymentChannelCode: paymentChannelData?.code || null,
@@ -2657,7 +2669,63 @@ function initPosPayments() {
         sellerName: currentUserData.name || currentUser.email,
         createdAt: new Date()
       };
+      // ============================================================
+      // 🆕 GENERAR Y SUBIR PDFs (remisión, tirilla, media carta)
+      // Se hace en background, no bloquea la venta.
+      // Si falla, la venta ya está guardada y se puede regenerar después.
+      // ============================================================
+      if (window.SmartecPdf && typeof window.SmartecPdf.generateAndUploadAll === 'function') {
+        const saleForPdf = {
+          id: saleRef.id,
+          documentNumber,
+          storeId: currentStore.storeId,
+          storeName: currentStore.name,
+          customer,
+          items,
+          subtotal, discount, shipping,
+          surchargeRate, surchargeAmount,
+          total,
+          paymentMethod,
+          sellerName: currentUserData.name || currentUser.email,
+          sellerEmail: currentUser.email,
+          createdAt: { seconds: Math.floor(Date.now() / 1000) }, // aproximado para el PDF
+        };
 
+        // Cargar settings para el PDF
+        let pdfSettings = {};
+        try {
+          const setSnapPdf = await getDoc(doc(db, 'settings', 'general'));
+          pdfSettings = setSnapPdf.exists() ? setSnapPdf.data() : {};
+        } catch (e) { console.warn('[PDF] No se pudo cargar settings:', e); }
+
+        window.SmartecPdf.generateAndUploadAll(saleForPdf, pdfSettings, {
+          storage,
+          ref: storageRef,
+          uploadBytes,
+          getDownloadURL,
+          db,
+          doc,
+          updateDoc,
+          serverTimestamp,
+        })
+        .then(() => {
+          console.log('✅ PDFs generados y subidos para venta', saleRef.id);
+          // Mostrar en el modal de éxito
+          const infoEl = $('success-info');
+          if (infoEl) {
+            infoEl.innerHTML += '<br><span class="text-green-600 text-xs">📄 Documentos generados</span>';
+          }
+        })
+        .catch((err) => {
+          console.warn('⚠️ No se pudieron generar los PDFs automáticamente:', err);
+          const infoEl = $('success-info');
+          if (infoEl) {
+            infoEl.innerHTML += '<br><span class="text-amber-600 text-xs">⚠️ Documentos pendientes (clic en Factura para regenerar)</span>';
+          }
+        });
+      } else {
+        console.warn('[PDF] pdf-generator.js no está cargado');
+      }
         // Invalidar cache de ventas e inventario de esta tienda
       window.SmartecCache.invalidate(`sales_${currentStore.storeId}`);
       window.SmartecCache.invalidate(`inventory_${currentStore.storeId}`);

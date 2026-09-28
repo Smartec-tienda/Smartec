@@ -8,13 +8,17 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="theme.css">
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="header-app.js"></script>
+<script src="favicon.js"></script>
 <script src="fingerprint.js"></script>
 <script src="device-guard.js"></script>
 <script src="webauthn.js"></script>
 <script src="shifts.js"></script>
 <script src="footer.js"></script>
+<script src="favicon.js"></script>
 <style>
   :root{
     --bg:#F5F5F7;
@@ -493,34 +497,8 @@
 <!-- ============ HOME ============ -->
 <div id="home-screen" class="hidden min-h-screen flex flex-col">
 
-  <!-- Header -->
-  <header class="glass-strong sticky top-0 z-40 border-b border-white/50 shrink-0">
-    <div class="container mx-auto px-4 lg:px-6 py-3 flex justify-between items-center gap-4">
-
-      <!-- Logo dinámico (se llena con JS) -->
-      <div id="home-header-logo" class="flex items-center shrink-0">
-        <h1 class="text-lg md:text-xl font-extrabold tracking-tight">SMART<span style="color:#5AC8FA">EC</span></h1>
-      </div>
-
-      <!-- Acciones -->
-      <div class="flex items-center gap-2 text-sm shrink-0">
-
-        <!-- Botón de turno (marcar entrada/salida) -->
-        <button id="shift-btn" onclick="SmartecShift.toggleShift()"
-          class="hidden items-center gap-2 text-xs glass-soft hover:bg-white/80 px-3 py-2 rounded-full transition font-semibold text-[#1D1D1F]">
-          <span id="shift-btn-icon">🟢</span>
-          <span id="shift-btn-text">Marcar entrada</span>
-          <span id="shift-timer" class="hidden text-[10px] opacity-80 font-mono"></span>
-        </button>
-
-        <!-- Botón salir -->
-        <button id="logout-btn"
-          class="bg-[#FF375F] hover:bg-[#E0304F] text-white px-4 py-2 rounded-full transition text-xs font-semibold shadow-apple">
-          Salir
-        </button>
-      </div>
-    </div>
-  </header>
+  <!-- Header (inyectado por header-app.js) -->
+  <div id="smartec-header-app"></div>
 
   <!-- Contenido -->
   <main class="flex-1 container mx-auto px-4 lg:px-6 py-8 md:py-12 relative">
@@ -1426,6 +1404,69 @@ async function enterHomeAfterFullFlow(user, userData, fingerprint) {
   // 🆕 Quitar splash: el home ya está listo
   hideSplash();
 
+  // 🆕 Inyectar header-app dinámico vía header-app.js
+  if (window.SmartecHeaderApp) {
+    window.SmartecHeaderApp.render({
+      settings: settingsGlobal,
+      user: {
+        uid: user.uid,
+        email: user.email,
+        name: userData.name || user.email,
+        role: userData.role,
+        storeId: userData.storeId || null
+      },
+      stores: [],                    // home no necesita selector de tienda
+      currentStore: null,
+      showShiftButton: true,
+      showSellerInfo: true,
+      showHomeLink: false,           // ya estás en home
+      showRefreshButton: false,
+      showLogoutButton: true,
+      showStoreSelector: false,
+      extraLinks: [],
+      onLogout: async () => {
+        // Reusa la lógica del botón Salir actual (superadmin → signOut directo,
+        // otros → abre el modal de huella)
+        if (_deviceGuardUserData?.role === 'superadmin') {
+          try {
+            await signOut(auth);
+          } catch (e) {
+            console.error('Error cerrando sesión de superadmin:', e);
+            alert('Error: ' + e.message);
+          }
+          return;
+        }
+
+        // Otros roles: bloquear UI y pedir huella/PIN
+        let fingerprint = '';
+        try {
+          fingerprint = await window.SmartecFingerprint.generate();
+        } catch (e) {
+          console.warn('[HOME] No se pudo generar fingerprint:', e);
+        }
+
+        const uid = auth.currentUser?.uid;
+        const email = auth.currentUser?.email;
+        if (!uid) {
+          window.location.href = 'index.html';
+          return;
+        }
+
+        _pendingUnlockUser = {
+          uid,
+          email,
+          name: _deviceGuardUserData?.name || email,
+          fingerprint,
+          userData: _deviceGuardUserData
+        };
+
+        $('home-screen').classList.add('hidden');
+        $('login-screen').classList.add('hidden');
+        await openUnlockModal();
+      }
+    });
+  }
+
   // 🆕 Inyectar footer dinámico vía footer.js
   if (window.SmartecFooter) {
     window.SmartecFooter.render({
@@ -1435,7 +1476,6 @@ async function enterHomeAfterFullFlow(user, userData, fingerprint) {
 
   $('user-name').innerText = userData.name || user.email;
   $('user-role').innerText = ROLE_LABELS[userData.role] || userData.role;
-    applyLogoToHomeHeader();
 
   if (userData.role === 'superadmin') {
     $('user-store').innerText = '· Acceso a todas las tiendas';
@@ -1633,63 +1673,6 @@ document.addEventListener('keydown', (e) => {
 $('reset-email')?.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') submitResetPassword();
 });
-
-/* ============================================================
-   BOTÓN "SALIR"
-   - Superadmin: cierra sesión directo (no tiene huella)
-   - Otros: bloquea la UI y pide huella/PIN
-============================================================ */
-$('logout-btn').onclick = async () => {
-  // 🆕 Si es superadmin → cerrar sesión directo (no tiene huella registrada)
-  if (_deviceGuardUserData?.role === 'superadmin') {
-    try {
-      await signOut(auth);
-      // onAuthStateChanged se encarga de mostrar el login
-    } catch (e) {
-      console.error('Error cerrando sesión de superadmin:', e);
-      alert('Error: ' + e.message);
-    }
-    return;
-  }
-
-  // 🆕 Otros roles: no cerramos sesión de Firebase.
-  // Solo bloqueamos la UI y pedimos huella/PIN.
-  // Esto permite que al día siguiente la sesión siga activa
-  // y se pueda pedir huella directamente.
-
-  // 1. Generar fingerprint para saber quién es
-  let fingerprint = '';
-  try {
-    fingerprint = await window.SmartecFingerprint.generate();
-  } catch (e) {
-    console.warn('[HOME] No se pudo generar fingerprint al cerrar sesión:', e);
-  }
-
-  const uid = auth.currentUser?.uid;
-  const email = auth.currentUser?.email;
-
-  if (!uid) {
-    // No hay sesión → redirigir a login limpio
-    window.location.href = 'index.html';
-    return;
-  }
-
-  // 2. Guardar contexto del usuario para el modal de unlock
-  _pendingUnlockUser = {
-    uid,
-    email,
-    name: _deviceGuardUserData?.name || email,
-    fingerprint,
-    userData: _deviceGuardUserData
-  };
-
-  // 3. Ocultar home y mostrar modal de huella
-  $('home-screen').classList.add('hidden');
-  $('login-screen').classList.add('hidden');
-
-  await openUnlockModal();
-};
-
 
 onAuthStateChanged(auth, async user => {
   // Ocultar todo al inicio
@@ -2239,9 +2222,6 @@ async function loadAndApplyLogo() {
       }
     }
 
-    // ============ HEADER DEL HOME ============
-    applyLogoToHomeHeader();
-
     // ============ FOOTER ============
     const footerContainer = $('footer-logo');
     if (footerContainer && settingsGlobal.footerLogoUrl) {
@@ -2263,22 +2243,6 @@ async function loadAndApplyLogo() {
         <h1 class="text-3xl font-extrabold text-center logo-mark mb-2">SMARTEC</h1>
       `;
     }
-  }
-}
-
-/**
- * Aplica el logo al header del home autenticado.
- * Se llama cada vez que el usuario entra al home.
- */
-function applyLogoToHomeHeader() {
-  const headerLogo = $('home-header-logo');
-  if (!headerLogo) return;
-
-  if (settingsGlobal.logoUrl) {
-    headerLogo.innerHTML = `<img src="${settingsGlobal.logoUrl}" alt="Smartec"
-                                   class="h-9 md:h-10 object-contain" decoding="async">`;
-  } else {
-    headerLogo.innerHTML = `<h1 class="text-lg md:text-xl font-extrabold tracking-tight">SMART<span style="color:#5AC8FA">EC</span></h1>`;
   }
 }
 

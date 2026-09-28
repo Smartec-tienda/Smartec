@@ -8,8 +8,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="theme.css">
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="favicon.js"></script>
+<script src="footer.js"></script>
+
 <style>
   :root{
     --bg:#F5F5F7;
@@ -321,10 +325,24 @@
       transform: translateZ(0);
     }
 
-    /* Controles del zoom más compactos */
+    /* Controles del zoom más compactos y centrados */
     #zoom-modal button {
       width: 40px !important;
       height: 40px !important;
+      padding: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    #zoom-modal button svg {
+      width: 18px !important;
+      height: 18px !important;
+      margin: 0 !important;
+    }
+    /* Botón de cerrar (X) — posición específica */
+    #zoom-modal > button:first-of-type {
+      top: 12px !important;
+      right: 12px !important;
     }
 
     /* Título producto más chico */
@@ -348,9 +366,23 @@
       padding: 1rem 1.25rem !important;
     }
 
-    /* Thumbs más chicos */
+    /* Thumbs: scroll horizontal con snap en móvil */
     #thumbs {
+      display: flex !important;
+      overflow-x: auto;
       gap: 0.5rem !important;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 0.25rem;
+      scrollbar-width: none;
+    }
+    #thumbs::-webkit-scrollbar {
+      display: none;
+    }
+    #thumbs .thumb-item {
+      flex: 0 0 auto;
+      width: 80px;
+      scroll-snap-align: start;
     }
 
     /* Beneficios mini compactos */
@@ -610,16 +642,8 @@
   <a href="index.html" class="inline-block btn-apple px-7 py-3 rounded-full font-medium">Volver al catálogo</a>
 </div>
 
-<!-- ============ FOOTER ============ -->
-<footer class="mt-20 pt-12 pb-8 relative">
-  <div class="container mx-auto px-4 lg:px-6 text-center">
-    <h4 class="text-2xl font-extrabold logo-mark mb-3">SMARTEC</h4>
-    <p class="text-sm text-[#6E6E73] mb-6">Tecnología que transforma tu hogar</p>
-    <div class="border-t border-black/5 pt-6">
-      <p class="text-xs text-[#6E6E73]">© 2026 Smartec. Todos los derechos reservados.</p>
-    </div>
-  </div>
-</footer>
+<!-- Footer (inyectado por footer.js) -->
+<div id="smartec-footer"></div>
 
 <!-- ============ MODAL ZOOM IMAGEN ============ -->
 <div id="zoom-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/95 backdrop-blur-xl">
@@ -721,8 +745,15 @@ function getGlobalStock(variantId) {
 }
 
 async function init() {
-  // 🆕 Cargar logo dinámico (no bloquea)
-  loadAndApplyLogo();
+  // 🆕 Cargar logo dinámico y esperar a que termine
+  const settingsData = await loadAndApplyLogoAndGetSettings();
+
+  // 🆕 Inyectar footer dinámico vía footer.js
+  if (window.SmartecFooter) {
+    window.SmartecFooter.render({
+      settings: settingsData || {}
+    });
+  }
 
   const params = new URLSearchParams(window.location.search);
   const productId = params.get('id');
@@ -1185,6 +1216,82 @@ function updateZoomUI() {
 
 $('main-image').addEventListener('click', openZoom);
 
+/* ============================================================
+   🆕 SWIPE EN IMAGEN PRINCIPAL (móvil)
+   Permite deslizar sobre la imagen grande para cambiar entre
+   las imágenes del producto sin abrir el zoom.
+============================================================ */
+(function setupMainImageSwipe() {
+  const mainImg = $('main-image');
+  if (!mainImg) return;
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchMoved = false;
+
+  mainImg.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchMoved = false;
+  }, { passive: true });
+
+  mainImg.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - touchStartX;
+    const dy = e.touches[0].clientY - touchStartY;
+
+    // Solo consideramos swipe si el movimiento horizontal es mayor
+    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+      touchMoved = true;
+    }
+  }, { passive: true });
+
+  mainImg.addEventListener('touchend', (e) => {
+    if (!touchMoved) return;
+    if (!zoomImages || zoomImages.length < 2) return;
+
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const threshold = 50;
+
+    if (dx < -threshold) {
+      // Swipe izquierda → siguiente imagen
+      const idx = zoomImages.indexOf(mainImg.src);
+      const next = (idx === -1 ? 0 : idx + 1) % zoomImages.length;
+      changeMainImage(zoomImages[next]);
+    } else if (dx > threshold) {
+      // Swipe derecha → imagen anterior
+      const idx = zoomImages.indexOf(mainImg.src);
+      const prev = (idx <= 0 ? zoomImages.length - 1 : idx - 1);
+      changeMainImage(zoomImages[prev]);
+    }
+  }, { passive: true });
+
+  /**
+   * Cambia la imagen principal y actualiza el estado activo de los thumbs.
+   */
+  function changeMainImage(url) {
+    mainImg.src = url;
+    const thumbsEl = $('thumbs');
+    if (!thumbsEl) return;
+    const thumbs = thumbsEl.querySelectorAll('.thumb-item');
+    thumbs.forEach((t, i) => {
+      const img = t.querySelector('img');
+      if (img && img.src === url) {
+        t.classList.add('active');
+        // Auto-scroll del thumb activo a la vista
+        t.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      } else {
+        t.classList.remove('active');
+      }
+    });
+  }
+
+  // Exponer para reuso (por si los thumbs también lo quieren usar)
+  window.__changeMainImage = changeMainImage;
+})();
+
+
 const zoomContainer = $('zoom-container');
 
 zoomContainer.addEventListener('wheel', (e) => {
@@ -1264,38 +1371,37 @@ document.addEventListener('keydown', (e) => {
 /* ============================================================
    🆕 LOGO DINÁMICO — Carga desde settings/general
 ============================================================ */
-async function loadAndApplyLogo() {
+/**
+ * 🆕 Carga settings y aplica el logo del header.
+ * Devuelve los settings para que el caller (init) los use en footer.js.
+ * NO hace visible el header hasta tener el logo listo (evita FOUC).
+ */
+async function loadAndApplyLogoAndGetSettings() {
   const link = $('header-logo-link');
   const headerContainer = $('header-logo');
-  const footerContainer = $('footer-logo');
+  let setData = {};
 
   try {
     const snap = await getDoc(doc(db, 'settings', 'general'));
-    const setData = snap.exists() ? snap.data() : {};
+    setData = snap.exists() ? snap.data() : {};
 
     // ============ HEADER ============
-    if (headerContainer && setData.logoUrl) {
-      headerContainer.outerHTML = `<img id="header-logo" src="${setData.logoUrl}" alt="Smartec" class="h-8 md:h-9 object-contain">`;
-    }
-
-    // ============ FOOTER ============
-    if (footerContainer && setData.footerLogoUrl) {
-      // Hay logo del footer → mostrar SOLO el logo (sin slogan texto)
-      footerContainer.innerHTML = `<img src="${setData.footerLogoUrl}" alt="Smartec" class="h-16 md:h-20 object-contain mx-auto">`;
-
-      // Ocultar el slogan de texto (porque el logo del footer ya lo incluye)
-      const slogan = footerContainer.parentElement.querySelector('p');
-      if (slogan && slogan.textContent.includes('Tecnología')) {
-        slogan.style.display = 'none';
+    if (headerContainer) {
+      if (setData.logoUrl) {
+        headerContainer.outerHTML = `<img id="header-logo" src="${setData.logoUrl}" alt="Smartec" class="h-8 md:h-9 object-contain" decoding="async">`;
       }
+      // Si no hay logoUrl, se queda el texto SMARTEC (que ya está en el HTML)
     }
-    // Si no hay footerLogoUrl, se queda el texto "SMARTEC" + slogan que ya está en el HTML
   } catch (e) {
-    console.warn('[Producto] No se pudo cargar el logo:', e);
+    console.warn('[Producto] No se pudo cargar settings:', e);
   } finally {
+    // Mostrar el header (con logo si hay, o texto si no)
     if (link) link.style.visibility = 'visible';
   }
+
+  return setData;
 }
+
 init();
 </script>
 </body>
