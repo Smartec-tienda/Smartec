@@ -14,6 +14,7 @@
 <script src="device-guard.js"></script>
 <script src="webauthn.js"></script>
 <script src="shifts.js"></script>
+<script src="footer.js"></script>
 <style>
   :root{
     --bg:#F5F5F7;
@@ -542,10 +543,6 @@
     <div id="modules-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
 
   </main>
-
-  <footer class="py-6 text-center text-xs text-[#6E6E73] relative">
-    <p>© 2026 Smartec · Todos los derechos reservados.</p>
-  </footer>
 </div>
 
 
@@ -1428,6 +1425,13 @@ async function enterHomeAfterFullFlow(user, userData, fingerprint) {
 
   // 🆕 Quitar splash: el home ya está listo
   hideSplash();
+
+  // 🆕 Inyectar footer dinámico vía footer.js
+  if (window.SmartecFooter) {
+    window.SmartecFooter.render({
+      settings: settingsGlobal
+    });
+  }
 
   $('user-name').innerText = userData.name || user.email;
   $('user-role').innerText = ROLE_LABELS[userData.role] || userData.role;
@@ -2325,6 +2329,9 @@ function renderModules(role) {
   }).join('');
 }
 </script>
+
+<!-- Footer global (inyectado por footer.js) -->
+<div id="smartec-footer"></div>
 
 </body>
 </html>

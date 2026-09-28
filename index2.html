@@ -10,6 +10,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="footer.js"></script>
 <style>
   :root{
     --bg:#F5F5F7;
@@ -421,6 +422,20 @@
       line-height: 1.1 !important;
     }
   }
+  /* ============ SPLASH SCREEN GLOBAL ============ */
+  /* Ocultar todo el contenido mientras la app carga (evita FOUC) */
+  body.app-loading > *:not(#app-splash) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  body.app-loading #app-splash {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  body:not(.app-loading) #app-splash {
+    opacity: 0;
+    pointer-events: none;
+  }
 
   /* Tablets */
   @media (min-width: 769px) and (max-width: 1024px) {
@@ -434,10 +449,18 @@
   }
 </style>
 </head>
-<body>
+<body class="app-loading">
 
 <!-- Mesh gradient de fondo -->
 <div class="mesh-bg"></div>
+
+<!-- ============ SPLASH SCREEN GLOBAL ============ -->
+<div id="app-splash" class="fixed inset-0 z-[9999] flex items-center justify-center mesh-bg transition-opacity duration-300">
+  <div class="text-center">
+    <div class="w-12 h-12 border-4 border-[#0071E3]/20 border-t-[#0071E3] rounded-full animate-spin mx-auto"></div>
+    <p class="text-xs text-[#6E6E73] mt-4 font-medium tracking-wide">Cargando Smartec…</p>
+  </div>
+</div>
 
 <!-- Barra de anuncios -->
 <div class="glass-soft text-[#1D1D1F] text-center py-2.5 text-xs md:text-sm font-medium border-b border-white/40 relative z-30">
@@ -726,41 +749,8 @@
   </div>
 </section>
 
-<!-- Footer -->
-<footer class="mt-20 pt-16 pb-8 relative">
-  <div class="container mx-auto px-4 lg:px-6">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
-      <div>
-        <div id="footer-logo" class="mb-4">
-          <h4 class="text-xl font-extrabold logo-mark tracking-tight">SMARTEC</h4>
-        </div>
-        <p class="text-sm text-[#6E6E73] leading-relaxed">Tu tienda de confianza para electrodomésticos de alta calidad. Tecnología que mejora tu vida.</p>
-      </div>
-      <div>
-        <h4 class="font-semibold mb-4 text-sm text-[#1D1D1F]">Categorías</h4>
-        <ul id="footer-categories" class="space-y-2 text-sm text-[#6E6E73]"></ul>
-      </div>
-      <div>
-        <h4 class="font-semibold mb-4 text-sm text-[#1D1D1F]">Contacto</h4>
-        <ul class="space-y-2 text-sm text-[#6E6E73]">
-          <li>WhatsApp: +57 310 430 4428</li>
-          <li>Soporte: 24/7</li>
-        </ul>
-      </div>
-      <div>
-        <h4 class="font-semibold mb-4 text-sm text-[#1D1D1F]">Síguenos</h4>
-        <div class="flex gap-2">
-          <a href="#" class="w-10 h-10 rounded-full glass-soft hover:bg-white transition-all flex items-center justify-center shadow-apple">📷</a>
-          <a href="#" class="w-10 h-10 rounded-full glass-soft hover:bg-white transition-all flex items-center justify-center shadow-apple">📘</a>
-          <a href="#" class="w-10 h-10 rounded-full glass-soft hover:bg-white transition-all flex items-center justify-center shadow-apple">💬</a>
-        </div>
-      </div>
-    </div>
-    <div class="border-t border-black/5 pt-6 text-center text-xs text-[#6E6E73]">
-      <p>© 2026 Smartec. Todos los derechos reservados.</p>
-    </div>
-  </div>
-</footer>
+<!-- Footer (inyectado por footer.js) -->
+<div id="smartec-footer"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
@@ -892,6 +882,12 @@ function globalProductStock(product) {
 }
 
 async function init() {
+  // 🆕 Timeout de seguridad: si algo tarda > 6s, quitar el splash igual
+  const splashTimeout = setTimeout(() => {
+    console.warn('[SPLASH] Timeout de seguridad, mostrando app sin esperar más');
+    hideSplash();
+  }, 6000);
+
   try {
     const [setSnap, prodSnap, invSnap] = await Promise.all([
       getDoc(doc(db,'settings','general')),
@@ -906,14 +902,57 @@ async function init() {
     // 🆕 Aplicar logo dinámico al header
     applyLogoToHeader();
 
+    // 🆕 Inyectar footer dinámico vía footer.js
+    window.SmartecFooter.render({
+      settings: settings
+    });
+
     renderCategoryNav();
-    renderFooterCategories();
     renderProducts();
     $('loading').classList.add('hidden');
     $('products-grid').classList.remove('hidden');
+
+    // 🆕 Pre-cargar las imágenes de los logos para que no haya salto visual
+    await Promise.all([
+      preloadImage(settings.logoUrl),
+      preloadImage(settings.footerLogoUrl)
+    ]);
+
+    // 🆕 Todo listo → quitar el splash
+    clearTimeout(splashTimeout);
+    hideSplash();
+
   } catch(e) {
     console.error('Error cargando datos:', e);
     $('loading').innerHTML = '<p class="text-red-500">Error al cargar el catálogo</p>';
+
+    // 🆕 Aunque falle, quitar el splash para no dejar al usuario atrapado
+    clearTimeout(splashTimeout);
+    hideSplash();
+  }
+}
+
+/**
+ * Precarga una imagen y devuelve una promesa.
+ * Si la URL está vacía, resuelve al instante.
+ */
+function preloadImage(url) {
+  return new Promise((resolve) => {
+    if (!url) return resolve();
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+    img.src = url;
+  });
+}
+
+/**
+ * Quita el splash screen (una sola vez, aunque se llame varias veces).
+ */
+function hideSplash() {
+  if (document.body.classList.contains('app-loading')) {
+    document.body.classList.remove('app-loading');
+    console.log('[SPLASH] Oculto. App lista.');
   }
 }
 
@@ -941,17 +980,6 @@ function renderCategoryNav() {
   document.querySelectorAll('.cat-nav-btn').forEach(btn => {
     btn.onclick = () => selectGroup(btn.dataset.group);
   });
-}
-
-function renderFooterCategories() {
-  const el = $('footer-categories');
-  const groups = Object.entries(categories)
-    .filter(([slug, g]) => isCategoryVisible(slug, g))
-    .sort((a,b) => (a[1].order||0) - (b[1].order||0));
-
-  el.innerHTML = groups.map(([slug, g]) =>
-    `<li><a href="#catalogo" onclick="selectGroup('${slug}'); return false;" class="hover:text-[#0071E3] transition cursor-pointer">${escapeHtml(g.name)}</a></li>`
-  ).join('');
 }
 
 window.selectGroup = (groupSlug) => {
@@ -1513,27 +1541,15 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ============================================================
-   🆕 LOGO DINÁMICO — Carga desde settings/general
+   LOGO DINÁMICO — Solo header
+   (el footer lo maneja footer.js)
 ============================================================ */
 function applyLogoToHeader() {
-  // ============ HEADER ============
   const container = $('header-logo');
-  if (container && settings.logoUrl) {
-    container.outerHTML = `<img id="header-logo" src="${settings.logoUrl}" alt="Smartec" class="h-8 md:h-10 object-contain">`;
-  }
+  if (!container) return;
 
-  // ============ FOOTER ============
-  const footerContainer = $('footer-logo');
-  if (footerContainer && settings.footerLogoUrl) {
-    // Hay logo del footer → reemplaza TODO el contenido (logo + slogan)
-    // con solo la imagen (que ya incluye slogan)
-    footerContainer.innerHTML = `<img src="${settings.footerLogoUrl}" alt="Smartec" class="h-16 md:h-20 object-contain">`;
-
-    // Ocultar el slogan de texto
-    const slogan = footerContainer.parentElement.querySelector('p');
-    if (slogan && slogan.textContent.includes('Tecnología')) {
-      slogan.style.display = 'none';
-    }
+  if (settings.logoUrl) {
+    container.outerHTML = `<img id="header-logo" src="${settings.logoUrl}" alt="Smartec" class="h-8 md:h-10 object-contain" decoding="async">`;
   }
 }
 
