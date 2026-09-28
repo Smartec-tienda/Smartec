@@ -771,17 +771,24 @@ function computePosTotalBase() {
  */
 function computePosSurcharge() {
   const rate = Number($('t-cardsurcharge')?.value) || 0;
-  if (rate <= 0) return { amount: 0, rate: 0 };
+  if (rate <= 0) return { amount: 0, rate: 0, tarjetaBase: 0, tarjetaConRecargo: 0 };
 
   const payments = window.__posPayments || [];
-  const tarjetaAmount = payments
+  // 🆕 Monto que el usuario ingresa en la fila de tarjeta = BASE (sin recargo)
+  const tarjetaBase = payments
     .filter(p => p.method === 'tarjeta')
     .reduce((s, p) => s + Number(p.amount || 0), 0);
 
+  // 🆕 El recargo se calcula sobre el monto base
+  const amount = tarjetaBase * rate;
+  // 🆕 El monto que realmente se pasa por el datáfono = base + recargo
+  const tarjetaConRecargo = tarjetaBase + amount;
+
   return {
-    amount: tarjetaAmount * rate,
+    amount,              // recargo (a mostrar en la factura)
     rate,
-    tarjetaAmount
+    tarjetaBase,         // monto base sin recargo
+    tarjetaConRecargo    // monto real que pasa el datáfono
   };
 }
 
@@ -801,9 +808,18 @@ function renderPosPaymentRows() {
   if (!container) return;
 
   const payments = window.__posPayments || [];
-  const totalFinal = computePosTotalFinal();
+  // 🆕 Comparamos contra el total base. El recargo de tarjeta se "sobreentiende":
+  //    si hay fila de tarjeta con monto X y rate R, esa fila representa X base,
+  //    y el datáfono realmente pasa X × (1+R). El total a cuadrar es:
+  //    totalBase + (X × R)
+  const totalBase = computePosTotalBase();
+  const surchargeInfo = computePosSurcharge();
+  const totalConRecargo = totalBase + surchargeInfo.amount;
+
+  // La suma de filas tal como están ingresadas debe cubrir totalBase
+  // (porque el recargo se cobra DENTRO del monto de tarjeta)
   const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
-  const remaining = totalFinal - sum;
+  const remaining = totalBase - sum;
 
   // Status del header
   if (statusEl) {
@@ -972,9 +988,42 @@ window.updatePaymentRow = (idx, field, value) => {
     }
   }
 
-  // Re-render (afecta todos los cálculos)
+  // 🆕 Recalcular totales primero (por si cambió el recargo de tarjeta),
+  //    luego re-renderizar las filas.
+  recomputePosTotals();
   renderPosPaymentRows();
 };
+
+/* 🆕 Recalcula subtotal y total sin tocar las filas */
+function recomputePosTotals() {
+  const subtotal = cart.reduce((s, it) => s + it.qty * it.unitPrice, 0);
+  const disc = Number($('t-discount').value) || 0;
+  const ship = Number($('t-shipping').value) || 0;
+
+  const totalBase = subtotal - disc + ship;
+
+  const surchargeInfo = computePosSurcharge();
+  const surchargeAmount = surchargeInfo.amount;
+  const surchargeRate = surchargeInfo.rate;
+  const tarjetaBase = surchargeInfo.tarjetaBase || 0;
+
+  // 🆕 El TOTAL incluye el recargo
+  const total = totalBase + surchargeAmount;
+
+  $('t-subtotal').innerText = fmt(subtotal);
+  $('t-total').innerText = fmt(total);
+
+  const surchargeRow = $('t-cardsurcharge-row');
+  if (surchargeRate > 0 && surchargeAmount > 0) {
+    surchargeRow.style.display = 'flex';
+    const tarjetaConRecargo = tarjetaBase + surchargeAmount;
+    $('t-cardsurcharge-amount').innerHTML =
+      `${fmt(surchargeAmount)} (${fmt(tarjetaBase)} × ${(surchargeRate*100).toFixed(0)}%)` +
+      `<br><span class="text-[10px] text-sl font-semibold">💳 Total por datáfono: ${fmt(tarjetaConRecargo)}</span>`;
+  } else {
+    surchargeRow.style.display = 'none';
+  }
+}
 
 /**
  * Valida el formulario de pago.
@@ -1009,10 +1058,15 @@ function validatePaymentForm() {
     return;
   }
 
-  // Sin contraentrega: la suma debe cuadrar con el total final
-  const totalFinal = computePosTotalFinal();
+  // Sin contraentrega: la suma efectiva (con recargo aplicado) debe cuadrar
+  const totalBase = computePosTotalBase();
+  const surchargeInfo = computePosSurcharge();
+  const totalConRecargo = totalBase + surchargeInfo.amount;
+
   const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
-  if (Math.abs(sum - totalFinal) > 1) {
+  const effectiveTotal = sum + surchargeInfo.amount;
+
+  if (Math.abs(effectiveTotal - totalConRecargo) > 1) {
     btn.disabled = true;
     return;
   }
@@ -1915,44 +1969,27 @@ function initPosPayments() {
     ACTUALIZAR TOTALES
   ============================================================ */
   function updateTotals() {
-    const subtotal = cart.reduce((s,it) => s + it.qty*it.unitPrice, 0);
-    const disc = Number($('t-discount').value)||0;
-    const ship = Number($('t-shipping').value)||0;
+    // Recalcular totales
+    recomputePosTotals();
 
-    // 🆕 Total base
-    const totalBase = subtotal - disc + ship;
-
-    // 🆕 Recargo tarjeta (solo sobre el monto pagado con tarjeta)
-    const surchargeInfo = computePosSurcharge();
-    const surchargeAmount = surchargeInfo.amount;
-    const surchargeRate = surchargeInfo.rate;
-
-    // 🆕 Total final
-    const total = totalBase + surchargeAmount;
-
-    $('t-subtotal').innerText = fmt(subtotal);
-    $('t-total').innerText = fmt(total);
-
-    // Fila del recargo
-    const surchargeRow = $('t-cardsurcharge-row');
-    if (surchargeRate > 0 && surchargeAmount > 0) {
-      surchargeRow.style.display = 'flex';
-      $('t-cardsurcharge-amount').innerText = fmt(surchargeAmount);
+    // Re-renderizar filas
+    if (Array.isArray(window.__posPayments) && window.__posPayments.length) {
+      renderPosPaymentRows();
     } else {
-      surchargeRow.style.display = 'none';
-    }
-
-    // 🆕 Refrescar filas de pago (porque el total pudo cambiar)
-    if (typeof renderPosPaymentRows === 'function') {
-      // Solo re-renderizar si ya hay pagos inicializados
-      if (Array.isArray(window.__posPayments) && window.__posPayments.length) {
-        renderPosPaymentRows();
-      }
-    } else {
-      // Si aún no está inicializado el sistema de pagos, solo validar el botón básico
       $('save-btn').disabled = cart.length === 0;
     }
-  }
+  } 
+    window.updateTotals = updateTotals;
+      // 🆕 Listener para el select de recargo tarjeta
+  (function() {
+    const sel = $('t-cardsurcharge');
+    if (sel && !sel.dataset.listener) {
+      sel.dataset.listener = '1';
+      sel.addEventListener('change', () => {
+        updateTotals();
+      });
+    }
+  })();
   /* ============ GUARDAR VENTA ============ */
   $('save-btn').onclick = async () => {
     if (!cart.length) return;
@@ -2005,13 +2042,12 @@ function initPosPayments() {
       const payments = window.__posPayments || [];
       const hasContraentrega = payments.some(p => p.method === 'contraentrega');
 
-      // 🆕 Recargo por tarjeta: solo sobre el monto pagado con tarjeta
-      const tarjetaAmount = payments
-        .filter(p => p.method === 'tarjeta')
-        .reduce((s, p) => s + Number(p.amount || 0), 0);
-      const surchargeAmount = tarjetaAmount * surchargeRate;
+      // 🆕 Recargo = monto base de tarjeta × rate
+      const surchargeInfo = computePosSurcharge();
+      const surchargeAmount = surchargeInfo.amount;
+      const tarjetaBase = surchargeInfo.tarjetaBase || 0;
 
-      // 🆕 Total final = total base + recargo tarjeta
+      // 🆕 Total real = base + recargo
       const total = totalBase + surchargeAmount;
 
       const totalCost = cart.reduce((s,it) => s + it.qty*it.unitCost, 0);
@@ -2073,17 +2109,26 @@ function initPosPayments() {
       }
       // Contraentrega: no requiere cuadre exacto
     } else {
-      // Sin contraentrega: la suma debe cuadrar
+      // Sin contraentrega: la suma de filas debe cubrir el totalBase + recargo
+      // 🆕 El total ya incluye el recargo, así que la suma debe igualarlo
       const sumPayments = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
-      if (Math.abs(sumPayments - total) > 1) {
+
+      // 🆕 Ajustar: si hay fila de tarjeta, el monto cobrado con tarjeta
+      //    es base × (1+rate), pero el usuario ingresó el base. La suma
+      //    efectiva (lo que el cliente paga realmente) es:
+      //    sumPayments + (monto base tarjeta × rate) = sumPayments + surchargeAmount
+      const effectiveTotal = sumPayments + surchargeAmount;
+
+      if (Math.abs(effectiveTotal - total) > 1) {
         alert(
-          `⚠️ Los pagos no cuadran con el total.\n\n` +
-          `Total: ${fmt(total)}\n` +
-          `Suma: ${fmt(sumPayments)}\n` +
-          `Diferencia: ${fmt(total - sumPayments)}`
+          `⚠️ Los pagos no cuadran.\n\n` +
+          `Total a cubrir: ${fmt(total)}\n` +
+          `Suma efectiva: ${fmt(effectiveTotal)}\n` +
+          `Diferencia: ${fmt(total - effectiveTotal)}`
         );
         return;
       }
+
       // Cada transferencia/crédito debe tener canal
       for (const p of payments) {
         if ((p.method === 'transferencia' || p.method === 'credito') && !p.channelId) {
