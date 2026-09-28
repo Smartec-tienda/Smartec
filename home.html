@@ -2159,13 +2159,25 @@ async function loadAndApplyLogo() {
       settingsGlobal = snap.data();
     }
 
-    // Aplicar al login (si el logo existe, reemplaza el texto "SMARTEC")
+    // ============ LOGIN (logo del header) ============
     const loginContainer = $('login-logo-container');
     if (loginContainer && settingsGlobal.logoUrl) {
       loginContainer.innerHTML = `
         <img src="${settingsGlobal.logoUrl}" alt="Smartec"
              class="max-h-16 mx-auto object-contain">
       `;
+    }
+
+    // ============ FOOTER ============
+    const footerContainer = $('footer-logo');
+    if (footerContainer && settingsGlobal.footerLogoUrl) {
+      footerContainer.innerHTML = `<img src="${settingsGlobal.footerLogoUrl}" alt="Smartec" class="h-16 md:h-20 object-contain mx-auto">`;
+
+      // Ocultar slogan si el logo del footer ya lo incluye
+      const slogan = footerContainer.parentElement.querySelector('p');
+      if (slogan && slogan.textContent.includes('Tecnología')) {
+        slogan.style.display = 'none';
+      }
     }
   } catch (e) {
     console.warn('[HOME] No se pudo cargar el logo:', e);

@@ -3390,7 +3390,6 @@ window.solicitarAutorizacionDispositivo = async () => {
 ============================================================ */
 async function applyLogoToPosHeader() {
   const container = $('pos-header-logo');
-  if (!container) return;
 
   try {
     const C = window.SmartecCache;
@@ -3399,13 +3398,17 @@ async function applyLogoToPosHeader() {
       return s.exists() ? s.data() : {};
     });
 
-    if (setData.logoUrl) {
+    // ============ HEADER ============
+    if (container && setData.logoUrl) {
       container.innerHTML = `
         <img src="${setData.logoUrl}" alt="Smartec"
              class="h-8 md:h-10 object-contain">
       `;
     }
-    // Si no hay logoUrl, se queda el texto "SMARTEC" del HTML original
+
+    // 🆕 El POS no tiene footer tradicional, así que no aplicamos logo del footer aquí
+    // Si en el futuro se agrega un footer al POS, se maneja aquí.
+
   } catch (e) {
     console.warn('[POS] No se pudo cargar el logo:', e);
   }

@@ -399,8 +399,13 @@
     <button onclick="history.back()" class="p-2.5 rounded-full hover:bg-black/5 transition text-[#1D1D1F]">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
     </button>
-    <a href="index.html" class="text-2xl font-extrabold logo-mark">SMARTEC</a>
+
+    <a href="index.html" id="header-logo-link" class="shrink-0 flex items-center" style="visibility:hidden">
+      <span id="header-logo" class="text-2xl font-extrabold logo-mark">SMARTEC</span>
+    </a>
+
     <div class="flex-1"></div>
+
     <a href="index.html" class="hidden md:inline-flex items-center gap-1.5 text-sm font-medium text-[#1D1D1F] hover:text-[#0071E3] transition px-4 py-2 rounded-full hover:bg-black/5">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
       Volver al catálogo
@@ -415,14 +420,14 @@
 </div>
 
 <!-- ============ PRODUCTO ============ -->
-<main id="product-detail" class="container mx-auto px-4 lg:px-6 py-6 md:py-10 hidden relative">
+<main id="product-detail" class="container mx-auto px-4 lg:px-6 py-6 md:py-10 hidden relative overflow-hidden">
 
   <!-- Orbes decorativos -->
   <div class="orb w-[400px] h-[400px] bg-[#5AC8FA]/25" style="top:5%;left:-150px"></div>
   <div class="orb w-[350px] h-[350px] bg-[#BF5AF2]/20" style="top:40%;right:-120px"></div>
 
-  <!-- Breadcrumb -->
-  <nav id="breadcrumb" class="relative text-sm text-[#6E6E73] mb-6 flex items-center gap-2 flex-wrap font-medium"></nav>
+  <!-- Breadcrumb (oculto, se mantiene por si se necesita en el futuro) -->
+  <nav id="breadcrumb" class="hidden"></nav>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 relative">
 
@@ -623,12 +628,32 @@
   </button>
 
   <div class="absolute top-4 left-4 z-20 flex gap-2">
-    <button onclick="zoomOut()" class="w-11 h-11 glass-soft rounded-full hover:bg-white/90 transition text-white text-xl font-bold">−</button>
-    <button onclick="zoomIn()" class="w-11 h-11 glass-soft rounded-full hover:bg-white/90 transition text-white text-xl font-bold">+</button>
-    <button onclick="resetZoom()" class="px-4 h-11 glass-soft rounded-full hover:bg-white/90 transition text-white text-xs font-semibold">100%</button>
+    <!-- Zoom out -->
+    <button onclick="zoomOut()" title="Alejar"
+      class="w-11 h-11 glass-soft rounded-full hover:bg-white/90 transition text-white flex items-center justify-center">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/>
+      </svg>
+    </button>
+
+    <!-- Zoom in -->
+    <button onclick="zoomIn()" title="Acercar"
+      class="w-11 h-11 glass-soft rounded-full hover:bg-white/90 transition text-white flex items-center justify-center">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      </svg>
+    </button>
+
+    <!-- Reset -->
+    <button onclick="resetZoom()" title="Reiniciar zoom"
+      class="w-11 h-11 glass-soft rounded-full hover:bg-white/90 transition text-white flex items-center justify-center">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+    </button>
   </div>
 
-  <div id="zoom-level" class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 glass-soft rounded-full text-white text-xs font-medium">
+  <div id="zoom-level" class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 glass-soft rounded-full text-white text-xs font-semibold tracking-wide shadow-apple">
     100%
   </div>
 
@@ -696,6 +721,9 @@ function getGlobalStock(variantId) {
 }
 
 async function init() {
+  // 🆕 Cargar logo dinámico (no bloquea)
+  loadAndApplyLogo();
+
   const params = new URLSearchParams(window.location.search);
   const productId = params.get('id');
 
@@ -1233,6 +1261,41 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowLeft' && !$('zoom-modal').classList.contains('hidden')) prevZoomImage();
 });
 
+/* ============================================================
+   🆕 LOGO DINÁMICO — Carga desde settings/general
+============================================================ */
+async function loadAndApplyLogo() {
+  const link = $('header-logo-link');
+  const headerContainer = $('header-logo');
+  const footerContainer = $('footer-logo');
+
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'general'));
+    const setData = snap.exists() ? snap.data() : {};
+
+    // ============ HEADER ============
+    if (headerContainer && setData.logoUrl) {
+      headerContainer.outerHTML = `<img id="header-logo" src="${setData.logoUrl}" alt="Smartec" class="h-8 md:h-9 object-contain">`;
+    }
+
+    // ============ FOOTER ============
+    if (footerContainer && setData.footerLogoUrl) {
+      // Hay logo del footer → mostrar SOLO el logo (sin slogan texto)
+      footerContainer.innerHTML = `<img src="${setData.footerLogoUrl}" alt="Smartec" class="h-16 md:h-20 object-contain mx-auto">`;
+
+      // Ocultar el slogan de texto (porque el logo del footer ya lo incluye)
+      const slogan = footerContainer.parentElement.querySelector('p');
+      if (slogan && slogan.textContent.includes('Tecnología')) {
+        slogan.style.display = 'none';
+      }
+    }
+    // Si no hay footerLogoUrl, se queda el texto "SMARTEC" + slogan que ya está en el HTML
+  } catch (e) {
+    console.warn('[Producto] No se pudo cargar el logo:', e);
+  } finally {
+    if (link) link.style.visibility = 'visible';
+  }
+}
 init();
 </script>
 </body>

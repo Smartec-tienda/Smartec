@@ -447,8 +447,10 @@
 <!-- Header -->
 <header class="glass-strong sticky top-0 z-40 border-b border-white/50">
   <div class="container mx-auto px-4 lg:px-6 py-3 flex items-center justify-between gap-4">
-    <a href="index.html" class="text-2xl md:text-3xl font-extrabold shrink-0 logo-mark">
-      SMARTEC
+    <a href="index.html" id="header-logo-link" class="shrink-0 flex items-center">
+      <span id="header-logo" class="text-2xl md:text-3xl font-extrabold logo-mark">
+        SMARTEC
+      </span>
     </a>
 
     <!-- Buscador -->
@@ -507,9 +509,8 @@
       </div>
 
       <h1 class="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.02] mb-6 tracking-tight">
-        Tecnología que
-        <span class="shimmer-text"> transforma </span>
-        tu hogar.
+        Tecnología al
+        <span class="shimmer-text"> mejor precio.</span>
       </h1>
 
       <p class="text-base md:text-xl text-[#6E6E73] mb-10 max-w-lg leading-relaxed font-medium">
@@ -601,26 +602,44 @@
 
     <!-- Columna principal -->
     <div>
-      <div class="flex justify-between items-center mb-6 gap-3 flex-wrap">
-        <div class="flex-1 min-w-0">
-          <h2 id="results-title" class="text-xl md:text-3xl font-extrabold text-[#1D1D1F] truncate tracking-tight">Nuestro Catálogo</h2>
-          <p id="results-count" class="text-sm text-[#6E6E73] mt-1">Cargando...</p>
+      <div class="mb-6">
+        <!-- Fila 1: Título -->
+        <div class="min-w-0 mb-3 lg:mb-0 lg:flex lg:items-center lg:justify-between lg:gap-3">
+          <div class="min-w-0 lg:flex-1">
+            <h2 id="results-title" class="text-xl md:text-3xl font-extrabold text-[#1D1D1F] truncate tracking-tight">Nuestro Catálogo</h2>
+            <p id="results-count" class="text-sm text-[#6E6E73] mt-1">Cargando...</p>
+          </div>
+
+          <!-- Controles solo en desktop -->
+          <div class="hidden lg:flex items-center gap-3">
+            <select id="sort-select" class="text-sm rounded-full px-4 py-2.5 font-medium cursor-pointer">
+              <option value="relevance">Relevancia</option>
+              <option value="price-asc">Precio: menor a mayor</option>
+              <option value="price-desc">Precio: mayor a menor</option>
+              <option value="name-asc">Nombre: A → Z</option>
+              <option value="name-desc">Nombre: Z → A</option>
+              <option value="newest">Más nuevos</option>
+            </select>
+          </div>
         </div>
 
-        <button id="open-filters-mobile" class="lg:hidden flex items-center gap-2 btn-glass px-4 py-2.5 rounded-full text-sm font-medium">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-          Filtros
-          <span id="filters-badge" class="hidden bg-[#0071E3] text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center font-bold">0</span>
-        </button>
+        <!-- Fila 2: Controles móvil -->
+        <div class="lg:hidden flex items-center gap-2">
+          <button id="open-filters-mobile" class="flex-1 flex items-center justify-center gap-2 btn-glass px-4 py-2.5 rounded-full text-sm font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+            Filtros
+            <span id="filters-badge" class="hidden bg-[#0071E3] text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center font-bold">0</span>
+          </button>
 
-        <select id="sort-select" class="text-sm rounded-full px-4 py-2.5 font-medium cursor-pointer">
-          <option value="relevance">Relevancia</option>
-          <option value="price-asc">Precio: menor a mayor</option>
-          <option value="price-desc">Precio: mayor a menor</option>
-          <option value="name-asc">Nombre: A → Z</option>
-          <option value="name-desc">Nombre: Z → A</option>
-          <option value="newest">Más nuevos</option>
-        </select>
+          <select id="sort-select-mobile" class="flex-1 text-sm rounded-full px-4 py-2.5 font-medium cursor-pointer">
+            <option value="relevance">Relevancia</option>
+            <option value="price-asc">Precio: menor a mayor</option>
+            <option value="price-desc">Precio: mayor a menor</option>
+            <option value="name-asc">Nombre: A → Z</option>
+            <option value="name-desc">Nombre: Z → A</option>
+            <option value="newest">Más nuevos</option>
+          </select>
+        </div>
       </div>
 
       <div id="active-filters" class="hidden mb-4 flex flex-wrap gap-2"></div>
@@ -712,7 +731,9 @@
   <div class="container mx-auto px-4 lg:px-6">
     <div class="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
       <div>
-        <h4 class="text-xl font-extrabold mb-4 logo-mark tracking-tight">SMARTEC</h4>
+        <div id="footer-logo" class="mb-4">
+          <h4 class="text-xl font-extrabold logo-mark tracking-tight">SMARTEC</h4>
+        </div>
         <p class="text-sm text-[#6E6E73] leading-relaxed">Tu tienda de confianza para electrodomésticos de alta calidad. Tecnología que mejora tu vida.</p>
       </div>
       <div>
@@ -881,6 +902,10 @@ async function init() {
     categories = settings.categories || {};
     allProducts = prodSnap.docs.map(d => ({id:d.id, ...d.data()})).filter(p => p.active !== false);
     allInventory = invSnap.docs.map(d => ({id:d.id, ...d.data()}));
+
+    // 🆕 Aplicar logo dinámico al header
+    applyLogoToHeader();
+
     renderCategoryNav();
     renderFooterCategories();
     renderProducts();
@@ -1428,6 +1453,7 @@ window.clearAllFilters = () => {
 
   ['search-input','search-input-mobile'].forEach(id => { if ($(id)) $(id).value = ''; });
   if ($('sort-select')) $('sort-select').value = 'relevance';
+  if ($('sort-select-mobile')) $('sort-select-mobile').value = 'relevance';
 
   document.querySelectorAll('.cat-nav-btn').forEach(btn => {
     btn.className = btn.dataset.group === 'all'
@@ -1467,14 +1493,49 @@ $('close-filters-mobile').onclick = closeFiltersDrawer;
 $('filters-backdrop').onclick = closeFiltersDrawer;
 $('apply-filters-mobile').onclick = closeFiltersDrawer;
 
-$('sort-select').onchange = (e) => {
-  sortBy = e.target.value;
+// 🆕 Sincronizar los dos selects de ordenamiento (desktop + móvil)
+const sortSelectDesktop = $('sort-select');
+const sortSelectMobile = $('sort-select-mobile');
+
+function onSortChange(value) {
+  sortBy = value;
+  // Sincronizar ambos selects
+  if (sortSelectDesktop) sortSelectDesktop.value = value;
+  if (sortSelectMobile) sortSelectMobile.value = value;
   renderProducts();
-};
+}
+
+if (sortSelectDesktop) sortSelectDesktop.onchange = (e) => onSortChange(e.target.value);
+if (sortSelectMobile) sortSelectMobile.onchange = (e) => onSortChange(e.target.value);
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !$('filters-drawer').classList.contains('hidden')) closeFiltersDrawer();
 });
+
+/* ============================================================
+   🆕 LOGO DINÁMICO — Carga desde settings/general
+============================================================ */
+function applyLogoToHeader() {
+  // ============ HEADER ============
+  const container = $('header-logo');
+  if (container && settings.logoUrl) {
+    container.outerHTML = `<img id="header-logo" src="${settings.logoUrl}" alt="Smartec" class="h-8 md:h-10 object-contain">`;
+  }
+
+  // ============ FOOTER ============
+  const footerContainer = $('footer-logo');
+  if (footerContainer && settings.footerLogoUrl) {
+    // Hay logo del footer → reemplaza TODO el contenido (logo + slogan)
+    // con solo la imagen (que ya incluye slogan)
+    footerContainer.innerHTML = `<img src="${settings.footerLogoUrl}" alt="Smartec" class="h-16 md:h-20 object-contain">`;
+
+    // Ocultar el slogan de texto
+    const slogan = footerContainer.parentElement.querySelector('p');
+    if (slogan && slogan.textContent.includes('Tecnología')) {
+      slogan.style.display = 'none';
+    }
+  }
+}
 
 init();
 </script>
