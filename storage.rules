@@ -1,0 +1,81 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ============================================================
+    // HELPERS
+    // ============================================================
+    function isAuth() {
+      return request.auth != null;
+    }
+    function userDoc() {
+      return get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+    function userRole() {
+      return isAuth() ? userDoc().role : null;
+    }
+    function userStore() {
+      return isAuth() ? userDoc().storeId : null;
+    }
+    function isSuperAdmin() {
+      return isAuth() && userRole() == 'superadmin';
+    }
+    function isStoreAdmin() {
+      return isAuth() && userRole() == 'admin';
+    }
+    function isStaff() {
+      return isAuth() && userRole() in ['superadmin','admin','vendedor'];
+    }
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    function isImageOrPdf() {
+      return request.resource.contentType.matches('image/.*|application/pdf');
+    }
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // ============================================================
+    // EXPENSES (soportes contables)
+    // ============================================================
+    match /expenses/{storeId}/{fileName} {
+      allow read: if isSuperAdmin()
+                  || (isStaff() && userStore() == storeId);
+      allow write: if isSuperAdmin()
+                   || (isStoreAdmin() && userStore() == storeId)
+                   && isUnder5MB()
+                   && isImageOrPdf();
+    }
+
+    // ============================================================
+    // PRODUCTS (fotos del catálogo)
+    // ============================================================
+    match /products/{productId}/{fileName} {
+      allow read: if true;
+      allow write: if isSuperAdmin()
+                   && isUnder5MB()
+                   && isImage();
+    }
+
+    // ============================================================
+    // WARRANTIES (adjuntos de garantías)
+    // ============================================================
+    match /warranties/{storeId}/{fileName} {
+      allow read: if isSuperAdmin()
+                  || (isStaff() && userStore() == storeId);
+      allow write: if isSuperAdmin()
+                   || (isStaff() && userStore() == storeId)
+                   && isUnder5MB()
+                   && isImageOrPdf();
+    }
+
+    // ============================================================
+    // CUALQUIER OTRA CARPETA → bloqueada por defecto
+    // ============================================================
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+  }
+}

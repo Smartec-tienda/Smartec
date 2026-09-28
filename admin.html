@@ -23,6 +23,175 @@
   .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
   .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
   table input, table select{font-size:.75rem}
+
+  /* ============ 🎨 BOTÓN "GUARDANDO..." ESTILO APPLE ============ */
+  .btn-saving {
+    position: relative;
+    overflow: hidden;
+    background: #0A2A4A !important;
+    color: #ffffff !important;
+    cursor: not-allowed !important;
+    opacity: 0.95;
+  }
+  .btn-saving::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(74, 122, 154, 0.0) 20%,
+      rgba(74, 122, 154, 0.5) 50%,
+      rgba(74, 122, 154, 0.0) 80%,
+      transparent 100%
+    );
+    animation: shimmer-slide 1.6s cubic-bezier(.4,0,.2,1) infinite;
+  }
+  .btn-saving::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at center,
+      rgba(90, 200, 250, 0.15) 0%,
+      transparent 60%
+    );
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  @keyframes shimmer-slide {
+    0%   { left: -100%; }
+    100% { left: 100%; }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50%      { opacity: 0.8; transform: scale(1.05); }
+  }
+
+  /* ============ 📸 ZONA DE ATTACHMENTS (imágenes) ============ */
+  .img-dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    background: #f9fafb;
+    transition: all 0.25s cubic-bezier(.2,.8,.2,1);
+    cursor: pointer;
+  }
+  .img-dropzone:hover {
+    border-color: #4A7A9A;
+    background: #f0f7fb;
+  }
+  .img-dropzone.dragover {
+    border-color: #0A2A4A;
+    background: #e0eef7;
+    transform: scale(1.01);
+    box-shadow: 0 8px 24px rgba(10, 42, 74, 0.12);
+  }
+
+  /* Miniatura de imagen */
+  .img-thumb {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f3f4f6;
+    border: 2px solid transparent;
+    transition: all 0.25s cubic-bezier(.2,.8,.2,1);
+    cursor: grab;
+  }
+  .img-thumb:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  }
+  .img-thumb.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+  }
+  .img-thumb.drop-target {
+    border-color: #4A7A9A;
+    transform: scale(1.05);
+    box-shadow: 0 0 0 3px rgba(74,122,154,0.25);
+  }
+
+  /* Miniatura principal */
+  .img-thumb.is-main {
+    border-color: #4A7A9A;
+    box-shadow: 0 0 0 3px rgba(74,122,154,0.25);
+  }
+  .img-thumb.is-main::after {
+    content: '⭐ Principal';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(74,122,154,0.95);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    padding: 3px 0;
+    letter-spacing: 0.02em;
+  }
+
+  /* Botón eliminar en miniatura */
+  .img-thumb .btn-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    border: none;
+    cursor: pointer;
+    z-index: 2;
+  }
+  .img-thumb:hover .btn-remove {
+    opacity: 1;
+  }
+
+  /* ============ 📊 BARRA DE PROGRESO DE SUBIDA ============ */
+  .upload-progress-wrap {
+    background: #f3f4f6;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 12px;
+    display: none;
+  }
+  .upload-progress-wrap.active {
+    display: block;
+    animation: fade-in-up 0.3s cubic-bezier(.2,.8,.2,1);
+  }
+  .upload-progress-bar {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .upload-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4A7A9A 0%, #5AC8FA 100%);
+    border-radius: 999px;
+    width: 0%;
+    transition: width 0.4s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -2109,6 +2278,8 @@ import { getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getStorage, ref, uploadBytes, getDownloadURL }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
 
 /* ============================================================
@@ -2126,6 +2297,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 // 🛡️ App Check con reCAPTCHA Enterprise
 const appCheck = initializeAppCheck(app, {
   provider: new ReCaptchaEnterpriseProvider('6Lf5ls8tAAAAAFg4fPnRJg4xNgdVgo2Enl9FgZIP'),
@@ -2142,6 +2314,7 @@ let currentUserData = null;
 let stores = [], users = [], products = [], inventory = [],
     sales = [], auditLogs = [], settings = {},
     storeGoals = [], cashRegisters = [], expensesAll = [];
+let currentProductImages = [];
 let shiftsAll = [];  // 🕒 todos los turnos (entradas/salidas)
 let paymentChannels = [];      // 🆕 cuentas/canales de pago
 let paymentPlatforms = [];     // 🆕 catálogo de bancos/plataformas
@@ -4622,8 +4795,25 @@ window.openProductForm = (p = null) => {
       </label>
       <input id="f-salePrice" type="number" placeholder="Precio oferta" value="${v.salePrice||''}" class="px-3 py-2 border rounded w-40">
     </div>
-    <label class="text-xs font-semibold">URLs de imágenes (separadas por coma)</label>
-    <input id="f-images" value="${(v.images||[]).join(',')}" class="w-full px-3 py-2 border rounded mb-3 text-xs">
+    <div class="border border-gray-200 rounded-lg p-3 mb-3">
+      <div class="flex justify-between items-center mb-2">
+        <p class="text-xs font-semibold text-sd">📸 Imágenes del producto</p>
+        <button type="button" onclick="document.getElementById('f-image-file').click()" class="text-[10px] bg-sl text-white px-2 py-1 rounded hover:bg-sd">
+          + Subir imágenes
+        </button>
+      </div>
+      <input type="file" id="f-image-file" accept="image/jpeg,image/png,image/webp" multiple class="hidden">
+      <div id="f-dropzone" class="img-dropzone">
+        <p class="text-xs text-gray-500">
+          Arrastra tus imágenes aquí o haz clic en <b>"+ Subir imágenes"</b>
+        </p>
+        <p class="text-[10px] text-gray-400 mt-1">
+          JPG, PNG o WebP · máx 5MB · se convertirán a WebP automáticamente
+        </p>
+      </div>
+      <div id="f-images-preview" class="grid grid-cols-4 gap-2 mt-3"></div>
+      <p id="f-images-counter" class="text-[10px] text-gray-400 mt-2 text-center"></p>
+    </div>
 
     <div class="border-t pt-3 mt-3">
       <div class="flex justify-between items-center mb-2">
@@ -4635,7 +4825,17 @@ window.openProductForm = (p = null) => {
       </div>
     </div>
 
-    <button onclick="saveProduct('${p?p.id:''}')" class="mt-5 w-full bg-sd text-white py-2 rounded-lg hover:bg-sl font-semibold">Guardar producto</button>
+    <div id="upload-progress-wrap" class="upload-progress-wrap">
+      <div class="flex justify-between items-center text-xs font-semibold text-sd">
+        <span id="upload-progress-text">📤 Subiendo imágenes…</span>
+        <span id="upload-progress-count" class="text-gray-500">0 / 0</span>
+      </div>
+      <div class="upload-progress-bar">
+        <div id="upload-progress-fill" class="upload-progress-fill"></div>
+      </div>
+    </div>
+
+    <button onclick="saveProduct('${p?p.id:''}')" class="mt-5 w-full bg-sd text-white py-2 rounded-lg hover:bg-sl font-semibold transition-all">Guardar producto</button>
   `;
 
   updateSubcats();
@@ -4655,9 +4855,210 @@ window.openProductForm = (p = null) => {
   faqsC.innerHTML = '';
   (v.faqs||[]).forEach(f => addFaqRow(f));
 
+  // 🆕 Render imágenes del producto
+  initProductImages(p);
+
   openForm();
 };
 window.editProduct = id => { const p = products.find(x => x.id === id); if (p) openProductForm(p); };
+
+/* ============================================================
+   🆕 IMÁGENES DE PRODUCTO — Attachments con drag&drop
+============================================================ */
+
+/**
+ * Inicializa el array currentProductImages y los listeners del formulario.
+ * Se llama al abrir el modal de producto (nuevo o editando).
+ */
+window.initProductImages = (product) => {
+  // Cargar imágenes existentes del producto (si estamos editando)
+  currentProductImages = (product?.images || []).map(url => ({
+    url,
+    file: null,
+    previewUrl: url,
+    isNew: false
+  }));
+
+  renderProductImagesPreview();
+  attachProductImagesListeners();
+};
+
+/**
+ * Conecta los listeners de subida, drag&drop y ordenamiento.
+ */
+function attachProductImagesListeners() {
+  const fileInput = $('f-image-file');
+  const dropzone = $('f-dropzone');
+
+  if (!fileInput || !dropzone) return;
+
+  // Click en el input → seleccionar archivos
+  fileInput.onchange = (e) => {
+    handleProductImageFiles(Array.from(e.target.files));
+    fileInput.value = '';
+  };
+
+  // Click en dropzone → abrir selector
+  dropzone.onclick = () => fileInput.click();
+
+  // Drag & drop sobre dropzone
+  ['dragenter', 'dragover'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove('dragover');
+    });
+  });
+  dropzone.addEventListener('drop', (e) => {
+    const files = Array.from(e.dataTransfer?.files || []);
+    handleProductImageFiles(files);
+  });
+}
+
+/**
+ * Procesa los archivos seleccionados: valida y los agrega a la lista.
+ */
+function handleProductImageFiles(files) {
+  if (!files.length) return;
+
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  const maxSizeMB = 5;
+
+  let added = 0;
+  let rejected = [];
+
+  files.forEach(file => {
+    // Validar tipo
+    if (!validTypes.includes(file.type)) {
+      rejected.push(`"${file.name}" (formato no soportado)`);
+      return;
+    }
+    // Validar peso
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      rejected.push(`"${file.name}" (supera ${maxSizeMB}MB)`);
+      return;
+    }
+    // Crear preview local
+    const previewUrl = URL.createObjectURL(file);
+    currentProductImages.push({
+      url: null,
+      file,
+      previewUrl,
+      isNew: true
+    });
+    added++;
+  });
+
+  if (rejected.length) {
+    alert(`⚠️ Algunos archivos fueron rechazados:\n\n${rejected.join('\n')}`);
+  }
+
+  if (added > 0) {
+    renderProductImagesPreview();
+  }
+}
+
+/**
+ * Renderiza las miniaturas en el grid.
+ */
+function renderProductImagesPreview() {
+  const container = $('f-images-preview');
+  const counter = $('f-images-counter');
+  if (!container) return;
+
+  if (!currentProductImages.length) {
+    container.innerHTML = '<p class="text-[10px] text-gray-400 col-span-4 text-center py-3">Sin imágenes aún</p>';
+    if (counter) counter.innerText = '';
+    return;
+  }
+
+  container.innerHTML = currentProductImages.map((img, i) => `
+    <div class="img-thumb ${i === 0 ? 'is-main' : ''}"
+         draggable="true"
+         data-index="${i}">
+      <img src="${img.previewUrl}" class="w-full h-full object-contain p-1" draggable="false">
+      <button type="button" class="btn-remove"
+              onclick="event.stopPropagation(); removeProductImage(${i})"
+              title="Eliminar">✕</button>
+      ${img.isNew ? '<span class="absolute top-1 left-1 bg-blue-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10">NUEVA</span>' : ''}
+    </div>
+  `).join('');
+
+  if (counter) {
+    const total = currentProductImages.length;
+    counter.innerText = `${total} imagen${total !== 1 ? 'es' : ''} · la primera será la principal del catálogo`;
+  }
+
+  attachThumbDragListeners();
+}
+
+/**
+ * Conecta los listeners de drag&drop para reordenar las miniaturas.
+ */
+function attachThumbDragListeners() {
+  const thumbs = document.querySelectorAll('#f-images-preview .img-thumb');
+  let draggedIndex = null;
+
+  thumbs.forEach(thumb => {
+    thumb.addEventListener('dragstart', (e) => {
+      draggedIndex = Number(thumb.dataset.index);
+      thumb.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    thumb.addEventListener('dragend', () => {
+      thumb.classList.remove('dragging');
+      document.querySelectorAll('#f-images-preview .img-thumb').forEach(t => t.classList.remove('drop-target'));
+    });
+
+    thumb.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (Number(thumb.dataset.index) !== draggedIndex) {
+        thumb.classList.add('drop-target');
+      }
+    });
+
+    thumb.addEventListener('dragleave', () => {
+      thumb.classList.remove('drop-target');
+    });
+
+    thumb.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const targetIndex = Number(thumb.dataset.index);
+      if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+      // Mover el elemento en el array
+      const [moved] = currentProductImages.splice(draggedIndex, 1);
+      currentProductImages.splice(targetIndex, 0, moved);
+
+      renderProductImagesPreview();
+    });
+  });
+}
+
+/**
+ * Elimina una imagen de la lista (no borra de Storage todavía).
+ */
+window.removeProductImage = (index) => {
+  const img = currentProductImages[index];
+  if (!img) return;
+
+  // Si es nueva, revocar el blob URL para liberar memoria
+  if (img.isNew && img.previewUrl?.startsWith('blob:')) {
+    URL.revokeObjectURL(img.previewUrl);
+  }
+
+  currentProductImages.splice(index, 1);
+  renderProductImagesPreview();
+};
 
 window.updateSubcats = () => {
   const group = $('f-catGroup').value;
@@ -4714,7 +5115,7 @@ window.saveProduct = async (existingId) => {
   const tree = getCategoryTree();
   if (!tree[group] || !tree[group].subcategories[sub]) return alert('Selecciona categoría y subcategoría válidas');
 
-    // Recolectar specs
+  // Recolectar specs
   const specs = [];
   document.querySelectorAll('.spec-row').forEach(row => {
     const key = row.querySelector('.spec-key').value.trim();
@@ -4750,7 +5151,7 @@ window.saveProduct = async (existingId) => {
     active: $('f-active').checked,
     onSale: $('f-onsale').checked,
     salePrice: Number($('f-salePrice').value)||0,
-    images: $('f-images').value.split(',').map(s=>s.trim()).filter(Boolean),
+    images: currentProductImages.filter(i => i.url).map(i => i.url),
     variants,
     updatedAt: serverTimestamp()
   };
@@ -4758,53 +5159,236 @@ window.saveProduct = async (existingId) => {
 
   const isNew = !existingId;
   let docId = existingId;
-  if (isNew) {
-    const ref = await addDoc(collection(db,'products'), { ...data, createdAt: serverTimestamp() });
-    docId = ref.id;
-  } else {
-    await updateDoc(doc(db,'products',docId), data);
+
+  // 🆕 Detectar imágenes nuevas pendientes de subir
+  const newImages = currentProductImages.filter(img => img.isNew && img.file);
+
+  // 🆕 Botón "Guardando..." con animación Apple + barra de progreso
+  const saveBtn = document.querySelector('#form-body button[onclick*="saveProduct"]');
+  const progressWrap = $('upload-progress-wrap');
+
+  if (newImages.length > 0 && saveBtn) {
+    saveBtn.classList.add('btn-saving');
+    saveBtn.disabled = true;
+    saveBtn.dataset.originalText = saveBtn.innerText;
+    saveBtn.innerText = 'Guardando…';
+    if (progressWrap) progressWrap.classList.add('active');
+    updateUploadProgress(0, newImages.length, newImages[0]?.file?.name || '');
   }
 
-  await audit({
-    action: isNew ? 'create' : 'update',
-    collection: 'products',
-    docId,
-    after: data,
-    note: `${isNew?'Creado':'Editado'} producto ${data.name}`
-  });
+  try {
+    // 1. Crear/actualizar doc base (SIN las imágenes nuevas aún)
+    if (isNew) {
+      const ref = await addDoc(collection(db,'products'), { ...data, createdAt: serverTimestamp() });
+      docId = ref.id;
+    } else {
+      await updateDoc(doc(db,'products',docId), data);
+    }
 
-  // Crear registros de inventario para nuevas variantes
-  if (isNew || existingId) {
-    for (const vr of variants) {
-      for (const store of stores) {
-        const invId = `${store.storeId}_${vr.variantId}`;
-        const invSnap = await getDoc(doc(db,'inventory',invId));
-        if (!invSnap.exists()) {
-          await setDoc(doc(db,'inventory',invId), {
-            storeId: store.storeId,
-            productId: docId,
-            variantId: vr.variantId,
-            productName: data.name,
-            sku: vr.sku,
-            color: vr.color,
-            colorName: vr.colorName,
-            size: vr.size,
-            stock: 0,
-            minStock: settings.minStock || 5,
-            serials: [],
-            updatedAt: serverTimestamp()
-          });
+    // 2. Subir imágenes nuevas si las hay (todas a WebP optimizado)
+    let finalImages = data.images;
+    if (newImages.length > 0) {
+      const uploadedUrls = [];
+      for (let i = 0; i < newImages.length; i++) {
+        const img = newImages[i];
+        updateUploadProgress(i, newImages.length, img.file.name);
+        try {
+          const url = await uploadProductImageAsWebp(img.file, docId);
+          uploadedUrls.push(url);
+        } catch (err) {
+          console.error('Error subiendo imagen:', err);
+          alert(`⚠️ No se pudo subir "${img.file.name}": ${err.message}`);
+        }
+      }
+
+      // 3. Combinar: existentes + nuevas subidas (en el orden visual final)
+      finalImages = currentProductImages
+        .map(img => {
+          if (img.isNew && img.file) {
+            const idx = newImages.indexOf(img);
+            return uploadedUrls[idx] || null;
+          }
+          return img.url;
+        })
+        .filter(Boolean);
+
+      // 4. Actualizar el doc con las URLs finales
+      await updateDoc(doc(db,'products', docId), {
+        images: finalImages,
+        updatedAt: serverTimestamp()
+      });
+
+      data.images = finalImages;
+      updateUploadProgress(newImages.length, newImages.length, '');
+    }
+
+    // 5. Crear registros de inventario para las variantes (solo si es nuevo)
+    if (isNew) {
+      for (const vr of variants) {
+        for (const store of stores) {
+          const invId = `${store.storeId}_${vr.variantId}`;
+          const invSnap = await getDoc(doc(db,'inventory',invId));
+          if (!invSnap.exists()) {
+            await setDoc(doc(db,'inventory',invId), {
+              storeId: store.storeId,
+              productId: docId,
+              variantId: vr.variantId,
+              productName: data.name,
+              sku: vr.sku,
+              color: vr.color,
+              colorName: vr.colorName,
+              size: vr.size,
+              stock: 0,
+              minStock: settings.minStock || 5,
+              serials: [],
+              updatedAt: serverTimestamp()
+            });
+          }
         }
       }
     }
+
+    // 6. Auditoría (única, al final)
+    await audit({
+      action: isNew ? 'create' : 'update',
+      collection: 'products',
+      docId,
+      after: data,
+      note: `${isNew?'Creado':'Editado'} producto ${data.name}${newImages.length ? ` · ${newImages.length} imagen(es) nueva(s)` : ''}`
+    });
+  } catch (err) {
+    console.error('Error guardando producto:', err);
+    alert('❌ Error al guardar: ' + err.message);
+    if (saveBtn) {
+      saveBtn.classList.remove('btn-saving');
+      saveBtn.disabled = false;
+      saveBtn.innerText = saveBtn.dataset.originalText || 'Guardar producto';
+    }
+    if (progressWrap) progressWrap.classList.remove('active');
+    return;
   }
-  
+
   window.SmartecCache.invalidate('products');
   window.SmartecCache.invalidate('inventory');
-  
+
+  // Limpiar blobs en memoria
+  currentProductImages.forEach(img => {
+    if (img.isNew && img.previewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(img.previewUrl);
+    }
+  });
+  currentProductImages = [];
+
   closeForm();
   await loadAll();
 };
+/* ============================================================
+   🆕 SUBIDA DE IMÁGENES A WEBP OPTIMIZADO
+============================================================ */
+
+/**
+ * Sube una imagen de producto a Storage, convirtiéndola a WebP optimizado.
+ * - Redimensiona a máx 2000px en el lado más largo.
+ * - Calidad 92%.
+ * - Devuelve la URL pública.
+ */
+async function uploadProductImageAsWebp(file, productId) {
+  // 1. Cargar imagen en un objeto Image para conocer dimensiones
+  const imageBitmap = await loadImageFromFile(file);
+
+  // 2. Redimensionar a máx 2000 px
+  const MAX_DIM = 2000;
+  let { width, height } = imageBitmap;
+  if (width > MAX_DIM || height > MAX_DIM) {
+    const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+  }
+
+  // 3. Dibujar en canvas
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imageBitmap, 0, 0, width, height);
+
+  // 4. Convertir a WebP calidad 92%
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (b) => b ? resolve(b) : reject(new Error('No se pudo convertir a WebP')),
+      'image/webp',
+      0.92
+    );
+  });
+
+  // 5. Validar tamaño final
+  if (blob.size > 5 * 1024 * 1024) {
+    throw new Error('La imagen final supera 5MB incluso después de optimizar');
+  }
+
+  // 6. Subir a Storage
+  const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.webp`;
+  const path = `products/${productId}/${fileName}`;
+  const storageRef = ref(storage, path);
+
+  await uploadBytes(storageRef, blob, {
+    contentType: 'image/webp',
+    cacheControl: 'public, max-age=31536000'
+  });
+
+  const url = await getDownloadURL(storageRef);
+  return url;
+}
+
+/**
+ * Carga un File como ImageBitmap (o HTMLImageElement como fallback).
+ */
+async function loadImageFromFile(file) {
+  if (window.createImageBitmap) {
+    try {
+      return await createImageBitmap(file);
+    } catch (e) {
+      console.warn('createImageBitmap falló, usando fallback:', e);
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('No se pudo cargar la imagen'));
+    };
+    img.src = url;
+  });
+}
+
+/**
+ * Actualiza la barra de progreso de subida.
+ */
+function updateUploadProgress(done, total, currentFileName) {
+  const fill = $('upload-progress-fill');
+  const text = $('upload-progress-text');
+  const count = $('upload-progress-count');
+
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  if (fill) fill.style.width = pct + '%';
+  if (count) count.innerText = `${done} / ${total}`;
+
+  if (text) {
+    if (done >= total && total > 0) {
+      text.innerText = '✅ Subida completa';
+    } else if (currentFileName) {
+      text.innerText = `Procesando: ${currentFileName}`;
+    } else {
+      text.innerText = 'Subiendo imágenes…';
+    }
+  }
+}
 window.delProduct = async (id) => {
   const p = products.find(x => x.id === id);
   if (!p) return;
