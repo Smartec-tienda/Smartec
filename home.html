@@ -224,6 +224,21 @@
     }
   }
 
+    /* ============ SPLASH SCREEN GLOBAL ============ */
+  /* Ocultar todo el contenido mientras la app carga (evita FOUC) */
+  body.app-loading > *:not(#app-splash) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  body.app-loading #app-splash {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  body:not(.app-loading) #app-splash {
+    opacity: 0;
+    pointer-events: none;
+  }
+  
   /* ============ MOBILE FIXES ============ */
   @media (max-width: 768px) {
     .glass, .glass-soft, .glass-strong {
@@ -249,10 +264,18 @@
   .border-sl{border-color:#4A7A9A}
 </style>
 </head>
-<body class="min-h-screen">
+<body class="min-h-screen app-loading">
 
 <!-- Mesh gradient de fondo -->
 <div class="mesh-bg"></div>
+
+<!-- ============ SPLASH SCREEN GLOBAL ============ -->
+<div id="app-splash" class="fixed inset-0 z-[9999] flex items-center justify-center mesh-bg transition-opacity duration-300">
+  <div class="text-center">
+    <div class="w-12 h-12 border-4 border-[#0071E3]/20 border-t-[#0071E3] rounded-full animate-spin mx-auto"></div>
+    <p class="text-xs text-[#6E6E73] mt-4 font-medium tracking-wide">Cargando Smartec…</p>
+  </div>
+</div>
 
 <!-- ============ LOGIN ============ -->
 <div id="login-screen" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
