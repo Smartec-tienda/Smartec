@@ -29,17 +29,13 @@
     border-bottom-width:2px;
   }
 
-  /* 🆕 Sticky robusto para los tabs */
+  /* 🆕 Nav de tabs NO sticky (el header-app ya es sticky arriba) */
   #tabs-nav {
-    position: sticky;
-    top: 0; /* El valor real se ajusta con JS */
-    z-index: 30;
-    transition: top 0.2s ease;
+    position: relative;
+    z-index: 20;
   }
-  /* El body no debe tener overflow hidden para que sticky funcione */
+  /* El body no debe tener overflow hidden */
   body { overflow-x: hidden; }
-  /* El panel-screen no debe tener overflow hidden */
-  #panel-screen { overflow: visible; }
   #store-selector {
     background-color: rgba(255,255,255,0.15);
     color: #ffffff;
@@ -445,34 +441,7 @@ const MAX_SUPPORTS = 3;
 ============================================================ */
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
-/* ============================================================
-   🆕 AJUSTAR STICKY DE LOS TABS SEGÚN LA ALTURA DEL HEADER-APP
-   El header-app puede cambiar de altura (móvil vs desktop, con
-   o sin selector de tienda). Esta función calcula la altura
-   real y la aplica al top del nav de tabs.
-============================================================ */
-function updateTabsStickyTop() {
-  const header = document.querySelector('#smartec-header-app > header');
-  const tabsNav = document.getElementById('tabs-nav');
-  if (!header || !tabsNav) return;
 
-  const headerHeight = header.getBoundingClientRect().height;
-  tabsNav.style.top = headerHeight + 'px';
-}
-
-// Ajustar al cargar, al redimensionar y cuando cambia el header
-window.addEventListener('load', updateTabsStickyTop);
-window.addEventListener('resize', updateTabsStickyTop);
-
-// Observar cambios en el header (por ejemplo, al aparecer el selector de tienda)
-if (window.MutationObserver) {
-  const observer = new MutationObserver(updateTabsStickyTop);
-  document.addEventListener('DOMContentLoaded', () => {
-    const header = document.querySelector('#smartec-header-app > header');
-    if (header) observer.observe(header, { childList: true, subtree: true, attributes: true });
-    updateTabsStickyTop();
-  });
-}
 /* ============================================================
    🆕 RENDER DEL HEADER-APP
    Se llama desde onAuthStateChanged y desde el onchange del
@@ -512,7 +481,7 @@ function renderHeaderApp() {
     showTitle: true,
     titleText: titleText,
     showRole: true,
-    showShiftButton: false,      // contabilidad no maneja turnos
+    showShiftButton: true,       // 🆕 activado: contabilidad sí maneja turnos
     showSellerInfo: true,
     showHomeLink: true,
     showRefreshButton: true,

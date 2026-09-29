@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="theme.css">
   <script src="common.js"></script>
   <script src="cache.js"></script>
+  <script src="header-app.js"></script>
+  <script src="favicon.js"></script>
   <script src="fingerprint.js"></script>
   <script src="device-guard.js"></script>
   <script src="kiosk.js"></script>
@@ -224,6 +226,20 @@
     border-color: #0071E3;
   }
 
+    /* ============ SPLASH SCREEN GLOBAL ============ */
+  body.app-loading > *:not(#app-splash) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  body.app-loading #app-splash {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  body:not(.app-loading) #app-splash {
+    opacity: 0;
+    pointer-events: none;
+  }
+
   @media (max-width: 768px) {
     .glass, .glass-soft, .glass-strong {
       backdrop-filter: blur(12px) saturate(140%);
@@ -232,10 +248,18 @@
   }
 </style>
   </head>
-  <body class="min-h-screen">
+  <body class="min-h-screen app-loading">
 
-  <!-- Mesh gradient de fondo -->
-  <div class="mesh-bg"></div>
+<!-- Mesh gradient de fondo -->
+<div class="mesh-bg"></div>
+
+<!-- ============ SPLASH SCREEN GLOBAL ============ -->
+<div id="app-splash" class="fixed inset-0 z-[9999] flex items-center justify-center mesh-bg transition-opacity duration-300">
+  <div class="text-center">
+    <div class="w-12 h-12 border-4 border-[#0071E3]/20 border-t-[#0071E3] rounded-full animate-spin mx-auto"></div>
+    <p class="text-xs text-[#6E6E73] mt-4 font-medium tracking-wide">Cargando Smartec…</p>
+  </div>
+</div>
 
 <!-- ============ LOGIN ============ -->
 <div id="login-screen" class="hidden min-h-screen items-center justify-center p-4 relative overflow-hidden">
@@ -282,74 +306,8 @@
   <!-- ============ POS ============ -->
   <div id="pos-screen" class="hidden min-h-screen flex flex-col lg:h-screen">
 
-    <!-- Header -->
-    <header class="glass-strong sticky top-0 z-40 border-b border-white/50 shrink-0">
-      <div class="px-4 py-3 flex justify-between items-center gap-3 flex-wrap">
-
-        <!-- Logo + tienda -->
-        <div class="flex items-center gap-3 min-w-0 flex-1">
-          <div id="pos-header-logo" class="flex items-center shrink-0">
-            <h1 class="text-lg md:text-xl font-extrabold whitespace-nowrap tracking-tight">
-              <span class="logo-mark">SMARTEC</span>
-            </h1>
-          </div>
-          <div class="hidden md:block w-px h-6 bg-black/10 shrink-0"></div>
-          <div class="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
-            <p id="header-store-text" class="text-sm md:text-base font-semibold text-[#1D1D1F] truncate">—</p>
-            <select id="store-selector" class="hidden text-sm rounded-xl px-3 py-1.5"></select>
-          </div>
-        </div>
-
-        <!-- Acciones -->
-        <div class="flex items-center gap-2 text-sm shrink-0 flex-wrap">
-
-          <!-- Turno -->
-          <button id="shift-btn" onclick="SmartecShift.toggleShift()"
-            class="hidden lg:flex items-center gap-2 text-xs glass-soft hover:bg-white/80 px-3 py-1.5 rounded-full transition font-semibold text-[#1D1D1F]">
-            <span id="shift-btn-icon">🟢</span>
-            <span id="shift-btn-text">Marcar entrada</span>
-            <span id="shift-timer" class="hidden text-[10px] opacity-80 font-mono"></span>
-          </button>
-
-          <!-- Info vendedor -->
-          <span id="seller-info" class="hidden lg:inline text-xs text-[#6E6E73] font-medium"></span>
-
-          <!-- Ver carrito (desktop) -->
-          <button onclick="toggleCart()" id="cart-toggle-desktop"
-            class="hidden lg:flex items-center gap-2 text-xs bg-[#0071E3] hover:bg-[#0077ED] text-white px-4 py-2 rounded-full transition font-semibold shadow-apple">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-            </svg>
-            Ver carrito
-            <span id="cart-badge-desktop" class="hidden bg-white text-[#0071E3] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center">0</span>
-          </button>
-
-          <!-- Refrescar -->
-          <button onclick="forceRefreshData()"
-            class="glass-soft hover:bg-white/80 p-2 rounded-full transition text-[#1D1D1F]"
-            title="Refrescar datos">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-            </svg>
-          </button>
-
-          <!-- Volver a inicio -->
-          <a href="home.html"
-            class="glass-soft hover:bg-white/80 px-4 py-2 rounded-full transition text-[#1D1D1F] font-semibold inline-flex items-center gap-2 text-xs">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-            </svg>
-            Inicio
-          </a>
-
-          <!-- Salir -->
-          <button id="logout-btn"
-            class="bg-[#FF375F] hover:bg-[#E0304F] text-white px-4 py-1.5 rounded-full transition text-xs font-semibold shadow-apple">
-            Salir
-          </button>
-        </div>
-      </div>
-    </header>
+    <!-- Header unificado (inyectado por header-app.js) -->
+    <div id="smartec-header-app"></div>
 
     <!-- Main -->
     <div class="flex-1 flex flex-col lg:flex-row lg:overflow-hidden">
@@ -370,11 +328,17 @@
               Escanear
             </button>
 
-            <button id="shift-btn-mobile" onclick="SmartecShift.toggleShift()"
-              class="lg:hidden px-3 py-2 glass-soft rounded-xl hover:bg-white/80 transition text-xs font-semibold shrink-0 text-[#1D1D1F]">
-              <span id="shift-btn-icon-mobile">🟢</span>
+            <!-- 🆕 Botón Ver carrito (desktop) -->
+            <button onclick="toggleCart()"
+              class="hidden lg:flex items-center gap-2 bg-[#0071E3] text-white px-4 py-3 rounded-xl hover:bg-[#0077ED] transition font-semibold shrink-0 shadow-apple relative">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+              </svg>
+              Ver carrito
+              <span id="cart-badge-desktop" class="hidden bg-white text-[#0071E3] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center">0</span>
             </button>
 
+            <!-- 🆕 Botón Ver carrito (móvil) -->
             <button onclick="toggleCart()"
               class="lg:hidden px-4 py-3 bg-[#0071E3] text-white rounded-xl hover:bg-[#0077ED] transition flex items-center justify-center shrink-0 shadow-apple relative">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -387,7 +351,7 @@
           <div class="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-thin" id="category-filters"></div>
         </div>
 
-        <div id="products-grid" class="lg:flex-1 lg:overflow-y-auto p-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 auto-rows-max scrollbar-thin"></div>
+        <div id="products-grid" class="lg:flex-1 lg:overflow-y-auto p-3 md:p-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 auto-rows-max scrollbar-thin"></div>
       </section>
 
       <!-- RIGHT: Panel carrito (oculto por defecto) -->
@@ -740,6 +704,18 @@ const appCheck = initializeAppCheck(app, {
   const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
   const escapeHtml = window.Smartec.escapeHtml;   // 🆕
 
+  
+  /* ============ SPLASH SCREEN ============ */
+  /**
+   * Quita el splash screen (una sola vez, aunque se llame varias veces).
+   */
+  function hideSplash() {
+    if (document.body.classList.contains('app-loading')) {
+      document.body.classList.remove('app-loading');
+      console.log('[SPLASH] Oculto. App lista.');
+    }
+  }
+
   /* Traductor hex → nombre */
   const COLOR_NAMES = {
     '#000000':'Negro', '#ffffff':'Blanco', '#c0c0c0':'Plateado', '#808080':'Gris',
@@ -843,13 +819,20 @@ const appCheck = initializeAppCheck(app, {
       err.classList.remove('hidden');
     }
   };
-  $('logout-btn').onclick = async () => {
+
+  /* 🆕 Función global de logout (usada por device-blocked-screen y otros) */
+  window.logout = async () => {
     if (window.SmartecKiosk) window.SmartecKiosk.disable();
-    await audit({ action:'logout', collection:'system', note:'Cierre de sesión POS' });
-    window.SmartecDeviceGuard.clearValidatedToday();
+    try {
+      await audit({ action:'logout', collection:'system', note:'Cierre de sesión POS' });
+    } catch (e) { /* ignore */ }
+    try {
+      window.SmartecDeviceGuard.clearValidatedToday();
+    } catch (e) { /* ignore */ }
     await signOut(auth);
     window.location.href = 'home.html';
   };
+
   onAuthStateChanged(auth, async user => {
     // 🚧 GUARD: validar acceso a esta página
     if (user) {
@@ -897,6 +880,14 @@ const appCheck = initializeAppCheck(app, {
     // Ocultar pantalla de carga siempre que Firebase responda
     document.getElementById('loading-screen').classList.add('hidden');
 
+    // 🆕 Si NO hay usuario, mostrar login y quitar el splash
+    if (!user) {
+      $('login-screen').classList.remove('hidden');
+      $('login-screen').classList.add('flex');
+      hideSplash();
+      return;
+    }
+
     if (user) {
       currentUser = user;
 
@@ -933,13 +924,9 @@ const appCheck = initializeAppCheck(app, {
 
       $('login-screen').classList.add('hidden');
       $('pos-screen').classList.remove('hidden');
-      $('seller-info').innerText = '👤 ' + user.email;
 
       await audit({ action:'login', collection:'system', note:'Inicio de sesión POS' });
       await loadData();
-      } else {
-      // 🆕 Sin sesión → redirigir a home
-      window.location.href = 'home.html';
     }
   });
 
@@ -1458,52 +1445,94 @@ function initPosPayments() {
         return d >= startOfMonth && s.status !== 'anulada';
       });
 
-      // ========== 4. Actualizar header ==========
-      if (isSuper) {
-        $('header-store-text').classList.add('hidden');
-        const sel = $('store-selector');
-        sel.classList.remove('hidden');
-        sel.innerHTML = activeStores.map(s =>
-          `<option value="${s.storeId}" ${s.storeId === currentStore.storeId ? 'selected' : ''}>🏢 ${s.name}</option>`
-        ).join('');
+      // ========== 4. Renderizar header unificado (header-app.js) ==========
+      if (window.SmartecHeaderApp) {
+        window.SmartecHeaderApp.render({
+          settings: setData,   // ya lo cargamos más arriba como setData
+          user: {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            name: currentUserData.name || currentUser.email,
+            role: currentUserData.role,
+            storeId: currentUserData.storeId || null
+          },
+          stores: isSuper ? activeStores : [],
+          currentStore: currentStore,
+          showTitle: false,
+          showRole: false,
+          showShiftButton: true,
+          showSellerInfo: true,
+          showHomeLink: true,
+          showRefreshButton: true,
+          showLogoutButton: true,
+          showStoreSelector: isSuper,
+          storeSelectorIncludeAll: false,
+          extraLinks: [],
+          onRefresh: () => { if (window.forceRefreshData) window.forceRefreshData(); },
+          onLogout: async () => {
+            if (window.SmartecKiosk) window.SmartecKiosk.disable();
+            await audit({ action:'logout', collection:'system', note:'Cierre de sesión POS' });
+            window.SmartecDeviceGuard.clearValidatedToday();
+            await signOut(auth);
+            window.location.href = 'home.html';
+          },
+          onStoreChange: async (store) => {
+            // El superadmin cambió de tienda desde el selector
+            if (cart.length && !confirm('Cambiar de tienda vaciará el carrito. ¿Continuar?')) {
+              // Revertir el selector visualmente: re-render del header
+              window.SmartecHeaderApp.render(window.__posHeaderOpts);
+              return;
+            }
+            sessionStorage.setItem('smartec_pos_store', store.storeId);
+            currentStore = store;
+            cart = [];
 
-        sel.onchange = async () => {
-          const newStoreId = sel.value;
-          if (cart.length && !confirm('Cambiar de tienda vaciará el carrito. ¿Continuar?')) {
-            sel.value = sessionStorage.getItem('smartec_pos_store');
-            return;
+            // Recargar inventario + ventas de la nueva tienda
+            inventory = await C.wrap(`inventory_${store.storeId}`, async () => {
+              const s = await getDocs(query(collection(db,'inventory'), where('storeId','==', store.storeId)));
+              return s.docs.map(d => ({id:d.id, ...d.data()}));
+            });
+
+            const allSales2 = await C.wrap(`sales_${store.storeId}`, async () => {
+              const s = await getDocs(query(collection(db,'sales'), where('storeId','==', store.storeId)));
+              return s.docs.map(d => ({id:d.id, ...d.data()}));
+            });
+
+            const now2 = new Date();
+            const startOfMonth2 = new Date(now2.getFullYear(), now2.getMonth(), 1);
+            sales = allSales2.filter(s => {
+              if (!s.createdAt?.seconds) return false;
+              const d = new Date(s.createdAt.seconds * 1000);
+              return d >= startOfMonth2 && s.status !== 'anulada';
+            });
+
+            renderProducts();
+            renderCart();
           }
-          sessionStorage.setItem('smartec_pos_store', newStoreId);
-          currentStore = stores.find(s => s.storeId === newStoreId);
-          cart = [];
+        });
 
-          // Recargar inventario + ventas de la nueva tienda (con cache)
-          inventory = await C.wrap(`inventory_${newStoreId}`, async () => {
-            const s = await getDocs(query(collection(db,'inventory'), where('storeId','==', newStoreId)));
-            return s.docs.map(d => ({id:d.id, ...d.data()}));
-          });
-
-          const allSales2 = await C.wrap(`sales_${newStoreId}`, async () => {
-            const s = await getDocs(query(collection(db,'sales'), where('storeId','==', newStoreId)));
-            return s.docs.map(d => ({id:d.id, ...d.data()}));
-          });
-
-          const now2 = new Date();
-          const startOfMonth2 = new Date(now2.getFullYear(), now2.getMonth(), 1);
-          sales = allSales2.filter(s => {
-            if (!s.createdAt?.seconds) return false;
-            const d = new Date(s.createdAt.seconds * 1000);
-            return d >= startOfMonth2 && s.status !== 'anulada';
-          });
-
-          renderProducts();
-          renderCart();
-          
+        // Guardar las opciones para re-renderizar si hace falta
+        window.__posHeaderOpts = {
+          settings: setData,
+          user: {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            name: currentUserData.name || currentUser.email,
+            role: currentUserData.role,
+            storeId: currentUserData.storeId || null
+          },
+          stores: isSuper ? activeStores : [],
+          currentStore: currentStore,
+          showTitle: false,
+          showRole: false,
+          showShiftButton: true,
+          showSellerInfo: true,
+          showHomeLink: true,
+          showRefreshButton: true,
+          showLogoutButton: true,
+          showStoreSelector: isSuper,
+          storeSelectorIncludeAll: false
         };
-      } else {
-        $('header-store-text').classList.remove('hidden');
-        $('header-store-text').innerText = currentStore.name;
-        $('store-selector').classList.add('hidden');
       }
 
       renderCategoryFilters();
@@ -1519,12 +1548,14 @@ function initPosPayments() {
 
       // 🆕 Disparar modal obligatorio de entrada si aplica
       window.SmartecShift.maybeForceShiftModal();
-            // 🆕 Aplicar logo dinámico
-      applyLogoToPosHeader();
+      // 🆕 Quitar splash: la app ya está lista
+      hideSplash();
 
     } catch(e) {
       console.error('Error en loadData:', e);
       alert('Error al cargar datos: ' + e.message);
+      // 🆕 Aunque falle, quitar el splash para no dejar al usuario atrapado
+      hideSplash();
     }
   }
   /* ============ FILTROS DE CATEGORÍA ============ */
@@ -1701,13 +1732,13 @@ function initPosPayments() {
       return `
         <div class="product-card bg-white border rounded-xl overflow-hidden transition ${cardClass}"
             ${clickable ? `onclick="openPicker('${p.id}')"` : ''}>
-          <div class="bg-gray-50 h-32 flex items-center justify-center overflow-hidden">
-            <img src="${img}" class="object-contain max-h-full max-w-full" alt="${escapeHtml(p.name)}" loading="lazy">
+          <div class="aspect-square bg-gradient-to-br from-white to-gray-50 flex items-center justify-center overflow-hidden">
+            <img src="${img}" class="object-contain w-full h-full p-3 md:p-4 transition-transform duration-500" alt="${escapeHtml(p.name)}" loading="lazy">
           </div>
-          <div class="p-2">
+          <div class="p-2.5 md:p-3">
             <p class="text-[10px] text-gray-400 truncate">${escapeHtml(p.sku)||'-'}</p>
-            <p class="text-xs font-semibold text-sd leading-tight line-clamp-2 mb-1">${escapeHtml(p.name)}</p>
-            <p class="text-sm font-bold text-sl mb-1">${fmt(price)}</p>
+            <p class="text-xs md:text-sm font-semibold text-sd leading-tight line-clamp-2 mb-1">${escapeHtml(p.name)}</p>
+            <p class="text-sm md:text-base font-bold text-sl mb-1">${fmt(price)}</p>
             ${statusHtml}
           </div>
         </div>
@@ -3452,35 +3483,6 @@ window.solicitarAutorizacionDispositivo = async () => {
       if (!$('scanner-modal').classList.contains('hidden')) return closeScanner();
     }
   });
-
-  /* ============================================================
-   🆕 LOGO DINÁMICO — Carga desde settings/general
-============================================================ */
-async function applyLogoToPosHeader() {
-  const container = $('pos-header-logo');
-
-  try {
-    const C = window.SmartecCache;
-    const setData = await C.wrap('settings', async () => {
-      const s = await getDoc(doc(db,'settings','general'));
-      return s.exists() ? s.data() : {};
-    });
-
-    // ============ HEADER ============
-    if (container && setData.logoUrl) {
-      container.innerHTML = `
-        <img src="${setData.logoUrl}" alt="Smartec"
-             class="h-8 md:h-10 object-contain">
-      `;
-    }
-
-    // 🆕 El POS no tiene footer tradicional, así que no aplicamos logo del footer aquí
-    // Si en el futuro se agrega un footer al POS, se maneja aquí.
-
-  } catch (e) {
-    console.warn('[POS] No se pudo cargar el logo:', e);
-  }
-}
 
   /* ============================================================
      🆕 INICIALIZAR MÓDULO DE TURNOS

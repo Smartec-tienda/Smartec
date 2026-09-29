@@ -4,129 +4,534 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Smartec · Bot Compras</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="theme.css">
+
 <script src="common.js"></script>
 <script src="cache.js"></script>
+<script src="fingerprint.js"></script>
+<script src="device-guard.js"></script>
+<script src="kiosk.js"></script>
 <script src="header-app.js"></script>
 <script src="favicon.js"></script>
-
-
-
+<script src="footer.js"></script>
 
 <style>
-  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  :root{
+    --bg:#F5F5F7;
+    --bg-dark:#1D1D1F;
+    --text:#1D1D1F;
+    --text-dim:#6E6E73;
+    --blue:#0071E3;
+    --blue-light:#5AC8FA;
+    --purple:#BF5AF2;
+    --pink:#FF375F;
+    --orange:#FF9F0A;
+    --green:#30D158;
+    --sd:#0A2A4A;
+    --sl:#4A7A9A;
+    --border-soft:rgba(0,0,0,0.06);
+    --border-mid:rgba(0,0,0,0.10);
+  }
+
+  *{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4,.font-display{font-family:'Inter Tight','Inter',sans-serif;letter-spacing:-0.03em;font-weight:700}
+
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    overflow-x:hidden;
+  }
+
+  /* ============ MESH GRADIENT (sobrio, tonos serios) ============ */
+  .mesh-bg{
+    position:fixed;
+    inset:0;
+    z-index:-1;
+    background:
+      radial-gradient(at 15% 15%, rgba(10,42,74,0.05) 0%, transparent 55%),
+      radial-gradient(at 85% 10%, rgba(74,122,154,0.06) 0%, transparent 55%),
+      radial-gradient(at 80% 90%, rgba(29,29,31,0.04) 0%, transparent 50%),
+      #F5F5F7;
+  }
+
+  /* ============ SCROLLBAR APPLE ============ */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{
+    background:rgba(0,0,0,0.15);
+    border-radius:5px;
+    border:2px solid transparent;
+    background-clip:content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,0.25);background-clip:content-box;border:2px solid transparent}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:3px;border:none;background-clip:border-box}
+
+  /* ============ GLASS SURFACES ============ */
+  .glass{
+    background:rgba(255,255,255,0.72);
+    backdrop-filter:blur(30px) saturate(180%);
+    -webkit-backdrop-filter:blur(30px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.6);
+  }
+  .glass-soft{
+    background:rgba(255,255,255,0.55);
+    backdrop-filter:blur(20px) saturate(150%);
+    -webkit-backdrop-filter:blur(20px) saturate(150%);
+    border:1px solid rgba(255,255,255,0.5);
+  }
+  .glass-strong{
+    background:rgba(255,255,255,0.85);
+    backdrop-filter:blur(40px) saturate(180%);
+    -webkit-backdrop-filter:blur(40px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.7);
+  }
+
+  /* ============ SOMBRAS APPLE ============ */
+  .shadow-apple{
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.04),
+      0 4px 12px rgba(0,0,0,0.04),
+      0 12px 32px rgba(0,0,0,0.06);
+  }
+  .shadow-apple-lg{
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.04),
+      0 8px 24px rgba(0,0,0,0.06),
+      0 24px 64px rgba(0,0,0,0.08);
+  }
+  .shadow-apple-xl{
+    box-shadow:
+      0 2px 4px rgba(0,0,0,0.04),
+      0 12px 32px rgba(0,0,0,0.08),
+      0 32px 80px rgba(0,0,0,0.12);
+  }
+
+  /* ============ BOTONES APPLE ============ */
+  .btn-apple{
+    background:var(--blue);
+    color:white;
+    font-weight:500;
+    letter-spacing:-0.01em;
+    transition:all .3s cubic-bezier(.2,.8,.2,1);
+    box-shadow:
+      0 1px 2px rgba(0,113,227,0.2),
+      0 4px 12px rgba(0,113,227,0.3);
+  }
+  .btn-apple:hover{
+    background:#0077ED;
+    transform:scale(1.01);
+    box-shadow:
+      0 1px 2px rgba(0,113,227,0.3),
+      0 8px 24px rgba(0,113,227,0.4);
+  }
+  .btn-apple:active{transform:scale(0.98)}
+  .btn-apple:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+  .btn-glass{
+    background:rgba(255,255,255,0.7);
+    backdrop-filter:blur(20px) saturate(180%);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.7);
+    color:var(--text);
+    font-weight:500;
+    transition:all .3s cubic-bezier(.2,.8,.2,1);
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.04),
+      0 4px 12px rgba(0,0,0,0.04);
+  }
+  .btn-glass:hover{
+    background:rgba(255,255,255,0.9);
+    transform:scale(1.01);
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.06),
+      0 8px 24px rgba(0,0,0,0.08);
+  }
+  .btn-glass:active{transform:scale(0.98)}
+
+  /* ============ ANIMACIONES ============ */
+  @keyframes fadeUp{
+    from{opacity:0;transform:translateY(24px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  @keyframes float-medium{
+    0%,100%{transform:translateY(0)}
+    50%{transform:translateY(-12px)}
+  }
+  @keyframes pulse-soft{
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:0.8;transform:scale(1.05)}
+  }
+  @keyframes radar{
+    from{transform:rotate(0deg)}
+    to{transform:rotate(360deg)}
+  }
+  @keyframes slideUp{
+    from{opacity:0;transform:translateY(20px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  @keyframes shimmer{
+    0%{background-position:-200% 0}
+    100%{background-position:200% 0}
+  }
+
+  .fade-up{animation:fadeUp .8s cubic-bezier(.2,.8,.2,1) backwards}
+  .float-medium{animation:float-medium 6s ease-in-out infinite}
+  .pulse-soft{animation:pulse-soft 3s ease-in-out infinite}
+  .robot-float{animation:float-medium 4s ease-in-out infinite}
+  .robot-spin{animation:radar 2s linear infinite}
+  .result-enter{animation:slideUp 0.4s ease-out}
+
+  /* ============ INPUTS APPLE ============ */
+  input,select,textarea{
+    background:rgba(255,255,255,0.8);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--border-soft);
+    color:var(--text);
+    transition:all .3s cubic-bezier(.2,.8,.2,1);
+  }
+  input:focus,select:focus,textarea:focus{
+    outline:none;
+    border-color:var(--blue);
+    box-shadow:0 0 0 4px rgba(0,113,227,0.12);
+    background:white;
+  }
+  input::placeholder,textarea::placeholder{color:var(--text-dim)}
+
+  /* ============ BUSCADOR HERO ============ */
+  .search-hero{
+    position:relative;
+    border-radius:24px;
+    background:rgba(255,255,255,0.72);
+    backdrop-filter:blur(40px) saturate(180%);
+    -webkit-backdrop-filter:blur(40px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.8);
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.03),
+      0 8px 24px rgba(0,0,0,0.04),
+      0 24px 64px rgba(0,0,0,0.06);
+  }
+
+  .search-hero-inner{
+    padding:2.25rem;
+  }
+
+  /* ============ INPUT DE BÚSQUEDA GRANDE ============ */
+  .search-input{
+    background:white;
+    border:1px solid var(--border-mid);
+    border-radius:16px;
+    font-size:1.05rem;
+    padding:1.05rem 1.25rem 1.05rem 3.25rem;
+    font-weight:400;
+    letter-spacing:-0.01em;
+    transition:all .3s cubic-bezier(.2,.8,.2,1);
+  }
+  .search-input:focus{
+    border-color:var(--blue);
+    box-shadow:
+      0 0 0 4px rgba(0,113,227,0.15),
+      0 4px 16px rgba(0,113,227,0.10);
+    background:white;
+  }
+
+  /* ============ SHIMMER TEXT (sutil) ============ */
+  .shimmer-text{
+    background:linear-gradient(90deg,
+      #1D1D1F 0%,
+      #1D1D1F 40%,
+      #0071E3 50%,
+      #1D1D1F 60%,
+      #1D1D1F 100%);
+    background-size:200% auto;
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    animation:shimmer 8s linear infinite;
+  }
+
+  /* ============ HISTORIAL CHIPS ============ */
+  .hist-chip{
+    transition:all .3s cubic-bezier(.2,.8,.2,1);
+  }
+  .hist-chip:hover{
+    transform:translateY(-2px);
+    background:rgba(255,255,255,0.95);
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.06),
+      0 8px 24px rgba(0,0,0,0.08);
+  }
+
+  /* ============ LOGO MARK ============ */
+  .logo-mark{
+    background:linear-gradient(135deg, #0071E3, #BF5AF2);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    font-weight:800;
+    letter-spacing:-0.04em;
+  }
+
+  /* ============ HERO ORBS (suaves) ============ */
+  .hero-orb{
+    position:absolute;
+    border-radius:50%;
+    filter:blur(60px);
+    pointer-events:none;
+    opacity:0.35;
+  }
+
+  /* ============ FOCUS RING ============ */
+  *:focus-visible{
+    outline:2px solid var(--blue);
+    outline-offset:2px;
+    border-radius:8px;
+  }
+
+  /* ============ FALLBACK SIN BLUR ============ */
+  @supports not (backdrop-filter: blur(20px)){
+    .glass,.glass-soft,.glass-strong,.search-hero{background:rgba(255,255,255,0.95)}
+  }
+
+  /* ============ MOBILE FIXES ============ */
+  @media (max-width: 768px) {
+    .glass, .glass-soft, .glass-strong, .search-hero {
+      backdrop-filter: blur(12px) saturate(140%);
+      -webkit-backdrop-filter: blur(12px) saturate(140%);
+    }
+    .float-medium, .pulse-soft, .robot-float, .robot-spin {
+      animation: none !important;
+    }
+    .mesh-bg{
+      background:
+        radial-gradient(at 15% 15%, rgba(10,42,74,0.04) 0%, transparent 55%),
+        radial-gradient(at 85% 10%, rgba(74,122,154,0.04) 0%, transparent 55%),
+        #F5F5F7;
+    }
+    .hero-orb{filter:blur(40px) !important;opacity:0.25 !important}
+
+    .search-hero{border-radius:20px}
+    .search-hero-inner{border-radius:18px;padding:1.25rem}
+    .search-input{
+      font-size:0.95rem;
+      padding:0.9rem 1rem 0.9rem 2.75rem;
+      border-radius:14px;
+    }
+    .search-hero .btn-apple{
+      padding:0.9rem;
+      font-size:0.9rem;
+      border-radius:14px;
+    }
+    .robot-float{font-size:4rem !important}
+    h1.text-4xl, h1.text-3xl{
+      font-size:1.75rem !important;
+      line-height:1.15 !important;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .search-hero-inner{padding:1rem}
+    .search-input{
+      font-size:0.9rem;
+      padding:0.8rem 0.9rem 0.8rem 2.5rem;
+    }
+    .robot-float{font-size:3.5rem !important}
+    h1.text-4xl, h1.text-3xl{
+      font-size:1.5rem !important;
+    }
+  }
+
+  /* ============ COLORES SD/SL (compatibilidad) ============ */
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
   .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
   .border-sl{border-color:#4A7A9A}
 
-  /* Robot flotante */
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-12px); }
+  /* ============ TOAST ============ */
+  .toast{
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%) translateY(100px);
+    background:rgba(29,29,31,0.95);
+    color:white;
+    padding:14px 22px;
+    border-radius:16px;
+    font-size:0.85rem;
+    font-weight:500;
+    box-shadow:
+      0 8px 24px rgba(0,0,0,0.18),
+      0 24px 64px rgba(0,0,0,0.12);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    z-index:9999;
+    opacity:0;
+    transition:all .4s cubic-bezier(.2,.8,.2,1);
+    pointer-events:none;
+    max-width:90vw;
   }
-  .robot-float { animation: float 3s ease-in-out infinite; }
-
-  /* Radar girando */
-  @keyframes radar {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
+  .toast.show{
+    transform:translateX(-50%) translateY(0);
+    opacity:1;
   }
-  .robot-spin { animation: radar 2s linear infinite; }
-
-  /* Puntos suspensivos */
-  @keyframes dots {
-    0%, 20% { content: ''; }
-    40%     { content: '.'; }
-    60%     { content: '..'; }
-    80%,100%{ content: '...'; }
-  }
-  .dots::after {
-    content: '';
-    animation: dots 1.5s infinite;
-  }
-
-  /* Aparición suave de resultados */
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .result-enter { animation: slideUp 0.4s ease-out; }
+  .toast.error{background:rgba(220,38,38,0.95)}
+  .toast.success{background:rgba(22,163,74,0.95)}
 </style>
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-blue-50 font-sans min-h-screen">
 
-<!-- ============ HEADER ============ -->
-<header class="bg-sd text-white px-4 py-4 flex justify-between items-center shadow-lg">
-  <div class="flex items-center gap-3">
-    <h1 class="text-lg md:text-xl font-bold">SMART<span class="text-sl">EC</span></h1>
-    <div class="hidden md:block w-px h-6 bg-white/20"></div>
-    <p class="hidden md:block text-sm opacity-80">Bot Compras</p>
-  </div>
-  <a href="home.html" class="text-xs hover:text-sl transition">← Volver al inicio</a>
-</header>
+<body class="min-h-screen">
 
-<!-- ============ CONTENIDO PRINCIPAL ============ -->
-<main class="container mx-auto px-4 py-10 max-w-3xl">
+<!-- Mesh gradient de fondo -->
+<div class="mesh-bg"></div>
 
-  <!-- ROBOT Y SALUDO -->
-  <div class="text-center mb-8">
-    <div class="robot-float inline-block text-7xl md:text-8xl mb-4 select-none">🤖</div>
-    <h1 class="text-3xl md:text-4xl font-bold text-sd mb-2">¡Hola! Soy tu bot de compras</h1>
-    <p class="text-gray-500 text-sm md:text-base">Busco el mejor precio en 7 tiendas colombianas por ti</p>
-  </div>
+<!-- ============ HEADER (inyectado por header-app.js) ============ -->
+<div id="smartec-header-app"></div>
 
-  <!-- FORMULARIO DE BÚSQUEDA -->
-  <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-6">
-    <label class="block text-xs font-semibold text-sd uppercase tracking-wide mb-2">
-      🔍 ¿Qué producto buscas?
-    </label>
-    <input
-      id="input-sku"
-      type="text"
-      placeholder="Ej: TV 43 Smart, nevera 300L, lavadora..."
-      class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-sl text-base mb-4"
-      autofocus
-    >
-    <button
-      id="btn-buscar"
-      class="w-full bg-sd hover:bg-sl text-white py-3.5 rounded-xl font-bold text-base transition flex items-center justify-center gap-2">
-      <span>🚀</span>
-      <span>Buscar mejor precio</span>
-    </button>
-    <p class="text-[10px] text-gray-400 text-center mt-3">
-      ⚡ Búsqueda en vivo · 7 tiendas · ~40 segundos
-    </p>
-  </div>
+<!-- ============ PANEL ============ -->
+<div id="panel" class="hidden flex-col">
 
-  <!-- BÚSQUEDAS RECIENTES (opcional) -->
-  <div id="historial-container" class="hidden">
-    <p class="text-xs font-semibold text-gray-500 uppercase mb-2">📜 Búsquedas recientes</p>
-    <div id="historial-list" class="flex flex-wrap gap-2"></div>
-  </div>
+  <!-- ============ HERO + BUSCADOR ============ -->
+  <main class="relative container mx-auto px-4 lg:px-6 py-10 md:py-20 max-w-4xl">
 
-</main>
+    <!-- Orbes de fondo -->
+    <div class="hero-orb w-[400px] h-[400px] bg-[#0A2A4A]/20" style="top:-160px;left:-120px"></div>
+    <div class="hero-orb w-[360px] h-[360px] bg-[#4A7A9A]/20" style="top:35%;right:-120px"></div>
+
+    <!-- Robot + saludo -->
+    <div class="relative text-center mb-8 md:mb-10 fade-up">
+      <div class="robot-float inline-block text-6xl md:text-7xl mb-4 select-none">🤖</div>
+      <div class="inline-flex items-center gap-2 glass-soft px-3.5 py-1.5 rounded-full mb-4 shadow-apple">
+        <span class="w-1.5 h-1.5 bg-[#30D158] rounded-full pulse-soft"></span>
+        <span class="text-[11px] md:text-xs font-medium text-[#1D1D1F]">Bot activo · 7 tiendas en paralelo</span>
+      </div>
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold leading-[1.1] tracking-tight mb-3 md:mb-4 px-2">
+        Hola, soy tu <span class="shimmer-text">bot de compras</span>
+      </h1>
+      <p class="text-sm md:text-lg text-[#6E6E73] max-w-xl mx-auto font-medium px-4">
+        Comparo precios en tiempo real para que siempre pagues lo mínimo.
+      </p>
+    </div>
+
+    <!-- RECUADRO DE BÚSQUEDA -->
+    <div class="search-hero mb-6 fade-up" style="animation-delay:.1s">
+      <div class="search-hero-inner">
+
+        <div class="text-center mb-5 md:mb-6">
+          <p class="text-[10px] font-bold text-[#6E6E73] uppercase tracking-widest mb-1">Buscar producto</p>
+          <p class="text-xs md:text-sm text-[#6E6E73]">Escribe el nombre o descripción y dejo que el bot trabaje</p>
+        </div>
+
+        <div class="relative mb-4">
+          <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#6E6E73] pointer-events-none z-10"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input
+            id="input-sku"
+            type="text"
+            placeholder="Ej: TV 43 Smart, nevera 300L…"
+            class="search-input w-full"
+            autocomplete="off"
+            autofocus
+          >
+        </div>
+
+        <button
+          id="btn-buscar"
+          class="btn-apple w-full py-3.5 md:py-4 rounded-2xl font-semibold text-sm md:text-base flex items-center justify-center gap-2">
+          <span>Buscar mejor precio</span>
+        </button>
+
+        <div class="flex flex-wrap items-center justify-center gap-3 md:gap-4 mt-4 md:mt-5 text-[10px] text-[#6E6E73] font-medium">
+          <span class="flex items-center gap-1">
+            <span class="w-1.5 h-1.5 bg-[#30D158] rounded-full"></span>
+            Búsqueda en vivo
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="w-1.5 h-1.5 bg-[#0071E3] rounded-full"></span>
+            7 tiendas
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="w-1.5 h-1.5 bg-[#FF9F0A] rounded-full"></span>
+            ~40 segundos
+          </span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- BÚSQUEDAS RECIENTES -->
+    <div id="historial-container" class="hidden fade-up" style="animation-delay:.2s">
+      <p class="text-[10px] font-bold text-[#6E6E73] uppercase tracking-widest mb-3 text-center">
+        Búsquedas recientes
+      </p>
+      <div id="historial-list" class="flex flex-wrap gap-2 justify-center"></div>
+    </div>
+
+    <!-- TARJETAS INFORMATIVAS -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mt-10 md:mt-12 fade-up" style="animation-delay:.3s">
+
+      <div class="glass-strong rounded-3xl p-5 shadow-apple border border-white/60 text-center">
+        <div class="text-3xl mb-2">⚡</div>
+        <p class="text-sm font-bold text-[#1D1D1F] mb-1">Búsqueda rápida</p>
+        <p class="text-xs text-[#6E6E73]">En menos de un minuto tienes el comparativo completo.</p>
+      </div>
+
+      <div class="glass-strong rounded-3xl p-5 shadow-apple border border-white/60 text-center">
+        <div class="text-3xl mb-2">💰</div>
+        <p class="text-sm font-bold text-[#1D1D1F] mb-1">Mejor precio</p>
+        <p class="text-xs text-[#6E6E73]">Te muestro la opción más barata primero.</p>
+      </div>
+
+      <div class="glass-strong rounded-3xl p-5 shadow-apple border border-white/60 text-center">
+        <div class="text-3xl mb-2">💳</div>
+        <p class="text-sm font-bold text-[#1D1D1F] mb-1">Sin tarjetas ocultas</p>
+        <p class="text-xs text-[#6E6E73]">Te aviso si un precio requiere tarjeta específica.</p>
+      </div>
+
+    </div>
+
+  </main>
+
+</div><!-- /#panel -->
+
+<!-- ============ FOOTER (inyectado por footer.js) ============ -->
+<div id="smartec-footer"></div>
 
 <!-- ============ MODAL DE BÚSQUEDA / RESULTADOS ============ -->
-<div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
-  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+<div id="modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto" onclick="cerrarModal()"></div>
 
-  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8">
-    <button id="btn-close" class="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100 transition">
-      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 pointer-events-auto border border-white/70 scrollbar-thin">
+    <button id="btn-close" onclick="cerrarModal()" class="absolute top-3 right-3 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73] z-10">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
       </svg>
     </button>
 
     <!-- Estado 1: buscando -->
-    <div id="estado-buscando" class="text-center py-4">
-      <div class="text-6xl mb-4 robot-spin inline-block">🤖</div>
-      <h3 class="text-2xl font-bold text-sd mb-2">Buscando tu producto<span class="dots"></span></h3>
-      <p class="text-gray-500 text-sm mb-6">Rastreando 7 tiendas en paralelo</p>
+    <div id="estado-buscando" class="py-4">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#F5F5F7] mb-4">
+          <svg class="w-6 h-6 text-[#0071E3] robot-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <h3 class="text-2xl font-semibold text-[#1D1D1F] tracking-tight mb-1">Buscando tu producto</h3>
+        <p class="text-sm text-[#6E6E73]">Comparando precios en 7 tiendas</p>
+      </div>
 
-      <div id="progreso-lista" class="space-y-2 text-left max-w-md mx-auto"></div>
+      <div id="progreso-lista" class="max-w-md mx-auto mb-6"></div>
 
-      <p class="text-[10px] text-gray-400 mt-6">
-        ⏳ Tiempo estimado: 40-90 segundos
+      <p class="text-xs text-[#6E6E73] text-center font-medium">
+        Tiempo estimado: 40–90 segundos
       </p>
     </div>
 
@@ -137,26 +542,33 @@
 
       <!-- Otras opciones -->
       <div id="otras-box" class="hidden mt-6">
-        <p class="text-xs font-semibold text-gray-500 uppercase mb-3">📊 Otras opciones</p>
-        <div id="otras-lista" class="space-y-2"></div>
+        <p class="text-[11px] font-semibold text-[#6E6E73] uppercase tracking-widest mb-2">Otras opciones</p>
+        <div id="otras-lista"></div>
       </div>
 
       <!-- Sin resultados -->
-      <div id="sin-resultados" class="hidden text-center py-8">
-        <p class="text-6xl mb-3">😕</p>
-        <p class="text-lg font-semibold text-sd mb-1">Sin resultados</p>
-        <p class="text-sm text-gray-500">Intenta con otra palabra o revisa la ortografía</p>
+      <div id="sin-resultados" class="hidden text-center py-12">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#F5F5F7] mb-4">
+          <svg class="w-6 h-6 text-[#6E6E73]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <p class="text-base font-semibold text-[#1D1D1F] mb-1">Sin resultados</p>
+        <p class="text-sm text-[#6E6E73]">Intenta con otra palabra o revisa la ortografía</p>
       </div>
 
       <button
         id="btn-nueva-busqueda"
-        class="w-full bg-gray-100 hover:bg-gray-200 text-sd py-3 rounded-xl font-semibold mt-6 transition">
-        🔄 Buscar otro producto
+        class="btn-glass w-full py-3 rounded-2xl font-semibold mt-6">
+        Buscar otro producto
       </button>
     </div>
 
   </div>
 </div>
+
+<!-- ============ TOAST ============ -->
+<div id="toast" class="toast"></div>
 
 <script>
 /* ============================================================
@@ -164,15 +576,14 @@
 ============================================================ */
 const API_URL = 'http://193.122.240.42:8000';
 
-/* Iconos por tienda */
 const TIENDA_ICONS = {
-  jumbo:      '🟡',
-  exito:      '🔵',
-  olimpica:   '🟢',
-  easy:       '🟠',
-  homecenter: '🟠',
-  alkosto:    '🔴',
-  falabella:  '🟢'
+  jumbo:      '',
+  exito:      '',
+  olimpica:   '',
+  easy:       '',
+  homecenter: '',
+  alkosto:    '',
+  falabella:  ''
 };
 const TIENDA_NAMES = {
   jumbo:      'Jumbo',
@@ -189,9 +600,64 @@ const TIENDA_NAMES = {
 ============================================================ */
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const escapeHtml = (window.Smartec?.escapeHtml) || (s => String(s ?? ''));
 
 let busquedaActual = null;
 let pollingInterval = null;
+
+/* ============================================================
+   TOAST
+============================================================ */
+function showToast(msg, type = 'info', duration = 3000) {
+  const el = $('toast');
+  if (!el) return;
+  el.innerText = msg;
+  el.className = 'toast show' + (type === 'error' ? ' error' : type === 'success' ? ' success' : '');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => {
+    el.className = 'toast';
+  }, duration);
+}
+
+/* ============================================================
+   HISTORIAL DE BÚSQUEDAS (localStorage)
+============================================================ */
+function cargarHistorial() {
+  try {
+    const raw = localStorage.getItem('smartec_bot_historial');
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function guardarEnHistorial(term) {
+  try {
+    let hist = cargarHistorial();
+    hist = hist.filter(h => h !== term);
+    hist.unshift(term);
+    hist = hist.slice(0, 8);
+    localStorage.setItem('smartec_bot_historial', JSON.stringify(hist));
+    renderHistorial();
+  } catch {}
+}
+function renderHistorial() {
+  const cont = $('historial-container');
+  const list = $('historial-list');
+  if (!cont || !list) return;
+
+  const hist = cargarHistorial();
+  if (!hist.length) { cont.classList.add('hidden'); return; }
+  cont.classList.remove('hidden');
+
+  list.innerHTML = hist.map(h => `
+    <button class="hist-chip glass-soft px-4 py-2 rounded-full text-xs font-medium text-[#1D1D1F] shadow-apple"
+      onclick="buscarDesdeHistorial('${escapeHtml(h).replace(/'/g, "\\'")}')">
+      ${escapeHtml(h)}
+    </button>
+  `).join('');
+}
+window.buscarDesdeHistorial = (term) => {
+  $('input-sku').value = term;
+  buscar();
+};
 
 /* ============================================================
    BUSCAR
@@ -199,13 +665,13 @@ let pollingInterval = null;
 async function buscar() {
   const term = $('input-sku').value.trim();
   if (!term) {
-    alert('⚠️ Escribe qué producto quieres buscar');
+    showToast('Escribe qué producto quieres buscar', 'error');
     return;
   }
 
+  guardarEnHistorial(term);
   const terminos = term.split(/\s+/).filter(Boolean);
 
-  // Mostrar modal en estado "buscando"
   abrirModal();
   mostrarEstadoBuscando();
 
@@ -217,29 +683,23 @@ async function buscar() {
     });
 
     if (!resp.ok) {
-      const err = await resp.json();
+      const err = await resp.json().catch(() => ({}));
       throw new Error(err.detail || 'Error del servidor');
     }
 
     const data = await resp.json();
     busquedaActual = data.id;
-
-    // Empezar a chequear el estado
     iniciarPolling();
 
   } catch (e) {
     console.error(e);
-    alert(
-      '❌ No se pudo conectar con el bot.\n\n' +
-      '¿Está corriendo el servidor?\n' +
-      'Ejecuta: python bot_compras_server.py'
-    );
+    showToast('No se pudo conectar con el bot. ¿Está corriendo el servidor?', 'error', 5000);
     cerrarModal();
   }
 }
 
 /* ============================================================
-   POLLING (chequear estado cada 2 seg)
+   POLLING
 ============================================================ */
 function iniciarPolling() {
   if (pollingInterval) clearInterval(pollingInterval);
@@ -271,32 +731,35 @@ function iniciarPolling() {
 function actualizarProgreso(progreso) {
   const el = $('progreso-lista');
   if (!progreso.length) {
-    el.innerHTML = '<p class="text-center text-gray-400 text-sm">Iniciando...</p>';
+    el.innerHTML = '<p class="text-center text-[#6E6E73] text-sm py-2">Iniciando…</p>';
     return;
   }
 
   el.innerHTML = progreso.map(p => {
-    const icon = TIENDA_ICONS[p.tienda] || '🏪';
     const name = TIENDA_NAMES[p.tienda] || p.tienda;
 
-    let emoji, cls;
+    let dotClass, statusLabel;
     if (p.status === 'ok') {
-      emoji = '✅'; cls = 'text-green-600';
+      dotClass = 'bg-[#30D158]';
+      statusLabel = p.count ? `${p.count} resultado${p.count !== 1 ? 's' : ''}` : 'Listo';
     } else if (p.status === 'buscando') {
-      emoji = '🔎'; cls = 'text-sl font-semibold';
+      dotClass = 'bg-[#0071E3] animate-pulse';
+      statusLabel = 'Buscando…';
     } else if (p.status === 'error') {
-      emoji = '❌'; cls = 'text-red-500';
+      dotClass = 'bg-[#FF375F]';
+      statusLabel = 'Sin respuesta';
     } else {
-      emoji = '⏳'; cls = 'text-gray-400';
+      dotClass = 'bg-[#C7C7CC]';
+      statusLabel = 'En cola';
     }
 
     return `
-      <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 ${cls}">
-        <span class="flex items-center gap-2 text-sm">
-          <span>${icon}</span>
-          <span>${name}</span>
-        </span>
-        <span class="text-sm">${emoji}${p.count ? ` (${p.count})` : ''}</span>
+      <div class="flex items-center justify-between py-3 border-b border-black/5 last:border-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="w-2 h-2 rounded-full ${dotClass} flex-shrink-0"></span>
+          <span class="text-sm font-medium text-[#1D1D1F] truncate">${escapeHtml(name)}</span>
+        </div>
+        <span class="text-xs text-[#6E6E73] whitespace-nowrap ml-3">${statusLabel}</span>
       </div>
     `;
   }).join('');
@@ -321,51 +784,71 @@ function mostrarResultados(resultados) {
   const ganador = resultados[0];
   const otras = resultados.slice(1);
 
-  // GANADOR
+  // ============ GANADOR ============
   $('ganador-box').innerHTML = `
-    <div class="result-enter text-center">
-      <p class="text-xs font-bold text-yellow-600 uppercase tracking-widest mb-3">🏆 Mejor opción</p>
+    <div class="result-enter">
+      <p class="text-[11px] font-semibold text-[#6E6E73] uppercase tracking-widest mb-3 text-center">
+        Mejor precio
+      </p>
 
-      <div class="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-2xl p-6 mb-3">
-        <div class="text-5xl mb-3">${TIENDA_ICONS[ganador.tienda] || '🏪'}</div>
-        <p class="text-xl font-bold text-sd mb-1">${TIENDA_NAMES[ganador.tienda] || ganador.tienda}</p>
-        <p class="text-4xl font-extrabold text-green-600 mb-3">${fmt(ganador.precio)}</p>
-        <p class="text-sm text-gray-600 mb-4 line-clamp-2">${ganador.titulo}</p>
+      <div class="bg-white rounded-3xl p-6 border border-black/5"
+           style="box-shadow:0 1px 2px rgba(0,0,0,0.03),0 8px 24px rgba(0,0,0,0.05),0 24px 64px rgba(0,0,0,0.06);">
+
+        <p class="text-sm font-medium text-[#6E6E73] mb-1 text-center">
+          ${escapeHtml(TIENDA_NAMES[ganador.tienda] || ganador.tienda)}
+        </p>
+
+        <p class="text-4xl md:text-5xl font-bold text-[#1D1D1F] tracking-tight text-center mb-1">
+          ${fmt(ganador.precio)}
+        </p>
+
+        <p class="text-sm text-[#6E6E73] text-center mb-5 line-clamp-2 leading-relaxed">
+          ${escapeHtml(ganador.titulo)}
+        </p>
 
         ${ganador.tarjeta_requerida
-          ? `<p class="text-xs text-orange-600 bg-orange-100 inline-block px-3 py-1 rounded-full mb-3">
-               💳 Requiere: ${ganador.tarjeta_requerida}
+          ? `<p class="text-xs text-[#6E6E73] text-center mb-5">
+               Requiere <span class="font-semibold text-[#1D1D1F]">${escapeHtml(ganador.tarjeta_requerida)}</span>
              </p>`
-          : `<p class="text-xs text-green-600 bg-green-100 inline-block px-3 py-1 rounded-full mb-3">
-               ✅ Sin tarjeta requerida
+          : `<p class="text-xs text-[#6E6E73] text-center mb-5">
+               Sin tarjeta requerida
              </p>`
         }
 
-        <a href="${ganador.url}" target="_blank"
-           class="block bg-sd hover:bg-sl text-white py-3 rounded-xl font-bold transition">
-          🔗 Ver producto
+        <a href="${ganador.url}" target="_blank" rel="noopener"
+           class="btn-apple block py-3.5 rounded-full font-semibold text-center text-[15px]">
+          Ver producto
         </a>
       </div>
     </div>
   `;
 
-  // OTRAS
+  // ============ OTRAS OPCIONES ============
   if (otras.length) {
     $('otras-box').classList.remove('hidden');
     $('otras-lista').innerHTML = otras.map((r, i) => `
-      <div class="result-enter flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-3 hover:shadow transition"
-           style="animation-delay: ${i * 0.05}s">
-        <span class="text-2xl">${TIENDA_ICONS[r.tienda] || '🏪'}</span>
+      <a href="${r.url}" target="_blank" rel="noopener"
+         class="result-enter flex items-center gap-4 py-4 border-b border-black/5 last:border-0 hover:bg-black/[0.02] transition-colors rounded-lg px-2 -mx-2"
+         style="animation-delay: ${i * 0.04}s">
+
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold text-sd">${TIENDA_NAMES[r.tienda] || r.tienda}</p>
-          <p class="text-[10px] text-gray-400 truncate">${r.titulo}</p>
-          ${r.tarjeta_requerida ? `<p class="text-[10px] text-orange-500">💳 ${r.tarjeta_requerida}</p>` : ''}
+          <p class="text-sm font-semibold text-[#1D1D1F] mb-0.5">
+            ${escapeHtml(TIENDA_NAMES[r.tienda] || r.tienda)}
+          </p>
+          <p class="text-xs text-[#6E6E73] truncate">
+            ${escapeHtml(r.titulo)}
+          </p>
+          ${r.tarjeta_requerida ? `<p class="text-[11px] text-[#6E6E73] mt-0.5">Requiere ${escapeHtml(r.tarjeta_requerida)}</p>` : ''}
         </div>
-        <div class="text-right">
-          <p class="font-bold text-sl">${fmt(r.precio)}</p>
-          <a href="${r.url}" target="_blank" class="text-[10px] text-sl hover:underline">Ver →</a>
+
+        <div class="text-right flex-shrink-0">
+          <p class="text-base font-semibold text-[#1D1D1F]">${fmt(r.precio)}</p>
         </div>
-      </div>
+
+        <svg class="w-4 h-4 text-[#C7C7CC] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
     `).join('');
   } else {
     $('otras-box').classList.add('hidden');
@@ -397,7 +880,7 @@ function cerrarModal() {
 function mostrarEstadoBuscando() {
   $('estado-buscando').classList.remove('hidden');
   $('estado-resultados').classList.add('hidden');
-  $('progreso-lista').innerHTML = '<p class="text-center text-gray-400 text-sm">Conectando con el bot...</p>';
+  $('progreso-lista').innerHTML = '<p class="text-center text-[#6E6E73] text-sm py-2">Conectando con el bot…</p>';
 }
 
 /* ============================================================
@@ -424,6 +907,191 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') cerrarModal();
 });
 
+/* ============================================================
+   HISTORIAL (solo render, sin auth)
+============================================================ */
+renderHistorial();
 </script>
+
+<!-- ============ FIREBASE AUTH + HEADER ============ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, getDocs, addDoc, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
+  authDomain: "smartec-8fc19.firebaseapp.com",
+  projectId: "smartec-8fc19",
+  storageBucket: "smartec-8fc19.firebasestorage.app",
+  messagingSenderId: "879944967068",
+  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
+  measurementId: "G-127MH9ZCN1"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+let currentUser = null;
+let currentUserData = null;
+
+const $ = id => document.getElementById(id);
+
+/* ============ AUDIT ============ */
+async function audit(entry) {
+  try {
+    await addDoc(collection(db, 'auditLog'), {
+      ...entry,
+      userId: currentUser?.uid || null,
+      userEmail: currentUser?.email || null,
+      userRole: currentUserData?.role || null,
+      storeId: currentUserData?.storeId || null,
+      timestamp: serverTimestamp()
+    });
+  } catch (e) { console.warn('audit fail', e); }
+}
+
+/* ============ SPLASH ============ */
+function hideSplash() {
+  if (document.body.classList.contains('app-loading')) {
+    document.body.classList.remove('app-loading');
+    console.log('[SPLASH] Oculto. Bot listo.');
+  }
+}
+
+// Timeout de seguridad
+setTimeout(() => {
+  hideSplash();
+}, 3000);
+
+/* ============ RENDER HEADER APP ============ */
+async function renderHeaderApp(settingsData) {
+  if (!window.SmartecHeaderApp) return;
+  if (!currentUser || !currentUserData) return;
+
+  window.SmartecHeaderApp.render({
+    settings: settingsData || {},
+    user: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      name: currentUserData.name || currentUser.email,
+      role: currentUserData.role,
+      storeId: currentUserData.storeId || null
+    },
+    stores: [],
+    currentStore: null,
+    showTitle: true,
+    titleText: '🤖 Bot Compras',
+    showRole: true,
+    showShiftButton: true,
+    showSellerInfo: true,
+    showHomeLink: true,
+    showRefreshButton: false,
+    showLogoutButton: true,
+    showStoreSelector: false,
+    storeSelectorIncludeAll: false,
+    extraLinks: [],
+    onLogout: async () => {
+      if (window.SmartecKiosk) window.SmartecKiosk.disable();
+      await audit({ action: 'logout', collection: 'system', note: 'Cierre de sesión desde Bot Compras' });
+      window.SmartecDeviceGuard?.clearValidatedToday?.();
+      await signOut(auth);
+      window.location.href = 'home.html';
+    }
+  });
+}
+
+/* ============ AUTH STATE ============ */
+onAuthStateChanged(auth, async user => {
+  // Ocultar panel al inicio
+  $('panel').classList.add('hidden');
+  $('panel').classList.remove('flex');
+
+  if (!user) {
+    // Sin sesión → volver a home (que tiene su propio login)
+    hideSplash();
+    window.location.href = 'home.html';
+    return;
+  }
+
+  currentUser = user;
+
+  // Cargar perfil
+  try {
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    currentUserData = snap.exists() ? snap.data() : null;
+  } catch (e) {
+    currentUserData = null;
+  }
+
+  // Validar rol
+  const validRoles = ['superadmin', 'admin', 'vendedor'];
+  if (!currentUserData || !validRoles.includes(currentUserData.role)) {
+    await signOut(auth);
+    window.location.href = 'home.html';
+    return;
+  }
+
+  // Cargar settings (logo, footer, etc.)
+  let settingsData = {};
+  try {
+    const setSnap = await getDoc(doc(db, 'settings', 'general'));
+    settingsData = setSnap.exists() ? setSnap.data() : {};
+  } catch (e) { console.warn('No se pudo cargar settings:', e); }
+
+  // 🆕 Inicializar SmartecShift con el contexto del usuario
+  //    (para que el botón de turno del header funcione)
+  try {
+    if (window.SmartecShift) {
+      window.SmartecShift.init({
+        db,
+        auth,
+        collection,
+        getDocs,
+        query,
+        where,
+        addDoc,
+        serverTimestamp,
+        doc,
+        $,
+        audit: (entry) => audit(entry),
+        getCurrentUser: () => currentUser,
+        getCurrentUserData: () => currentUserData,
+        getCurrentStore: () => {
+          if (!currentUserData?.storeId) return null;
+          return {
+            storeId: currentUserData.storeId,
+            name: currentUserData.storeId,
+            shiftEnabled: true
+          };
+        }
+      });
+
+      // Cargar turno activo del usuario
+      await window.SmartecShift.loadTodayShift();
+    }
+  } catch (e) {
+    console.warn('[BOT] Error inicializando turnos:', e);
+  }
+
+  // Render header
+  await renderHeaderApp(settingsData);
+
+  // Render footer
+  if (window.SmartecFooter) {
+    window.SmartecFooter.render({ settings: settingsData });
+  }
+
+  // Mostrar panel
+  $('panel').classList.remove('hidden');
+  $('panel').classList.add('flex');
+
+  hideSplash();
+});
+</script>
+
 </body>
 </html>
