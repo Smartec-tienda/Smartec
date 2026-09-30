@@ -4264,33 +4264,6 @@ window.viewAudit = (id) => {
 };
 
 /* ============================================================
-   EXPORTAR AUDITORÍA (PDF y CSV) — solo lo filtrado
-   ============================================================ */
-window.exportAudit = async () => {
-  const list = getFilteredAudit();
-
-  if (!list.length) {
-    alert('No hay eventos para exportar con los filtros actuales.');
-    return;
-  }
-
-  // Mostrar 2 opciones con prompt
-  const opcion = prompt(
-    `Se exportarán ${list.length} evento(s) filtrados.\n\n` +
-    `Escribe:\n` +
-    `  1 → Excel (.xlsx) — recomendado\n` +
-    `  2 → PDF con formato\n\n` +
-    `(o cancela para no exportar)`,
-    '1'
-  );
-
-  if (opcion === null) return;
-  if (opcion.trim() === '1') return exportAuditExcel(list);
-  if (opcion.trim() === '2') return exportAuditPDF(list);
-  alert('Opción no válida. Elige 1 o 2.');
-};
-
-/* ============================================================
    🆕 EXPORTAR AUDITORÍA — BOTONES DIRECTOS
    Se llaman desde los botones de la UI. Ya no preguntan nada.
 ============================================================ */
@@ -7601,15 +7574,6 @@ let charts = {
 
 let salesChartGroupBy = 'day';   // 🆕 modo de agrupación del gráfico de ventas
 
-/* 🆕 Sincronizar el valor del select con la variable global */
-function syncSalesChartGroupBy() {
-  const sel = $('chart-sales-groupby');
-  if (sel && sel.value) {
-    salesChartGroupBy = sel.value;
-  }
-  return salesChartGroupBy;
-}
-
 /* ============ TOGGLE DEL PANEL ============ */
 window.toggleReportCustomizer = () => {
   $('report-customizer').classList.toggle('hidden');
@@ -9466,39 +9430,6 @@ function renderReportTaxes(filtered) {
   setTxt('rep-tax-iva', fmt(iva));
 }
 
-function renderReportByPayment(filtered) {
-  const el = $('rep-by-payment');
-  if (!el) return;   // 🆕 Si no existe el contenedor, salir silenciosamente
-
-  const methods = {
-    efectivo:      { label: '💵 Efectivo',       color: 'green',  sales: 0, count: 0 },
-    transferencia: { label: '🔄 Transferencia',  color: 'blue',   sales: 0, count: 0 },
-    tarjeta:       { label: '💳 Tarjeta',        color: 'purple', sales: 0, count: 0 },
-    contraentrega: { label: '📦 Contra entrega', color: 'orange', sales: 0, count: 0 },
-    credito:       { label: '🛍️ Crédito',        color: 'gray',   sales: 0, count: 0 }
-  };
-
-  filtered.forEach(s => {
-    const k = s.paymentMethod || 'efectivo';
-    if (methods[k]) { methods[k].sales += Number(s.total || 0); methods[k].count += 1; }
-  });
-
-  const total = Object.values(methods).reduce((s, m) => s + m.sales, 0);
-
-  el.innerHTML = Object.entries(methods).map(([k, m]) => {
-    const pct = total > 0 ? (m.sales / total) * 100 : 0;
-    return `
-      <div class="flex justify-between items-center border-b border-gray-100 py-2 last:border-0">
-        <span class="text-xs font-medium text-sd">${m.label}</span>
-        <div class="text-right">
-          <p class="text-xs font-bold text-sl">${fmt(m.sales)}</p>
-          <p class="text-[10px] text-gray-400">${pct.toFixed(1)}% · ${m.count} ventas</p>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
 function renderReportDetail(filtered) {
   const tbody = $('rep-tbody');
   const empty = $('rep-empty');
@@ -11044,10 +10975,6 @@ window.addEventListener('beforeunload', () => {
   if (transfersBadgeUnsubscribe) transfersBadgeUnsubscribe();
   if (devicesBadgeUnsubscribe) devicesBadgeUnsubscribe();
   if (attemptsBadgeUnsubscribe) attemptsBadgeUnsubscribe();
-});
-
-window.addEventListener('beforeunload', () => {
-  if (transfersBadgeUnsubscribe) transfersBadgeUnsubscribe();
 });
 
 /* ============================================================
