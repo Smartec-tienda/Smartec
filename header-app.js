@@ -87,14 +87,16 @@
       </a>
     `).join('');
 
-    // Botón Home
+    // Botón Home (label configurable)
+    const homeLinkLabel = opts.homeLinkLabel || 'Inicio';
+    const homeLinkHref = opts.homeLinkHref || 'home.html';
     const homeBtnHtml = opts.showHomeLink
-      ? `<a href="home.html"
+      ? `<a href="${escapeHtml(homeLinkHref)}"
             class="glass-soft hover:bg-white/80 px-4 py-2 rounded-full transition text-[#1D1D1F] font-semibold inline-flex items-center gap-2 text-xs">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
             </svg>
-            Inicio
+            ${escapeHtml(homeLinkLabel)}
          </a>`
       : '';
 
@@ -188,13 +190,13 @@
 
               <div class="flex items-center gap-1.5 shrink-0">
                 ${shiftBtnHtml}
-                ${opts.showHomeLink ? `<a href="home.html"
-                    class="glass-soft hover:bg-white/80 p-2 rounded-full transition text-[#1D1D1F]"
-                    title="Inicio">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                    </svg>
-                  </a>` : ''}
+                  ${opts.showHomeLink ? `<a href="${escapeHtml(homeLinkHref)}"
+                      class="glass-soft hover:bg-white/80 p-2 rounded-full transition text-[#1D1D1F]"
+                      title="${escapeHtml(homeLinkLabel)}">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                      </svg>
+                    </a>` : ''}
                 ${logoutBtnHtml}
               </div>
             </div>
