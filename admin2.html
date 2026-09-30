@@ -1,0 +1,2702 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smartec · Panel Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="theme.css">
+<script src="common.js"></script>
+<script src="cache.js"></script>
+<script src="header-app.js"></script>
+<script src="favicon.js"></script>
+<script src="fingerprint.js"></script>
+<script src="device-guard.js"></script>
+<script src="kiosk.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="pdf-generator.js"></script>
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+    /* ============ SPLASH SCREEN GLOBAL ============ */
+  body.app-loading > *:not(#app-splash) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  body.app-loading #app-splash {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  body:not(.app-loading) #app-splash {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #app-splash {
+    transition: opacity 0.3s ease;
+  }
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .border-sl{border-color:#4A7A9A}
+  /* ============ SIDEBAR ============ */
+  #sidebar {
+    width: 260px;
+  }
+  #sidebar.collapsed {
+    width: 68px;
+  }
+  #sidebar.collapsed .sidebar-label,
+  #sidebar.collapsed .sidebar-section-title {
+    display: none;
+  }
+  #sidebar.collapsed .sidebar-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  #sidebar.collapsed .sidebar-icon {
+    margin: 0;
+  }
+  #sidebar.collapsed #sidebar-collapse-icon {
+    transform: rotate(180deg);
+  }
+
+  /* Item del sidebar */
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    margin: 2px 8px;
+    border-radius: 10px;
+    color: #4B5563;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(.2,.8,.2,1);
+    text-align: left;
+    width: calc(100% - 16px);
+    border: none;
+    background: transparent;
+  }
+  .sidebar-item:hover {
+    background: rgba(0, 113, 227, 0.08);
+    color: #0071E3;
+  }
+  .sidebar-item.tab-active {
+    background: #0071E3;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+  }
+  .sidebar-item.tab-active:hover {
+    background: #0071E3;
+    color: white;
+  }
+  .sidebar-icon {
+    font-size: 18px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+  .sidebar-label {
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  #sidebar-collapse-icon {
+    transition: transform 0.3s ease;
+  }
+
+  /* Móvil: sidebar oculto por defecto, se abre con clase .open */
+  @media (max-width: 1023px) {
+    #sidebar {
+      transform: translateX(-100%);
+    }
+    #sidebar.open {
+      transform: translateX(0);
+    }
+  }
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  table input, table select{font-size:.75rem}
+
+  /* ============ 🎨 BOTÓN "GUARDANDO..." ESTILO APPLE ============ */
+  .btn-saving {
+    position: relative;
+    overflow: hidden;
+    background: #0A2A4A !important;
+    color: #ffffff !important;
+    cursor: not-allowed !important;
+    opacity: 0.95;
+  }
+  .btn-saving::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(74, 122, 154, 0.0) 20%,
+      rgba(74, 122, 154, 0.5) 50%,
+      rgba(74, 122, 154, 0.0) 80%,
+      transparent 100%
+    );
+    animation: shimmer-slide 1.6s cubic-bezier(.4,0,.2,1) infinite;
+  }
+  .btn-saving::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at center,
+      rgba(90, 200, 250, 0.15) 0%,
+      transparent 60%
+    );
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  @keyframes shimmer-slide {
+    0%   { left: -100%; }
+    100% { left: 100%; }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50%      { opacity: 0.8; transform: scale(1.05); }
+  }
+
+  /* ============ 📸 ZONA DE ATTACHMENTS (imágenes) ============ */
+  .img-dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    background: #f9fafb;
+    transition: all 0.25s cubic-bezier(.2,.8,.2,1);
+    cursor: pointer;
+  }
+  .img-dropzone:hover {
+    border-color: #4A7A9A;
+    background: #f0f7fb;
+  }
+  .img-dropzone.dragover {
+    border-color: #0A2A4A;
+    background: #e0eef7;
+    transform: scale(1.01);
+    box-shadow: 0 8px 24px rgba(10, 42, 74, 0.12);
+  }
+
+  /* Miniatura de imagen */
+  .img-thumb {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f3f4f6;
+    border: 2px solid transparent;
+    transition: all 0.25s cubic-bezier(.2,.8,.2,1);
+    cursor: grab;
+  }
+  .img-thumb:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  }
+  .img-thumb.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+  }
+  .img-thumb.drop-target {
+    border-color: #4A7A9A;
+    transform: scale(1.05);
+    box-shadow: 0 0 0 3px rgba(74,122,154,0.25);
+  }
+
+  /* Miniatura principal */
+  .img-thumb.is-main {
+    border-color: #4A7A9A;
+    box-shadow: 0 0 0 3px rgba(74,122,154,0.25);
+  }
+  .img-thumb.is-main::after {
+    content: '⭐ Principal';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(74,122,154,0.95);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    padding: 3px 0;
+    letter-spacing: 0.02em;
+  }
+
+  /* Botón eliminar en miniatura */
+  .img-thumb .btn-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    border: none;
+    cursor: pointer;
+    z-index: 2;
+  }
+  .img-thumb:hover .btn-remove {
+    opacity: 1;
+  }
+
+  /* ============ 📊 BARRA DE PROGRESO DE SUBIDA ============ */
+  .upload-progress-wrap {
+    background: #f3f4f6;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 12px;
+    display: none;
+  }
+  .upload-progress-wrap.active {
+    display: block;
+    animation: fade-in-up 0.3s cubic-bezier(.2,.8,.2,1);
+  }
+  .upload-progress-bar {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .upload-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4A7A9A 0%, #5AC8FA 100%);
+    border-radius: 999px;
+    width: 0%;
+    transition: width 0.4s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body class="bg-gray-100 font-sans app-loading">
+
+<!-- Mesh gradient de fondo -->
+<div class="mesh-bg"></div>
+
+<!-- ============ SPLASH SCREEN GLOBAL ============ -->
+<div id="app-splash" class="fixed inset-0 z-[9999] flex items-center justify-center mesh-bg">
+  <div class="text-center">
+    <div class="w-12 h-12 border-4 border-[#0071E3]/20 border-t-[#0071E3] rounded-full animate-spin mx-auto"></div>
+    <p class="text-xs text-[#6E6E73] mt-4 font-medium tracking-wide">Cargando Smartec…</p>
+  </div>
+</div>
+
+<!-- ============ LOGIN ============ -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center bg-sd p-4">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+    <h1 class="text-3xl font-bold text-center text-sd mb-2">SMART<span class="text-sl">EC</span></h1>
+    <p class="text-center text-sm text-gray-500 mb-6">Panel Administrativo</p>
+    <input id="login-email" type="email" placeholder="Correo" class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-sl">
+    <input id="login-pass" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-sl">
+    <button id="login-btn" class="w-full bg-sd text-white py-2 rounded-lg hover:bg-sl transition font-semibold">Ingresar</button>
+    <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
+  </div>
+</div>
+
+<!-- ============ PANEL ============ -->
+<div id="panel" class="hidden min-h-screen">
+  <!-- Header unificado (inyectado por header-app.js) -->
+  <div id="smartec-header-app"></div>
+
+<!-- 🆕 Botón flotante para abrir sidebar en móvil -->
+<button onclick="toggleSidebar()"
+  class="lg:hidden fixed bottom-4 right-4 z-40 bg-[#0071E3] hover:bg-[#0077ED] text-white w-14 h-14 rounded-full shadow-apple-xl flex items-center justify-center transition active:scale-95"
+  title="Abrir menú">
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+  </svg>
+</button>
+  <!-- ═══════════════════════════════════════════════════════════
+       LAYOUT PRINCIPAL: SIDEBAR + CONTENIDO
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="flex flex-1 relative" style="min-height: calc(100vh - 80px);">
+
+    <!-- ============ BACKDROP MÓVIL ============ -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside id="sidebar"
+      class="sidebar glass-strong border-r border-white/50 flex flex-col shrink-0 fixed lg:sticky top-0 lg:top-auto h-screen lg:h-[calc(100vh-80px)] z-50 lg:z-30 -translate-x-full lg:translate-x-0 transition-transform duration-300">
+
+      <!-- Header del sidebar -->
+      <div class="p-3 border-b border-black/5 flex items-center justify-between shrink-0">
+        <span class="sidebar-label text-xs font-bold uppercase tracking-wider text-[#6E6E73]">Menú</span>
+        <button onclick="toggleSidebarCollapse()" class="hidden lg:flex p-1.5 rounded-full hover:bg-black/5 transition text-[#6E6E73]" title="Colapsar/Expandir menú">
+          <svg id="sidebar-collapse-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <button onclick="toggleSidebar()" class="lg:hidden p-1.5 rounded-full hover:bg-black/5 transition text-[#6E6E73]" title="Cerrar menú">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Lista de items -->
+      <nav class="flex-1 overflow-y-auto scrollbar-thin py-2">
+
+        <!-- SECCIÓN: Operación -->
+        <p class="sidebar-section-title px-4 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6E6E73]">Operación</p>
+
+        <button class="sidebar-item tab-btn" data-tab="dashboard" title="Dashboard">
+          <span class="sidebar-icon">📊</span>
+          <span class="sidebar-label">Dashboard</span>
+        </button>
+
+        <button class="sidebar-item tab-btn" data-tab="sales" title="Ventas">
+          <span class="sidebar-icon">💰</span>
+          <span class="sidebar-label">Ventas</span>
+        </button>
+
+        <button class="sidebar-item tab-btn" data-tab="cashregisters" title="Arqueos">
+          <span class="sidebar-icon">🌅</span>
+          <span class="sidebar-label">Arqueos</span>
+        </button>
+
+        <button class="sidebar-item tab-btn" data-tab="shifts" title="Turnos">
+          <span class="sidebar-icon">⏱️</span>
+          <span class="sidebar-label">Turnos</span>
+        </button>
+
+        <button class="sidebar-item tab-btn" data-tab="transfers" title="Solicitudes">
+          <span class="sidebar-icon">📤</span>
+          <span class="sidebar-label">Solicitudes</span>
+          <span id="transfers-badge" class="hidden ml-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shrink-0">0</span>
+        </button>
+
+        <!-- SECCIÓN: Catálogo -->
+        <p class="sidebar-section-title px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6E6E73]">Catálogo</p>
+
+        <button class="sidebar-item tab-btn" data-tab="products" title="Productos">
+          <span class="sidebar-icon">📦</span>
+          <span class="sidebar-label">Productos</span>
+        </button>
+
+        <button class="sidebar-item tab-btn" data-tab="inventory" title="Inventario">
+          <span class="sidebar-icon">📊</span>
+          <span class="sidebar-label">Inventario</span>
+        </button>
+
+        <!-- SECCIÓN: Personas -->
+        <p class="sidebar-section-title px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6E6E73]">Personas</p>
+
+        <button class="sidebar-item tab-btn" data-tab="stores" title="Tiendas">
+          <span class="sidebar-icon">🏪</span>
+          <span class="sidebar-label">Tiendas</span>
+        </button>
+
+        <button class="sidebar-item tab-btn" data-tab="sellers" title="Usuarios">
+          <span class="sidebar-icon">👥</span>
+          <span class="sidebar-label">Usuarios</span>
+        </button>
+
+        <!-- SECCIÓN: Finanzas -->
+        <p class="sidebar-section-title px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6E6E73]">Finanzas</p>
+
+        <button class="sidebar-item tab-btn" data-tab="accounting" title="Contabilidad">
+          <span class="sidebar-icon">🧾</span>
+          <span class="sidebar-label">Contabilidad</span>
+        </button>
+
+        <button class="sidebar-item tab-btn" data-tab="reports" title="Reportes">
+          <span class="sidebar-icon">📈</span>
+          <span class="sidebar-label">Reportes</span>
+        </button>
+
+        <!-- SECCIÓN: Sistema -->
+        <p class="sidebar-section-title px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6E6E73]">Sistema</p>
+
+        <button class="sidebar-item tab-btn" data-tab="audit" title="Auditoría">
+          <span class="sidebar-icon">🔍</span>
+          <span class="sidebar-label">Auditoría</span>
+        </button>
+
+        <button class="sidebar-item tab-btn" data-tab="settings" title="Configuración">
+          <span class="sidebar-icon">⚙️</span>
+          <span class="sidebar-label">Configuración</span>
+        </button>
+
+      </nav>
+
+      <!-- Footer del sidebar (solo superadmin) -->
+      <div class="p-3 border-t border-black/5 shrink-0">
+        <div class="sidebar-label text-[10px] text-[#6E6E73] text-center">
+          v1.0 · Superadmin
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ============ CONTENIDO PRINCIPAL ============ -->
+    <main class="flex-1 min-w-0 p-4 md:p-6 overflow-x-hidden">
+
+    <!-- ============ DASHBOARD SÚPER ============ -->
+    <section id="tab-dashboard" class="tab-content">
+
+      <!-- ========== BARRA DE FILTROS + ACCIONES ========== -->
+      <div class="bg-white rounded-xl shadow p-4 mb-6">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <!-- Filtros -->
+          <div class="flex flex-wrap gap-3 flex-1 min-w-0">
+            <div>
+              <label class="text-[10px] font-semibold text-sd block mb-1">📅 Período</label>
+              <select id="dash-period" class="px-3 py-2 border rounded-lg text-sm min-w-[160px]">
+                <option value="today">Hoy</option>
+                <option value="yesterday">Ayer</option>
+                <option value="week">Esta semana</option>
+                <option value="month" selected>Este mes</option>
+                <option value="lastmonth">Mes pasado</option>
+                <option value="year">Este año</option>
+                <option value="all">Todo el histórico</option>
+                <option value="custom">Personalizado…</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-semibold text-sd block mb-1">🏪 Tienda</label>
+              <select id="dash-store-filter" class="px-3 py-2 border rounded-lg text-sm min-w-[160px]">
+                <option value="all">Todas las tiendas</option>
+                <option value="active">Solo tiendas activas</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-semibold text-sd block mb-1">👤 Vendedor</label>
+              <select id="dash-seller-filter" class="px-3 py-2 border rounded-lg text-sm min-w-[160px]">
+                <option value="all">Todos los vendedores</option>
+              </select>
+            </div>
+
+            <!-- Rango personalizado (oculto por defecto) -->
+            <div id="dash-custom-range" class="hidden flex gap-2">
+              <div>
+                <label class="text-[10px] font-semibold text-sd block mb-1">Desde</label>
+                <input id="dash-date-from" type="date" class="px-3 py-2 border rounded-lg text-sm">
+              </div>
+              <div>
+                <label class="text-[10px] font-semibold text-sd block mb-1">Hasta</label>
+                <input id="dash-date-to" type="date" class="px-3 py-2 border rounded-lg text-sm">
+              </div>
+            </div>
+          </div>
+
+          <!-- Acciones rápidas -->
+          <div class="flex flex-wrap gap-2">
+            <a href="venta.html" target="_blank" class="bg-sd hover:bg-sl text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+              🛒 Nueva venta
+            </a>
+            <button onclick="openProductForm()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+              📦 Producto
+            </button>
+            <button onclick="document.querySelector('[data-tab=reports]').click()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+              📊 Reportes
+            </button>
+            <button onclick="renderDashboard()" class="bg-gray-100 hover:bg-gray-200 text-sd text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+              🔄 Refrescar
+            </button>
+          </div>
+        </div>
+
+        <!-- Info del rango activo -->
+        <p id="dash-range-info" class="text-[10px] text-gray-400 mt-3 pt-3 border-t"></p>
+      </div>
+
+      <!-- ========== KPIs DEL PERÍODO ========== -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+
+        <!-- KPI 1: Ventas netas -->
+        <div class="bg-gradient-to-br from-white to-blue-50/30 p-5 rounded-xl shadow border-l-4 border-sl">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">💰 Ventas netas</p>
+            <span id="dash-kpi-sales-trend" class="text-[10px] font-bold"></span>
+          </div>
+          <p id="dash-kpi-sales" class="text-2xl font-bold text-sl">$0</p>
+          <p id="dash-kpi-sales-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: $0</p>
+        </div>
+
+        <!-- KPI 2: Transacciones -->
+        <div class="bg-gradient-to-br from-white to-purple-50/30 p-5 rounded-xl shadow border-l-4 border-purple-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">🧾 Transacciones</p>
+            <span id="dash-kpi-count-trend" class="text-[10px] font-bold"></span>
+          </div>
+          <p id="dash-kpi-count" class="text-2xl font-bold text-purple-600">0</p>
+          <p id="dash-kpi-count-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: 0</p>
+        </div>
+
+        <!-- KPI 3: Ticket promedio -->
+        <div class="bg-gradient-to-br from-white to-cyan-50/30 p-5 rounded-xl shadow border-l-4 border-cyan-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">🎯 Ticket promedio</p>
+            <span id="dash-kpi-ticket-trend" class="text-[10px] font-bold"></span>
+          </div>
+          <p id="dash-kpi-ticket" class="text-2xl font-bold text-cyan-600">$0</p>
+          <p id="dash-kpi-ticket-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: $0</p>
+        </div>
+
+        <!-- KPI 4: Unidades -->
+        <div class="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-xl shadow border-l-4 border-emerald-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">📦 Unidades vendidas</p>
+            <span id="dash-kpi-units-trend" class="text-[10px] font-bold"></span>
+          </div>
+          <p id="dash-kpi-units-sold" class="text-2xl font-bold text-emerald-600">0</p>
+          <p id="dash-kpi-units-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: 0</p>
+        </div>
+
+        <!-- KPI 5: Utilidad bruta -->
+        <div class="bg-gradient-to-br from-white to-green-50/30 p-5 rounded-xl shadow border-l-4 border-green-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">📈 Utilidad bruta</p>
+            <span id="dash-kpi-profit-trend" class="text-[10px] font-bold"></span>
+          </div>
+          <p id="dash-kpi-profit" class="text-2xl font-bold text-green-600">$0</p>
+          <p id="dash-kpi-profit-margin" class="text-[10px] text-gray-400 mt-1">Margen 0%</p>
+        </div>
+
+        <!-- KPI 6: Comisiones -->
+        <div class="bg-gradient-to-br from-white to-orange-50/30 p-5 rounded-xl shadow border-l-4 border-orange-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">💵 Comisiones</p>
+          </div>
+          <p id="dash-kpi-commission" class="text-2xl font-bold text-orange-500">$0</p>
+          <p class="text-[10px] text-gray-400 mt-1">
+            Pool: <b id="dash-kpi-pool" class="text-sl">$0</b> · Bonus: <b id="dash-kpi-bonus" class="text-green-600">$0</b>
+          </p>
+        </div>
+
+        <!-- KPI 7: Cobrado -->
+        <div class="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-xl shadow border-l-4 border-emerald-600">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">✅ Cobrado</p>
+          </div>
+          <p id="dash-kpi-collected" class="text-2xl font-bold text-emerald-700">$0</p>
+          <p id="dash-kpi-collected-pct" class="text-[10px] text-gray-400 mt-1">0% del total</p>
+        </div>
+
+        <!-- KPI 8: Pendiente de cobro -->
+        <div class="bg-gradient-to-br from-white to-amber-50/30 p-5 rounded-xl shadow border-l-4 border-amber-500">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs text-gray-500 font-medium">⏳ Pendiente</p>
+          </div>
+          <p id="dash-kpi-pending" class="text-2xl font-bold text-amber-600">$0</p>
+          <p id="dash-kpi-pending-pct" class="text-[10px] text-gray-400 mt-1">0% del total</p>
+        </div>
+      </div>
+
+      <!-- ========== GRÁFICOS ========== -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+
+        <!-- Gráfico: Ventas últimos 30 días -->
+        <div class="bg-white p-5 rounded-xl shadow lg:col-span-2">
+          <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+            <div>
+              <h3 class="font-bold text-sd flex items-center gap-2">📈 Ventas últimos 30 días</h3>
+              <p class="text-[10px] text-gray-400 mt-0.5">Evolución diaria de la venta neta</p>
+            </div>
+            <span class="text-[10px] bg-sl/10 text-sl px-2 py-1 rounded-full font-semibold">Últimos 30 días</span>
+          </div>
+          <div class="h-64 relative">
+            <canvas id="dash-chart-sales"></canvas>
+            <p id="dash-chart-sales-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">
+              📭 Sin ventas en el período
+            </p>
+          </div>
+        </div>
+
+        <!-- Gráfico: Por método de pago -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">💳 Por método de pago</h3>
+          <div class="h-64 relative">
+            <canvas id="dash-chart-methods"></canvas>
+            <p id="dash-chart-methods-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">
+              📭 Sin datos
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== TOP TIENDAS Y VENDEDORES ========== -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+
+        <!-- Top tiendas -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sd flex items-center gap-2">🏪 Top tiendas</h3>
+            <span id="dash-top-stores-count" class="text-[10px] text-gray-400"></span>
+          </div>
+          <div id="dash-top-stores" class="space-y-3">
+            <!-- Dinámico -->
+          </div>
+          <p id="dash-top-stores-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin datos en el período</p>
+        </div>
+
+        <!-- Top vendedores -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sd flex items-center gap-2">👤 Top vendedores</h3>
+            <span id="dash-top-sellers-count" class="text-[10px] text-gray-400"></span>
+          </div>
+          <div id="dash-top-sellers" class="space-y-3">
+            <!-- Dinámico -->
+          </div>
+          <p id="dash-top-sellers-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin datos en el período</p>
+        </div>
+      </div>
+
+      <!-- ========== ALERTAS + ACTIVIDAD ========== -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+
+        <!-- Alertas inteligentes -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sd flex items-center gap-2">⚠️ Alertas inteligentes</h3>
+            <span id="dash-alerts-count" class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold hidden">0</span>
+          </div>
+          <div id="dash-alerts-list" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
+            <!-- Dinámico -->
+          </div>
+          <p id="dash-alerts-empty" class="hidden text-center py-6 text-gray-400 text-sm">
+            🎉 Todo en orden, sin alertas
+          </p>
+        </div>
+
+        <!-- Actividad reciente -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sd flex items-center gap-2">🕒 Actividad reciente</h3>
+            <button onclick="document.querySelector('[data-tab=audit]').click()" class="text-[10px] text-sl hover:underline">Ver toda →</button>
+          </div>
+          <div id="dash-recent-activity" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
+            <!-- Dinámico -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== INVENTARIO: KPIs + STOCK BAJO + RENDIMIENTO ========== -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sd">
+          <p class="text-xs text-gray-500">Valor inventario (costo)</p>
+          <p id="kpi-inv-cost" class="text-xl font-bold text-sd mt-1">$0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
+          <p class="text-xs text-gray-500">Valor inventario (venta)</p>
+          <p id="kpi-inv-price" class="text-xl font-bold text-sl mt-1">$0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-green-500">
+          <p class="text-xs text-gray-500">Ganancia potencial</p>
+          <p id="kpi-margin" class="text-xl font-bold text-green-600 mt-1">$0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sd">
+          <p class="text-xs text-gray-500">Unidades en stock</p>
+          <p id="kpi-units" class="text-xl font-bold text-sd mt-1">0</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <!-- Stock bajo -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sd flex items-center gap-2">🔔 Alertas de stock bajo</h3>
+            <button onclick="document.querySelector('[data-tab=inventory]').click()" class="text-[10px] text-sl hover:underline">Ver inventario →</button>
+          </div>
+          <ul id="low-stock-list" class="space-y-2 text-sm max-h-64 overflow-y-auto scrollbar-thin"></ul>
+        </div>
+
+        <!-- Desempeño por tienda (resumen) -->
+        <div class="bg-white p-5 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">🏪 Desempeño por tienda</h3>
+          <div id="store-performance" class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin"></div>
+        </div>
+      </div>
+
+    </section>
+    <!-- ============ TIENDAS ============ -->
+    <section id="tab-stores" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-sd">Tiendas</h2>
+        <button onclick="openStoreForm()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl transition">+ Nueva tienda</button>
+      </div>
+      <div id="goals-alert" class="hidden mb-4"></div>
+      <div id="stores-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- ============ VENDEDORES ============ -->
+    <section id="tab-sellers" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <h2 class="text-2xl font-bold text-sd">Usuarios y Vendedores</h2>
+        <div class="flex gap-2">
+          <select id="sellers-store-filter" class="px-3 py-2 border rounded-lg text-sm">
+            <option value="all">Todas las tiendas</option>
+          </select>
+          <button onclick="openSellerForm()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl transition">+ Nuevo usuario</button>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[850px]">
+          <thead class="bg-gray-100 text-sd">
+            <tr>
+              <th class="p-3 text-left">Nombre</th>
+              <th class="p-3 text-left">Email</th>
+              <th class="p-3 text-left">Rol</th>
+              <th class="p-3 text-left">Tienda</th>
+              <th class="p-3 text-center">Comisión</th>
+              <th class="p-3 text-center">Dispositivos</th>
+              <th class="p-3 text-center">Estado</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="sellers-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ PRODUCTOS ============ -->
+    <section id="tab-products" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <h2 class="text-2xl font-bold text-sd">Productos</h2>
+        <div class="flex gap-2">
+          <input id="products-search" type="text" placeholder="Buscar..." class="px-3 py-2 border rounded-lg text-sm">
+          <button onclick="openProductForm()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl transition">+ Nuevo producto</button>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[900px]">
+          <thead class="bg-gray-100 text-sd">
+              <tr>
+                <th class="p-3 text-left">SKU</th>
+                <th class="p-3 text-left">Nombre</th>
+                <th class="p-3 text-left">Categoría</th>
+                <th class="p-3 text-right">Costo</th>
+                <th class="p-3 text-right">Precio</th>
+                <th class="p-3 text-center">Variantes</th>
+                <th class="p-3 text-center">Stock total</th>
+                <th class="p-3 text-center">Inventario</th>
+                <th class="p-3"></th>
+              </tr>
+            </thead>
+          <tbody id="products-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+<!-- ============ INVENTARIO ============ -->
+<section id="tab-inventory" class="tab-content hidden">
+  <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+    <h2 class="text-2xl font-bold text-sd">Inventario</h2>
+    <div class="flex gap-2 flex-wrap">
+      <button onclick="openMovementForm('entrada')" class="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-sm font-medium">➕ Entrada</button>
+      <button onclick="openMovementForm('salida')" class="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm font-medium">➖ Salida</button>
+      <button onclick="openMovementForm('traslado')" class="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">🔄 Traslado</button>
+      <button onclick="openMovementForm('ajuste')" class="bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">⚙️ Ajuste</button>
+    </div>
+  </div>
+
+  <!-- KPIs de inventario -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-gray-500">Valor inventario (costo)</p>
+      <p id="inv-kpi-cost" class="text-xl font-bold text-sd mt-1">$0</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-gray-500">Valor inventario (venta)</p>
+      <p id="inv-kpi-price" class="text-xl font-bold text-sl mt-1">$0</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-gray-500">Unidades totales</p>
+      <p id="inv-kpi-units" class="text-xl font-bold text-sd mt-1">0</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-gray-500">Alertas de stock bajo</p>
+      <p id="inv-kpi-alerts" class="text-xl font-bold text-orange-500 mt-1">0</p>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-xl shadow p-4 mb-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div>
+        <label class="text-xs font-semibold text-sd">Tienda</label>
+        <select id="inv-filter-store" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+          <option value="all">Todas las tiendas</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Categoría principal</label>
+        <select id="inv-filter-group" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+          <option value="all">Todas</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Estado de stock</label>
+        <select id="inv-filter-status" class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+          <option value="all">Todos</option>
+          <option value="low">Solo stock bajo</option>
+          <option value="zero">Solo agotados</option>
+          <option value="available">Solo con stock</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd">Buscar</label>
+        <input id="inv-filter-search" type="text" placeholder="SKU o nombre..." class="w-full px-3 py-2 border rounded-lg text-sm mt-1">
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+    <table class="w-full text-sm min-w-[1100px]">
+      <thead class="bg-gray-100 text-sd">
+        <tr>
+          <th class="p-3 text-left">Producto</th>
+          <th class="p-3 text-left">Variante</th>
+          <th class="p-3 text-left">SKU</th>
+          <th class="p-3 text-left">Tienda</th>
+          <th class="p-3 text-right">Costo</th>
+          <th class="p-3 text-right">Precio</th>
+          <th class="p-3 text-center">Stock</th>
+          <th class="p-3 text-center">Mín.</th>
+          <th class="p-3 text-center">Estado</th>
+          <th class="p-3"></th>
+        </tr>
+      </thead>
+      <tbody id="inventory-tbody"></tbody>
+    </table>
+  </div>
+  <p id="inv-empty" class="hidden text-center py-8 text-gray-400">Sin registros de inventario con esos filtros.</p>
+</section>
+
+    <!-- ============ VENTAS ============ -->
+    <section id="tab-sales" class="tab-content hidden">
+
+      <!-- Título + filtros principales -->
+      <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight">Ventas</h2>
+        <div class="flex gap-2 flex-wrap">
+          <select id="sales-store-filter" class="px-3 py-2 rounded-xl text-sm">
+            <option value="all">Todas las tiendas</option>
+          </select>
+          <select id="sales-payment-method-filter" class="px-3 py-2 rounded-xl text-sm">
+            <option value="all">Todos los métodos</option>
+            <option value="efectivo">💵 Efectivo</option>
+            <option value="transferencia">🔄 Transferencia</option>
+            <option value="tarjeta">💳 Tarjeta</option>
+            <option value="contraentrega">📦 Contra entrega</option>
+            <option value="credito">🛍️ Crédito</option>
+            <option value="mixto">🔀 Pago mixto</option>
+          </select>
+          <select id="sales-payment-status-filter" class="px-3 py-2 rounded-xl text-sm">
+            <option value="all">Todos los pagos</option>
+            <option value="completed">✅ Pagados</option>
+            <option value="pending">⏳ Pendientes de pago</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 🆕 Filtro de fecha de pago -->
+      <div class="glass-strong rounded-2xl shadow-apple-lg p-4 mb-4 border border-white/60">
+        <div class="flex justify-between items-center flex-wrap gap-3">
+          <div class="flex flex-wrap gap-3 flex-1 min-w-0">
+            <div>
+              <label class="text-[10px] font-semibold text-[#1D1D1F]">📅 Fecha de pago desde</label>
+              <input id="sales-paid-date-from" type="date" class="px-3 py-2 rounded-xl text-sm mt-1">
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-[#1D1D1F]">📅 Fecha de pago hasta</label>
+              <input id="sales-paid-date-to" type="date" class="px-3 py-2 rounded-xl text-sm mt-1">
+            </div>
+            <div class="flex items-end">
+              <button onclick="clearSalesPaidDate()" class="text-xs text-[#FF375F] hover:underline font-semibold pb-2">
+                Limpiar fecha
+              </button>
+            </div>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="setSalesPaidRange('today')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Hoy</button>
+            <button onclick="setSalesPaidRange('week')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Esta semana</button>
+            <button onclick="setSalesPaidRange('month')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Este mes</button>
+            <button onclick="setSalesPaidRange('lastmonth')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Mes pasado</button>
+            <button onclick="setSalesPaidRange('year')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F] transition shadow-apple">Este año</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="glass-strong rounded-2xl shadow-apple-lg overflow-hidden border border-white/60">
+        <div class="overflow-x-auto scrollbar-thin">
+          <table class="w-full text-sm min-w-[1100px]">
+            <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
+              <tr>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Fecha / Pago</th>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Cliente</th>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Tienda</th>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Vendedor</th>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Pago</th>
+                <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Items</th>
+                <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Venta neta</th>
+                <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Com. financ.</th>
+                <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Estado</th>
+                <th class="p-3"></th>
+              </tr>
+            </thead>
+            <tbody id="sales-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+<!-- ============ REPORTES ============ -->
+<section id="tab-reports" class="tab-content hidden">
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <div>
+      <h2 class="text-2xl font-bold text-sd">Reportes consolidados</h2>
+      <p class="text-xs text-gray-400">Análisis de todas las tiendas · Superadmin</p>
+    </div>
+    <div class="flex gap-2 flex-wrap">
+      <button onclick="toggleReportCustomizer()" class="bg-white border border-gray-300 text-sd px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-semibold flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+        Personalizar reportes
+      </button>
+      <button onclick="exportReportsPDF()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-semibold flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        Exportar PDF
+      </button>
+      <button onclick="exportReportsExcel()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-semibold flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Exportar Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel para personalizar reportes (oculto por defecto) -->
+  <div id="report-customizer" class="hidden bg-sd/5 border-2 border-dashed border-sl/30 rounded-xl p-5 mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h3 class="font-bold text-sd">📋 Personalizar reportes</h3>
+        <p class="text-xs text-gray-500 mt-0.5">Selecciona qué bloques quieres ver. Los cambios se aplican al instante y se guardan automáticamente.</p>
+      </div>
+      <button onclick="toggleReportCustomizer()" class="text-gray-500 hover:text-sd p-1">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <!-- Análisis general -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📊 Análisis general</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="comparison"> Comparativa con período anterior
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="byStore"> Comparativa por tienda
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="topSellers"> Ranking de vendedores
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="topProducts"> Top productos
+          </label>
+        </div>
+      </div>
+
+      <!-- Pagos y cobros -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">💳 Pagos y cobros</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="byMethod"> Desglose por método y canal
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="pending"> Cobros pendientes
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="reconciliation"> Conciliación bancaria
+          </label>
+        </div>
+      </div>
+
+      <!-- Categorías -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📂 Categorías</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="byCategory"> Ventas por categoría
+          </label>
+        </div>
+      </div>
+
+      <!-- Gráficos -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📈 Gráficos</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartSales"> Tendencia temporal
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartTopSellers"> Top vendedores (gráfico)
+          </label>
+        </div>
+      </div>
+
+      <!-- Clientes -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">👥 Clientes</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="topCustomers"> Top clientes
+          </label>
+        </div>
+      </div>
+
+      <!-- Impuestos y rentabilidad -->
+      <div class="bg-white rounded-lg p-4 shadow-sm">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">💰 Rentabilidad</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="profitability"> Ingresos, costos, utilidad
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="taxes"> Impuestos, recargos, envíos
+          </label>
+        </div>
+      </div>
+
+      <!-- Detalle -->
+      <div class="bg-white rounded-lg p-4 shadow-sm md:col-span-2 lg:col-span-3">
+        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📋 Detalle</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+            <input type="checkbox" class="report-toggle w-4 h-4" data-report="detail"> Detalle de ventas (tabla completa)
+          </label>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="flex gap-2 mt-4 pt-4 border-t border-sl/20">
+      <button onclick="selectAllReports(true)" class="text-xs bg-sl text-white px-3 py-1.5 rounded-lg hover:bg-sd">✅ Ver todos</button>
+      <button onclick="selectAllReports(false)" class="text-xs bg-gray-200 text-sd px-3 py-1.5 rounded-lg hover:bg-gray-300">⬜ Ocultar todos</button>
+      <button onclick="resetReportsDefault()" class="text-xs text-sl hover:underline ml-auto">🔄 Restaurar por defecto</button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-xl shadow p-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Desde</label>
+        <input id="rep-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Hasta</label>
+        <input id="rep-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">📅 Filtrar por</label>
+        <select id="rep-date-mode" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="created">Fecha de creación</option>
+          <option value="paid">Fecha de pago</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Tienda</label>
+        <select id="rep-store" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="all">Todas</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Vendedor</label>
+        <select id="rep-seller" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="all">Todos</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Categoría</label>
+        <select id="rep-category" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="all">Todas</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Marca</label>
+        <select id="rep-brand" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="all">Todas</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Método de pago</label>
+        <select id="rep-payment-method" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="all">Todos</option>
+          <option value="efectivo">💵 Efectivo</option>
+          <option value="transferencia">🔄 Transferencia</option>
+          <option value="tarjeta">💳 Tarjeta</option>
+          <option value="contraentrega">📦 Contra entrega</option>
+          <option value="credito">🛍️ Crédito</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Canal / Cuenta</label>
+        <select id="rep-payment-channel" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="all">Todos</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-sd">Estado de pago</label>
+        <select id="rep-payment-status" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          <option value="all">Todos</option>
+          <option value="completed">✅ Pagados</option>
+          <option value="pending">⏳ Pendientes</option>
+        </select>
+      </div>
+    </div>
+    <div class="flex justify-between items-center mt-4 pt-4 border-t flex-wrap gap-2">
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="setReportRange('today')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Hoy</button>
+        <button onclick="setReportRange('week')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Esta semana</button>
+        <button onclick="setReportRange('month')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este mes</button>
+        <button onclick="setReportRange('lastmonth')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes pasado</button>
+        <button onclick="setReportRange('year')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este año</button>
+      </div>
+      <button onclick="clearReportFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+    </div>
+  </div>
+
+    <!-- ========== KPIs ========== -->
+  <div id="report-block-kpis" class="report-block grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
+      <p class="text-xs text-gray-500">Total vendido</p>
+      <p id="rep-kpi-sales" class="text-2xl font-bold text-sl mt-1">$0</p>
+      <p id="rep-kpi-count" class="text-[10px] text-gray-400 mt-1">0 transacciones</p>
+    </div>
+    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-green-500">
+      <p class="text-xs text-gray-500">Utilidad bruta</p>
+      <p id="rep-kpi-profit" class="text-2xl font-bold text-green-600 mt-1">$0</p>
+      <p id="rep-kpi-margin" class="text-[10px] text-gray-400 mt-1">Margen 0%</p>
+    </div>
+    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-emerald-500">
+      <p class="text-xs text-gray-500">✅ Cobrado</p>
+      <p id="rep-kpi-collected" class="text-2xl font-bold text-emerald-600 mt-1">$0</p>
+      <p id="rep-kpi-collected-pct" class="text-[10px] text-gray-400 mt-1">0% del total</p>
+    </div>
+    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-amber-500">
+      <p class="text-xs text-gray-500">⏳ Pendiente de cobro</p>
+      <p id="rep-kpi-pending" class="text-2xl font-bold text-amber-600 mt-1">$0</p>
+      <p id="rep-kpi-pending-pct" class="text-[10px] text-gray-400 mt-1">0% del total</p>
+    </div>
+    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-orange-500">
+      <p class="text-xs text-gray-500">Comisiones totales</p>
+      <p id="rep-kpi-commission" class="text-2xl font-bold text-orange-500 mt-1">$0</p>
+      <div class="text-[10px] text-gray-500 mt-1 flex flex-wrap gap-x-2">
+        <span>Pool: <b id="rep-kpi-pool" class="text-sl">$0</b></span>
+        <span>Bonus: <b id="rep-kpi-bonus" class="text-green-600">$0</b></span>
+      </div>
+    </div>
+  </div>
+
+    <!-- ========== Bloque: Rentabilidad ========== -->
+  <div id="report-block-profitability" class="report-block bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow p-5 mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-bold text-green-800 flex items-center gap-2">💰 Rentabilidad del período</h3>
+        <p class="text-[10px] text-gray-500 mt-0.5">Ingresos vs costos y utilidad</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div class="bg-white rounded-lg p-3 shadow-sm">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">Ventas</p>
+        <p id="rep-profit-sales" class="text-lg font-bold text-sl mt-1">$0</p>
+        <p id="rep-profit-sales-count" class="text-[10px] text-gray-400">0 ventas</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 shadow-sm">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">− Costo mercancía</p>
+        <p id="rep-profit-cogs" class="text-lg font-bold text-orange-500 mt-1">$0</p>
+        <p id="rep-profit-cogs-pct" class="text-[10px] text-gray-400">0% de ventas</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 shadow-sm">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">= Utilidad bruta</p>
+        <p id="rep-profit-gross" class="text-lg font-bold text-green-600 mt-1">$0</p>
+        <p id="rep-profit-gross-margin" class="text-[10px] text-gray-400">Margen 0%</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 shadow-sm">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">− Comisiones financieras</p>
+        <p id="rep-profit-financial" class="text-lg font-bold text-rose-600 mt-1">$0</p>
+        <p id="rep-profit-financial-count" class="text-[10px] text-gray-400">0 ventas con crédito</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 shadow-sm border-2 border-purple-300">
+        <p class="text-[10px] text-purple-700 uppercase font-semibold">= Utilidad neta</p>
+        <p id="rep-profit-net" class="text-lg font-bold text-purple-700 mt-1">$0</p>
+        <p id="rep-profit-net-margin" class="text-[10px] text-purple-500">Margen 0%</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Bloque: Impuestos y recargos ========== -->
+  <div id="report-block-taxes" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
+      🏷️ Impuestos, recargos y envíos
+    </h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="border-l-4 border-blue-500 bg-blue-50/40 rounded-lg p-3">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">🚚 Envíos cobrados</p>
+        <p id="rep-tax-shipping" class="text-lg font-bold text-sd mt-1">$0</p>
+        <p id="rep-tax-shipping-count" class="text-[10px] text-gray-400">0 ventas con envío</p>
+      </div>
+      <div class="border-l-4 border-purple-500 bg-purple-50/40 rounded-lg p-3">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">💳 Recargos tarjeta</p>
+        <p id="rep-tax-surcharge" class="text-lg font-bold text-sd mt-1">$0</p>
+        <p id="rep-tax-surcharge-count" class="text-[10px] text-gray-400">0 ventas con recargo</p>
+      </div>
+      <div class="border-l-4 border-red-500 bg-red-50/40 rounded-lg p-3">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">🎁 Descuentos otorgados</p>
+        <p id="rep-tax-discount" class="text-lg font-bold text-red-600 mt-1">$0</p>
+        <p id="rep-tax-discount-count" class="text-[10px] text-gray-400">0 ventas con descuento</p>
+      </div>
+      <div class="border-l-4 border-emerald-500 bg-emerald-50/40 rounded-lg p-3">
+        <p class="text-[10px] text-gray-500 uppercase font-semibold">🏛️ IVA cobrado</p>
+        <p id="rep-tax-iva" class="text-lg font-bold text-emerald-600 mt-1">$0</p>
+        <p id="rep-tax-iva-note" class="text-[10px] text-gray-400">Según configuración</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bloque: Desglose por método y canal -->
+  <div id="report-block-byMethod" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-bold text-sd flex items-center gap-2">💳 Desglose por método y canal</h3>
+        <p class="text-[10px] text-gray-400 mt-0.5">Permite conciliación bancaria y control por cuenta</p>
+      </div>
+      <div id="rep-method-total" class="text-right">
+        <p class="text-[10px] text-gray-400">Total período</p>
+        <p class="text-lg font-bold text-sl">$0</p>
+      </div>
+    </div>
+    <div id="rep-by-method" class="space-y-3">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+
+    <!-- ========== Bloque: Cobros pendientes ========== -->
+  <div id="report-block-pending" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-bold text-sd flex items-center gap-2">⏳ Cobros pendientes de confirmar</h3>
+        <p class="text-[10px] text-gray-400 mt-0.5">Ventas contra entrega u otras que aún no se han cobrado</p>
+      </div>
+      <div class="text-right">
+        <p class="text-[10px] text-gray-400">Total pendiente</p>
+        <p id="rep-pending-total" class="text-lg font-bold text-amber-600">$0</p>
+      </div>
+    </div>
+
+    <!-- Lista de pendientes -->
+    <div id="rep-pending-list" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
+      <!-- Se llena dinámicamente -->
+    </div>
+
+    <p id="rep-pending-empty" class="text-center py-8 text-gray-400 text-sm">
+      🎉 No hay cobros pendientes en este período
+    </p>
+  </div>
+
+  <!-- ========== Bloque: Conciliación bancaria ========== -->
+  <div id="report-block-reconciliation" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-bold text-sd flex items-center gap-2">🏦 Conciliación por cuenta</h3>
+        <p class="text-[10px] text-gray-400 mt-0.5">Cuánto ingresó a cada cuenta/canal en el período</p>
+      </div>
+      <button onclick="exportReconciliationPDF()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-xs font-semibold flex items-center gap-1">
+        📄 Exportar conciliación
+      </button>
+    </div>
+
+    <div id="rep-reconciliation-list" class="space-y-3">
+      <!-- Se llena dinámicamente -->
+    </div>
+
+    <p id="rep-reconciliation-empty" class="text-center py-8 text-gray-400 text-sm">
+      Sin movimientos por cuenta en el período
+    </p>
+  </div>
+
+
+  <!-- ========== Gráfico: Ventas por día ========== -->
+  <div id="report-block-chartSales" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <h3 id="chart-sales-title" class="font-bold text-sd flex items-center gap-2">
+        📈 Ventas en el tiempo
+      </h3>
+      <select id="chart-sales-groupby" class="text-xs border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-sl">
+        <option value="day" selected>📅 Por día</option>
+        <option value="week">📆 Por semana</option>
+        <option value="month">🗓 Por mes</option>
+        <option value="paymentMethod">💳 Por método de pago</option>
+        <option value="paymentChannel">🏦 Por canal/cuenta</option>
+        <option value="store">🏪 Por tienda</option>
+        <option value="seller">👤 Por vendedor</option>
+        <option value="category">📂 Por categoría</option>
+      </select>
+    </div>
+    <div class="h-64 relative">
+      <canvas id="chart-sales"></canvas>
+      <p id="chart-sales-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">
+        📭 Sin ventas en el período seleccionado
+      </p>
+    </div>
+  </div>
+
+  <!-- ========== Comparativa por tienda ========== -->
+  <div id="report-block-byStore" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
+      🏪 Comparativa por tienda
+    </h3>
+    <div id="rep-by-store" class="space-y-3"></div>
+  </div>
+  <!-- ========== Gráfico: Top vendedores ========== -->
+  <div id="report-block-chartTopSellers" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
+      📊 Top vendedores (gráfico)
+    </h3>
+    <div class="h-72">
+      <canvas id="chart-topsellers"></canvas>
+    </div>
+  </div>
+
+  <!-- ========== Fila 3: Top vendedores (tabla) + Top productos ========== -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div id="report-block-topSellers" class="report-block bg-white p-5 rounded-xl shadow">
+      <h3 class="font-bold text-sd mb-4">🏆 Ranking vendedores</h3>
+      <div id="rep-top-sellers" class="space-y-3"></div>
+    </div>
+
+    <div id="report-block-topProducts" class="report-block bg-white p-5 rounded-xl shadow">
+      <h3 class="font-bold text-sd mb-4">📦 Top productos vendidos</h3>
+      <div id="rep-top-products" class="space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- ========== Desglose por categoría (detallado) ========== -->
+  <div id="report-block-byCategory" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <h3 class="font-bold text-sd mb-4">📂 Detalle por categoría</h3>
+    <div id="rep-by-category" class="space-y-3"></div>
+  </div>
+
+  <!-- ========== Desglose por método de pago (detallado) ========== -->
+  <!-- ❌ ELIMINADO: reemplazado por "Desglose por método y canal" que es más completo -->
+  <!--
+  <div id="report-block-byPayment" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <h3 class="font-bold text-sd mb-4">💳 Detalle por método de pago</h3>
+    <div id="rep-by-payment-detail" class="grid grid-cols-2 md:grid-cols-5 gap-3"></div>
+  </div>
+  -->
+    <!-- ========== Bloque: Comparativa con período anterior ========== -->
+  <div id="report-block-comparison" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <h3 class="font-bold text-sd mb-4 flex items-center gap-2">
+      📊 Comparativa con período anterior
+    </h3>
+    <p id="rep-comparison-subtitle" class="text-xs text-gray-400 mb-4">—</p>
+    <div id="rep-comparison-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+
+  <!-- ========== Bloque: Top clientes ========== -->
+  <div id="report-block-topCustomers" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="font-bold text-sd flex items-center gap-2">👥 Top clientes</h3>
+        <p class="text-[10px] text-gray-400 mt-0.5">Clientes con mayores compras en el período</p>
+      </div>
+      <div class="text-right">
+        <p class="text-[10px] text-gray-400">Clientes únicos</p>
+        <p id="rep-customers-total" class="text-lg font-bold text-sl">0</p>
+      </div>
+    </div>
+    <div id="rep-top-customers" class="space-y-3"></div>
+    <p id="rep-customers-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin clientes en el período</p>
+  </div>
+
+  <!-- ========== Detalle de ventas ========== -->
+  <div id="report-block-detail" class="report-block bg-white rounded-xl shadow overflow-hidden">
+    <div class="p-5 border-b flex justify-between items-center">
+      <h3 class="font-bold text-sd">Detalle de ventas filtradas</h3>
+      <p id="rep-detail-count" class="text-xs text-gray-400">0 ventas</p>
+    </div>
+    <div class="overflow-x-auto scrollbar-thin">
+      <table class="w-full text-sm min-w-[900px]">
+          <thead class="bg-gray-50 text-sd">
+          <tr>
+            <th class="p-3 text-left">Fecha</th>
+            <th class="p-3 text-left">Tienda</th>
+            <th class="p-3 text-left">Vendedor</th>
+            <th class="p-3 text-left">Cliente</th>
+            <th class="p-3 text-right">Venta neta</th>
+            <th class="p-3 text-right">Costo</th>
+            <th class="p-3 text-right">Utilidad</th>
+            <th class="p-3 text-right">Pool</th>
+            <th class="p-3 text-right">Bonus</th>
+            <th class="p-3"></th>
+          </tr>
+        </thead>
+        <tbody id="rep-tbody"></tbody>
+      </table>
+    </div>
+    <p id="rep-empty" class="hidden text-center py-8 text-gray-400">Sin ventas en el rango seleccionado.</p>
+  </div>
+</section>
+<!-- ============ ARQUEOS ============ -->
+<section id="tab-cashregisters" class="tab-content hidden">
+  <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <h2 class="text-2xl font-bold text-sd">Arqueos de caja</h2>
+    <div class="flex gap-2 flex-wrap">
+      <select id="arq-store-filter" class="px-3 py-2 border rounded-lg text-sm">
+        <option value="all">Todas las tiendas</option>
+      </select>
+      <select id="arq-status-filter" class="px-3 py-2 border rounded-lg text-sm">
+        <option value="all">Todos los estados</option>
+        <option value="approved">Aprobados</option>
+        <option value="pending_approval">Pendientes de aprobación</option>
+        <option value="rejected">Rechazados</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-gray-500">Total arqueos</p>
+      <p id="arq-kpi-total" class="text-xl font-bold text-sd mt-1">0</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-gray-500">Pendientes</p>
+      <p id="arq-kpi-pending" class="text-xl font-bold text-orange-500 mt-1">0</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-gray-500">Aprobados</p>
+      <p id="arq-kpi-approved" class="text-xl font-bold text-green-600 mt-1">0</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-gray-500">Rechazados</p>
+      <p id="arq-kpi-rejected" class="text-xl font-bold text-red-500 mt-1">0</p>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+    <table class="w-full text-sm min-w-[1000px]">
+      <thead class="bg-gray-100 text-sd">
+        <tr>
+          <th class="p-3 text-left">Fecha / hora</th>
+          <th class="p-3 text-left">Tienda</th>
+          <th class="p-3 text-left">Tipo</th>
+          <th class="p-3 text-left">Admin</th>
+          <th class="p-3 text-right">Base esperada</th>
+          <th class="p-3 text-right">Monto ingresado</th>
+          <th class="p-3 text-right">Diferencia</th>
+          <th class="p-3 text-center">Estado</th>
+          <th class="p-3"></th>
+        </tr>
+      </thead>
+      <tbody id="arqueos-tbody"></tbody>
+    </table>
+  </div>
+  <p id="arq-empty" class="hidden text-center py-8 text-gray-400">Sin arqueos con esos filtros.</p>
+</section>
+
+    <!-- ============ TURNOS ============ -->
+    <section id="tab-shifts" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Control de turnos</h2>
+          <p class="text-xs text-gray-400">Entradas y salidas del personal</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="exportShiftsExcel()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-semibold">📊 Exportar Excel</button>
+          <button onclick="renderShifts()" class="bg-white border border-gray-300 text-sd px-4 py-2 rounded-lg hover:bg-gray-50 text-sm">🔄 Actualizar</button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-green-500">
+          <p class="text-xs text-gray-500">Turnos activos ahora</p>
+          <p id="shift-kpi-active" class="text-2xl font-bold text-green-600 mt-1">0</p>
+          <p id="shift-kpi-active-sub" class="text-[10px] text-gray-400 mt-1">sin turno abierto</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-sl">
+          <p class="text-xs text-gray-500">Turnos hoy</p>
+          <p id="shift-kpi-today" class="text-2xl font-bold text-sl mt-1">0</p>
+          <p id="shift-kpi-today-sub" class="text-[10px] text-gray-400 mt-1">iniciados hoy</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-purple-500">
+          <p class="text-xs text-gray-500">Turnos esta semana</p>
+          <p id="shift-kpi-week" class="text-2xl font-bold text-purple-600 mt-1">0</p>
+          <p id="shift-kpi-week-sub" class="text-[10px] text-gray-400 mt-1">últimos 7 días</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-amber-500">
+          <p class="text-xs text-gray-500">Duración promedio</p>
+          <p id="shift-kpi-avg" class="text-2xl font-bold text-amber-600 mt-1">—</p>
+          <p id="shift-kpi-avg-sub" class="text-[10px] text-gray-400 mt-1">turnos cerrados</p>
+        </div>
+      </div>
+
+      <!-- Turnos activos -->
+      <div class="bg-white rounded-xl shadow p-5 mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-sd flex items-center gap-2">🟢 Turnos activos</h3>
+          <p id="shift-active-count" class="text-xs text-gray-400">0 turnos</p>
+        </div>
+        <div id="shift-active-list" class="space-y-2">
+          <!-- Se llena dinámicamente -->
+        </div>
+        <p id="shift-active-empty" class="hidden text-center py-6 text-gray-400 text-sm">
+          🎉 No hay turnos abiertos en este momento
+        </p>
+      </div>
+
+      <!-- Filtros -->
+      <div class="bg-white rounded-xl shadow p-4 mb-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Desde</label>
+            <input id="shift-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Hasta</label>
+            <input id="shift-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Tienda</label>
+            <select id="shift-store-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Usuario</label>
+            <select id="shift-user-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Estado</label>
+            <select id="shift-status-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos</option>
+              <option value="open">🟢 Abiertos</option>
+              <option value="closed">✅ Cerrados</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex justify-between items-center mt-3 pt-3 border-t flex-wrap gap-2">
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="setShiftRange('today')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Hoy</button>
+            <button onclick="setShiftRange('week')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Esta semana</button>
+            <button onclick="setShiftRange('month')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este mes</button>
+            <button onclick="setShiftRange('lastmonth')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes pasado</button>
+          </div>
+          <button onclick="clearShiftFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+        </div>
+      </div>
+
+      <!-- Histórico -->
+      <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="p-5 border-b flex justify-between items-center">
+          <h3 class="font-bold text-sd">Histórico de turnos</h3>
+          <p id="shift-hist-count" class="text-xs text-gray-400">0 turnos</p>
+        </div>
+        <div class="overflow-x-auto scrollbar-thin">
+          <table class="w-full text-sm min-w-[1100px]">
+            <thead class="bg-gray-50 text-sd">
+              <tr>
+                <th class="p-3 text-left">Inicio</th>
+                <th class="p-3 text-left">Fin</th>
+                <th class="p-3 text-left">Usuario</th>
+                <th class="p-3 text-left">Rol</th>
+                <th class="p-3 text-left">Tienda</th>
+                <th class="p-3 text-center">Duración</th>
+                <th class="p-3 text-center">Estado</th>
+                <th class="p-3 text-left">Notas</th>
+                <th class="p-3"></th>
+              </tr>
+            </thead>
+            <tbody id="shift-hist-tbody"></tbody>
+          </table>
+        </div>
+        <p id="shift-hist-empty" class="hidden text-center py-8 text-gray-400">Sin turnos en el período.</p>
+      </div>
+    </section>
+
+    <!-- ============ CONTABILIDAD ============ -->
+    <section id="tab-accounting" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Análisis contable</h2>
+          <p class="text-xs text-gray-400">Cruces financieros consolidados · Todas las tiendas</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <select id="acc-store-filter" class="px-3 py-2 border rounded-lg text-sm">
+            <option value="all">Todas las tiendas</option>
+          </select>
+          <button onclick="exportAccountingPDF()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-semibold">📄 Exportar PDF</button>
+        </div>
+      </div>
+
+      <!-- Filtros de fecha + estado -->
+      <div class="bg-white rounded-xl shadow p-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-3">
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Desde</label>
+            <input id="acc-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Hasta</label>
+            <input id="acc-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">📅 Ventas por</label>
+            <select id="acc-date-mode" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="created">Fecha de creación</option>
+              <option value="paid">Fecha de pago</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Estado de pago</label>
+            <select id="acc-status-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos</option>
+              <option value="pending">⏳ Pendientes</option>
+              <option value="paid">✅ Pagados</option>
+              <option value="overdue">🔴 Vencidos</option>
+              <option value="anulado">⚪ Anulados</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Proveedor</label>
+            <select id="acc-supplier-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Categoría</label>
+            <select id="acc-category-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas</option>
+              <option value="arriendo">Arriendo</option>
+              <option value="servicios">Servicios públicos</option>
+              <option value="nomina">Nómina</option>
+              <option value="papeleria">Papelería</option>
+              <option value="transporte">Transporte</option>
+              <option value="publicidad">Publicidad</option>
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="impuestos">Impuestos</option>
+              <option value="mercancia">Compra de mercancía</option>
+              <option value="otros">Otros</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Condición pago</label>
+            <select id="acc-terms-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas</option>
+              <option value="contado">Contado</option>
+              <option value="net_15">Net 15</option>
+              <option value="net_30">Net 30</option>
+              <option value="net_45">Net 45</option>
+              <option value="net_60">Net 60</option>
+              <option value="net_90">Net 90</option>
+              <option value="custom">Personalizado</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Buscar</label>
+            <input id="acc-search" type="text" placeholder="Concepto/Factura..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+        </div>
+        <div class="flex justify-between items-center flex-wrap gap-2 pt-3 border-t">
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="setAccRange('today')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Hoy</button>
+            <button onclick="setAccRange('week')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Semana</button>
+            <button onclick="setAccRange('month')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes</button>
+            <button onclick="setAccRange('lastmonth')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes pasado</button>
+            <button onclick="setAccRange('year')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Año</button>
+          </div>
+          <button onclick="clearAccFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+        </div>
+      </div>
+
+      <!-- KPIs financieros -->
+      <div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
+          <p class="text-xs text-gray-500">Total del período</p>
+          <p id="acc-kpi-total" class="text-2xl font-bold text-sd mt-1">$0</p>
+          <p id="acc-kpi-count" class="text-[10px] text-gray-400 mt-1">0 movimientos</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-amber-500">
+          <p class="text-xs text-gray-500">Cuentas por pagar</p>
+          <p id="acc-kpi-payable" class="text-2xl font-bold text-amber-600 mt-1">$0</p>
+          <p id="acc-kpi-payable-count" class="text-[10px] text-gray-400 mt-1">0 facturas pendientes</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-red-500">
+          <p class="text-xs text-gray-500">Vencido</p>
+          <p id="acc-kpi-overdue" class="text-2xl font-bold text-red-600 mt-1">$0</p>
+          <p id="acc-kpi-overdue-count" class="text-[10px] text-gray-400 mt-1">0 facturas vencidas</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-green-500">
+          <p class="text-xs text-gray-500">Pagado del período</p>
+          <p id="acc-kpi-paid" class="text-2xl font-bold text-green-600 mt-1">$0</p>
+          <p id="acc-kpi-paid-count" class="text-[10px] text-gray-400 mt-1">0 pagos registrados</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-rose-500">
+          <p class="text-xs text-gray-500">Comisiones financieras</p>
+          <p id="acc-kpi-financial-commissions" class="text-2xl font-bold text-rose-600 mt-1">$0</p>
+          <p id="acc-kpi-financial-commissions-count" class="text-[10px] text-gray-400 mt-1">0 ventas con crédito</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-purple-500">
+          <p class="text-xs text-gray-500">Utilidad neta real</p>
+          <p id="acc-kpi-net" class="text-2xl font-bold text-purple-600 mt-1">$0</p>
+          <p id="acc-kpi-net-detail" class="text-[10px] text-gray-400 mt-1">Ventas − Gastos</p>
+        </div>
+      </div>
+
+      <!-- Toggle de vistas -->
+      <div class="bg-white rounded-xl shadow p-2 mb-6 inline-flex gap-1">
+        <button onclick="setAccView('summary')" data-view="summary" class="acc-view-btn px-4 py-2 rounded-lg text-sm font-semibold transition">
+          📊 Resumen
+        </button>
+        <button onclick="setAccView('invoices')" data-view="invoices" class="acc-view-btn px-4 py-2 rounded-lg text-sm font-semibold transition">
+          📄 Por factura
+        </button>
+        <button onclick="setAccView('suppliers')" data-view="suppliers" class="acc-view-btn px-4 py-2 rounded-lg text-sm font-semibold transition">
+          👥 Por proveedor
+        </button>
+      </div>
+
+      <!-- ========== VISTA: RESUMEN ========== -->
+      <div id="acc-view-summary" class="acc-view-content">
+
+      <!-- Bloque: Rentabilidad del período -->
+      <div class="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-xl shadow p-5 mb-6">
+        <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+          <div>
+            <h3 class="font-bold text-purple-800 flex items-center gap-2">💰 Rentabilidad del período</h3>
+            <p class="text-[10px] text-gray-500 mt-0.5">Ingresos vs egresos consolidados</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+          <div class="bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-[10px] text-gray-500 uppercase font-semibold">Ventas</p>
+            <p id="acc-rent-sales" class="text-lg font-bold text-sl mt-1">$0</p>
+            <p id="acc-rent-sales-count" class="text-[10px] text-gray-400">0 ventas</p>
+          </div>
+          <div class="bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-[10px] text-gray-500 uppercase font-semibold">− Costo mercancía</p>
+            <p id="acc-rent-cogs" class="text-lg font-bold text-orange-500 mt-1">$0</p>
+            <p class="text-[10px] text-gray-400">Costo de lo vendido</p>
+          </div>
+          <div class="bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-[10px] text-gray-500 uppercase font-semibold">− Gastos operativos</p>
+            <p id="acc-rent-expenses" class="text-lg font-bold text-red-500 mt-1">$0</p>
+            <p class="text-[10px] text-gray-400">Gastos del período</p>
+          </div>
+          <div class="bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-[10px] text-gray-500 uppercase font-semibold">− Comisiones financieras</p>
+            <p id="acc-rent-financial" class="text-lg font-bold text-rose-600 mt-1">$0</p>
+            <p class="text-[10px] text-gray-400">Comisión crédito</p>
+          </div>
+          <div class="bg-white rounded-lg p-3 shadow-sm border-2 border-purple-300">
+            <p class="text-[10px] text-purple-700 uppercase font-semibold">= Utilidad neta</p>
+            <p id="acc-rent-net" class="text-lg font-bold text-purple-700 mt-1">$0</p>
+            <p id="acc-rent-margin" class="text-[10px] text-purple-500">Margen 0%</p>
+          </div>
+          <div class="bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-[10px] text-gray-500 uppercase font-semibold">Margen bruto</p>
+            <p id="acc-rent-gross" class="text-lg font-bold text-green-600 mt-1">$0</p>
+            <p id="acc-rent-gross-margin" class="text-[10px] text-gray-400">0%</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloque: Flujo de caja próximos 30 días -->
+      <div class="bg-white p-5 rounded-xl shadow mb-6">
+        <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+          <div>
+            <h3 class="font-bold text-sd flex items-center gap-2">📅 Flujo de caja proyectado (30 días)</h3>
+            <p class="text-[10px] text-gray-400 mt-0.5">Cuentas por pagar agrupadas por semana</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] text-gray-400">Total estimado</p>
+            <p id="acc-cashflow-total" class="text-lg font-bold text-sd">$0</p>
+          </div>
+        </div>
+        <div id="acc-cashflow-list" class="space-y-3">
+          <!-- Se llena dinámicamente -->
+        </div>
+        <p id="acc-cashflow-empty" class="hidden text-center py-6 text-gray-400 text-sm">
+          🎉 No hay pagos programados en los próximos 30 días
+        </p>
+      </div>
+
+      <!-- Bloque: Vencidas críticas -->
+      <div id="acc-overdue-block" class="bg-red-50 border border-red-200 rounded-xl shadow p-5 mb-6 hidden">
+        <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
+          <div>
+            <h3 class="font-bold text-red-700 flex items-center gap-2">🔴 Facturas vencidas críticas</h3>
+            <p class="text-[10px] text-red-600 mt-0.5">Requieren atención inmediata</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] text-red-500">Total vencido</p>
+            <p id="acc-overdue-total" class="text-lg font-bold text-red-700">$0</p>
+          </div>
+        </div>
+        <div id="acc-overdue-list" class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
+          <!-- Se llena dinámicamente -->
+        </div>
+      </div>
+
+      <!-- Desglose por tienda -->
+      <div class="bg-white p-5 rounded-xl shadow mb-6">
+        <h3 class="font-bold text-sd mb-4">🏪 Desglose por tienda</h3>
+        <div id="acc-by-store" class="space-y-3"></div>
+      </div>
+
+      <!-- Desglose por categoría -->
+      <div class="bg-white p-5 rounded-xl shadow mb-6">
+        <h3 class="font-bold text-sd mb-4">📂 Desglose por categoría</h3>
+        <div id="acc-by-category" class="space-y-3"></div>
+      </div>
+
+      <!-- Desglose por condición de pago -->
+      <div class="bg-white p-5 rounded-xl shadow mb-6">
+        <h3 class="font-bold text-sd mb-4">💳 Desglose por condición de pago</h3>
+        <div id="acc-by-terms" class="space-y-3"></div>
+      </div>
+
+      <!-- Cerrar vista Resumen -->
+      </div>
+
+      <!-- ========== VISTA: POR FACTURA ========== -->
+      <!-- ========== VISTA: POR FACTURA ========== -->
+      <div id="acc-view-invoices" class="acc-view-content hidden">
+        <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+          <div class="p-5 border-b flex justify-between items-center flex-wrap gap-2">
+            <h3 class="font-bold text-sd">Facturas del período</h3>
+            <p id="acc-invoices-count" class="text-xs text-gray-400">0 facturas</p>
+          </div>
+          <table class="w-full text-sm min-w-[1300px]">
+            <thead class="bg-gray-100 text-sd">
+              <tr>
+                <th class="p-3 text-left">Fecha</th>
+                <th class="p-3 text-left">Factura</th>
+                <th class="p-3 text-left">Tipo</th>
+                <th class="p-3 text-left">Proveedor</th>
+                <th class="p-3 text-left">Concepto</th>
+                <th class="p-3 text-left">Categoría</th>
+                <th class="p-3 text-left">Tienda</th>
+                <th class="p-3 text-right">Total</th>
+                <th class="p-3 text-center">Vence</th>
+                <th class="p-3 text-center">Estado</th>
+                <th class="p-3 text-center">Adjuntos</th>
+              </tr>
+            </thead>
+            <tbody id="acc-invoices-tbody"></tbody>
+          </table>
+          <p id="acc-invoices-empty" class="hidden text-center py-8 text-gray-400">Sin facturas en el período.</p>
+        </div>
+      </div>
+
+      <!-- ========== VISTA: POR PROVEEDOR ========== -->
+      <div id="acc-view-suppliers" class="acc-view-content hidden">
+        <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+          <div class="p-5 border-b flex justify-between items-center flex-wrap gap-2">
+            <h3 class="font-bold text-sd">Análisis por proveedor</h3>
+            <p id="acc-suppliers-count" class="text-xs text-gray-400">0 proveedores</p>
+          </div>
+        <table class="w-full text-sm min-w-[1200px]">
+            <thead class="bg-gray-100 text-sd">
+              <tr>
+                <th class="p-3 text-left">Proveedor</th>
+                <th class="p-3 text-center">Facturas</th>
+                <th class="p-3 text-right">Total comprado</th>
+                <th class="p-3 text-right">Pagado</th>
+                <th class="p-3 text-right">Pendiente</th>
+                <th class="p-3 text-right">Vencido</th>
+                <th class="p-3 text-center">Última compra</th>
+                <th class="p-3 text-center">Días prom. pago</th>
+                <th class="p-3 text-right">Promedio</th>
+                <th class="p-3"></th>
+              </tr>
+            </thead>
+            <tbody id="acc-suppliers-tbody"></tbody>
+          </table>
+          <p id="acc-suppliers-empty" class="hidden text-center py-8 text-gray-400">Sin proveedores con movimientos en el período.</p>
+        </div>
+      </div>
+    </section>
+
+     <!-- ============ SOLICITUDES (TRASLADOS + DISPOSITIVOS) ============ -->
+    <section id="tab-transfers" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Solicitudes</h2>
+          <p class="text-xs text-gray-400">Traslados entre tiendas y dispositivos nuevos</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <select id="tr-filter-type" class="px-3 py-2 border rounded-lg text-sm">
+            <option value="all">Todos los tipos</option>
+            <option value="transfers">📦 Traslados</option>
+            <option value="devices">📱 Solicitudes de dispositivo</option>
+            <option value="attempts">⚠️ Intentos de acceso</option>
+          </select>
+          <select id="tr-filter-status" class="px-3 py-2 border rounded-lg text-sm">
+            <option value="pendiente">Pendientes</option>
+            <option value="aprobada">Aprobadas</option>
+            <option value="rechazada">Rechazadas</option>
+            <option value="all">Todas</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Pendientes</p>
+          <p id="tr-kpi-pending" class="text-xl font-bold text-orange-500 mt-1">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Aprobadas</p>
+          <p id="tr-kpi-approved" class="text-xl font-bold text-green-600 mt-1">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Rechazadas</p>
+          <p id="tr-kpi-rejected" class="text-xl font-bold text-red-500 mt-1">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500">Total</p>
+          <p id="tr-kpi-total" class="text-xl font-bold text-sd mt-1">0</p>
+        </div>
+      </div>
+
+      <!-- Tabla unificada -->
+      <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[1000px]">
+          <thead class="bg-gray-100 text-sd">
+            <tr>
+              <th class="p-3 text-center w-12">Tipo</th>
+              <th class="p-3 text-left">Fecha</th>
+              <th class="p-3 text-left">Detalle</th>
+              <th class="p-3 text-left">Origen → Destino</th>
+              <th class="p-3 text-left">Solicitó</th>
+              <th class="p-3 text-center">Estado</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="transfers-tbody"></tbody>
+        </table>
+      </div>
+      <p id="transfers-empty" class="hidden text-center py-8 text-gray-400">Sin solicitudes con esos filtros.</p>
+    </section>
+
+    <!-- ============ AUDITORÍA ============ -->
+    <section id="tab-audit" class="tab-content hidden">
+      <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-sd">Auditoría del sistema</h2>
+          <p class="text-xs text-gray-400 mt-1">Trazabilidad completa de eventos · Solo superadmin</p>
+        </div>
+        <button onclick="exportAudit()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-semibold flex items-center gap-2">
+          📄 Exportar auditoría
+        </button>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 🆕 HISTORIAL DE DISPOSITIVOS (deviceHistory) -->
+      <!-- ============================================================ -->
+      <div class="bg-white rounded-xl shadow p-5 mb-6">
+        <div class="flex justify-between items-start mb-4 flex-wrap gap-3">
+          <div>
+            <h3 class="font-bold text-sd flex items-center gap-2">📱 Historial de dispositivos</h3>
+            <p class="text-xs text-gray-400 mt-1">Registro inmutable: altas de huella, desbloqueos, uso de PIN y liberaciones de cupo.</p>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <select id="dh-filter-action" class="px-3 py-1.5 border rounded-lg text-xs">
+              <option value="all">Todas las acciones</option>
+              <option value="register">🆕 Registro de huella</option>
+              <option value="re-register">🔄 Re-registro</option>
+              <option value="unlock">🔐 Desbloqueo con huella</option>
+              <option value="pin_fallback">🔢 Uso de PIN</option>
+              <option value="release">🗑 Liberación de cupo</option>
+            </select>
+            <select id="dh-filter-user" class="px-3 py-1.5 border rounded-lg text-xs">
+              <option value="all">Todos los usuarios</option>
+            </select>
+            <input id="dh-search" type="text" placeholder="Buscar..." class="px-3 py-1.5 border rounded-lg text-xs w-40">
+            <button onclick="renderDeviceHistory()" class="bg-sl text-white px-3 py-1.5 rounded-lg hover:bg-sd text-xs font-semibold">
+              🔄 Refrescar
+            </button>
+          </div>
+        </div>
+
+        <div id="dh-results-count" class="text-xs text-gray-400 mb-2">— eventos</div>
+
+        <div class="overflow-x-auto scrollbar-thin max-h-96">
+          <table class="w-full text-sm min-w-[900px]">
+            <thead class="bg-gray-50 text-sd sticky top-0">
+              <tr>
+                <th class="p-3 text-left">Fecha / hora</th>
+                <th class="p-3 text-left">Acción</th>
+                <th class="p-3 text-left">Usuario</th>
+                <th class="p-3 text-left">Dispositivo</th>
+                <th class="p-3 text-left">Motivo</th>
+                <th class="p-3 text-right"></th>
+              </tr>
+            </thead>
+            <tbody id="dh-tbody">
+              <tr>
+                <td colspan="6" class="p-6 text-center text-gray-400 text-xs">
+                  Presiona "Refrescar" para cargar el historial.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- KPIs de auditoría -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-sl">
+          <p class="text-xs text-gray-500">Total eventos</p>
+          <p id="audit-kpi-total" class="text-2xl font-bold text-sd mt-1">0</p>
+          <p id="audit-kpi-total-sub" class="text-[10px] text-gray-400 mt-1">en el período</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-red-500">
+          <p class="text-xs text-gray-500">Eventos críticos</p>
+          <p id="audit-kpi-critical" class="text-2xl font-bold text-red-600 mt-1">0</p>
+          <p id="audit-kpi-critical-sub" class="text-[10px] text-gray-400 mt-1">requieren atención</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-green-500">
+          <p class="text-xs text-gray-500">Usuarios activos</p>
+          <p id="audit-kpi-users" class="text-2xl font-bold text-green-600 mt-1">0</p>
+          <p id="audit-kpi-users-sub" class="text-[10px] text-gray-400 mt-1">distintos en el período</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-amber-500">
+          <p class="text-xs text-gray-500">Última actividad</p>
+          <p id="audit-kpi-last" class="text-lg font-bold text-amber-600 mt-1">—</p>
+          <p id="audit-kpi-last-sub" class="text-[10px] text-gray-400 mt-1">hace —</p>
+        </div>
+      </div>
+
+      <!-- Filtros rápidos: eventos destacados -->
+      <div class="bg-white rounded-xl shadow p-3 mb-4">
+        <p class="text-[10px] font-semibold text-gray-500 uppercase mb-2">⚡ Eventos destacados</p>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="setAuditQuickFilter('all')" data-quick="all" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-sl bg-sl text-white">
+            🌐 Todos
+          </button>
+          <button onclick="setAuditQuickFilter('critical')" data-quick="critical" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-red-300 text-red-700 hover:bg-red-50">
+            🔴 Críticos
+          </button>
+          <button onclick="setAuditQuickFilter('cancel')" data-quick="cancel" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-orange-300 text-orange-700 hover:bg-orange-50">
+            📉 Anulaciones
+          </button>
+          <button onclick="setAuditQuickFilter('delete')" data-quick="delete" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-red-300 text-red-700 hover:bg-red-50">
+            🗑 Borrados
+          </button>
+          <button onclick="setAuditQuickFilter('cashRegisters')" data-quick="cashRegisters" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-blue-300 text-blue-700 hover:bg-blue-50">
+            🌅 Arqueos de caja
+          </button>
+          <button onclick="setAuditQuickFilter('sales')" data-quick="sales" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-purple-300 text-purple-700 hover:bg-purple-50">
+            💰 Ventas
+          </button>
+          <button onclick="setAuditQuickFilter('inventory')" data-quick="inventory" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-amber-300 text-amber-700 hover:bg-amber-50">
+            📦 Inventario
+          </button>
+          <button onclick="setAuditQuickFilter('users')" data-quick="users" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-gray-300 text-gray-700 hover:bg-gray-50">
+            👤 Usuarios
+          </button>
+          <button onclick="setAuditQuickFilter('paymentChannels')" data-quick="paymentChannels" class="audit-quick-btn px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-cyan-300 text-cyan-700 hover:bg-cyan-50">
+            💳 Métodos de pago
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros detallados -->
+      <div class="bg-white rounded-xl shadow p-4 mb-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-3">
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Desde</label>
+            <input id="audit-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Hasta</label>
+            <input id="audit-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Rol</label>
+            <select id="audit-role-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos los roles</option>
+              <option value="superadmin">👑 Superadmin</option>
+              <option value="admin">🏪 Admin de tienda</option>
+              <option value="vendedor">💼 Vendedor</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Usuario</label>
+            <select id="audit-user-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todos los usuarios</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Severidad</label>
+            <select id="audit-severity-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas</option>
+              <option value="critical">🔴 Crítica</option>
+              <option value="high">🟠 Alta</option>
+              <option value="medium">🔵 Media</option>
+              <option value="low">🟢 Baja</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Buscar</label>
+            <input id="audit-search" type="text" placeholder="Concepto, docId, nota..." class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Acción</label>
+            <select id="audit-action-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas las acciones</option>
+              <option value="create">🆕 Crear</option>
+              <option value="update">✏️ Editar</option>
+              <option value="delete">🗑 Borrar</option>
+              <option value="sale">💰 Venta</option>
+              <option value="login">🔐 Login</option>
+              <option value="logout">🚪 Logout</option>
+              <option value="cancel">📉 Anulación</option>
+              <option value="seed">🌱 Migración</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-sd">Colección</label>
+            <select id="audit-collection-filter" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+              <option value="all">Todas las colecciones</option>
+              <option value="products">📦 Productos</option>
+              <option value="sales">💰 Ventas</option>
+              <option value="stores">🏪 Tiendas</option>
+              <option value="users">👤 Usuarios</option>
+              <option value="inventory">📊 Inventario</option>
+              <option value="inventoryMovements">🔄 Movs. inventario</option>
+              <option value="promos">🎁 Promos</option>
+              <option value="cashRegisters">🌅 Arqueos</option>
+              <option value="paymentChannels">💳 Métodos pago</option>
+              <option value="transferRequests">📤 Traslados</option>
+              <option value="settings">⚙️ Configuración</option>
+              <option value="system">🔧 Sistema</option>
+            </select>
+          </div>
+          <div class="col-span-2 flex items-end justify-between">
+            <div class="flex gap-2 flex-wrap">
+              <button onclick="setAuditRange('today')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Hoy</button>
+              <button onclick="setAuditRange('week')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Esta semana</button>
+              <button onclick="setAuditRange('month')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este mes</button>
+              <button onclick="setAuditRange('lastmonth')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Mes pasado</button>
+              <button onclick="setAuditRange('year')" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium text-sd">Este año</button>
+            </div>
+            <button onclick="clearAuditFilters()" class="text-xs text-red-500 hover:underline">Limpiar filtros</button>
+          </div>
+        </div>
+      </div>
+      <!-- Contador arriba de la tabla -->
+      <div class="flex justify-between items-center mb-2">
+        <p id="audit-results-count" class="text-xs text-gray-500">0 eventos</p>
+        <p class="text-[10px] text-gray-400">Click en una fila para ver el detalle completo</p>
+      </div>
+
+      <div class="bg-white rounded-xl shadow overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[1100px]">
+          <thead class="bg-gray-100 text-sd">
+            <tr>
+              <th class="p-3 text-center w-12">Sev.</th>
+              <th class="p-3 text-left">Fecha / hora</th>
+              <th class="p-3 text-left">Usuario</th>
+              <th class="p-3 text-center">Rol</th>
+              <th class="p-3 text-left">Acción</th>
+              <th class="p-3 text-left">Colección</th>
+              <th class="p-3 text-left">Resumen del cambio</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ CONFIGURACIÓN ============ -->
+    <section id="tab-settings" class="tab-content hidden">
+      <h2 class="text-2xl font-bold text-sd mb-6">Configuración del sistema</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4">General</h3>
+          <label class="text-xs font-semibold text-sd">WhatsApp (con código país, sin +)</label>
+          <input id="set-whatsapp" type="text" class="w-full px-3 py-2 border rounded-lg mb-3 mt-1">
+          <label class="text-xs font-semibold text-sd">Alerta de stock mínimo</label>
+          <input id="set-minstock" type="number" class="w-full px-3 py-2 border rounded-lg mb-3 mt-1">
+
+          <h4 class="font-bold text-sd text-sm mb-2 mt-4 pt-4 border-t">Datos de la empresa (para documentos)</h4>
+          <label class="text-xs font-semibold text-sd">Razón social</label>
+          <input id="set-razonSocial" type="text" placeholder="Smartec S.A.S." class="w-full px-3 py-2 border rounded-lg mb-3 mt-1">
+          <label class="text-xs font-semibold text-sd">NIT</label>
+          <input id="set-nit" type="text" placeholder="901234567-8" class="w-full px-3 py-2 border rounded-lg mb-3 mt-1">
+          <label class="text-xs font-semibold text-sd">Régimen</label>
+          <select id="set-regimen" class="w-full px-3 py-2 border rounded-lg mb-3 mt-1">
+            <option value="">— Sin especificar —</option>
+            <option value="Régimen Común">Régimen Común</option>
+            <option value="Régimen Simplificado">Régimen Simplificado</option>
+            <option value="No responsable de IVA">No responsable de IVA</option>
+          </select>
+          <label class="text-xs font-semibold text-sd">Dirección</label>
+          <input id="set-companyAddress" type="text" class="w-full px-3 py-2 border rounded-lg mb-3 mt-1">
+          <label class="text-xs font-semibold text-sd">Teléfono</label>
+          <input id="set-companyPhone" type="text" class="w-full px-3 py-2 border rounded-lg mb-3 mt-1">
+          <label class="text-xs font-semibold text-sd">Email</label>
+          <input id="set-companyEmail" type="email" class="w-full px-3 py-2 border rounded-lg mb-3 mt-1">
+
+          <button id="save-general-settings" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm">Guardar</button>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4">Impuestos e IVA</h3>
+          <label class="flex items-center gap-2 text-sm mb-3">
+            <input id="set-taxEnabled" type="checkbox" class="w-4 h-4">
+            Activar IVA en las ventas
+          </label>
+          <label class="text-xs font-semibold text-sd">Porcentaje de IVA (%)</label>
+          <input id="set-taxRate" type="number" step="0.01" class="w-full px-3 py-2 border rounded-lg mb-3 mt-1">
+          <p class="text-xs text-gray-500 mb-3">Por ahora trabajamos con remisiones comerciales. Actívalo cuando estés listo.</p>
+          <button id="save-tax-settings" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm">Guardar</button>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4">Facturación electrónica DIAN</h3>
+          <label class="flex items-center gap-2 text-sm mb-3">
+            <input id="set-dianEnabled" type="checkbox" class="w-4 h-4">
+            Activar módulo de facturación electrónica
+          </label>
+          <label class="text-xs font-semibold text-sd">Proveedor tecnológico</label>
+          <select id="set-dianProvider" class="w-full px-3 py-2 border rounded-lg mb-3 mt-1">
+            <option value="">— Sin proveedor —</option>
+            <option value="factus">Factus</option>
+            <option value="alegra">Alegra</option>
+            <option value="siigo">Siigo</option>
+            <option value="facture">Facture</option>
+            <option value="dian-directo">DIAN directo (portal gratuito)</option>
+            <option value="otro">Otro</option>
+          </select>
+          <p class="text-xs text-gray-500 mb-3">El sistema queda listo. Se activará cuando tengas el proveedor configurado.</p>
+          <button id="save-dian-settings" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm">Guardar</button>
+        </div>
+        <!-- 🆕 MÉTODOS DE PAGO -->
+        <div class="bg-white p-6 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4">💳 Métodos de pago</h3>
+          <p class="text-xs text-gray-500 mb-4">Administra las cuentas y entidades que aparecerán en el POS.</p>
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="openChannelsModal('transferencia')" class="bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 rounded-xl p-4 text-center transition">
+              <p class="text-3xl mb-2">🔄</p>
+              <p class="font-bold text-sd text-sm">Transferencias</p>
+              <p class="text-[10px] text-gray-500 mt-1" id="channels-count-transferencia">Cargando...</p>
+            </button>
+            <button onclick="openChannelsModal('credito')" class="bg-purple-50 hover:bg-purple-100 border-2 border-purple-200 rounded-xl p-4 text-center transition">
+              <p class="text-3xl mb-2">🛍️</p>
+              <p class="font-bold text-sd text-sm">Crédito</p>
+              <p class="text-[10px] text-gray-500 mt-1" id="channels-count-credito">Cargando...</p>
+            </button>
+          </div>
+          <button onclick="seedDefaultPlatforms()" class="mt-3 w-full text-xs text-sl hover:underline text-center">
+            🔧 Inicializar plataformas por defecto
+          </button>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4">Categorías estacionales</h3>
+          <div id="seasonal-categories" class="space-y-3 text-sm"></div>
+        </div>
+
+        <!-- 🆕 IDENTIDAD VISUAL -->
+        <div class="bg-white p-6 rounded-xl shadow lg:col-span-2">
+          <h3 class="font-bold text-sd mb-4">🎨 Identidad visual</h3>
+          <p class="text-xs text-gray-500 mb-6">Sube los logos de tu empresa. El del header aparece arriba en el catálogo, el del footer aparece al final de la página.</p>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- ============ LOGO DEL HEADER ============ -->
+            <div class="border border-gray-200 rounded-xl p-4">
+              <h4 class="font-bold text-sd text-sm mb-3 flex items-center gap-2">
+                🔝 Logo del header
+              </h4>
+              <p class="text-[10px] text-gray-500 mb-4">Se muestra arriba en el menú. Suele ser horizontal o cuadrado.</p>
+
+              <div class="bg-gray-50 rounded-xl p-4 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center min-h-[140px] mb-4">
+                <p class="text-[10px] text-gray-400 uppercase font-semibold mb-2">Vista previa</p>
+                <div id="logo-preview-container" class="w-full flex items-center justify-center">
+                  <p class="text-xs text-gray-400 italic">Sin logo</p>
+                </div>
+              </div>
+
+              <input type="file" id="logo-file-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
+
+              <div id="logo-dropzone" class="img-dropzone mb-3">
+                <p class="text-xs text-gray-500">Arrastra o haz clic para subir</p>
+                <p class="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP o SVG · máx 5MB</p>
+              </div>
+
+              <div class="flex gap-2 flex-wrap">
+                <button type="button" onclick="document.getElementById('logo-file-input').click()"
+                  class="bg-sd text-white px-3 py-2 rounded-lg hover:bg-sl text-xs font-semibold">
+                  📤 Subir
+                </button>
+                <button type="button" id="logo-remove-btn"
+                  class="hidden bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 text-xs font-semibold">
+                  🗑 Eliminar
+                </button>
+                <button type="button" id="logo-save-btn"
+                  class="hidden bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-xs font-semibold">
+                  💾 Guardar
+                </button>
+              </div>
+
+              <div id="logo-progress-wrap" class="upload-progress-wrap">
+                <div class="flex justify-between items-center text-xs font-semibold text-sd">
+                  <span id="logo-progress-text">📤 Subiendo logo…</span>
+                </div>
+                <div class="upload-progress-bar">
+                  <div id="logo-progress-fill" class="upload-progress-fill"></div>
+                </div>
+              </div>
+
+              <p id="logo-status-msg" class="text-xs hidden mt-2"></p>
+            </div>
+
+            <!-- ============ LOGO DEL FOOTER ============ -->
+            <div class="border border-gray-200 rounded-xl p-4">
+              <h4 class="font-bold text-sd text-sm mb-3 flex items-center gap-2">
+                🔻 Logo del footer
+              </h4>
+              <p class="text-[10px] text-gray-500 mb-4">Se muestra al final de la página. Puede incluir slogan.</p>
+
+              <div class="bg-gray-50 rounded-xl p-4 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center min-h-[140px] mb-4">
+                <p class="text-[10px] text-gray-400 uppercase font-semibold mb-2">Vista previa</p>
+                <div id="footer-logo-preview-container" class="w-full flex items-center justify-center">
+                  <p class="text-xs text-gray-400 italic">Sin logo</p>
+                </div>
+              </div>
+
+              <input type="file" id="footer-logo-file-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
+
+              <div id="footer-logo-dropzone" class="img-dropzone mb-3">
+                <p class="text-xs text-gray-500">Arrastra o haz clic para subir</p>
+                <p class="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP o SVG · máx 5MB</p>
+              </div>
+
+              <div class="flex gap-2 flex-wrap">
+                <button type="button" onclick="document.getElementById('footer-logo-file-input').click()"
+                  class="bg-sd text-white px-3 py-2 rounded-lg hover:bg-sl text-xs font-semibold">
+                  📤 Subir
+                </button>
+                <button type="button" id="footer-logo-remove-btn"
+                  class="hidden bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 text-xs font-semibold">
+                  🗑 Eliminar
+                </button>
+                <button type="button" id="footer-logo-save-btn"
+                  class="hidden bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-xs font-semibold">
+                  💾 Guardar
+                </button>
+              </div>
+
+              <div id="footer-logo-progress-wrap" class="upload-progress-wrap">
+                <div class="flex justify-between items-center text-xs font-semibold text-sd">
+                  <span id="footer-logo-progress-text">📤 Subiendo logo…</span>
+                </div>
+                <div class="upload-progress-bar">
+                  <div id="footer-logo-progress-fill" class="upload-progress-fill"></div>
+                </div>
+              </div>
+
+              <p id="footer-logo-status-msg" class="text-xs hidden mt-2"></p>
+            </div>
+
+                      <!-- ============ FAVICON (ícono de la pestaña) ============ -->
+            <div class="border border-gray-200 rounded-xl p-4 lg:col-span-2">
+              <h4 class="font-bold text-sd text-sm mb-3 flex items-center gap-2">
+                ⭐ Favicon (ícono de la pestaña)
+              </h4>
+              <p class="text-[10px] text-gray-500 mb-4">
+                Es el ícono que aparece en la pestaña del navegador y en los marcadores. Recomendado: PNG cuadrado 512×512 o 32×32.
+              </p>
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- Vista previa -->
+                <div>
+                  <div class="bg-gray-50 rounded-xl p-4 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center min-h-[140px] mb-4">
+                    <p class="text-[10px] text-gray-400 uppercase font-semibold mb-2">Vista previa</p>
+                    <div id="favicon-preview-container" class="w-full flex items-center justify-center">
+                      <p class="text-xs text-gray-400 italic">Sin favicon</p>
+                    </div>
+                  </div>
+                  <p class="text-[10px] text-gray-400 text-center">
+                    Así se verá en la pestaña (aprox. 32×32)
+                  </p>
+                </div>
+
+                <!-- Controles -->
+                <div>
+                  <input type="file" id="favicon-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon" class="hidden">
+
+                  <div id="favicon-dropzone" class="img-dropzone mb-3">
+                    <p class="text-xs text-gray-500">Arrastra o haz clic para subir</p>
+                    <p class="text-[10px] text-gray-400 mt-1">PNG, JPG, WebP, SVG o ICO · máx 2MB</p>
+                  </div>
+
+                  <div class="flex gap-2 flex-wrap">
+                    <button type="button" onclick="document.getElementById('favicon-file-input').click()"
+                      class="bg-sd text-white px-3 py-2 rounded-lg hover:bg-sl text-xs font-semibold">
+                      📤 Subir favicon
+                    </button>
+                    <button type="button" id="favicon-remove-btn"
+                      class="hidden bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 text-xs font-semibold">
+                      🗑 Eliminar
+                    </button>
+                    <button type="button" id="favicon-save-btn"
+                      class="hidden bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-xs font-semibold">
+                      💾 Guardar
+                    </button>
+                  </div>
+
+                  <div id="favicon-progress-wrap" class="upload-progress-wrap">
+                    <div class="flex justify-between items-center text-xs font-semibold text-sd">
+                      <span id="favicon-progress-text">📤 Subiendo favicon…</span>
+                    </div>
+                    <div class="upload-progress-bar">
+                      <div id="favicon-progress-fill" class="upload-progress-fill"></div>
+                    </div>
+                  </div>
+
+                  <p id="favicon-status-msg" class="text-xs hidden mt-2"></p>
+                </div>
+
+              </div>
+            </div>
+          
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+</div>
+<!-- ============ MODAL GENÉRICO ============ -->
+<div id="form-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeForm()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeForm()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="form-title" class="text-xl font-bold text-sd mb-4 pr-10"></h3>
+    <div id="form-body"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL DETALLE VENTA ============ -->
+<div id="sale-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeSaleModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeSaleModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-4 pr-10">Detalle de venta</h3>
+    <div id="sale-detail"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL DETALLE DE TURNO ============ -->
+<div id="shift-detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeShiftDetail()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto">
+    <button onclick="closeShiftDetail()" class="absolute top-3 right-3 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <div id="shift-detail-body"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL DETALLE AUDITORÍA ============ -->
+<div id="audit-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeAuditModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeAuditModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-4 pr-10">Detalle de auditoría</h3>
+    <div id="audit-detail"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL INVENTARIO POR PRODUCTO ============ -->
+<div id="inv-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeInvModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeInvModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="inv-title" class="text-xl font-bold text-sd mb-1 pr-10"></h3>
+    <p id="inv-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="inv-body"></div>
+    <div class="mt-5 flex gap-3">
+      <button onclick="closeInvModal()" class="flex-1 bg-gray-100 text-sd py-2 rounded-lg hover:bg-gray-200 font-semibold">Cancelar</button>
+      <button onclick="saveInventory()" class="flex-1 bg-sd text-white py-2 rounded-lg hover:bg-sl font-semibold">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
+<!-- ============ MODAL MOVIMIENTO INVENTARIO ============ -->
+<div id="mov-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeMovModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeMovModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="mov-title" class="text-xl font-bold text-sd mb-1 pr-10"></h3>
+    <p id="mov-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="mov-body"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL HISTORIAL DE MOVIMIENTOS ============ -->
+<div id="hist-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeHistModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeHistModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="hist-title" class="text-xl font-bold text-sd mb-1 pr-10">Historial de movimientos</h3>
+    <p id="hist-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="hist-body"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL META MENSUAL DE TIENDA ============ -->
+<div id="goal-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeGoalModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeGoalModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-1 pr-10">🎯 Meta mensual de tienda</h3>
+    <p id="goal-modal-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="goal-modal-body"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL DETALLE ARQUEO ============ -->
+<div id="arq-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeArqModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeArqModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="arq-modal-title" class="text-xl font-bold text-sd mb-1 pr-10">Detalle de arqueo</h3>
+    <p id="arq-modal-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="arq-modal-body"></div>
+  </div>
+</div>
+<!-- ============ MODAL LISTA DE CANALES ============ -->
+<div id="channels-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 pointer-events-auto" onclick="closeChannelsModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeChannelsModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <div class="flex justify-between items-start mb-5 pr-10">
+      <div>
+        <h3 id="channels-modal-title" class="text-xl font-bold text-sd">Canales de pago</h3>
+        <p id="channels-modal-subtitle" class="text-xs text-gray-400 mt-1"></p>
+      </div>
+      <button onclick="openChannelForm(null)" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold whitespace-nowrap">
+        + Nuevo canal
+      </button>
+    </div>
+    <div id="channels-modal-list" class="space-y-2">
+      <!-- Se llena dinámicamente -->
+    </div>
+    <p id="channels-modal-empty" class="hidden text-center py-8 text-gray-400 text-sm">
+      Aún no hay canales configurados. Haz clic en "+ Nuevo canal" para crear el primero.
+    </p>
+  </div>
+</div>
+
+<!-- ============ MODAL DETALLE PROVEEDOR ============ -->
+<div id="acc-supplier-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeAccSupplierModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeAccSupplierModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="acc-supplier-title" class="text-xl font-bold text-sd mb-1 pr-10">Proveedor</h3>
+    <p id="acc-supplier-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="acc-supplier-body"></div>
+  </div>
+</div>
+
+
+<!-- ============ MODAL FORM DE CANAL (crear/editar) ============ -->
+<div id="channel-form-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeChannelForm()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeChannelForm()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="channel-form-title" class="text-xl font-bold text-sd mb-5 pr-10">Nuevo canal</h3>
+    <div id="channel-form-body">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL CONFIRMAR COBRO ============ -->
+<div id="confirm-payment-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeConfirmPaymentModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeConfirmPaymentModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-sd mb-1 pr-10">✅ Confirmar cobro</h3>
+    <p id="confirm-payment-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="confirm-payment-body">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+</div>
+
+<script type="module" src="admin-app.js"></script>
+
+</body>
+</html>
