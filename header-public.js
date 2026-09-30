@@ -52,8 +52,8 @@
     // Logo o texto por defecto
     const logoHtml = logoUrl
       ? `<img id="header-logo-img" src="${logoUrl}" alt="Smartec"
-              class="h-8 md:h-10 object-contain" decoding="async">`
-      : `<span id="header-logo-text" class="text-2xl md:text-3xl font-extrabold logo-mark">SMARTEC</span>`;
+              class="h-6 md:h-10 object-contain" decoding="async">`
+      : `<span id="header-logo-text" class="text-lg md:text-3xl font-extrabold logo-mark">SMARTEC</span>`;
 
     // Categorías visibles
     const visibleGroups = Object.entries(categories)

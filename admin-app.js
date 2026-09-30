@@ -4291,6 +4291,28 @@ window.exportAudit = async () => {
 };
 
 /* ============================================================
+   🆕 EXPORTAR AUDITORÍA — BOTONES DIRECTOS
+   Se llaman desde los botones de la UI. Ya no preguntan nada.
+============================================================ */
+window.exportAuditExcelDirect = async () => {
+  const list = getFilteredAudit();
+  if (!list.length) {
+    alert('No hay eventos para exportar con los filtros actuales.');
+    return;
+  }
+  await exportAuditExcel(list);
+};
+
+window.exportAuditPDFDirect = async () => {
+  const list = getFilteredAudit();
+  if (!list.length) {
+    alert('No hay eventos para exportar con los filtros actuales.');
+    return;
+  }
+  exportAuditPDF(list);
+};
+
+/* ============================================================
    EXPORTAR AUDITORÍA A EXCEL (XLSX) — solo lo filtrado
    ============================================================ */
 /* ============================================================

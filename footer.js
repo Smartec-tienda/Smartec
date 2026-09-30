@@ -84,7 +84,7 @@
       if (logoBox) {
         logoBox.innerHTML = `
           <img src="${settings.footerLogoUrl}" alt="Smartec"
-               class="h-16 md:h-20 object-contain" decoding="async">
+               class="h-10 md:h-20 object-contain" decoding="async">
         `;
 
         // Ocultar slogan si el logo ya lo incluye

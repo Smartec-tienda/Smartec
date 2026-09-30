@@ -35,8 +35,8 @@
     const logoUrl = settings.logoUrl || null;
     const logoHtml = logoUrl
       ? `<img id="header-app-logo-img" src="${logoUrl}" alt="Smartec"
-              class="h-8 md:h-10 object-contain" decoding="async">`
-      : `<span id="header-app-logo-text" class="text-lg md:text-xl font-extrabold logo-mark">SMARTEC</span>`;
+              class="h-6 md:h-10 object-contain" decoding="async">`
+      : `<span id="header-app-logo-text" class="text-base md:text-xl font-extrabold logo-mark">SMARTEC</span>`;
 
     // Info del vendedor
     const sellerInfoHtml = opts.showSellerInfo && user.email

@@ -507,17 +507,17 @@
           </div>
 
           <!-- Acciones rápidas -->
-          <div class="flex flex-wrap gap-2">
-            <a href="venta.html" target="_blank" class="bg-sd hover:bg-sl text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+          <div class="grid grid-cols-2 gap-2 w-full sm:flex sm:flex-wrap sm:w-auto">
+            <a href="venta.html" target="_blank" class="bg-sd hover:bg-sl text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5">
               🛒 Nueva venta
             </a>
-            <button onclick="openProductForm()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+            <button onclick="openProductForm()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5">
               📦 Producto
             </button>
-            <button onclick="document.querySelector('[data-tab=reports]').click()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+            <button onclick="document.querySelector('[data-tab=reports]').click()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5">
               📊 Reportes
             </button>
-            <button onclick="renderDashboard()" class="bg-gray-100 hover:bg-gray-200 text-sd text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+            <button onclick="renderDashboard()" class="bg-gray-100 hover:bg-gray-200 text-sd text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5">
               🔄 Refrescar
             </button>
           </div>
@@ -1747,35 +1747,35 @@
       </div>
 
       <!-- KPIs financieros -->
-      <div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
-          <p class="text-xs text-gray-500">Total del período</p>
-          <p id="acc-kpi-total" class="text-2xl font-bold text-sd mt-1">$0</p>
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4 mb-6">
+        <div class="bg-white p-3 md:p-5 rounded-xl shadow border-l-4 border-sl min-w-0">
+          <p class="text-xs text-gray-500 truncate">Total del período</p>
+          <p id="acc-kpi-total" class="text-lg md:text-2xl font-bold text-sd mt-1 break-all">$0</p>
           <p id="acc-kpi-count" class="text-[10px] text-gray-400 mt-1">0 movimientos</p>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-amber-500">
-          <p class="text-xs text-gray-500">Cuentas por pagar</p>
-          <p id="acc-kpi-payable" class="text-2xl font-bold text-amber-600 mt-1">$0</p>
+        <div class="bg-white p-3 md:p-5 rounded-xl shadow border-l-4 border-amber-500 min-w-0">
+          <p class="text-xs text-gray-500 truncate">Cuentas por pagar</p>
+          <p id="acc-kpi-payable" class="text-lg md:text-2xl font-bold text-amber-600 mt-1 break-all">$0</p>
           <p id="acc-kpi-payable-count" class="text-[10px] text-gray-400 mt-1">0 facturas pendientes</p>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-red-500">
-          <p class="text-xs text-gray-500">Vencido</p>
-          <p id="acc-kpi-overdue" class="text-2xl font-bold text-red-600 mt-1">$0</p>
+        <div class="bg-white p-3 md:p-5 rounded-xl shadow border-l-4 border-red-500 min-w-0">
+          <p class="text-xs text-gray-500 truncate">Vencido</p>
+          <p id="acc-kpi-overdue" class="text-lg md:text-2xl font-bold text-red-600 mt-1 break-all">$0</p>
           <p id="acc-kpi-overdue-count" class="text-[10px] text-gray-400 mt-1">0 facturas vencidas</p>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-green-500">
-          <p class="text-xs text-gray-500">Pagado del período</p>
-          <p id="acc-kpi-paid" class="text-2xl font-bold text-green-600 mt-1">$0</p>
+        <div class="bg-white p-3 md:p-5 rounded-xl shadow border-l-4 border-green-500 min-w-0">
+          <p class="text-xs text-gray-500 truncate">Pagado del período</p>
+          <p id="acc-kpi-paid" class="text-lg md:text-2xl font-bold text-green-600 mt-1 break-all">$0</p>
           <p id="acc-kpi-paid-count" class="text-[10px] text-gray-400 mt-1">0 pagos registrados</p>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-rose-500">
-          <p class="text-xs text-gray-500">Comisiones financieras</p>
-          <p id="acc-kpi-financial-commissions" class="text-2xl font-bold text-rose-600 mt-1">$0</p>
+        <div class="bg-white p-3 md:p-5 rounded-xl shadow border-l-4 border-rose-500 min-w-0">
+          <p class="text-xs text-gray-500 truncate">Comisiones financieras</p>
+          <p id="acc-kpi-financial-commissions" class="text-lg md:text-2xl font-bold text-rose-600 mt-1 break-all">$0</p>
           <p id="acc-kpi-financial-commissions-count" class="text-[10px] text-gray-400 mt-1">0 ventas con crédito</p>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-purple-500">
-          <p class="text-xs text-gray-500">Utilidad neta real</p>
-          <p id="acc-kpi-net" class="text-2xl font-bold text-purple-600 mt-1">$0</p>
+        <div class="bg-white p-3 md:p-5 rounded-xl shadow border-l-4 border-purple-500 min-w-0">
+          <p class="text-xs text-gray-500 truncate">Utilidad neta real</p>
+          <p id="acc-kpi-net" class="text-lg md:text-2xl font-bold text-purple-600 mt-1 break-all">$0</p>
           <p id="acc-kpi-net-detail" class="text-[10px] text-gray-400 mt-1">Ventas − Gastos</p>
         </div>
       </div>
@@ -2025,9 +2025,14 @@
           <h2 class="text-2xl font-bold text-sd">Auditoría del sistema</h2>
           <p class="text-xs text-gray-400 mt-1">Trazabilidad completa de eventos · Solo superadmin</p>
         </div>
-        <button onclick="exportAudit()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-semibold flex items-center gap-2">
-          📄 Exportar auditoría
-        </button>
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="exportAuditExcelDirect()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-semibold flex items-center gap-2">
+            📊 Exportar Excel
+          </button>
+          <button onclick="exportAuditPDFDirect()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-semibold flex items-center gap-2">
+            📄 Exportar PDF
+          </button>
+        </div>
       </div>
 
       <!-- ============================================================ -->
