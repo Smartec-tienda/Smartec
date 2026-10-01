@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
   updateDoc, deleteDoc, serverTimestamp, query, where, orderBy, limit,
-  onSnapshot
+  startAfter, onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
@@ -328,13 +328,20 @@ renderAdminHeader();
 
 // Badge en tiempo real de solicitudes pendientes
 startTransfersBadgeListener();
-    } else {
+  } else {
     currentUser = null; currentUserData = null;
-    // Detener listener
-    if (transfersBadgeUnsubscribe) {
-      transfersBadgeUnsubscribe();
-      transfersBadgeUnsubscribe = null;
+
+    // Detener listeners viejos
+    if (transfersBadgeUnsubscribe) { transfersBadgeUnsubscribe(); transfersBadgeUnsubscribe = null; }
+    if (devicesBadgeUnsubscribe)   { devicesBadgeUnsubscribe();   devicesBadgeUnsubscribe = null; }
+    if (attemptsBadgeUnsubscribe)  { attemptsBadgeUnsubscribe();  attemptsBadgeUnsubscribe = null; }
+
+    // Detener polling
+    if (window.__transfersBadgeInterval) {
+      clearInterval(window.__transfersBadgeInterval);
+      window.__transfersBadgeInterval = null;
     }
+
     // 🆕 Sin sesión → redirigir a home
     window.location.href = 'home.html';
   }
@@ -438,7 +445,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 /* ============================================================
-   🆕 LAZY LOADING — Flags de qué se ha cargado ya
+   LAZY LOADING — Flags de qué se ha cargado ya
 ============================================================ */
 const _loaded = {
   stores: false,
@@ -461,13 +468,53 @@ const _loaded = {
 };
 
 /* ============================================================
-   CARGA INICIAL — Solo lo que el Dashboard necesita
+   PAGINACIÓN — Tamaños de página y cursores
+   El cursor guarda el último documento leído para continuar
+   desde ahí cuando el usuario pida "Cargar más".
+============================================================ */
+const PAGE_SIZE = {
+  sales: 100,
+  products: 100,
+  inventory: 100,
+  cashRegisters: 50,
+  shifts: 50,
+  auditLogs: 100,
+  expenses: 100,
+  suppliers: 100
+};
+
+const _cursor = {
+  sales: null,
+  products: null,
+  inventory: null,
+  cashRegisters: null,
+  shifts: null,
+  auditLogs: null,
+  expenses: null,
+  suppliers: null
+};
+
+const _hasMore = {
+  sales: true,
+  products: true,
+  inventory: true,
+  cashRegisters: true,
+  shifts: true,
+  auditLogs: true,
+  expenses: true,
+  suppliers: true
+};
+
+/* ============================================================
+   CARGA INICIAL — Solo lo mínimo para que la app arranque
+   El resto se carga bajo demanda (cuando el usuario entra
+   a cada pestaña) o con "Cargar más" (paginación).
 ============================================================ */
 async function loadAll() {
   const C = window.SmartecCache;
 
   await Promise.all([
-    // ===== Lo que el Dashboard necesita sí o sí =====
+    // ===== Colecciones pequeñas: se cargan completas =====
     C.wrap('stores', async () => {
       const s = await getDocs(collection(db,'stores'));
       return s.docs.map(d => ({id:d.id,...d.data()}));
@@ -483,52 +530,104 @@ async function loadAll() {
       return s.exists() ? s.data() : {};
     }).then(v => { settings = v; _loaded.settings = true; }),
 
-    C.wrap('sales', async () => {
-      const s = await getDocs(collection(db,'sales'));
-      return s.docs.map(d => ({id:d.id,...d.data()}));
+    // ===== Ventas: solo las últimas 100 (ordenadas por fecha) =====
+    C.wrap('sales_page_1', async () => {
+      const s = await getDocs(query(
+        collection(db,'sales'),
+        orderBy('createdAt','desc'),
+        limit(PAGE_SIZE.sales)
+      ));
+      const docs = s.docs.map(d => ({id:d.id,...d.data()}));
+      _cursor.sales = s.docs[s.docs.length - 1] || null;
+      _hasMore.sales = s.docs.length === PAGE_SIZE.sales;
+      return docs;
     }).then(v => { sales = v; _loaded.sales = true; }),
 
-    C.wrap('products', async () => {
-      const s = await getDocs(collection(db,'products'));
-      return s.docs.map(d => ({id:d.id,...d.data()}));
+    // ===== Productos: primeros 100 =====
+    C.wrap('products_page_1', async () => {
+      const s = await getDocs(query(
+        collection(db,'products'),
+        orderBy('name','asc'),
+        limit(PAGE_SIZE.products)
+      ));
+      const docs = s.docs.map(d => ({id:d.id,...d.data()}));
+      _cursor.products = s.docs[s.docs.length - 1] || null;
+      _hasMore.products = s.docs.length === PAGE_SIZE.products;
+      return docs;
     }).then(v => { products = v; _loaded.products = true; }),
 
-    C.wrap('inventory', async () => {
-      const s = await getDocs(collection(db,'inventory'));
-      return s.docs.map(d => ({id:d.id,...d.data()}));
+    // ===== Inventario: primeros 100 =====
+    C.wrap('inventory_page_1', async () => {
+      const s = await getDocs(query(
+        collection(db,'inventory'),
+        orderBy('productName','asc'),
+        limit(PAGE_SIZE.inventory)
+      ));
+      const docs = s.docs.map(d => ({id:d.id,...d.data()}));
+      _cursor.inventory = s.docs[s.docs.length - 1] || null;
+      _hasMore.inventory = s.docs.length === PAGE_SIZE.inventory;
+      return docs;
     }).then(v => { inventory = v; _loaded.inventory = true; }),
 
-    C.wrap('cashRegisters', async () => {
-      const s = await getDocs(collection(db,'cashRegisters'));
-      return s.docs.map(d => ({id:d.id,...d.data()}));
+    // ===== Arqueos: últimos 50 =====
+    C.wrap('cashRegisters_page_1', async () => {
+      const s = await getDocs(query(
+        collection(db,'cashRegisters'),
+        orderBy('createdAt','desc'),
+        limit(PAGE_SIZE.cashRegisters)
+      ));
+      const docs = s.docs.map(d => ({id:d.id,...d.data()}));
+      _cursor.cashRegisters = s.docs[s.docs.length - 1] || null;
+      _hasMore.cashRegisters = s.docs.length === PAGE_SIZE.cashRegisters;
+      return docs;
     }).then(v => { cashRegisters = v; _loaded.cashRegisters = true; }),
 
-    C.wrap('shifts_all', async () => {
-      const s = await getDocs(collection(db,'shifts'));
-      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    // ===== Turnos: últimos 50 =====
+    C.wrap('shifts_page_1', async () => {
+      const s = await getDocs(query(
+        collection(db,'shifts'),
+        orderBy('startedAt','desc'),
+        limit(PAGE_SIZE.shifts)
+      ));
+      const docs = s.docs.map(d => ({id:d.id,...d.data()}));
+      _cursor.shifts = s.docs[s.docs.length - 1] || null;
+      _hasMore.shifts = s.docs.length === PAGE_SIZE.shifts;
+      return docs;
     }).then(v => { shiftsAll = v; _loaded.shifts = true; }),
 
-    // ===== Solicitudes: se cargan inicialmente porque el onSnapshot las va a refrescar =====
-    C.wrap('transferRequests_all', async () => {
-      const s = await getDocs(collection(db,'transferRequests'));
-      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    // ===== Solicitudes: SOLO pendientes (máx 50) =====
+    C.wrap('transferRequests_pending', async () => {
+      const s = await getDocs(query(
+        collection(db,'transferRequests'),
+        where('status','==','pendiente'),
+        limit(50)
+      ));
+      return s.docs.map(d => ({id:d.id,...d.data()}));
     }).then(v => { transferRequestsAll = v; _loaded.transfers = true; }),
 
-    C.wrap('deviceRequests_all', async () => {
-      const s = await getDocs(collection(db,'deviceRequests'));
-      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    C.wrap('deviceRequests_pending', async () => {
+      const s = await getDocs(query(
+        collection(db,'deviceRequests'),
+        where('status','==','pendiente'),
+        limit(50)
+      ));
+      return s.docs.map(d => ({id:d.id,...d.data()}));
     }).then(v => { deviceRequestsAll = v; _loaded.deviceRequests = true; }),
 
-    C.wrap('deviceAttempts_all', async () => {
-      const s = await getDocs(collection(db,'deviceAttempts'));
-      return s.docs.map(d => ({id:d.id, ...d.data()}));
+    C.wrap('deviceAttempts_pending', async () => {
+      const s = await getDocs(query(
+        collection(db,'deviceAttempts'),
+        where('status','!=','resuelto'),
+        limit(50)
+      ));
+      return s.docs.map(d => ({id:d.id,...d.data()}));
     }).then(v => { deviceAttemptsAll = v; _loaded.deviceAttempts = true; })
   ]);
 
   // Render inicial
   renderDashboard();
 
-  // 🆕 Si la URL trae #transfers, abrir esa pestaña tras un pequeño delay
+  // 🆕 Si la URL trae #transfers, abrir esa pestaña
   if (window.location.hash === '#transfers') {
     history.replaceState(null, '', window.location.pathname);
     startTransfersBadgeListener();
@@ -538,10 +637,10 @@ async function loadAll() {
     }, 300);
   }
 
-  // 🆕 Quitar splash: la app ya está lista para el dashboard
+  // 🆕 Quitar splash
   hideSplash();
 
-  // 🆕 Prefetch en background: cargar las secciones comunes en idle time
+  // 🆕 Prefetch en background
   requestIdleCallback(() => {
     prefetchCommons();
   }, { timeout: 4000 });
@@ -551,20 +650,168 @@ async function loadAll() {
    🆕 LAZY LOADERS — Carga por demanda
 ============================================================ */
 
-// ===== AUDITORÍA (pesada, solo si la abres) =====
+// ===== AUDITORÍA (pesada, solo si la abres) — paginada =====
 async function ensureAuditLogsLoaded() {
   if (_loaded.auditLogs) return;
   const C = window.SmartecCache;
   try {
-    const s = await getDocs(collection(db,'auditLog'));
+    const s = await getDocs(query(
+      collection(db,'auditLog'),
+      orderBy('timestamp','desc'),
+      limit(PAGE_SIZE.auditLogs)
+    ));
     auditLogs = s.docs.map(d => ({id:d.id,...d.data()}));
+    _cursor.auditLogs = s.docs[s.docs.length - 1] || null;
+    _hasMore.auditLogs = s.docs.length === PAGE_SIZE.auditLogs;
     _loaded.auditLogs = true;
   } catch(e) {
     console.warn('[Lazy] Error cargando auditLog:', e);
     auditLogs = [];
+    _hasMore.auditLogs = false;
   }
 }
 
+/* ============================================================
+   CARGAR MÁS — Paginación bajo demanda
+============================================================ */
+
+async function loadMoreSales() {
+  if (!_hasMore.sales || !_cursor.sales) return;
+  try {
+    const s = await getDocs(query(
+      collection(db,'sales'),
+      orderBy('createdAt','desc'),
+      startAfter(_cursor.sales),
+      limit(PAGE_SIZE.sales)
+    ));
+    const newDocs = s.docs.map(d => ({id:d.id,...d.data()}));
+    sales = sales.concat(newDocs);
+    _cursor.sales = s.docs[s.docs.length - 1] || null;
+    _hasMore.sales = s.docs.length === PAGE_SIZE.sales;
+    if (typeof window.renderSales === 'function') window.renderSales();
+    updateLoadMoreButton('sales', _hasMore.sales);
+  } catch(e) {
+    console.error('loadMoreSales:', e);
+  }
+}
+
+async function loadMoreProducts() {
+  if (!_hasMore.products || !_cursor.products) return;
+  try {
+    const s = await getDocs(query(
+      collection(db,'products'),
+      orderBy('name','asc'),
+      startAfter(_cursor.products),
+      limit(PAGE_SIZE.products)
+    ));
+    const newDocs = s.docs.map(d => ({id:d.id,...d.data()}));
+    products = products.concat(newDocs);
+    _cursor.products = s.docs[s.docs.length - 1] || null;
+    _hasMore.products = s.docs.length === PAGE_SIZE.products;
+    if (typeof window.renderProducts === 'function') window.renderProducts();
+    updateLoadMoreButton('products', _hasMore.products);
+  } catch(e) {
+    console.error('loadMoreProducts:', e);
+  }
+}
+
+async function loadMoreInventory() {
+  if (!_hasMore.inventory || !_cursor.inventory) return;
+  try {
+    const s = await getDocs(query(
+      collection(db,'inventory'),
+      orderBy('productName','asc'),
+      startAfter(_cursor.inventory),
+      limit(PAGE_SIZE.inventory)
+    ));
+    const newDocs = s.docs.map(d => ({id:d.id,...d.data()}));
+    inventory = inventory.concat(newDocs);
+    _cursor.inventory = s.docs[s.docs.length - 1] || null;
+    _hasMore.inventory = s.docs.length === PAGE_SIZE.inventory;
+    if (typeof window.renderInventory === 'function') window.renderInventory();
+    updateLoadMoreButton('inventory', _hasMore.inventory);
+  } catch(e) {
+    console.error('loadMoreInventory:', e);
+  }
+}
+
+async function loadMoreCashRegisters() {
+  if (!_hasMore.cashRegisters || !_cursor.cashRegisters) return;
+  try {
+    const s = await getDocs(query(
+      collection(db,'cashRegisters'),
+      orderBy('createdAt','desc'),
+      startAfter(_cursor.cashRegisters),
+      limit(PAGE_SIZE.cashRegisters)
+    ));
+    const newDocs = s.docs.map(d => ({id:d.id,...d.data()}));
+    cashRegisters = cashRegisters.concat(newDocs);
+    _cursor.cashRegisters = s.docs[s.docs.length - 1] || null;
+    _hasMore.cashRegisters = s.docs.length === PAGE_SIZE.cashRegisters;
+    if (typeof window.renderCashRegisters === 'function') window.renderCashRegisters();
+    updateLoadMoreButton('cashRegisters', _hasMore.cashRegisters);
+  } catch(e) {
+    console.error('loadMoreCashRegisters:', e);
+  }
+}
+
+async function loadMoreShifts() {
+  if (!_hasMore.shifts || !_cursor.shifts) return;
+  try {
+    const s = await getDocs(query(
+      collection(db,'shifts'),
+      orderBy('startedAt','desc'),
+      startAfter(_cursor.shifts),
+      limit(PAGE_SIZE.shifts)
+    ));
+    const newDocs = s.docs.map(d => ({id:d.id,...d.data()}));
+    shiftsAll = shiftsAll.concat(newDocs);
+    _cursor.shifts = s.docs[s.docs.length - 1] || null;
+    _hasMore.shifts = s.docs.length === PAGE_SIZE.shifts;
+    if (typeof window.renderShifts === 'function') window.renderShifts();
+    updateLoadMoreButton('shifts', _hasMore.shifts);
+  } catch(e) {
+    console.error('loadMoreShifts:', e);
+  }
+}
+
+async function loadMoreAudit() {
+  if (!_hasMore.auditLogs || !_cursor.auditLogs) return;
+  try {
+    const s = await getDocs(query(
+      collection(db,'auditLog'),
+      orderBy('timestamp','desc'),
+      startAfter(_cursor.auditLogs),
+      limit(PAGE_SIZE.auditLogs)
+    ));
+    const newDocs = s.docs.map(d => ({id:d.id,...d.data()}));
+    auditLogs = auditLogs.concat(newDocs);
+    _cursor.auditLogs = s.docs[s.docs.length - 1] || null;
+    _hasMore.auditLogs = s.docs.length === PAGE_SIZE.auditLogs;
+    if (typeof window.renderAudit === 'function') window.renderAudit();
+    updateLoadMoreButton('auditLogs', _hasMore.auditLogs);
+  } catch(e) {
+    console.error('loadMoreAudit:', e);
+  }
+}
+
+function updateLoadMoreButton(key, hasMore) {
+  const btn = document.getElementById(`load-more-${key}`);
+  const endMsg = document.getElementById(`load-more-end-${key}`);
+  if (btn) {
+    if (hasMore) {
+      btn.classList.remove('hidden');
+      btn.disabled = false;
+      btn.innerText = '⬇️ Cargar más (100 más)';
+    } else {
+      btn.classList.add('hidden');
+    }
+  }
+  if (endMsg) {
+    if (!hasMore) endMsg.classList.remove('hidden');
+    else endMsg.classList.add('hidden');
+  }
+}
 // ===== CONTABILIDAD (gastos, proveedores, settings) =====
 async function ensureAccountingLoaded() {
   if (_loaded.expenses && _loaded.suppliers && _loaded.accountingSettings) return;
@@ -10932,49 +11179,59 @@ let transfersBadgeUnsubscribe = null;
 let devicesBadgeUnsubscribe = null;
 let attemptsBadgeUnsubscribe = null;
 
+/* ============================================================
+   BADGE DE SOLICITUDES PENDIENTES — OPTIMIZADO
+   🚨 Listeners en tiempo real DESACTIVADOS por costo.
+   ✅ Ahora: polling cada 5 minutos + conteo puntual.
+============================================================ */
 function startTransfersBadgeListener() {
-  if (transfersBadgeUnsubscribe) transfersBadgeUnsubscribe();
-  if (devicesBadgeUnsubscribe) devicesBadgeUnsubscribe();
-  if (attemptsBadgeUnsubscribe) attemptsBadgeUnsubscribe();
+  console.log('[Badge] Listeners en tiempo real DESACTIVADOS. Usando polling cada 5min.');
 
-  // 1. Escuchar traslados
-  const qT = query(collection(db,'transferRequests'));
-  transfersBadgeUnsubscribe = onSnapshot(qT, (snap) => {
-    transferRequestsAll = snap.docs.map(d => ({id:d.id, ...d.data()}));
+  // Cancelar cualquier listener viejo por si quedó activo
+  if (transfersBadgeUnsubscribe) { transfersBadgeUnsubscribe(); transfersBadgeUnsubscribe = null; }
+  if (devicesBadgeUnsubscribe)   { devicesBadgeUnsubscribe();   devicesBadgeUnsubscribe = null; }
+  if (attemptsBadgeUnsubscribe)  { attemptsBadgeUnsubscribe();  attemptsBadgeUnsubscribe = null; }
+
+  // Conteo inicial
+  updateTransfersBadgeOnce();
+
+  // Refrescar cada 5 minutos
+  if (window.__transfersBadgeInterval) clearInterval(window.__transfersBadgeInterval);
+  window.__transfersBadgeInterval = setInterval(updateTransfersBadgeOnce, 5 * 60 * 1000);
+}
+
+async function updateTransfersBadgeOnce() {
+  try {
+    const [tSnap, dSnap, aSnap] = await Promise.all([
+      getDocs(query(collection(db,'transferRequests'), where('status','==','pendiente'), limit(50))),
+      getDocs(query(collection(db,'deviceRequests'),   where('status','==','pendiente'), limit(50))),
+      getDocs(query(collection(db,'deviceAttempts'),   where('status','!=','resuelto'), limit(50)))
+    ]);
+
+    transferRequestsAll = tSnap.docs.map(d => ({id:d.id, ...d.data()}));
+    deviceRequestsAll    = dSnap.docs.map(d => ({id:d.id, ...d.data()}));
+    deviceAttemptsAll    = aSnap.docs.map(d => ({id:d.id, ...d.data()}));
+
     updateTransfersBadge();
+
+    // Si el usuario está viendo la pestaña de solicitudes, re-renderizar
     const tabTransfers = $('tab-transfers');
     if (tabTransfers && !tabTransfers.classList.contains('hidden')) {
-      renderTransfers();
+      if (typeof window.renderTransfers === 'function') window.renderTransfers();
     }
-  }, (err) => console.warn('Transfers listener error:', err));
-
-  // 2. Escuchar solicitudes de dispositivo
-  const qD = query(collection(db,'deviceRequests'));
-  devicesBadgeUnsubscribe = onSnapshot(qD, (snap) => {
-    deviceRequestsAll = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    updateTransfersBadge();
-    const tabTransfers = $('tab-transfers');
-    if (tabTransfers && !tabTransfers.classList.contains('hidden')) {
-      renderTransfers();
-    }
-  }, (err) => console.warn('Devices listener error:', err));
-
-  // 3. 🆕 Escuchar intentos de acceso bloqueados
-  const qA = query(collection(db,'deviceAttempts'));
-  attemptsBadgeUnsubscribe = onSnapshot(qA, (snap) => {
-    deviceAttemptsAll = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    updateTransfersBadge();
-    const tabTransfers = $('tab-transfers');
-    if (tabTransfers && !tabTransfers.classList.contains('hidden')) {
-      renderTransfers();
-    }
-  }, (err) => console.warn('Attempts listener error:', err));
+  } catch (e) {
+    console.warn('[Badge] Error en polling:', e);
+  }
 }
 
 window.addEventListener('beforeunload', () => {
   if (transfersBadgeUnsubscribe) transfersBadgeUnsubscribe();
   if (devicesBadgeUnsubscribe) devicesBadgeUnsubscribe();
   if (attemptsBadgeUnsubscribe) attemptsBadgeUnsubscribe();
+  if (window.__transfersBadgeInterval) {
+    clearInterval(window.__transfersBadgeInterval);
+    window.__transfersBadgeInterval = null;
+  }
 });
 
 /* ============================================================
@@ -13619,3 +13876,13 @@ function setupDeviceHistoryListeners() {
 
 // Configurar listeners apenas carga el script
 setupDeviceHistoryListeners();
+
+/* ============================================================
+   EXPONER FUNCIONES DE PAGINACIÓN
+============================================================ */
+window.loadMoreSales = loadMoreSales;
+window.loadMoreProducts = loadMoreProducts;
+window.loadMoreInventory = loadMoreInventory;
+window.loadMoreCashRegisters = loadMoreCashRegisters;
+window.loadMoreShifts = loadMoreShifts;
+window.loadMoreAudit = loadMoreAudit;

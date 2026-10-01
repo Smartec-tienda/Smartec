@@ -803,6 +803,16 @@
             </thead>
           <tbody id="products-tbody"></tbody>
         </table>
+        <div class="p-3 border-t bg-gray-50 text-center">
+          <button id="load-more-products"
+            onclick="window.loadMoreProducts()"
+            class="bg-sd text-white px-5 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
+            ⬇️ Cargar más (100 más)
+          </button>
+          <p id="load-more-end-products" class="hidden text-xs text-gray-400 mt-2">
+            ✅ No hay más productos para mostrar
+          </p>
+        </div>
       </div>
     </section>
 <!-- ============ INVENTARIO ============ -->
@@ -887,6 +897,16 @@
       </thead>
       <tbody id="inventory-tbody"></tbody>
     </table>
+    <div class="p-3 border-t bg-gray-50 text-center">
+      <button id="load-more-inventory"
+        onclick="window.loadMoreInventory()"
+        class="bg-sd text-white px-5 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
+        ⬇️ Cargar más (100 más)
+      </button>
+      <p id="load-more-end-inventory" class="hidden text-xs text-gray-400 mt-2">
+        ✅ No hay más registros de inventario
+      </p>
+    </div>
   </div>
   <p id="inv-empty" class="hidden text-center py-8 text-gray-400">Sin registros de inventario con esos filtros.</p>
 </section>
@@ -966,6 +986,16 @@
             </thead>
             <tbody id="sales-tbody"></tbody>
           </table>
+        </div>
+        <div class="p-3 border-t bg-gray-50 text-center">
+          <button id="load-more-sales"
+            onclick="window.loadMoreSales()"
+            class="bg-sd text-white px-5 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
+            ⬇️ Cargar más (100 más)
+          </button>
+          <p id="load-more-end-sales" class="hidden text-xs text-gray-400 mt-2">
+            ✅ No hay más ventas para mostrar
+          </p>
         </div>
       </div>
     </section>
@@ -1525,6 +1555,16 @@
       </thead>
       <tbody id="arqueos-tbody"></tbody>
     </table>
+    <div class="p-3 border-t bg-gray-50 text-center">
+      <button id="load-more-cashRegisters"
+        onclick="window.loadMoreCashRegisters()"
+        class="bg-sd text-white px-5 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
+        ⬇️ Cargar más (50 más)
+      </button>
+      <p id="load-more-end-cashRegisters" class="hidden text-xs text-gray-400 mt-2">
+        ✅ No hay más arqueos para mostrar
+      </p>
+    </div>
   </div>
   <p id="arq-empty" class="hidden text-center py-8 text-gray-400">Sin arqueos con esos filtros.</p>
 </section>
@@ -1646,6 +1686,16 @@
             </thead>
             <tbody id="shift-hist-tbody"></tbody>
           </table>
+        </div>
+        <div class="p-3 border-t bg-gray-50 text-center">
+          <button id="load-more-shifts"
+            onclick="window.loadMoreShifts()"
+            class="bg-sd text-white px-5 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
+            ⬇️ Cargar más (50 más)
+          </button>
+          <p id="load-more-end-shifts" class="hidden text-xs text-gray-400 mt-2">
+            ✅ No hay más turnos para mostrar
+          </p>
         </div>
         <p id="shift-hist-empty" class="hidden text-center py-8 text-gray-400">Sin turnos en el período.</p>
       </div>
@@ -2254,6 +2304,16 @@
           </thead>
           <tbody id="audit-tbody"></tbody>
         </table>
+        <div class="p-3 border-t bg-gray-50 text-center">
+          <button id="load-more-auditLogs"
+            onclick="window.loadMoreAudit()"
+            class="bg-sd text-white px-5 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
+            ⬇️ Cargar más (100 más)
+          </button>
+          <p id="load-more-end-auditLogs" class="hidden text-xs text-gray-400 mt-2">
+            ✅ No hay más eventos para mostrar
+          </p>
+        </div>
       </div>
     </section>
 
