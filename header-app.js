@@ -212,6 +212,33 @@
 
         </div>
       </header>
+      <style>
+        /* FIX móvil: asegurar que el header no sea tapado y que sus botones sean clickeables */
+        #smartec-header-app {
+          position: relative;
+          z-index: 60;
+        }
+        #smartec-header-app header {
+          position: sticky;
+          top: 0;
+          z-index: 60;
+          pointer-events: auto;
+        }
+        #smartec-header-app header button,
+        #smartec-header-app header a {
+          pointer-events: auto;
+          position: relative;
+          z-index: 61;
+          cursor: pointer;
+        }
+        /* En móvil, dar más espacio a la fila de acciones */
+        @media (max-width: 767px) {
+          #smartec-header-app header .flex.md\\:hidden.flex-col.gap-2 > div:first-child {
+            flex-wrap: wrap;
+            row-gap: 6px;
+          }
+        }
+      </style>
     `;
   }
 
