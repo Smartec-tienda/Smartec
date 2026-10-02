@@ -2401,9 +2401,19 @@
           </button>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow">
-          <h3 class="font-bold text-sd mb-4">Categorías estacionales</h3>
-          <div id="seasonal-categories" class="space-y-3 text-sm"></div>
+        <div class="bg-white p-6 rounded-xl shadow lg:col-span-2">
+          <div class="flex justify-between items-start mb-4 flex-wrap gap-3">
+            <div>
+              <h3 class="font-bold text-sd mb-1">📂 Categorías y subcategorías</h3>
+              <p class="text-xs text-gray-500">Crea, edita, oculta o elimina las categorías del catálogo. Podrás ver los cambios reflejados en la tienda pública.</p>
+            </div>
+            <button onclick="openCategoriesManager()" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold whitespace-nowrap">
+              ⚙️ Gestionar categorías
+            </button>
+          </div>
+          <div id="categories-summary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+            <!-- Se llena dinámicamente desde renderSettings() -->
+          </div>
         </div>
 
         <!-- 🆕 IDENTIDAD VISUAL -->
@@ -2411,169 +2421,138 @@
           <h3 class="font-bold text-sd mb-4">🎨 Identidad visual</h3>
           <p class="text-xs text-gray-500 mb-6">Sube los logos de tu empresa. El del header aparece arriba en el catálogo, el del footer aparece al final de la página.</p>
 
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div class="grid grid-cols-1 gap-3">
 
             <!-- ============ LOGO DEL HEADER ============ -->
-            <div class="border border-gray-200 rounded-xl p-4">
-              <h4 class="font-bold text-sd text-sm mb-3 flex items-center gap-2">
-                🔝 Logo del header
-              </h4>
-              <p class="text-[10px] text-gray-500 mb-4">Se muestra arriba en el menú. Suele ser horizontal o cuadrado.</p>
-
-              <div class="bg-gray-50 rounded-xl p-4 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center min-h-[140px] mb-4">
-                <p class="text-[10px] text-gray-400 uppercase font-semibold mb-2">Vista previa</p>
-                <div id="logo-preview-container" class="w-full flex items-center justify-center">
-                  <p class="text-xs text-gray-400 italic">Sin logo</p>
+            <div class="border border-gray-200 rounded-xl p-3 flex items-center gap-4">
+              <!-- Preview -->
+              <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 w-24 h-24 flex items-center justify-center shrink-0 overflow-hidden">
+                <div id="logo-preview-container" class="w-full h-full flex items-center justify-center p-2">
+                  <!-- Se llena dinámicamente -->
                 </div>
               </div>
 
-              <input type="file" id="logo-file-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
-
-              <div id="logo-dropzone" class="img-dropzone mb-3">
-                <p class="text-xs text-gray-500">Arrastra o haz clic para subir</p>
-                <p class="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP o SVG · máx 5MB</p>
-              </div>
-
-              <div class="flex gap-2 flex-wrap">
-                <button type="button" onclick="document.getElementById('logo-file-input').click()"
-                  class="bg-sd text-white px-3 py-2 rounded-lg hover:bg-sl text-xs font-semibold">
-                  📤 Subir
-                </button>
-                <button type="button" id="logo-remove-btn"
-                  class="hidden bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 text-xs font-semibold">
-                  🗑 Eliminar
-                </button>
-                <button type="button" id="logo-save-btn"
-                  class="hidden bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-xs font-semibold">
-                  💾 Guardar
-                </button>
-              </div>
-
-              <div id="logo-progress-wrap" class="upload-progress-wrap">
-                <div class="flex justify-between items-center text-xs font-semibold text-sd">
-                  <span id="logo-progress-text">📤 Subiendo logo…</span>
+              <!-- Controles -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <h4 class="font-bold text-sd text-sm">🔝 Logo del header</h4>
+                  <span class="text-[10px] text-gray-400">JPG, PNG, WebP, SVG · máx 5MB</span>
                 </div>
-                <div class="upload-progress-bar">
-                  <div id="logo-progress-fill" class="upload-progress-fill"></div>
+                <p class="text-[10px] text-gray-500 mb-2">Aparece arriba en el menú. Suele ser horizontal o cuadrado.</p>
+
+                <input type="file" id="logo-file-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
+
+                <div class="flex gap-2 flex-wrap items-center">
+                  <button type="button" onclick="document.getElementById('logo-file-input').click()" class="bg-sd text-white px-3 py-1.5 rounded-lg hover:bg-sl text-xs font-semibold">
+                    📤 Subir
+                  </button>
+                  <button type="button" id="logo-remove-btn" class="hidden bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 text-xs font-semibold">
+                    🗑 Eliminar
+                  </button>
+                  <button type="button" id="logo-save-btn" class="hidden bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 text-xs font-semibold">
+                    💾 Guardar
+                  </button>
+                  <span id="logo-status-msg" class="text-xs hidden"></span>
+                </div>
+
+                <div id="logo-progress-wrap" class="upload-progress-wrap" style="margin-top:8px;padding:6px 10px;">
+                  <div class="flex justify-between items-center text-[10px] font-semibold text-sd">
+                    <span id="logo-progress-text">📤 Subiendo…</span>
+                  </div>
+                  <div class="upload-progress-bar" style="margin-top:4px;">
+                    <div id="logo-progress-fill" class="upload-progress-fill"></div>
+                  </div>
                 </div>
               </div>
-
-              <p id="logo-status-msg" class="text-xs hidden mt-2"></p>
             </div>
 
             <!-- ============ LOGO DEL FOOTER ============ -->
-            <div class="border border-gray-200 rounded-xl p-4">
-              <h4 class="font-bold text-sd text-sm mb-3 flex items-center gap-2">
-                🔻 Logo del footer
-              </h4>
-              <p class="text-[10px] text-gray-500 mb-4">Se muestra al final de la página. Puede incluir slogan.</p>
-
-              <div class="bg-gray-50 rounded-xl p-4 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center min-h-[140px] mb-4">
-                <p class="text-[10px] text-gray-400 uppercase font-semibold mb-2">Vista previa</p>
-                <div id="footer-logo-preview-container" class="w-full flex items-center justify-center">
-                  <p class="text-xs text-gray-400 italic">Sin logo</p>
+            <div class="border border-gray-200 rounded-xl p-3 flex items-center gap-4">
+              <!-- Preview -->
+              <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 w-24 h-24 flex items-center justify-center shrink-0 overflow-hidden">
+                <div id="footer-logo-preview-container" class="w-full h-full flex items-center justify-center p-2">
+                  <!-- Se llena dinámicamente -->
                 </div>
               </div>
 
-              <input type="file" id="footer-logo-file-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
-
-              <div id="footer-logo-dropzone" class="img-dropzone mb-3">
-                <p class="text-xs text-gray-500">Arrastra o haz clic para subir</p>
-                <p class="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP o SVG · máx 5MB</p>
-              </div>
-
-              <div class="flex gap-2 flex-wrap">
-                <button type="button" onclick="document.getElementById('footer-logo-file-input').click()"
-                  class="bg-sd text-white px-3 py-2 rounded-lg hover:bg-sl text-xs font-semibold">
-                  📤 Subir
-                </button>
-                <button type="button" id="footer-logo-remove-btn"
-                  class="hidden bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 text-xs font-semibold">
-                  🗑 Eliminar
-                </button>
-                <button type="button" id="footer-logo-save-btn"
-                  class="hidden bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-xs font-semibold">
-                  💾 Guardar
-                </button>
-              </div>
-
-              <div id="footer-logo-progress-wrap" class="upload-progress-wrap">
-                <div class="flex justify-between items-center text-xs font-semibold text-sd">
-                  <span id="footer-logo-progress-text">📤 Subiendo logo…</span>
+              <!-- Controles -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <h4 class="font-bold text-sd text-sm">🔻 Logo del footer</h4>
+                  <span class="text-[10px] text-gray-400">JPG, PNG, WebP, SVG · máx 5MB</span>
                 </div>
-                <div class="upload-progress-bar">
-                  <div id="footer-logo-progress-fill" class="upload-progress-fill"></div>
+                <p class="text-[10px] text-gray-500 mb-2">Aparece al final de la página. Puede incluir slogan.</p>
+
+                <input type="file" id="footer-logo-file-input" accept="image/jpeg,image/png,image/webp,image/svg+xml" class="hidden">
+
+                <div class="flex gap-2 flex-wrap items-center">
+                  <button type="button" onclick="document.getElementById('footer-logo-file-input').click()" class="bg-sd text-white px-3 py-1.5 rounded-lg hover:bg-sl text-xs font-semibold">
+                    📤 Subir
+                  </button>
+                  <button type="button" id="footer-logo-remove-btn" class="hidden bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 text-xs font-semibold">
+                    🗑 Eliminar
+                  </button>
+                  <button type="button" id="footer-logo-save-btn" class="hidden bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 text-xs font-semibold">
+                    💾 Guardar
+                  </button>
+                  <span id="footer-logo-status-msg" class="text-xs hidden"></span>
+                </div>
+
+                <div id="footer-logo-progress-wrap" class="upload-progress-wrap" style="margin-top:8px;padding:6px 10px;">
+                  <div class="flex justify-between items-center text-[10px] font-semibold text-sd">
+                    <span id="footer-logo-progress-text">📤 Subiendo…</span>
+                  </div>
+                  <div class="upload-progress-bar" style="margin-top:4px;">
+                    <div id="footer-logo-progress-fill" class="upload-progress-fill"></div>
+                  </div>
                 </div>
               </div>
-
-              <p id="footer-logo-status-msg" class="text-xs hidden mt-2"></p>
             </div>
 
-                      <!-- ============ FAVICON (ícono de la pestaña) ============ -->
-            <div class="border border-gray-200 rounded-xl p-4 lg:col-span-2">
-              <h4 class="font-bold text-sd text-sm mb-3 flex items-center gap-2">
-                ⭐ Favicon (ícono de la pestaña)
-              </h4>
-              <p class="text-[10px] text-gray-500 mb-4">
-                Es el ícono que aparece en la pestaña del navegador y en los marcadores. Recomendado: PNG cuadrado 512×512 o 32×32.
-              </p>
+            <!-- ============ FAVICON ============ -->
+            <div class="border border-gray-200 rounded-xl p-3 flex items-center gap-4">
+              <!-- Preview -->
+              <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 w-24 h-24 flex items-center justify-center shrink-0 overflow-hidden">
+                <div id="favicon-preview-container" class="w-full h-full flex items-center justify-center p-3">
+                  <!-- Se llena dinámicamente -->
+                </div>
+              </div>
 
-              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Controles -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <h4 class="font-bold text-sd text-sm">⭐ Favicon (ícono de la pestaña)</h4>
+                  <span class="text-[10px] text-gray-400">PNG, JPG, WebP, SVG, ICO · máx 2MB</span>
+                </div>
+                <p class="text-[10px] text-gray-500 mb-2">Aparece en la pestaña del navegador. Recomendado: PNG cuadrado 512×512 o 32×32.</p>
 
-                <!-- Vista previa -->
-                <div>
-                  <div class="bg-gray-50 rounded-xl p-4 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center min-h-[140px] mb-4">
-                    <p class="text-[10px] text-gray-400 uppercase font-semibold mb-2">Vista previa</p>
-                    <div id="favicon-preview-container" class="w-full flex items-center justify-center">
-                      <p class="text-xs text-gray-400 italic">Sin favicon</p>
-                    </div>
-                  </div>
-                  <p class="text-[10px] text-gray-400 text-center">
-                    Así se verá en la pestaña (aprox. 32×32)
-                  </p>
+                <input type="file" id="favicon-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon" class="hidden">
+
+                <div class="flex gap-2 flex-wrap items-center">
+                  <button type="button" onclick="document.getElementById('favicon-file-input').click()" class="bg-sd text-white px-3 py-1.5 rounded-lg hover:bg-sl text-xs font-semibold">
+                    📤 Subir favicon
+                  </button>
+                  <button type="button" id="favicon-remove-btn" class="hidden bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 text-xs font-semibold">
+                    🗑 Eliminar
+                  </button>
+                  <button type="button" id="favicon-save-btn" class="hidden bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 text-xs font-semibold">
+                    💾 Guardar
+                  </button>
+                  <span id="favicon-status-msg" class="text-xs hidden"></span>
                 </div>
 
-                <!-- Controles -->
-                <div>
-                  <input type="file" id="favicon-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon" class="hidden">
-
-                  <div id="favicon-dropzone" class="img-dropzone mb-3">
-                    <p class="text-xs text-gray-500">Arrastra o haz clic para subir</p>
-                    <p class="text-[10px] text-gray-400 mt-1">PNG, JPG, WebP, SVG o ICO · máx 2MB</p>
+                <div id="favicon-progress-wrap" class="upload-progress-wrap" style="margin-top:8px;padding:6px 10px;">
+                  <div class="flex justify-between items-center text-[10px] font-semibold text-sd">
+                    <span id="favicon-progress-text">📤 Subiendo…</span>
                   </div>
-
-                  <div class="flex gap-2 flex-wrap">
-                    <button type="button" onclick="document.getElementById('favicon-file-input').click()"
-                      class="bg-sd text-white px-3 py-2 rounded-lg hover:bg-sl text-xs font-semibold">
-                      📤 Subir favicon
-                    </button>
-                    <button type="button" id="favicon-remove-btn"
-                      class="hidden bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 text-xs font-semibold">
-                      🗑 Eliminar
-                    </button>
-                    <button type="button" id="favicon-save-btn"
-                      class="hidden bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-xs font-semibold">
-                      💾 Guardar
-                    </button>
+                  <div class="upload-progress-bar" style="margin-top:4px;">
+                    <div id="favicon-progress-fill" class="upload-progress-fill"></div>
                   </div>
-
-                  <div id="favicon-progress-wrap" class="upload-progress-wrap">
-                    <div class="flex justify-between items-center text-xs font-semibold text-sd">
-                      <span id="favicon-progress-text">📤 Subiendo favicon…</span>
-                    </div>
-                    <div class="upload-progress-bar">
-                      <div id="favicon-progress-fill" class="upload-progress-fill"></div>
-                    </div>
-                  </div>
-
-                  <p id="favicon-status-msg" class="text-xs hidden mt-2"></p>
                 </div>
-
               </div>
             </div>
-          
+
           </div>
-        </div>
       </div>
     </section>
 
@@ -2757,6 +2736,64 @@
     <h3 class="text-xl font-bold text-sd mb-1 pr-10">✅ Confirmar cobro</h3>
     <p id="confirm-payment-subtitle" class="text-xs text-gray-400 mb-5"></p>
     <div id="confirm-payment-body">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL GESTOR DE CATEGORÍAS (LISTADO) ============ -->
+<div id="categories-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeCategoriesManager()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeCategoriesManager()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <div class="flex justify-between items-start mb-5 pr-10 flex-wrap gap-3">
+      <div>
+        <h3 class="text-xl font-bold text-sd">📂 Gestión de categorías</h3>
+        <p class="text-xs text-gray-400 mt-1">Crea, edita, oculta o elimina categorías y subcategorías del catálogo.</p>
+      </div>
+      <button onclick="openCategoryForm(null)" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold whitespace-nowrap">
+        + Nueva categoría
+      </button>
+    </div>
+    <div id="categories-list" class="space-y-3">
+      <!-- Se llena dinámicamente -->
+    </div>
+    <p id="categories-empty" class="hidden text-center py-8 text-gray-400 text-sm">
+      Aún no hay categorías. Haz clic en "+ Nueva categoría" para crear la primera.
+    </p>
+  </div>
+</div>
+
+<!-- ============ MODAL FORM DE CATEGORÍA / SUBCATEGORÍA ============ -->
+<div id="category-form-modal" class="fixed inset-0 z-[70] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/70 pointer-events-auto" onclick="closeCategoryForm()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin">
+    <button onclick="closeCategoryForm()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="category-form-title" class="text-xl font-bold text-sd mb-1 pr-10">Nueva categoría</h3>
+    <p id="category-form-subtitle" class="text-xs text-gray-400 mb-5"></p>
+    <div id="category-form-body">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL CONFIRMAR ELIMINACIÓN DE CATEGORÍA ============ -->
+<div id="category-delete-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/80 pointer-events-auto" onclick="closeCategoryDeleteModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 pointer-events-auto">
+    <button onclick="closeCategoryDeleteModal()" class="absolute top-3 right-3 z-20 p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <div class="text-center mb-5">
+      <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3 text-3xl">🗑</div>
+      <h3 id="category-delete-title" class="text-xl font-bold text-red-700">Eliminar categoría</h3>
+      <p id="category-delete-subtitle" class="text-sm text-gray-500 mt-1"></p>
+    </div>
+    <div id="category-delete-body">
       <!-- Se llena dinámicamente -->
     </div>
   </div>

@@ -32,8 +32,8 @@
           <!-- Contacto -->
           <div>
             <h4 class="font-semibold mb-4 text-sm text-[#1D1D1F]">Contacto</h4>
-            <ul class="space-y-2 text-sm text-[#6E6E73]">
-              <li>WhatsApp: +57 310 430 4428</li>
+            <ul id="footer-contact" class="space-y-2 text-sm text-[#6E6E73]">
+              <li>WhatsApp: —</li>
               <li>Soporte: 24/7</li>
             </ul>
           </div>
@@ -100,6 +100,9 @@
       renderCategories(settings.categories);
     }
 
+    // 🆕 Renderizar datos de contacto (WhatsApp, email, etc.)
+    renderContact(settings);
+
     if (typeof opts.onReady === 'function') opts.onReady();
   }
 
@@ -125,15 +128,76 @@
     `).join('');
   }
 
+    /**
+   * 🆕 Renderiza los datos de contacto desde settings.
+   * Usa settings.whatsapp, settings.companyPhone, settings.companyEmail.
+   */
+  function renderContact(settings) {
+    const el = document.getElementById('footer-contact');
+    if (!el) return;
+
+    const lines = [];
+
+    // WhatsApp (prioridad 1) o companyPhone (fallback)
+    const rawWhats = String(settings.whatsapp || '').replace(/\D/g, '');
+    const rawPhone  = String(settings.companyPhone || '').replace(/\D/g, '');
+    const phoneToShow = settings.whatsapp || settings.companyPhone || '';
+
+    if (phoneToShow) {
+      // Si tiene 10 dígitos, es celular CO → agregamos +57 para mostrar
+      let display = String(phoneToShow).trim();
+      if (rawWhats.length === 10) display = '+57 ' + rawWhats.slice(0, 3) + ' ' + rawWhats.slice(3, 6) + ' ' + rawWhats.slice(6);
+      else if (rawPhone.length === 10) display = '+57 ' + rawPhone.slice(0, 3) + ' ' + rawPhone.slice(3, 6) + ' ' + rawPhone.slice(6);
+
+      // Link de WhatsApp: si tiene 10 dígitos, agregamos 57 adelante
+      const linkDigits = rawWhats || rawPhone;
+      const waLink = linkDigits.length === 10 ? '57' + linkDigits : linkDigits;
+
+      lines.push(`
+        <li>
+          <a href="https://wa.me/${escapeHtml(waLink)}" target="_blank" rel="noopener"
+             class="hover:text-[#0071E3] transition">
+            WhatsApp: ${escapeHtml(display)}
+          </a>
+        </li>
+      `);
+    }
+
+    // Teléfono corporativo (si es distinto del WhatsApp)
+    if (settings.companyPhone && settings.companyPhone !== settings.whatsapp) {
+      lines.push(`<li>Tel: ${escapeHtml(settings.companyPhone)}</li>`);
+    }
+
+    // Email
+    if (settings.companyEmail) {
+      lines.push(`
+        <li>
+          <a href="mailto:${escapeHtml(settings.companyEmail)}"
+             class="hover:text-[#0071E3] transition">
+            ${escapeHtml(settings.companyEmail)}
+          </a>
+        </li>
+      `);
+    }
+
+    // Dirección
+    if (settings.companyAddress) {
+      lines.push(`<li>📍 ${escapeHtml(settings.companyAddress)}</li>`);
+    }
+
+    // Soporte (siempre)
+    lines.push('<li>Soporte: 24/7</li>');
+
+    el.innerHTML = lines.join('');
+  }
+
+
   /**
-   * ¿La categoría es visible según su config de temporada?
+   * ¿La categoría es visible?
+   * Nueva regla: visible por defecto, solo se oculta si seasonalActive === false.
    */
   function isCategoryVisible(slug, group) {
-    if (!group.seasonal) return true;
-    if (group.seasonalActive === false) return false;
-    if (group.seasonalActive === true) return true;
-    const month = new Date().getMonth() + 1;
-    return month === 12;
+    return group.seasonalActive !== false;
   }
 
   /**

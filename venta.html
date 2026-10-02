@@ -1503,14 +1503,7 @@ function initPosPayments() {
   function renderCategoryFilters() {
     const el = $('category-filters');
     const activeGroups = Object.entries(categories)
-      .filter(([_,g]) => {
-        if (!g.seasonal) return true;
-        // Si es estacional, verificar si está activa
-        if (g.seasonalActive === false) return false;
-        // Si no está activa explícitamente, mostrar solo en diciembre
-        const month = new Date().getMonth() + 1;
-        return month === 12;
-      })
+      .filter(([_,g]) => g.seasonalActive !== false)
       .sort((a,b) => (a[1].order||0) - (b[1].order||0));
 
     el.innerHTML = `

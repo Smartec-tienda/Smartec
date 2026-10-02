@@ -18,13 +18,9 @@
   /**
    * Devuelve true si la categoría debe mostrarse según la temporada.
    */
-  function isCategoryVisible(slug, group) {
-    if (!group.seasonal) return true;
-    if (group.seasonalActive === false) return false;
-    if (group.seasonalActive === true) return true;
-    const month = new Date().getMonth() + 1;
-    return month === 12;
-  }
+function isCategoryVisible(slug, group) {
+  return group.seasonalActive !== false;
+}
 
   /**
    * Escape básico.

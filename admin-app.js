@@ -6134,6 +6134,9 @@ function renderSettings() {
   // 🆕 Actualizar contadores de métodos de pago
   renderPaymentStats();
 
+  // 🆕 Actualizar el resumen de categorías
+  renderCategoriesSummary();
+
   $('set-whatsapp').value = settings.whatsapp || '';
   $('set-minstock').value = settings.minStock || 5;
   $('set-taxEnabled').checked = !!settings.taxEnabled;
@@ -6151,16 +6154,6 @@ function renderSettings() {
   // 🆕 Render logo
    renderLogoPreview();
 
-  // Categorías estacionales
-  const el = $('seasonal-categories');
-  const cats = settings.categories || {};
-  const seasonal = Object.entries(cats).filter(([_,g]) => g.seasonal);
-  el.innerHTML = seasonal.length ? seasonal.map(([slug, g]) => `
-    <label class="flex items-center gap-2">
-      <input type="checkbox" data-seasonal="${slug}" ${g.seasonalActive!==false?'checked':''} class="w-4 h-4">
-      ${g.name} <span class="text-xs text-gray-400">(estacional)</span>
-    </label>
-  `).join('') : '<p class="text-gray-400 text-xs">Sin categorías estacionales</p>';
 }
 
 /* ============================================================
@@ -6240,24 +6233,19 @@ function renderLogoPreview() {
   if (favContainer) {
     if (_pendingFaviconFile) {
       const blobUrl = URL.createObjectURL(_pendingFaviconFile);
-      favContainer.innerHTML = `<img src="${blobUrl}" class="max-h-24 max-w-full object-contain" style="image-rendering: crisp-edges">`;
+      favContainer.innerHTML = `<img src="${blobUrl}" class="max-h-full max-w-full object-contain" style="image-rendering: crisp-edges">`;
       favRemoveBtn?.classList.remove('hidden');
       favSaveBtn?.classList.remove('hidden');
       if (favRemoveBtn) favRemoveBtn.innerText = '↩️ Descartar';
     } else {
       _currentFaviconUrl = settings.faviconUrl || null;
       if (_currentFaviconUrl) {
-        favContainer.innerHTML = `
-          <div class="flex items-center gap-3">
-            <img src="${_currentFaviconUrl}" class="h-8 w-8 object-contain" style="image-rendering: crisp-edges">
-            <span class="text-[10px] text-gray-500">${_currentFaviconUrl.split('/').pop().split('?')[0]}</span>
-          </div>
-        `;
+        favContainer.innerHTML = `<img src="${_currentFaviconUrl}" class="max-h-full max-w-full object-contain" style="image-rendering: crisp-edges">`;
         favRemoveBtn?.classList.remove('hidden');
         favSaveBtn?.classList.add('hidden');
         if (favRemoveBtn) favRemoveBtn.innerText = '🗑 Eliminar';
       } else {
-        favContainer.innerHTML = '<p class="text-xs text-gray-400 italic">Sin favicon</p>';
+        favContainer.innerHTML = '<p class="text-[10px] text-gray-400 italic text-center">Sin favicon</p>';
         favRemoveBtn?.classList.add('hidden');
         favSaveBtn?.classList.add('hidden');
       }
@@ -6695,6 +6683,1078 @@ document.querySelectorAll('[data-seasonal]').forEach(cb => {
     }
   });
 });
+
+/* ============================================================
+   🆕 GESTOR DE CATEGORÍAS Y SUBCATEGORÍAS
+   ============================================================ */
+
+/**
+ * Estado temporal mientras el gestor está abierto.
+ * Se llena al abrir el modal y se limpia al cerrar.
+ */
+let _categoriesDraft = null;
+
+/**
+ * Lee las categorías actuales desde settings (o desde el draft si está abierto).
+ */
+function getCategoriesSource() {
+  if (_categoriesDraft) return _categoriesDraft;
+  return settings.categories || {};
+}
+
+/**
+ * Genera un slug a partir de un texto.
+ * Ej: "Ropa Deportiva" → "ropa-deportiva"
+ */
+function slugify(text) {
+  return String(text || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // quitar acentos
+    .replace(/[^a-z0-9\s-]/g, '')                        // quitar símbolos
+    .trim()
+    .replace(/\s+/g, '-')                                // espacios → guiones
+    .replace(/-+/g, '-');                                // guiones múltiples → uno
+}
+
+/**
+ * Genera un slug único dentro de un objeto de categorías/subcategorías.
+ * Si ya existe, le agrega -2, -3, etc.
+ */
+function uniqueSlug(baseSlug, existingKeys) {
+  const keys = new Set(existingKeys || []);
+  if (!keys.has(baseSlug)) return baseSlug;
+  let i = 2;
+  while (keys.has(`${baseSlug}-${i}`)) i++;
+  return `${baseSlug}-${i}`;
+}
+
+/**
+ * Renderiza el resumen compacto en la sección de Configuración.
+ * Muestra 4 contadores: total categorías, visibles, total subcategorías, ocultas.
+ */
+function renderCategoriesSummary() {
+  const el = $('categories-summary');
+  if (!el) return;
+
+  const cats = settings.categories || {};
+  const catEntries = Object.entries(cats);
+
+  const totalCats = catEntries.length;
+  const visibleCats = catEntries.filter(([_, g]) => g.seasonalActive !== false).length;
+  const hiddenCats = totalCats - visibleCats;
+
+  let totalSubs = 0;
+  let visibleSubs = 0;
+  catEntries.forEach(([_, g]) => {
+    const subs = Object.entries(g.subcategories || {});
+    totalSubs += subs.length;
+    visibleSubs += subs.filter(([_, s]) => s.seasonalActive !== false).length;
+  });
+
+  el.innerHTML = `
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+      <p class="text-[10px] text-blue-700 uppercase font-semibold">Categorías</p>
+      <p class="text-xl font-bold text-sd mt-1">${totalCats}</p>
+      <p class="text-[10px] text-gray-500 mt-0.5">${visibleCats} visibles · ${hiddenCats} ocultas</p>
+    </div>
+    <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+      <p class="text-[10px] text-purple-700 uppercase font-semibold">Subcategorías</p>
+      <p class="text-xl font-bold text-sd mt-1">${totalSubs}</p>
+      <p class="text-[10px] text-gray-500 mt-0.5">${visibleSubs} visibles</p>
+    </div>
+    <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+      <p class="text-[10px] text-green-700 uppercase font-semibold">Productos activos</p>
+      <p class="text-xl font-bold text-sd mt-1">${products.filter(p => p.active !== false).length}</p>
+      <p class="text-[10px] text-gray-500 mt-0.5">en el catálogo</p>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+      <p class="text-[10px] text-amber-700 uppercase font-semibold">Con inventario</p>
+      <p class="text-xl font-bold text-sd mt-1">${(() => {
+        const catSet = new Set();
+        inventory.forEach(i => {
+          if (Number(i.stock || 0) > 0) {
+            const p = products.find(x => x.id === i.productId);
+            if (p && p.categoryGroup) catSet.add(p.categoryGroup);
+          }
+        });
+        return catSet.size;
+      })()}</p>
+      <p class="text-[10px] text-gray-500 mt-0.5">categorías bloqueadas para eliminar</p>
+    </div>
+  `;
+}
+
+/* ============================================================
+   ABRIR / CERRAR GESTOR
+============================================================ */
+window.openCategoriesManager = () => {
+  // Clonar settings.categories en el draft (para no ensuciar hasta guardar)
+  _categoriesDraft = JSON.parse(JSON.stringify(settings.categories || {}));
+
+  renderCategoriesList();
+
+  const m = $('categories-modal');
+  if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+};
+
+window.closeCategoriesManager = () => {
+  _categoriesDraft = null;
+  const m = $('categories-modal');
+  if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+};
+
+/* ============================================================
+   LISTAR CATEGORÍAS + SUBCATEGORÍAS
+============================================================ */
+function renderCategoriesList() {
+  const listEl = $('categories-list');
+  const emptyEl = $('categories-empty');
+  if (!listEl) return;
+
+  const cats = getCategoriesSource();
+  const entries = Object.entries(cats).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
+
+  if (!entries.length) {
+    listEl.innerHTML = '';
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+
+  listEl.innerHTML = entries.map(([slug, g]) => {
+    const subs = Object.entries(g.subcategories || {})
+      .sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
+
+    // Contadores: productos y stock total de esta categoría
+    const productsOfCat = products.filter(p => p.categoryGroup === slug);
+    const activeProductsOfCat = productsOfCat.filter(p => p.active !== false);
+    const productIdsOfCat = new Set(productsOfCat.map(p => p.id));
+    const stockOfCat = inventory
+      .filter(i => productIdsOfCat.has(i.productId))
+      .reduce((sum, i) => sum + Number(i.stock || 0), 0);
+
+    const isVisible = g.seasonalActive !== false;
+    const visibilityBadge = isVisible
+      ? '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">👁 Visible</span>'
+      : '<span class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-semibold">🚫 Oculta</span>';
+
+    const stockBadge = stockOfCat > 0
+      ? `<span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">📦 ${stockOfCat} en stock</span>`
+      : '';
+
+    const subsHtml = subs.length
+      ? subs.map(([subSlug, s]) => {
+          const subVisible = s.seasonalActive !== false;
+          const subBadge = subVisible
+            ? '<span class="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">👁</span>'
+            : '<span class="text-[9px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full font-semibold">🚫</span>';
+          const productsOfSub = products.filter(p => p.categoryGroup === slug && p.category === subSlug);
+          const stockOfSub = inventory
+            .filter(i => productsOfSub.some(p => p.id === i.productId))
+            .reduce((sum, i) => sum + Number(i.stock || 0), 0);
+          const subStockBadge = stockOfSub > 0
+            ? `<span class="text-[9px] text-red-600 ml-1">📦 ${stockOfSub}</span>`
+            : '';
+
+          return `
+            <div class="sub-row flex items-center justify-between py-1.5 pl-6 border-b border-gray-100 last:border-0 cursor-move"
+                 draggable="true"
+                 data-cat-slug="${slug}"
+                 data-sub-slug="${subSlug}">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <span class="drag-handle text-gray-300 hover:text-gray-500 select-none" title="Arrastra para reordenar">⋮⋮</span>
+                <span class="text-xs text-gray-500">└</span>
+                <span class="text-xs text-gray-700 truncate">${escapeHtml(s.name)}</span>
+                ${subBadge}
+                ${subStockBadge}
+                <span class="text-[10px] text-gray-400">(${productsOfSub.length} prod.)</span>
+              </div>
+              <div class="flex gap-2 shrink-0">
+                <button onclick="toggleSubcategoryVisibility('${slug}','${subSlug}')" class="text-[10px] text-sl hover:underline font-semibold">
+                  ${subVisible ? '🚫 Ocultar' : '👁 Mostrar'}
+                </button>
+                <button onclick="openCategoryForm('${slug}','${subSlug}')" class="text-[10px] text-sl hover:underline font-semibold">✏️</button>
+                <button onclick="confirmDeleteSubcategory('${slug}','${subSlug}')" class="text-[10px] text-red-500 hover:underline font-semibold">🗑</button>
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '<p class="text-[10px] text-gray-400 italic pl-6 py-1">Sin subcategorías</p>';
+
+    return `
+      <div class="category-card border rounded-lg overflow-hidden bg-white transition-shadow"
+           draggable="true"
+           data-cat-slug="${slug}">
+        <div class="p-4 flex justify-between items-start gap-3 flex-wrap">
+          <div class="min-w-0 flex-1 flex items-start gap-2">
+            <span class="drag-handle text-gray-300 hover:text-gray-500 select-none mt-1 cursor-move text-lg leading-none" title="Arrastra para reordenar">⋮⋮</span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h4 class="font-bold text-sd text-sm">${escapeHtml(g.name)}</h4>
+                ${visibilityBadge}
+                ${stockBadge}
+              </div>
+              <p class="text-[10px] text-gray-400 font-mono mt-0.5">${slug}</p>
+              <p class="text-[10px] text-gray-500 mt-1">
+                ${activeProductsOfCat.length} producto(s) activo(s) · ${subs.length} subcategoría(s)
+              </p>
+            </div>
+          </div>
+          <div class="flex gap-2 flex-wrap shrink-0">
+            <button onclick="toggleCategoryVisibility('${slug}')" class="text-[10px] ${isVisible ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-green-100 text-green-700 hover:bg-green-200'} px-3 py-1.5 rounded-full font-semibold transition">
+              ${isVisible ? '🚫 Ocultar' : '👁 Mostrar'}
+            </button>
+            <button onclick="openCategoryForm('${slug}')" class="text-[10px] bg-sl text-white px-3 py-1.5 rounded-full font-semibold hover:bg-sd transition">
+              ✏️ Editar
+            </button>
+            <button onclick="openCategoryForm('${slug}', null, true)" class="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-full font-semibold hover:bg-blue-100 transition">
+              + Subcategoría
+            </button>
+            <button onclick="confirmDeleteCategory('${slug}')" class="text-[10px] bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-full font-semibold hover:bg-red-100 transition">
+              🗑
+            </button>
+          </div>
+        </div>
+        <div class="subs-container bg-gray-50 border-t border-gray-100">
+          ${subsHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // 🆕 Activar drag & drop después de renderizar
+  attachCategoryDragListeners();
+}
+
+/* ============================================================
+   🆕 DRAG & DROP — REORDENAR CATEGORÍAS Y SUBCATEGORÍAS
+   Versión robusta: usa un solo listener global en el contenedor
+============================================================ */
+
+function attachCategoryDragListeners() {
+  const listEl = $('categories-list');
+  if (!listEl) return;
+
+  // Evitar enganchar múltiples veces
+  if (listEl.dataset.dragListeners === '1') return;
+  listEl.dataset.dragListeners = '1';
+
+  let dragType = null;     // 'category' | 'subcategory'
+  let dragCatSlug = null;
+  let dragSubSlug = null;
+
+  // ============================================================
+  // DRAGSTART — capturamos qué se está arrastrando
+  // ============================================================
+  listEl.addEventListener('dragstart', (e) => {
+    const subRow = e.target.closest('.sub-row');
+    const catCard = e.target.closest('.category-card');
+
+    if (subRow) {
+      dragType = 'subcategory';
+      dragCatSlug = subRow.dataset.catSlug;
+      dragSubSlug = subRow.dataset.subSlug;
+      subRow.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', 'sub');
+      return;
+    }
+
+    if (catCard) {
+      dragType = 'category';
+      dragCatSlug = catCard.dataset.catSlug;
+      dragSubSlug = null;
+      catCard.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', 'cat');
+      return;
+    }
+  });
+
+  // ============================================================
+  // DRAGEND — limpiamos todo
+  // ============================================================
+  listEl.addEventListener('dragend', (e) => {
+    // Restaurar opacidad
+    listEl.querySelectorAll('.category-card, .sub-row').forEach(el => {
+      el.style.opacity = '';
+      el.classList.remove('border-sl', 'shadow-md', 'bg-blue-100', 'ring-2', 'ring-sl');
+    });
+
+    dragType = null;
+    dragCatSlug = null;
+    dragSubSlug = null;
+  });
+
+  // ============================================================
+  // DRAGOVER — habilitamos el drop y mostramos feedback visual
+  // ============================================================
+  listEl.addEventListener('dragover', (e) => {
+    if (!dragType) return;
+
+    if (dragType === 'category') {
+      const targetCard = e.target.closest('.category-card');
+      if (!targetCard) return;
+      if (targetCard.dataset.catSlug === dragCatSlug) return;
+
+      e.preventDefault();   // 🔑 ESTO habilita el drop
+      e.dataTransfer.dropEffect = 'move';
+      targetCard.classList.add('border-sl', 'shadow-md');
+      return;
+    }
+
+    if (dragType === 'subcategory') {
+      const targetSub = e.target.closest('.sub-row');
+      if (!targetSub) return;
+      if (targetSub.dataset.catSlug !== dragCatSlug) return;
+      if (targetSub.dataset.subSlug === dragSubSlug) return;
+
+      e.preventDefault();   // 🔑 ESTO habilita el drop
+      e.dataTransfer.dropEffect = 'move';
+      targetSub.classList.add('bg-blue-100', 'ring-2', 'ring-sl');
+      return;
+    }
+  });
+
+  // ============================================================
+  // DRAGLEAVE — quitamos feedback visual
+  // ============================================================
+  listEl.addEventListener('dragleave', (e) => {
+    const target = e.target.closest('.category-card, .sub-row');
+    if (!target) return;
+    target.classList.remove('border-sl', 'shadow-md', 'bg-blue-100', 'ring-2', 'ring-sl');
+  });
+
+  // ============================================================
+  // DROP — ejecutamos el reordenamiento
+  // ============================================================
+  listEl.addEventListener('drop', async (e) => {
+    if (!dragType) return;
+
+    if (dragType === 'category') {
+      const targetCard = e.target.closest('.category-card');
+      if (!targetCard) return;
+      if (targetCard.dataset.catSlug === dragCatSlug) return;
+
+      e.preventDefault();
+      const fromSlug = dragCatSlug;
+      const toSlug = targetCard.dataset.catSlug;
+
+      dragType = null;
+      dragCatSlug = null;
+
+      await reorderCategory(fromSlug, toSlug);
+      return;
+    }
+
+    if (dragType === 'subcategory') {
+      const targetSub = e.target.closest('.sub-row');
+      if (!targetSub) return;
+      if (targetSub.dataset.catSlug !== dragCatSlug) return;
+      if (targetSub.dataset.subSlug === dragSubSlug) return;
+
+      e.preventDefault();
+      const fromCat = dragCatSlug;
+      const fromSub = dragSubSlug;
+      const toSub = targetSub.dataset.subSlug;
+
+      dragType = null;
+      dragCatSlug = null;
+      dragSubSlug = null;
+
+      await reorderSubcategory(fromCat, fromSub, toSub);
+      return;
+    }
+  });
+}
+/* ============================================================
+   REORDENAR: intercambia los valores de `order` entre dos items
+============================================================ */
+async function reorderCategory(fromSlug, toSlug) {
+  const cats = getCategoriesSource();
+  if (!cats[fromSlug] || !cats[toSlug]) return;
+
+  const fromOrder = Number(cats[fromSlug].order || 0);
+  const toOrder = Number(cats[toSlug].order || 0);
+
+  // Intercambiar
+  cats[fromSlug].order = toOrder;
+  cats[toSlug].order = fromOrder;
+
+  await persistCategories(
+    `🔄 Reordenadas: "${cats[fromSlug].name}" ↔ "${cats[toSlug].name}"`
+  );
+}
+
+async function reorderSubcategory(catSlug, fromSubSlug, toSubSlug) {
+  const cats = getCategoriesSource();
+  if (!cats[catSlug] || !cats[catSlug].subcategories) return;
+  const subs = cats[catSlug].subcategories;
+  if (!subs[fromSubSlug] || !subs[toSubSlug]) return;
+
+  const fromOrder = Number(subs[fromSubSlug].order || 0);
+  const toOrder = Number(subs[toSubSlug].order || 0);
+
+  // Intercambiar
+  subs[fromSubSlug].order = toOrder;
+  subs[toSubSlug].order = fromOrder;
+
+  await persistCategories(
+    `🔄 Reordenadas subcategorías: "${subs[fromSubSlug].name}" ↔ "${subs[toSubSlug].name}"`
+  );
+}
+/* ============================================================
+   TOGGLE DE VISIBILIDAD (persiste inmediatamente)
+   🆕 Advertencia si hay productos activos al OCULTAR
+============================================================ */
+window.toggleCategoryVisibility = async (catSlug) => {
+  const cats = getCategoriesSource();
+  if (!cats[catSlug]) return;
+
+  const willBeVisible = cats[catSlug].seasonalActive === false; // si estaba oculta → ahora visible
+  const catName = cats[catSlug].name;
+
+  // 🆕 Si vamos a OCULTAR, advertir si hay productos activos
+  if (!willBeVisible) {
+    const activeProducts = products.filter(p =>
+      p.categoryGroup === catSlug && p.active !== false
+    );
+    if (activeProducts.length > 0) {
+      const stock = inventory
+        .filter(i => activeProducts.some(p => p.id === i.productId))
+        .reduce((sum, i) => sum + Number(i.stock || 0), 0);
+
+      const msg =
+        `🚫 Ocultar categoría "${catName}"\n\n` +
+        `Esta categoría tiene ${activeProducts.length} producto(s) activo(s).\n` +
+        (stock > 0 ? `📦 Stock actual: ${stock} unidad(es)\n\n` : '\n') +
+        `Al ocultarla:\n` +
+        `• Desaparecerá del menú del catálogo público\n` +
+        `• Sus productos ya no serán navegables desde esa categoría\n` +
+        `• El inventario y los productos se conservan intactos\n` +
+        `• Puedes volver a mostrarla cuando quieras\n\n` +
+        `¿Continuar?`;
+
+      if (!confirm(msg)) return;
+    }
+  }
+
+  cats[catSlug].seasonalActive = willBeVisible;
+  cats[catSlug].seasonal = true;
+
+  // 🔒 Persistir inmediatamente
+  await persistCategories(
+    `${willBeVisible ? '👁 Categoría visible' : '🚫 Categoría oculta'}: ${catName}`
+  );
+};
+
+window.toggleSubcategoryVisibility = async (catSlug, subSlug) => {
+  const cats = getCategoriesSource();
+  if (!cats[catSlug] || !cats[catSlug].subcategories[subSlug]) return;
+
+  const sub = cats[catSlug].subcategories[subSlug];
+  const willBeVisible = sub.seasonalActive === false;
+  const catName = cats[catSlug].name;
+  const subName = sub.name;
+
+  // 🆕 Si vamos a OCULTAR, advertir si hay productos activos
+  if (!willBeVisible) {
+    const activeProducts = products.filter(p =>
+      p.categoryGroup === catSlug &&
+      p.category === subSlug &&
+      p.active !== false
+    );
+    if (activeProducts.length > 0) {
+      const stock = inventory
+        .filter(i => activeProducts.some(p => p.id === i.productId))
+        .reduce((sum, i) => sum + Number(i.stock || 0), 0);
+
+      const msg =
+        `🚫 Ocultar subcategoría "${subName}"\n\n` +
+        `Dentro de: "${catName}"\n` +
+        `Tiene ${activeProducts.length} producto(s) activo(s).\n` +
+        (stock > 0 ? `📦 Stock actual: ${stock} unidad(es)\n\n` : '\n') +
+        `Al ocultarla:\n` +
+        `• Desaparecerá del filtro de subcategorías en el catálogo\n` +
+        `• Los productos seguirán visibles en su categoría principal\n` +
+        `• El inventario y los productos se conservan intactos\n` +
+        `• Puedes volver a mostrarla cuando quieras\n\n` +
+        `¿Continuar?`;
+
+      if (!confirm(msg)) return;
+    }
+  }
+
+  sub.seasonalActive = willBeVisible;
+
+  // 🔒 Persistir inmediatamente
+  await persistCategories(
+    `${willBeVisible ? '👁 Subcategoría visible' : '🚫 Subcategoría oculta'}: ${subName}`
+  );
+};
+
+/* ============================================================
+   FORM: CREAR / EDITAR CATEGORÍA O SUBCATEGORÍA
+   Modos:
+   - openCategoryForm(null)                     → nueva categoría
+   - openCategoryForm('slug')                   → editar categoría
+   - openCategoryForm('catSlug', null, true)    → nueva subcategoría dentro de catSlug
+   - openCategoryForm('catSlug', 'subSlug')     → editar subcategoría
+============================================================ */
+let _categoryFormMode = null;   // { type: 'category'|'subcategory', catSlug: string|null, subSlug: string|null, isNewSub: boolean }
+
+window.openCategoryForm = (catSlug = null, subSlug = null, isNewSub = false) => {
+  const cats = getCategoriesSource();
+
+  let mode, title, subtitle, data;
+
+  if (catSlug && subSlug) {
+    // Editar subcategoría existente
+    const cat = cats[catSlug];
+    if (!cat) return alert('Categoría no encontrada');
+    const sub = cat.subcategories?.[subSlug];
+    if (!sub) return alert('Subcategoría no encontrada');
+
+    mode = { type: 'subcategory', catSlug, subSlug, isNew: false };
+    title = 'Editar subcategoría';
+    subtitle = `En "${cat.name}"`;
+    data = {
+      name: sub.name || '',
+      order: sub.order || 0,
+      visible: sub.seasonalActive !== false
+    };
+  } else if (catSlug && isNewSub) {
+    // Nueva subcategoría
+    const cat = cats[catSlug];
+    if (!cat) return alert('Categoría no encontrada');
+    mode = { type: 'subcategory', catSlug, subSlug: null, isNew: true };
+    title = 'Nueva subcategoría';
+    subtitle = `En "${cat.name}"`;
+    data = { name: '', order: 0, visible: true };
+  } else if (catSlug) {
+    // Editar categoría existente
+    const cat = cats[catSlug];
+    if (!cat) return alert('Categoría no encontrada');
+    mode = { type: 'category', catSlug, subSlug: null, isNew: false };
+    title = 'Editar categoría';
+    subtitle = `Slug: ${catSlug}`;
+    data = {
+      name: cat.name || '',
+      slug: catSlug,
+      order: cat.order || 0,
+      visible: cat.seasonalActive !== false
+    };
+  } else {
+    // Nueva categoría
+    mode = { type: 'category', catSlug: null, subSlug: null, isNew: true };
+    title = 'Nueva categoría';
+    subtitle = 'Podrás asignarle un nombre y luego agregar subcategorías.';
+    data = { name: '', slug: '', order: 0, visible: true };
+  }
+
+  _categoryFormMode = mode;
+
+  $('category-form-title').innerText = title;
+  $('category-form-subtitle').innerText = subtitle;
+
+  const isCat = mode.type === 'category';
+  const isNew = mode.isNew;
+  const showSlug = isCat;
+
+  $('category-form-body').innerHTML = `
+    <div class="space-y-4">
+
+      <div>
+        <label class="text-xs font-semibold text-sd">Nombre *</label>
+        <input id="cf-name" type="text" value="${escapeHtml(data.name)}"
+               placeholder="${isCat ? 'Ej: Ropa, Electrodomésticos…' : 'Ej: Camisetas, Neveras…'}"
+               class="w-full px-3 py-2 border rounded-lg mt-1">
+        <p class="text-[10px] text-gray-400 mt-1">Se mostrará en el catálogo público.</p>
+      </div>
+
+      ${showSlug ? `
+      <div>
+        <label class="text-xs font-semibold text-sd">Slug (URL interna)</label>
+        <input id="cf-slug" type="text" value="${escapeHtml(data.slug)}"
+               ${!isNew ? 'disabled' : ''}
+               placeholder="ropa"
+               class="w-full px-3 py-2 border rounded-lg mt-1 font-mono text-sm ${!isNew ? 'bg-gray-50 text-gray-500' : ''}">
+        <p class="text-[10px] text-gray-400 mt-1">
+          ${isNew
+            ? 'Si lo dejas vacío, se genera automáticamente desde el nombre.'
+            : '⚠️ El slug no se puede cambiar una vez creado (los productos lo usan).'}
+        </p>
+      </div>
+      ` : ''}
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-sd">Orden</label>
+          <input id="cf-order" type="number" value="${data.order}"
+                 class="w-full px-3 py-2 border rounded-lg mt-1">
+          <p class="text-[10px] text-gray-400 mt-1">Menor número = aparece primero.</p>
+        </div>
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 text-sm">
+            <input id="cf-visible" type="checkbox" ${data.visible ? 'checked' : ''} class="w-4 h-4">
+            <span>Visible en el catálogo</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex gap-3 pt-3 border-t">
+        <button onclick="closeCategoryForm()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">
+          Cancelar
+        </button>
+        <button onclick="saveCategoryForm()" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold">
+          💾 Guardar
+        </button>
+      </div>
+
+    </div>
+  `;
+
+  // Auto-generar slug al escribir el nombre (solo si es nueva categoría)
+  if (showSlug && isNew) {
+    const nameInput = $('cf-name');
+    const slugInput = $('cf-slug');
+    nameInput.addEventListener('input', () => {
+      if (!slugInput.dataset.touched) {
+        slugInput.value = slugify(nameInput.value);
+      }
+    });
+    slugInput.addEventListener('input', () => {
+      slugInput.dataset.touched = '1';
+      slugInput.value = slugify(slugInput.value);
+    });
+  }
+
+  const m = $('category-form-modal');
+  if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+};
+
+window.closeCategoryForm = () => {
+  _categoryFormMode = null;
+  const m = $('category-form-modal');
+  if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+};
+
+/* ============================================================
+   GUARDAR (crear o editar) CATEGORÍA / SUBCATEGORÍA
+============================================================ */
+window.saveCategoryForm = async () => {
+  if (!_categoryFormMode) return;
+  const mode = _categoryFormMode;
+  const cats = getCategoriesSource();
+
+  const name = ($('cf-name').value || '').trim();
+  const order = Number($('cf-order').value) || 0;
+  const visible = $('cf-visible').checked;
+
+  if (!name) return alert('⚠️ El nombre es obligatorio.');
+
+  // ============================================================
+  // GUARDAR SUBCATEGORÍA
+  // ============================================================
+  if (mode.type === 'subcategory') {
+    const cat = cats[mode.catSlug];
+    if (!cat) return alert('Categoría no encontrada.');
+    if (!cat.subcategories) cat.subcategories = {};
+
+    if (mode.isNew) {
+      // Crear: generar slug único
+      const baseSlug = slugify(name);
+      const existingKeys = Object.keys(cat.subcategories);
+      const slug = uniqueSlug(baseSlug, existingKeys);
+
+      cat.subcategories[slug] = {
+        name,
+        order,
+        seasonal: true,
+        seasonalActive: visible
+      };
+    } else {
+      // Editar: mantener slug y subcategorías
+      const sub = cat.subcategories[mode.subSlug];
+      if (!sub) return alert('Subcategoría no encontrada.');
+      sub.name = name;
+      sub.order = order;
+      sub.seasonalActive = visible;
+      sub.seasonal = true;
+    }
+
+    await persistCategories('Subcategoría guardada');
+    return;
+  }
+
+  // ============================================================
+  // GUARDAR CATEGORÍA
+  // ============================================================
+  if (mode.type === 'category') {
+    if (mode.isNew) {
+      // Crear nueva categoría
+      let slugInput = ($('cf-slug').value || '').trim();
+      let baseSlug = slugInput || slugify(name);
+      if (!baseSlug) return alert('⚠️ No se pudo generar un slug válido. Revisa el nombre.');
+
+      const existingKeys = Object.keys(cats);
+      const slug = uniqueSlug(baseSlug, existingKeys);
+
+      cats[slug] = {
+        name,
+        order,
+        seasonal: true,
+        seasonalActive: visible,
+        subcategories: {}
+      };
+    } else {
+      // Editar categoría existente (no se toca el slug)
+      const cat = cats[mode.catSlug];
+      if (!cat) return alert('Categoría no encontrada.');
+      cat.name = name;
+      cat.order = order;
+      cat.seasonalActive = visible;
+      cat.seasonal = true;
+    }
+
+    await persistCategories('Categoría guardada');
+    return;
+  }
+};
+
+/* ============================================================
+   PERSISTIR EN FIRESTORE (todo el objeto settings.categories)
+============================================================ */
+async function persistCategories(successMsg) {
+  const cats = getCategoriesSource();
+
+  // Calcular cambios para auditoría
+  const before = settings.categories || {};
+  const after = JSON.parse(JSON.stringify(cats));
+
+  const changedFields = [];
+  const allKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  allKeys.forEach(k => {
+    if (JSON.stringify(before[k]) !== JSON.stringify(after[k])) changedFields.push(k);
+  });
+
+  try {
+    await updateDoc(doc(db, 'settings', 'general'), {
+      categories: after,
+      updatedAt: serverTimestamp()
+    });
+
+    // Actualizar estado local
+    settings.categories = after;
+
+    // Auditoría
+    await audit({
+      action: 'update',
+      collection: 'settings',
+      docId: 'general',
+      before: { categories: before },
+      after: { categories: after },
+      note: `${successMsg || 'Categorías actualizadas'} · ${changedFields.length} cambio(s)`
+    });
+
+    // Invalidar cache de settings
+    window.SmartecCache.invalidate('settings');
+
+    // Cerrar el form y refrescar el gestor + el resumen
+    closeCategoryForm();
+    renderCategoriesList();
+    renderCategoriesSummary();
+
+  } catch (e) {
+    console.error('Error guardando categorías:', e);
+    alert('❌ Error al guardar: ' + e.message);
+  }
+}
+
+/* ============================================================
+   🆕 ELIMINACIÓN DE CATEGORÍAS / SUBCATEGORÍAS
+   Reglas:
+   - Si hay INVENTARIO (stock > 0) → bloquear, solo ocultar.
+   - Si hay PRODUCTOS (sin stock) → permitir, con confirmación fuerte.
+     Los productos se DESACTIVAN (no se borran).
+   - Confirmación: escribir el nombre exacto.
+============================================================ */
+
+/**
+ * Cuenta cuántos productos y cuánto stock tiene una categoría o subcategoría.
+ */
+function countCategoryImpact(catSlug, subSlug = null) {
+  const prods = products.filter(p => {
+    if (p.categoryGroup !== catSlug) return false;
+    if (subSlug && p.category !== subSlug) return false;
+    return true;
+  });
+  const productIds = new Set(prods.map(p => p.id));
+  const stock = inventory
+    .filter(i => productIds.has(i.productId))
+    .reduce((sum, i) => sum + Number(i.stock || 0), 0);
+  const activeProds = prods.filter(p => p.active !== false).length;
+  return { products: prods, productCount: prods.length, activeProds, stock };
+}
+
+/* ============================================================
+   CONFIRMAR ELIMINACIÓN DE CATEGORÍA
+============================================================ */
+window.confirmDeleteCategory = (catSlug) => {
+  const cats = getCategoriesSource();
+  const cat = cats[catSlug];
+  if (!cat) return alert('Categoría no encontrada.');
+
+  const impact = countCategoryImpact(catSlug);
+  const subCount = Object.keys(cat.subcategories || {}).length;
+
+  // ========== VALIDACIÓN 1: INVENTARIO ==========
+  if (impact.stock > 0) {
+    _showDeleteBlockedModal({
+      title: 'No se puede eliminar',
+      subtitle: `La categoría "${cat.name}" tiene productos con stock.`,
+      reason: `Hay ${impact.stock} unidad(es) en inventario distribuidas en ${impact.productCount} producto(s).`,
+      suggestion: 'Puedes OCULTARLA en lugar de eliminarla. Los productos no se verán en el catálogo, pero el inventario se conserva.'
+    });
+    return;
+  }
+
+  // ========== VALIDACIÓN 2: SIN INVENTARIO, CON PRODUCTOS ==========
+  if (impact.productCount > 0) {
+    _showDeleteConfirmModal({
+      type: 'category',
+      catSlug,
+      subSlug: null,
+      name: cat.name,
+      productCount: impact.productCount,
+      activeProds: impact.activeProds,
+      subCount
+    });
+    return;
+  }
+
+  // ========== VALIDACIÓN 3: SIN PRODUCTOS → confirmación simple también por seguridad ==========
+  _showDeleteConfirmModal({
+    type: 'category',
+    catSlug,
+    subSlug: null,
+    name: cat.name,
+    productCount: 0,
+    activeProds: 0,
+    subCount
+  });
+};
+
+/* ============================================================
+   CONFIRMAR ELIMINACIÓN DE SUBCATEGORÍA
+============================================================ */
+window.confirmDeleteSubcategory = (catSlug, subSlug) => {
+  const cats = getCategoriesSource();
+  const cat = cats[catSlug];
+  if (!cat) return alert('Categoría no encontrada.');
+  const sub = cat.subcategories?.[subSlug];
+  if (!sub) return alert('Subcategoría no encontrada.');
+
+  const impact = countCategoryImpact(catSlug, subSlug);
+
+  // ========== VALIDACIÓN 1: INVENTARIO ==========
+  if (impact.stock > 0) {
+    _showDeleteBlockedModal({
+      title: 'No se puede eliminar',
+      subtitle: `La subcategoría "${sub.name}" tiene productos con stock.`,
+      reason: `Hay ${impact.stock} unidad(es) en inventario distribuidas en ${impact.productCount} producto(s).`,
+      suggestion: 'Puedes OCULTARLA en lugar de eliminarla. Los productos no se verán en el catálogo, pero el inventario se conserva.'
+    });
+    return;
+  }
+
+  _showDeleteConfirmModal({
+    type: 'subcategory',
+    catSlug,
+    subSlug,
+    name: sub.name,
+    productCount: impact.productCount,
+    activeProds: impact.activeProds,
+    subCount: 0
+  });
+};
+
+/* ============================================================
+   MODAL: BLOQUEADO POR INVENTARIO
+============================================================ */
+function _showDeleteBlockedModal({ title, subtitle, reason, suggestion }) {
+  $('category-delete-title').innerText = '🚫 ' + title;
+  $('category-delete-title').className = 'text-xl font-bold text-red-700';
+  $('category-delete-subtitle').innerText = subtitle;
+
+  $('category-delete-body').innerHTML = `
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+      <p class="text-sm text-red-800 font-semibold mb-2">¿Por qué está bloqueado?</p>
+      <p class="text-xs text-red-700 leading-relaxed">${escapeHtml(reason)}</p>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5">
+      <p class="text-sm text-blue-800 font-semibold mb-2">💡 Sugerencia</p>
+      <p class="text-xs text-blue-700 leading-relaxed">${escapeHtml(suggestion)}</p>
+    </div>
+
+    <button onclick="closeCategoryDeleteModal()" class="w-full bg-sd text-white py-3 rounded-lg hover:bg-sl font-semibold">
+      Entendido
+    </button>
+  `;
+
+  const m = $('category-delete-modal');
+  if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+}
+
+/* ============================================================
+   MODAL: CONFIRMACIÓN FUERTE (escribir nombre)
+============================================================ */
+let _deleteConfirmContext = null;
+
+function _showDeleteConfirmModal(ctx) {
+  _deleteConfirmContext = ctx;
+
+  const { type, name, productCount, activeProds, subCount } = ctx;
+
+  $('category-delete-title').innerText = '⚠️ Eliminar ' + (type === 'category' ? 'categoría' : 'subcategoría');
+  $('category-delete-title').className = 'text-xl font-bold text-red-700';
+  $('category-delete-subtitle').innerText = `"${name}"`;
+
+  const impactLines = [];
+  if (productCount > 0) {
+    impactLines.push(`<li>Se <b>desactivarán ${activeProds}</b> producto(s) activo(s) (${productCount} en total).</li>`);
+    impactLines.push(`<li>Los productos <b>desaparecerán del catálogo público</b>.</li>`);
+    impactLines.push(`<li>El inventario asociado se conserva en el sistema (por auditoría).</li>`);
+  } else {
+    impactLines.push(`<li>No hay productos asociados a esta ${type === 'category' ? 'categoría' : 'subcategoría'}.</li>`);
+  }
+  if (type === 'category' && subCount > 0) {
+    impactLines.push(`<li>Se eliminarán también sus <b>${subCount} subcategoría(s)</b>.</li>`);
+  }
+
+  $('category-delete-body').innerHTML = `
+    <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
+      <p class="text-sm font-bold text-red-800 mb-2">🚨 Esta acción es DEFINITIVA</p>
+      <ul class="text-xs text-red-700 leading-relaxed space-y-1 list-disc list-inside">
+        ${impactLines.join('')}
+      </ul>
+    </div>
+
+    <div class="mb-4">
+      <label class="text-xs font-semibold text-gray-700 block mb-2">
+        Escribe <b class="text-red-700">${escapeHtml(name)}</b> para confirmar:
+      </label>
+      <input id="category-delete-confirm-input" type="text" autocomplete="off"
+             placeholder="${escapeHtml(name)}"
+             class="w-full px-3 py-2 border-2 border-red-200 rounded-lg focus:border-red-500 focus:outline-none font-mono text-sm">
+      <p id="category-delete-confirm-error" class="text-[10px] text-red-600 mt-1 hidden">
+        El nombre no coincide. Escríbelo tal cual (respeta mayúsculas y espacios).
+      </p>
+    </div>
+
+    <div class="flex gap-3">
+      <button onclick="closeCategoryDeleteModal()" class="flex-1 bg-gray-100 text-sd py-3 rounded-lg hover:bg-gray-200 font-semibold">
+        Cancelar
+      </button>
+      <button id="category-delete-confirm-btn" onclick="executeCategoryDelete()" disabled
+              class="flex-1 bg-gray-300 text-white py-3 rounded-lg font-semibold cursor-not-allowed transition">
+        🗑 Eliminar definitivamente
+      </button>
+    </div>
+  `;
+
+  // Listener del input de confirmación
+  const input = $('category-delete-confirm-input');
+  const btn = $('category-delete-confirm-btn');
+  const err = $('category-delete-confirm-error');
+
+  if (input && btn) {
+    input.addEventListener('input', () => {
+      const match = input.value === name;
+      btn.disabled = !match;
+      btn.className = match
+        ? 'flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 font-semibold transition'
+        : 'flex-1 bg-gray-300 text-white py-3 rounded-lg font-semibold cursor-not-allowed transition';
+      err.classList.toggle('hidden', match || input.value.length === 0);
+    });
+    input.focus();
+  }
+
+  const m = $('category-delete-modal');
+  if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+}
+
+window.closeCategoryDeleteModal = () => {
+  _deleteConfirmContext = null;
+  const m = $('category-delete-modal');
+  if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+};
+
+/* ============================================================
+   EJECUTAR ELIMINACIÓN (después de la confirmación fuerte)
+============================================================ */
+window.executeCategoryDelete = async () => {
+  const ctx = _deleteConfirmContext;
+  if (!ctx) return;
+
+  const { type, catSlug, subSlug } = ctx;
+  const cats = getCategoriesSource();
+
+  try {
+    // 1. Desactivar productos asociados (no borrar)
+    const prodsToDeactivate = products.filter(p => {
+      if (p.categoryGroup !== catSlug) return false;
+      if (subSlug && p.category !== subSlug) return false;
+      return true;
+    });
+
+    let deactivatedCount = 0;
+    for (const p of prodsToDeactivate) {
+      if (p.active === false) continue;   // ya estaba desactivado
+      await updateDoc(doc(db, 'products', p.id), {
+        active: false,
+        deactivatedAt: serverTimestamp(),
+        deactivatedBy: currentUser.email,
+        deactivatedReason: `Categoría/subcategoría eliminada: ${ctx.name}`,
+        updatedAt: serverTimestamp()
+      });
+      deactivatedCount++;
+    }
+
+    // 2. Eliminar del objeto categories
+    if (type === 'category') {
+      delete cats[catSlug];
+    } else {
+      if (cats[catSlug] && cats[catSlug].subcategories) {
+        delete cats[catSlug].subcategories[subSlug];
+      }
+    }
+
+    // 3. Persistir
+    await persistCategories(
+      `${type === 'category' ? 'Categoría' : 'Subcategoría'} "${ctx.name}" eliminada · ${deactivatedCount} producto(s) desactivado(s)`
+    );
+
+    // 4. Invalidar cache de productos
+    window.SmartecCache.invalidate('products');
+
+    // 5. Cerrar el modal de confirmación
+    closeCategoryDeleteModal();
+
+    // 6. Aviso final
+    alert(
+      `✅ Eliminado correctamente.\n\n` +
+      (deactivatedCount > 0
+        ? `${deactivatedCount} producto(s) fueron desactivados y ya no aparecen en el catálogo.`
+        : `No había productos asociados.`)
+    );
+
+  } catch (e) {
+    console.error('Error eliminando:', e);
+    alert('❌ Error al eliminar: ' + e.message);
+  }
+};
 
 /* ============================================================
    SELECTS GLOBALES
