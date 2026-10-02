@@ -100,6 +100,24 @@
     background: #0077ED;
     transform: scale(1.02);
   }
+    /* 🆕 Botón WhatsApp en la toolbar */
+  .toolbar .btn-whatsapp {
+    background: #25D366;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .25s cubic-bezier(.2,.8,.2,1);
+    box-shadow: 0 1px 2px rgba(37,211,102,0.2), 0 4px 12px rgba(37,211,102,0.3);
+  }
+  .toolbar .btn-whatsapp:hover {
+    background: #1EBE5A;
+    transform: scale(1.02);
+  }
+  .toolbar .btn-whatsapp:active { transform: scale(0.98); }
   .toolbar .btn-close {
     background: rgba(0,0,0,0.05);
     color: var(--apple-text);
@@ -436,7 +454,7 @@
     .toolbar h1 { font-size: 12px; }
     .toolbar .format-switch button { padding: 5px 10px; font-size: 11px; }
     .toolbar .actions { gap: 6px; }
-    .toolbar .btn-print, .toolbar .btn-close { padding: 6px 12px; font-size: 11px; }
+    .toolbar .btn-print, .toolbar .btn-close, .toolbar .btn-whatsapp { padding: 6px 12px; font-size: 11px; }
   }
 </style>
 </head>
@@ -453,6 +471,9 @@
   </div>
 
   <div class="actions">
+    <button class="btn-whatsapp" onclick="sendWhatsAppFromPreview()" title="Enviar comprobante por WhatsApp">
+      📱 WhatsApp
+    </button>
     <button class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
     <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
   </div>
@@ -661,7 +682,63 @@ window.switchFormat = (newFormat) => {
   window.__currentFormat = newFormat;
   renderCurrentFormat();
 };
+/* ============================================================
+   🆕 ENVIAR COMPROBANTE POR WHATSAPP
+   Usa window.__sale y window.__currentFormat (ya cargados en init).
+============================================================ */
+window.sendWhatsAppFromPreview = () => {
+  const s = window.__sale;
+  if (!s) {
+    alert('No hay una venta cargada para enviar.');
+    return;
+  }
 
+  const formatLabel = FORMAT_LABELS[window.__currentFormat] || 'Comprobante';
+
+  // Construir mensaje (mismo contenido que antes en venta.html)
+  let msg = `*${s.storeName ? s.storeName.toUpperCase() : 'SMARTEC'}*\n`;
+  msg += `Vendedor: ${s.sellerName || s.sellerEmail || ''}\n`;
+  msg += `${formatLabel} #${s.documentNumber || s.id.slice(-6).toUpperCase()}\n`;
+
+  const rawDate = s.createdAt?.seconds
+    ? new Date(s.createdAt.seconds * 1000)
+    : (s.createdAt ? new Date(s.createdAt) : new Date());
+  msg += `Fecha: ${rawDate.toLocaleString('es-CO')}\n\n`;
+
+  msg += `*Cliente:* ${s.customer?.name || ''}\n`;
+  if (s.customer?.phone) msg += `Tel: ${s.customer.phone}\n`;
+  if (s.customer?.address) {
+    msg += `Dir: ${s.customer.address}${s.customer.city ? ', ' + s.customer.city : ''}\n`;
+  }
+
+  msg += `\n*Productos:*\n`;
+  (s.items || []).forEach(it => {
+    msg += `• ${it.qty}× ${it.name}`;
+    if (it.colorName) msg += ` (${it.colorName})`;
+    if (it.size) msg += ` [${it.size}]`;
+    msg += ` - ${fmt(it.qty * it.unitPrice)}\n`;
+  });
+
+  msg += `\nSubtotal: ${fmt(s.subtotal)}`;
+  if (s.discount > 0) msg += `\nDescuento: -${fmt(s.discount)}`;
+  if (s.shipping > 0) msg += `\nEnvío: ${fmt(s.shipping)}`;
+  if (s.surchargeAmount > 0) msg += `\nRecargo tarjeta: ${fmt(s.surchargeAmount)}`;
+  msg += `\n*TOTAL: ${fmt(s.total)}*\n`;
+  msg += `Método de pago: ${s.paymentMethod || '-'}\n\n`;
+  msg += `*GARANTÍA:* Todos los productos cuentan con garantía mínima de 12 meses o la superior que otorgue la marca. Nuestro equipo te acompañará en cualquier solicitud de garantía.\n\n`;
+  msg += `¡Gracias por tu compra! 🛒`;
+
+  // Detectar número del cliente
+  const rawPhone = (s.customer?.phone || '').replace(/\D/g, '');
+  let waNum = rawPhone;
+  if (rawPhone.length === 10) waNum = '57' + rawPhone; // Colombia por defecto
+
+  const url = waNum
+    ? `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`
+    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
+  window.open(url, '_blank');
+};
 function showError(msg) {
   $('loading').classList.add('hidden');
   $('error-container').classList.remove('hidden');

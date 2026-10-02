@@ -593,65 +593,6 @@
     </div>
   </div>
 
-  <!-- ============ MODAL SELECCIÓN DE FORMATO ============ -->
-  <div id="print-format-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 pointer-events-none">
-    <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto" onclick="closePrintModal()"></div>
-    <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-lg w-full p-6 pointer-events-auto border border-white/70 fade-up">
-      <button onclick="closePrintModal()" class="absolute top-3 right-3 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-      <h3 class="text-xl font-bold text-[#1D1D1F] mb-1 pr-10 tracking-tight">🖨️ Imprimir documento</h3>
-      <p class="text-xs text-[#6E6E73] mb-5">Selecciona el formato que deseas generar</p>
-
-      <div class="space-y-3">
-        <button onclick="printFormat('remision')" class="w-full flex items-center gap-4 p-4 glass-soft rounded-2xl hover:bg-white/90 transition text-left border border-white/70 shadow-apple">
-          <span class="text-3xl">📄</span>
-          <div class="flex-1">
-            <p class="font-bold text-[#1D1D1F] text-sm tracking-tight">Remisión</p>
-            <p class="text-xs text-[#6E6E73]">Documento comercial de entrega</p>
-          </div>
-          <svg class="w-5 h-5 text-[#0071E3]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-        </button>
-
-        <button onclick="printFormat('tirilla')" class="w-full flex items-center gap-4 p-4 glass-soft rounded-2xl hover:bg-white/90 transition text-left border border-white/70 shadow-apple">
-          <span class="text-3xl">🧾</span>
-          <div class="flex-1">
-            <p class="font-bold text-[#1D1D1F] text-sm tracking-tight">Tirilla POS</p>
-            <p class="text-xs text-[#6E6E73]">Comprobante para impresora térmica 58mm</p>
-          </div>
-          <svg class="w-5 h-5 text-[#0071E3]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-        </button>
-
-        <button onclick="printFormat('mediacarta')" class="w-full flex items-center gap-4 p-4 glass-soft rounded-2xl hover:bg-white/90 transition text-left border border-white/70 shadow-apple">
-          <span class="text-3xl">📋</span>
-          <div class="flex-1">
-            <p class="font-bold text-[#1D1D1F] text-sm tracking-tight">Media carta</p>
-            <p class="text-xs text-[#6E6E73]">Documento comercial en hoja convencional</p>
-          </div>
-          <svg class="w-5 h-5 text-[#0071E3]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-        </button>
-
-        <button onclick="sendWhatsAppReceipt()" class="w-full flex items-center gap-4 p-4 bg-[#25D366]/10 rounded-2xl hover:bg-[#25D366]/20 transition text-left border border-[#25D366]/30 shadow-apple">
-          <span class="text-3xl">📱</span>
-          <div class="flex-1">
-            <p class="font-bold text-[#1D1D1F] text-sm tracking-tight">Enviar por WhatsApp</p>
-            <p class="text-xs text-[#6E6E73]">Comprobante en formato texto al cliente</p>
-          </div>
-          <svg class="w-5 h-5 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-        </button>
-
-        <button disabled class="w-full flex items-center gap-4 p-4 bg-black/5 border-2 border-dashed border-black/10 rounded-2xl cursor-not-allowed opacity-70 text-left">
-          <span class="text-3xl">🧑‍💼</span>
-          <div class="flex-1">
-            <p class="font-bold text-[#6E6E73] text-sm tracking-tight">Factura electrónica DIAN</p>
-            <p class="text-xs text-[#6E6E73]">Próximamente (requiere proveedor tecnológico)</p>
-          </div>
-          <span class="text-[10px] bg-black/10 text-[#6E6E73] font-semibold px-2 py-1 rounded-full">Próximamente</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
   <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import {
@@ -2836,41 +2777,33 @@ function initPosPayments() {
   /* ============================================================
     IMPRESIÓN DE DOCUMENTOS
   ============================================================ */
+  /* ============================================================
+     🆕 IMPRESIÓN DE DOCUMENTOS
+     Abre directo imprimir.html (sin modal de selección).
+     El formato se elige dentro del previsualizador.
+  ============================================================ */
   window.openPrintModal = () => {
     if (!lastSale) {
       alert('No hay una venta reciente para imprimir.');
       return;
     }
-    const m = $('print-format-modal');
-    m.classList.remove('hidden');
-    m.classList.add('flex');
+    const url = `imprimir.html?id=${encodeURIComponent(lastSale.id)}`;
+    window.open(url, '_blank');
+    closeSuccessModal();
   };
 
-  window.closePrintModal = () => {
-    const m = $('print-format-modal');
+  /* Cierra el modal de éxito */
+  window.closeSuccessModal = () => {
+    const m = $('success-modal');
+    if (!m) return;
     m.classList.add('hidden');
     m.classList.remove('flex');
   };
 
- window.printFormat = (format) => {
-  if (!lastSale) return;
-
-  // Enviamos el ID REAL del documento de Firestore (no el documentNumber)
-  // + el documentNumber como dato adicional para referencia.
-  // Así la lectura por getDoc() respeta las rules de seguridad para vendedores.
-  const url = `imprimir.html?id=${encodeURIComponent(lastSale.id)}&format=${format}`;
-
-  // Abrir en pestaña nueva
-  window.open(url, '_blank');
-
-  // Cerrar el modal
-  closePrintModal();
-};
-
-  /* Cerrar con ESC */
+  /* Cerrar con ESC el modal de éxito */
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !$('print-format-modal').classList.contains('hidden')) {
-      closePrintModal();
+    if (e.key === 'Escape' && !$('success-modal').classList.contains('hidden')) {
+      closeSuccessModal();
     }
   });
 
@@ -3091,53 +3024,6 @@ function initPosPayments() {
       toast.style.opacity = '0';
     }, 1800);
   }
-
-  /* ============================================================
-    ENVIAR RECIBO POR WHATSAPP
-  ============================================================ */
-  window.sendWhatsAppReceipt = () => {
-    if (!lastSale) {
-      alert('No hay una venta reciente para enviar.');
-      return;
-    }
-    const s = lastSale;
-
-    // Construir mensaje
-    let msg = `*${s.storeName ? s.storeName.toUpperCase() : 'SMARTEC'}*\n`;
-    msg += `Vendedor: ${s.sellerName || ''}\n`;
-    msg += `Recibo #${s.documentNumber || s.id.slice(-6).toUpperCase()}\n`;
-    msg += `Fecha: ${s.createdAt ? new Date(s.createdAt).toLocaleString('es-CO') : ''}\n\n`;
-    msg += `*Cliente:* ${s.customer?.name || ''}\n`;
-    if (s.customer?.phone) msg += `Tel: ${s.customer.phone}\n`;
-    if (s.customer?.address) msg += `Dir: ${s.customer.address}${s.customer.city ? ', ' + s.customer.city : ''}\n`;
-    msg += `\n*Productos:*\n`;
-    (s.items || []).forEach(it => {
-      msg += `• ${it.qty}× ${it.name}`;
-      if (it.colorName) msg += ` (${it.colorName})`;
-      if (it.size) msg += ` [${it.size}]`;
-      msg += ` - ${fmt(it.qty * it.unitPrice)}\n`;
-    });
-    msg += `\nSubtotal: ${fmt(s.subtotal)}`;
-    if (s.discount > 0) msg += `\nDescuento: -${fmt(s.discount)}`;
-    if (s.shipping > 0) msg += `\nEnvío: ${fmt(s.shipping)}`;
-    if (s.surchargeAmount > 0) msg += `\nRecargo tarjeta: ${fmt(s.surchargeAmount)}`;
-    msg += `\n*TOTAL: ${fmt(s.total)}*\n`;
-    msg += `Método de pago: ${s.paymentMethod}\n\n`;
-    msg += `*GARANTÍA:* Todos los productos cuentan con garantía mínima de 12 meses o la superior que otorgue la marca. Nuestro equipo te acompañará en cualquier solicitud de garantía.\n\n`;
-    msg += `¡Gracias por tu compra! 🛒`;
-
-    // Detectar número del cliente
-    const rawPhone = (s.customer?.phone || '').replace(/\D/g, '');
-    let waNum = rawPhone;
-    if (rawPhone.length === 10) waNum = '57' + rawPhone; // Colombia por defecto
-
-    const url = waNum
-      ? `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`
-      : `https://wa.me/?text=${encodeURIComponent(msg)}`; // sin número → elegir contacto
-
-    window.open(url, '_blank');
-    closePrintModal();
-  };
 
   /* ============================================================
     AUTOCOMPLETAR CLIENTE POR TELÉFONO
