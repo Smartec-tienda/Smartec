@@ -2189,7 +2189,8 @@ function initPosPayments() {
         qty: pickerQtyVal,
         unitPrice: Number(unitPrice||0),
         unitCost,
-        stock
+        stock,
+        warrantyMonths: Number(p.warrantyMonths ?? 12)
       });
     }
 
@@ -2504,7 +2505,8 @@ function initPosPayments() {
         color: it.color,
         colorName: it.colorName,
         size: it.size,
-        subtotal: it.qty * it.unitPrice
+        subtotal: it.qty * it.unitPrice,
+        warrantyMonths: Number(it.warrantyMonths ?? 12)
       }));
 
           // ===== Generar número de documento =====
@@ -3050,7 +3052,8 @@ function initPosPayments() {
         qty: 1,
         unitPrice: Number(unitPrice||0),
         unitCost,
-        stock
+        stock,
+        warrantyMonths: Number(foundProduct.warrantyMonths ?? 12)
       });
     }
 

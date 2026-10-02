@@ -320,32 +320,54 @@
     display: flex;
     justify-content: center;
   }
-  .tirilla {
-    width: 58mm;
-    background: white;
-    padding: 4mm 3mm;
-    font-family: 'Courier New', 'Courier', monospace;
-    font-size: 10px;
-    line-height: 1.35;
-    color: #000;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08);
-    border-radius: 4px;
-  }
+ .tirilla {
+  width: 48mm;
+  background: white;
+  padding: 3mm 2mm;
+  font-family: 'Courier New', 'Courier', monospace;
+  font-size: 10px;
+  font-weight: 700;                /* ✅ TODO en negrita */
+  line-height: 1.35;
+  color: #000;
+  -webkit-font-smoothing: none;    /* ✅ Sin suavizado: bordes duros */
+  text-rendering: geometricPrecision;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08);
+  border-radius: 4px;
+}
   .tirilla.center { text-align: center; }
   .tirilla .bold { font-weight: bold; }
   .tirilla .linea { border-top: 1px dashed #000; margin: 5px 0; }
   .tirilla .doble-linea { border-top: 1px solid #000; margin: 5px 0; }
-  .tirilla .fila { display: flex; justify-content: space-between; gap: 4px; }
-  .tirilla .fila span:first-child { flex: 1; }
-  .tirilla .fila span:last-child { font-weight: bold; white-space: nowrap; }
+  .tirilla .fila {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    font-weight: 700;
+  }
+  .tirilla .fila span:first-child {
+    flex: 1;
+    font-weight: 700;
+  }
+  .tirilla .fila span:last-child {
+    font-weight: 700;
+    white-space: nowrap;
+  }
   .tirilla .producto { margin: 5px 0; }
   .tirilla .producto .nombre { word-wrap: break-word; font-weight: bold; }
-  .tirilla .producto .variant { font-size: 9px; color: #333; margin-top: 1px; }
+  .tirilla .producto .variant {
+    font-size: 9px;
+    font-weight: 700;               /* ✅ Negrita */
+    color: #000;
+    margin-top: 1px;
+    letter-spacing: 0.1px;
+  }
   .tirilla .producto .detalle {
     display: flex;
     justify-content: space-between;
     font-size: 10px;
+    font-weight: 700;               /* ✅ Negrita */
     margin-top: 1px;
+    letter-spacing: 0.2px;
   }
   .tirilla .total-final {
     font-size: 14px;
@@ -356,6 +378,7 @@
   }
   .tirilla .garantia-mini {
     font-size: 8px;
+    font-weight: 700;
     margin-top: 8px;
     text-align: justify;
     line-height: 1.4;
@@ -369,8 +392,9 @@
   .tirilla .nota-final {
     text-align: center;
     font-size: 8px;
+    font-weight: 700;
     margin-top: 4px;
-    color: #333;
+    color: #000;
   }
 
   /* ============ IMPRESIÓN ============ */
@@ -878,7 +902,7 @@ function renderMediaCarta(sale, settings) {
   `;
 }
 
-/* ============ RENDER TIRILLA POS ============ */
+/* ============ RENDER TIRILLA POS (48mm) ============ */
 function renderTirilla(sale, settings) {
   const c = getCompanyInfo(sale, settings);
   const docNumber = sale.documentNumber || 'SIN-NÚMERO';
@@ -889,45 +913,111 @@ function renderTirilla(sale, settings) {
   const dateStr = date.toLocaleDateString('es-CO');
   const timeStr = date.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
 
+  const logoUrl = settings.logoUrl || null;
+
+  // ============ GARANTÍA DINÁMICA ============
+  // Si TODOS los items tienen el mismo warrantyMonths, mostramos ese.
+  // Si son distintos, mostramos "según el producto".
+  const warranties = (sale.items || [])
+    .map(it => Number(it.warrantyMonths ?? 0))
+    .filter(n => !isNaN(n));
+
+  let garantiaTexto = '';
+
+  if (!warranties.length) {
+    // Ningún producto tiene garantía definida → mensaje genérico
+    garantiaTexto = 'Garantía mínima de 12 meses o la superior otorgada por el fabricante.';
+  } else {
+    const unique = [...new Set(warranties)];
+    if (unique.length === 1 && unique[0] > 0) {
+      const meses = unique[0];
+      if (meses === 1) {
+        garantiaTexto = 'Garantía de 1 mes por defectos de fábrica.';
+      } else if (meses < 12) {
+        garantiaTexto = `Garantía de ${meses} meses por defectos de fábrica.`;
+      } else if (meses === 12) {
+        garantiaTexto = 'Garantía de 12 meses o la superior del fabricante.';
+      } else {
+        garantiaTexto = `Garantía de ${meses} meses o la superior del fabricante.`;
+      }
+    } else {
+      garantiaTexto = 'Garantía según el producto. Ver detalle en cada ítem.';
+    }
+  }
+
+  garantiaTexto += ' No cubre daños por mal uso, golpes, líquidos o manipulación indebida. Presente este recibo para hacerla efectiva.';
+
+  // ============ HELPER PARA GARANTÍA POR ITEM ============
+  const formatWarranty = (months) => {
+    const n = Number(months ?? 0);
+    if (!n || n <= 0) return '';
+    if (n === 1) return 'Garantía: 1 mes';
+    if (n < 12) return `Garantía: ${n} meses`;
+    if (n === 12) return 'Garantía: 12 meses';
+    return `Garantía: ${n} meses`;
+  };
+
   return `
     <div class="tirilla-wrapper">
       <div class="tirilla">
 
-        <!-- CABECERA -->
-        <div class="center bold" style="font-size:14px; letter-spacing:1px;">SMARTEC</div>
-        <div class="center" style="font-size:10px;">${c.razonSocial || ''}</div>
-        <div class="center" style="font-size:9px;">NIT: ${c.nit || '—'}</div>
-        ${c.address ? `<div class="center" style="font-size:9px;">${c.address}</div>` : ''}
-        ${c.phone ? `<div class="center" style="font-size:9px;">Tel: ${c.phone}</div>` : ''}
+        <!-- ═══════════ CABECERA ═══════════ -->
+        ${logoUrl ? `
+          <div class="center" style="margin-bottom:6px;">
+            <img src="${logoUrl}" alt="Logo" style="max-height:38px; max-width:44mm; object-fit:contain; filter: grayscale(100%) contrast(1.2);">
+          </div>
+        ` : `
+          <div class="center bold" style="font-size:15px; letter-spacing:1.5px;">SMARTEC</div>
+        `}
+
+        <div class="center bold" style="font-size:10px; margin-top:3px;">
+          ${escapeHtmlTirilla(c.razonSocial || '')}
+        </div>
+        <div class="center" style="font-size:9px;">
+          NIT: ${escapeHtmlTirilla(c.nit || '—')}
+        </div>
+        ${c.phone ? `<div class="center" style="font-size:9px;">Tel: ${escapeHtmlTirilla(c.phone)}</div>` : ''}
 
         <div class="doble-linea"></div>
 
-        <div class="center bold" style="font-size:11px; letter-spacing:0.5px;">COMPROBANTE DE VENTA</div>
-        <div class="center bold" style="font-size:11px;">No. ${docNumber}</div>
-        <div class="center" style="font-size:9px; margin-top:2px;">${dateStr} · ${timeStr}</div>
-        ${c.storeName ? `<div class="center" style="font-size:9px;">Sede: ${c.storeName}</div>` : ''}
+        <!-- ═══════════ TIPO DE DOCUMENTO ═══════════ -->
+        <div class="center bold" style="font-size:11px; letter-spacing:0.5px; margin-top:2px;">
+          COMPROBANTE DE VENTA
+        </div>
+        <div class="center bold" style="font-size:10px; margin-top:2px;">
+          No. ${escapeHtmlTirilla(docNumber)}
+        </div>
+        <div class="center" style="font-size:9px; margin-top:1px;">
+          ${dateStr} · ${timeStr}
+        </div>
+        ${c.storeName ? `<div class="center" style="font-size:9px; margin-top:1px;">Sede: ${escapeHtmlTirilla(c.storeName)}</div>` : ''}
 
         <div class="doble-linea"></div>
 
-        <!-- CLIENTE -->
-        <div class="bold" style="font-size:10px;">CLIENTE</div>
-        <div style="font-size:10px;">${sale.customer?.name || '-'}</div>
-        ${sale.customer?.phone ? `<div style="font-size:9px;">Tel: ${sale.customer.phone}</div>` : ''}
-        ${sale.customer?.address ? `<div style="font-size:9px;">${sale.customer.address}${sale.customer.city ? ', ' + sale.customer.city : ''}</div>` : ''}
+        <!-- ═══════════ CLIENTE ═══════════ -->
+        <div class="bold" style="font-size:9px; margin-bottom:2px;">CLIENTE</div>
+        <div style="font-size:10px; line-height:1.4;">
+          ${escapeHtmlTirilla(sale.customer?.name || '-')}
+        </div>
+        ${sale.customer?.phone ? `<div style="font-size:9px;">Tel: ${escapeHtmlTirilla(sale.customer.phone)}</div>` : ''}
+        ${sale.customer?.address ? `<div style="font-size:9px; line-height:1.3;">${escapeHtmlTirilla(sale.customer.address)}${sale.customer.city ? ', ' + escapeHtmlTirilla(sale.customer.city) : ''}</div>` : ''}
 
         <div class="linea"></div>
 
-        <!-- PRODUCTOS -->
-        <div class="bold" style="font-size:10px; margin-bottom:2px;">PRODUCTOS</div>
+        <!-- ═══════════ PRODUCTOS ═══════════ -->
+        <div class="bold" style="font-size:9px; margin-bottom:3px;">PRODUCTOS</div>
         ${(sale.items || []).map(it => {
           const variantParts = [];
           if (it.colorName) variantParts.push(it.colorName);
           if (it.size) variantParts.push(it.size);
           const variant = variantParts.join(' · ');
+          const warrantyLine = formatWarranty(it.warrantyMonths);
+
           return `
             <div class="producto">
-              <div class="nombre">${it.name || '-'}</div>
-              ${variant ? `<div class="variant">${variant}</div>` : ''}
+              <div class="nombre">${escapeHtmlTirilla(it.name || '-')}</div>
+              ${variant ? `<div class="variant">${escapeHtmlTirilla(variant)}</div>` : ''}
+              ${warrantyLine ? `<div class="variant" style="color:#000;">${warrantyLine}</div>` : ''}
               <div class="detalle">
                 <span>${it.qty} × ${fmt(it.unitPrice)}</span>
                 <span class="bold">${fmt((it.qty||0) * (it.unitPrice||0))}</span>
@@ -938,7 +1028,7 @@ function renderTirilla(sale, settings) {
 
         <div class="linea"></div>
 
-        <!-- TOTALES -->
+        <!-- ═══════════ TOTALES ═══════════ -->
         <div class="fila"><span>Subtotal</span><span>${fmt(sale.subtotal)}</span></div>
         ${sale.discount ? `<div class="fila"><span>Descuento</span><span>-${fmt(sale.discount)}</span></div>` : ''}
         ${sale.shipping ? `<div class="fila"><span>Envío</span><span>${fmt(sale.shipping)}</span></div>` : ''}
@@ -950,26 +1040,57 @@ function renderTirilla(sale, settings) {
 
         <div class="doble-linea"></div>
 
-        <!-- PAGO -->
-        <div class="fila"><span>Pago:</span><span>${sale.paymentMethod || '-'}</span></div>
-        <div class="fila"><span>Vendedor:</span><span>${(sale.sellerName || sale.sellerEmail || '-').substring(0, 18)}</span></div>
+        <!-- ═══════════ PAGO ═══════════ -->
+        <div class="fila"><span>Pago:</span><span>${escapeHtmlTirilla(capitalizeFirst(sale.paymentMethod) || '-')}</span></div>
+        ${sale.paymentChannelBank ? `<div class="fila" style="font-size:9px;"><span>  ${escapeHtmlTirilla(sale.paymentChannelBank)}${sale.paymentChannelName ? ' — ' + escapeHtmlTirilla(sale.paymentChannelName) : ''}</span><span></span></div>` : ''}
+        <div class="fila"><span>Vendedor:</span><span>${escapeHtmlTirilla(truncate((sale.sellerName || sale.sellerEmail || '-'), 18))}</span></div>
 
-        ${sale.customer?.notes ? `<div class="linea"></div><div style="font-size:9px;">Nota: ${sale.customer.notes}</div>` : ''}
+        ${sale.customer?.notes ? `
+          <div class="linea"></div>
+          <div style="font-size:9px; line-height:1.3;">
+            <b>Nota:</b> ${escapeHtmlTirilla(sale.customer.notes)}
+          </div>
+        ` : ''}
 
-        <!-- GARANTÍA -->
+        <!-- ═══════════ GARANTÍA ═══════════ -->
         <div class="linea"></div>
         <div class="garantia-mini">
-          <b>GARANTÍA:</b> Garantía mínima de 12 meses o la superior de fábrica. Presente este recibo para hacerla efectiva. No cubre daños por mal uso.
+          <b>GARANTÍA:</b> ${escapeHtmlTirilla(garantiaTexto)}
         </div>
 
+        <!-- ═══════════ PIE ═══════════ -->
         <div class="doble-linea"></div>
 
         <div class="gracias">¡GRACIAS POR SU COMPRA!</div>
-        <div class="nota-final">Este documento no es factura electrónica</div>
+        <div class="nota-final">Este documento no es factura electrónica de venta.</div>
 
       </div>
     </div>
   `;
+}
+
+/* ============ HELPERS TIRILLA ============ */
+function escapeHtmlTirilla(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function capitalizeFirst(str) {
+  if (!str) return '';
+  const s = String(str);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function truncate(str, max) {
+  if (!str) return '';
+  const s = String(str);
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1) + '…';
 }
 
 /* ============ RENDER TOTALES ============ */
