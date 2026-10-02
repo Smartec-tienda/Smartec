@@ -12,26 +12,32 @@ import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gst
 
 /* ============================================================
    CONFIG
+   🆕 Config detectada automáticamente por firebase-config.js
+   según el dominio donde corra la app.
 ============================================================ */
-const firebaseConfig = {
-  apiKey: "AIzaSyCJ-bKabzQL5DIq2n1qlHKHadlEY17TT_I",
-  authDomain: "smartec-8fc19.firebaseapp.com",
-  projectId: "smartec-8fc19",
-  storageBucket: "smartec-8fc19.firebasestorage.app",
-  messagingSenderId: "879944967068",
-  appId: "1:879944967068:web:287b3f2baf2c56f8b95e59",
-  measurementId: "G-127MH9ZCN1"
-};
+const firebaseConfig = window.__FIREBASE_CONFIG;
+
+if (!firebaseConfig) {
+  document.body.innerHTML = `
+    <div style="padding:40px;font-family:-apple-system,sans-serif;text-align:center;color:#1D1D1F">
+      <h2 style="color:#FF375F">Error de configuración</h2>
+      <p>No se encontró configuración de Firebase para este dominio.</p>
+      <p style="color:#6E6E73;font-size:14px">Contacta al administrador del sistema.</p>
+    </div>
+  `;
+  throw new Error('[Config] Firebase config no disponible');
+}
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 // 🛡️ App Check con reCAPTCHA Enterprise
 const appCheck = initializeAppCheck(app, {
-  provider: new ReCaptchaEnterpriseProvider('6Lf5ls8tAAAAAFg4fPnRJg4xNgdVgo2Enl9FgZIP'),
+  provider: new ReCaptchaEnterpriseProvider(firebaseConfig.recaptchaEnterpriseKey),
   isTokenAutoRefreshEnabled: true
 });
-const functions = getFunctions(app, 'us-central1');
+const functions = getFunctions(app, firebaseConfig.functionsRegion || 'us-central1');
 
 
 /* ============================================================

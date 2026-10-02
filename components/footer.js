@@ -1,7 +1,7 @@
 /* ============================================================
    SMARTEC · footer.js
    Inyecta el footer global en cualquier página.
-   Uso: <div id="smartec-footer"></div> + <script src="footer.js"></script>
+   Uso: <div id="smartec-footer"></div> + <script src="components/footer.js"></script>
    Y opcionalmente: window.SmartecFooter.render({ settings })
 ============================================================ */
 

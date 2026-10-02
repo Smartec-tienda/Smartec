@@ -1,7 +1,7 @@
 /* ============================================================
    SMARTEC · favicon.js
    Aplica el favicon dinámico desde settings/general.faviconUrl
-   Uso: <script src="favicon.js"></script> en cualquier página.
+   Uso: <script src="components/favicon.js"></script> en cualquier página.
    Requiere: firebase (compat o modular) + Firestore ya inicializados.
 ============================================================ */
 
