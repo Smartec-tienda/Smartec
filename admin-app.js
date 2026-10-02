@@ -1870,7 +1870,11 @@ function renderStores() {
           ${s.address?`<p>📍 ${escapeHtml(s.address)}</p>`:''}
           ${s.phone?`<p>📞 ${escapeHtml(s.phone)}</p>`:''}
           ${s.email?`<p>✉️ ${escapeHtml(s.email)}</p>`:''}
-          <p>💵 Comisión pool: <b>${((s.commissionRate||0)*100).toFixed(1)}%</b></p>
+          <p>💵 Comisión pool: <b>${((s.commissionRate||0)*100).toFixed(1)}%</b>
+            ${(s.commissionMode || 'always') === 'goal'
+              ? ' <span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-semibold">🎯 Por meta</span>'
+              : ' <span class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full font-semibold">💰 Siempre</span>'}
+          </p>
           <p>🛡️ Margen arqueo: <b>${fmt(s.arqueoMargin||0)}</b></p>
           <p>🌇 Hora de cierre: <b>${s.closeHour || '20:00'}</b>
             ${s.alertCloseEnabled !== false
@@ -1909,10 +1913,13 @@ function renderStores() {
 window.openStoreForm = (s = null) => {
   $('form-title').innerText = s ? 'Editar tienda' : 'Nueva tienda';
 
-  const v = s || {
-    storeId: '', name: '', address: '', phone: '', email: '',
-    commissionRate: 0, arqueoMargin: 0, goalAmount: 0, bonusRate: 0, active: true
-  };
+  const v = s
+    ? { ...s, commissionMode: s.commissionMode || 'always' }   // tienda existente → default 'always'
+    : {
+        storeId: '', name: '', address: '', phone: '', email: '',
+        commissionRate: 0, arqueoMargin: 0, goalAmount: 0, bonusRate: 0, active: true,
+        commissionMode: 'goal'                                  // tienda nueva → default 'goal'
+      };
 
   $('form-body').innerHTML = `
     <label class="text-xs font-semibold">ID de tienda (slug, sin espacios)</label>
@@ -1933,6 +1940,24 @@ window.openStoreForm = (s = null) => {
         <label class="text-xs font-semibold">Email</label>
         <input id="f-email" value="${v.email || ''}" class="w-full px-3 py-2 border rounded">
       </div>
+    </div>
+
+    <!-- 🆕 Modo de comisión -->
+    <div class="mb-3">
+      <label class="text-xs font-semibold">Modo de comisión del pool</label>
+      <select id="f-commissionMode" class="w-full px-3 py-2 border rounded mt-1">
+        <option value="goal" ${((v.commissionMode || 'goal') === 'goal') ? 'selected' : ''}>
+          🎯 Pool por meta mensual (solo sobre el excedente de la meta)
+        </option>
+        <option value="always" ${((v.commissionMode || 'goal') === 'always') ? 'selected' : ''}>
+          💰 Pool siempre (sobre el 100% de la venta)
+        </option>
+      </select>
+      <p class="text-[10px] text-gray-400 mt-1">
+        <b>Pool por meta:</b> el vendedor solo gana pool cuando la tienda supera su meta mensual. Si la meta es 0, el pool aplica sobre todo.
+        <br>
+        <b>Pool siempre:</b> el vendedor gana pool desde la primera venta del mes, sin importar la meta.
+      </p>
     </div>
 
     <div class="grid grid-cols-2 gap-3 mb-3">
@@ -2038,6 +2063,7 @@ window.saveStore = async (existingId) => {
     address: $('f-address').value.trim(),
     phone: $('f-phone').value.trim(),
     email: $('f-email').value.trim(),
+    commissionMode: $('f-commissionMode').value || 'always',
     commissionRate: (Number($('f-commission').value) || 0) / 100,
     arqueoMargin: Number($('f-arqueoMargin').value) || 0,
     goalAmount: Number($('f-goalAmount').value) || 0,
@@ -8034,6 +8060,9 @@ function populateInventoryFilters() {
 function renderInventory() {
   // KPIs primero
   renderInventoryKPIs();
+
+  // 🆕 Conectar filtros (solo una vez)
+  populateInventoryFilters();
 
   const tb = $('inventory-tbody');
   const empty = $('inv-empty');

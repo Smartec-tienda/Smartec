@@ -635,6 +635,7 @@ const appCheck = initializeAppCheck(app, {
   let stores = [];          // todas las tiendas
   let categories = {};      // settings.categories
   let transferRequests = []; // solicitudes de traslado
+  let storeGoals = [];      // 🆕 metas mensuales de tienda (storeGoals)
   let cart = [];
   let pickerProduct = null, pickerVariant = null, pickerQtyVal = 1;
   let lastSale = null;
@@ -673,7 +674,76 @@ const appCheck = initializeAppCheck(app, {
     const k = String(hex).toLowerCase();
     return COLOR_NAMES[k] || fallback || hex;
   };
+  /* ============================================================
+     🆕 META MENSUAL DE TIENDA CON HERENCIA
+     Reglas:
+     1. Si existe la meta del mes actual → esa.
+     2. Si no, heredar la del mes anterior.
+     3. Si no, usar store.goalAmount.
+     4. Si no, 0 (sin meta).
+  ============================================================ */
 
+  /**
+   * Devuelve la meta vigente para una tienda en un mes dado (YYYY-MM).
+   * Aplica herencia automática del mes anterior.
+   */
+  function getStoreGoalForMonth(storeId, monthStr) {
+    if (!storeId) return { goalAmount: 0, bonusRate: 0, source: 'none' };
+
+    // 1. Buscar la del mes actual
+    const current = (storeGoals || []).find(g => g.id === `${storeId}_${monthStr}`);
+    if (current) {
+      return {
+        goalAmount: Number(current.goalAmount || 0),
+        bonusRate: Number(current.bonusRate || 0),
+        source: 'current'
+      };
+    }
+
+    // 2. Heredar del mes anterior
+    const prevMonthStr = getPrevMonthString(monthStr);
+    if (prevMonthStr) {
+      const prev = (storeGoals || []).find(g => g.id === `${storeId}_${prevMonthStr}`);
+      if (prev) {
+        return {
+          goalAmount: Number(prev.goalAmount || 0),
+          bonusRate: Number(prev.bonusRate || 0),
+          source: 'inherited'
+        };
+      }
+    }
+
+    // 3. Fallback: usar store.goalAmount
+    const store = stores.find(s => s.storeId === storeId);
+    if (store && Number(store.goalAmount) > 0) {
+      return {
+        goalAmount: Number(store.goalAmount || 0),
+        bonusRate: Number(store.bonusRate || 0),
+        source: 'store-default'
+      };
+    }
+
+    // 4. Sin meta
+    return { goalAmount: 0, bonusRate: 0, source: 'none' };
+  }
+
+  /**
+   * Devuelve el string "YYYY-MM" del mes anterior.
+   */
+  function getPrevMonthString(monthStr) {
+    if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) return null;
+    const [y, m] = monthStr.split('-').map(Number);
+    const d = new Date(y, m - 2, 1); // mes - 2 porque JS cuenta desde 0
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  /**
+   * Devuelve el string "YYYY-MM" del mes actual.
+   */
+  function getCurrentMonthString() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
   async function audit(entry) {
     try {
       await addDoc(collection(db,'auditLog'), {
@@ -1364,6 +1434,12 @@ function initPosPayments() {
       });
       transferRequests = reqs;
 
+      // 🆕 3.2d Metas mensuales de tienda (storeGoals)
+      storeGoals = await C.wrap('storeGoals_all', async () => {
+        const s = await getDocs(collection(db,'storeGoals'));
+        return s.docs.map(d => ({id:d.id, ...d.data()}));
+      });
+
       // 3.3 Settings (con cache)
       const setData = await C.wrap('settings', async () => {
         const s = await getDoc(doc(db,'settings','general'));
@@ -1614,19 +1690,42 @@ function initPosPayments() {
       return;
     }
 
-    grid.innerHTML = filtered.map(p => {
+    // 🆕 Clasificar cada producto en 1 de los 3 bloques
+    const blockLocal = [];     // con stock local > 0
+    const blockOther = [];     // sin stock local, pero con stock global > 0
+    const blockEmpty = [];     // sin stock en ninguna tienda
+
+    filtered.forEach(p => {
+      const localStock = getTotalStockForProduct(p.id);
+      const globalStock = getGlobalStockForProduct(p.id);
+
+      if (localStock > 0) {
+        blockLocal.push(p);
+      } else if (globalStock > 0) {
+        blockOther.push(p);
+      } else {
+        blockEmpty.push(p);
+      }
+    });
+
+    // Ordenar alfabéticamente dentro de cada bloque
+    const sortByName = (a, b) => (a.name || '').localeCompare(b.name || '');
+    blockLocal.sort(sortByName);
+    blockOther.sort(sortByName);
+    blockEmpty.sort(sortByName);
+
+    // 🆕 Renderizar un producto (helper que ya tenías, movido adentro)
+    const renderProductCard = (p) => {
       const localStock = getTotalStockForProduct(p.id);
       const globalStock = getGlobalStockForProduct(p.id);
       const price = p.onSale && p.salePrice ? p.salePrice : p.price;
       const img = p.images && p.images[0] ? p.images[0] : 'https://placehold.co/300x300/e5e7eb/9ca3af?text=Sin+imagen';
 
-      // Definir estado visual
       let statusHtml = '';
       let cardClass = '';
       let clickable = true;
 
       if (localStock > 5) {
-        // 🟢 Disponible local
         statusHtml = `
           <div class="flex items-center gap-1 text-[11px] text-green-600 font-semibold">
             <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
@@ -1634,7 +1733,6 @@ function initPosPayments() {
           </div>`;
         cardClass = 'cursor-pointer hover:border-sl hover:shadow-md';
       } else if (localStock > 0) {
-        // 🟠 Últimas unidades local
         statusHtml = `
           <div class="flex items-center gap-1 text-[11px] text-orange-600 font-bold">
             <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
@@ -1642,9 +1740,6 @@ function initPosPayments() {
           </div>`;
         cardClass = 'cursor-pointer hover:border-sl hover:shadow-md';
       } else if (globalStock > 0) {
-        // 🔵 Solo en otras tiendas
-        const otherStores = getOtherStoresWithStock(p.variants?.[0]?.variantId || '');
-        const storeCount = Object.keys(otherStores).length;
         statusHtml = `
           <div class="flex items-center gap-1 text-[11px] text-blue-600 font-bold">
             <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
@@ -1653,7 +1748,6 @@ function initPosPayments() {
           <div class="text-[9px] text-blue-500 mt-0.5">📦 Solicitar traslado</div>`;
         cardClass = 'cursor-pointer hover:border-blue-400 hover:shadow-md border-blue-200 bg-blue-50/30';
       } else {
-        // ⚫ Agotado global
         statusHtml = `
           <div class="flex items-center gap-1 text-[10px] text-red-600 font-bold">
             <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
@@ -1677,10 +1771,36 @@ function initPosPayments() {
           </div>
         </div>
       `;
-    }).join('');
-  }
+    };
 
-  $('search').addEventListener('input', renderProducts);
+    // 🆕 Renderizar los 3 bloques con encabezados (solo si tienen productos)
+    const blockHeader = (icon, label, count, colorClass) => `
+      <div class="col-span-full flex items-center gap-2 pt-3 pb-1 first:pt-0">
+        <span class="${colorClass} text-xs font-bold uppercase tracking-wider">${icon} ${label}</span>
+        <span class="text-[10px] text-gray-400 font-semibold">(${count})</span>
+        <div class="flex-1 h-px bg-black/5 ml-2"></div>
+      </div>
+    `;
+
+    let html = '';
+
+    if (blockLocal.length) {
+      html += blockHeader('🟢', 'En tu tienda', blockLocal.length, 'text-green-600');
+      html += blockLocal.map(renderProductCard).join('');
+    }
+
+    if (blockOther.length) {
+      html += blockHeader('🔵', 'Solo en otras tiendas', blockOther.length, 'text-blue-600');
+      html += blockOther.map(renderProductCard).join('');
+    }
+
+    if (blockEmpty.length) {
+      html += blockHeader('⚫', 'Sin stock', blockEmpty.length, 'text-red-600');
+      html += blockEmpty.map(renderProductCard).join('');
+    }
+
+    grid.innerHTML = html;
+  }
 
   /* ============ PICKER (selección de variante) ============ */
   window.openPicker = (productId) => {
@@ -2289,15 +2409,21 @@ function initPosPayments() {
       const profit = total - surchargeAmount - totalCost;
 
       // ============ CÁLCULO DE COMISIONES ============
-      // Pool: siempre aplica (lo paga la tienda al vendedor)
-      // Bonus: solo sobre el excedente de la meta personal
+      // Pool: depende del modo de tienda ('goal' = solo excedente, 'always' = todo)
+      // Bonus personal: siempre sobre el excedente de la meta personal
       const poolRate = Number(currentStore.commissionRate || 0);
-      const goalAmount = Number(currentUserData.goalAmount || 0);
-      const bonusRate = Number(currentUserData.bonusRate || 0);
+      const commissionMode = currentStore.commissionMode || 'always';
 
-      // Acumulado del vendedor ANTES de esta venta (mes calendario actual)
+      // ========== META DE TIENDA (con herencia) ==========
+      const currentMonthStr = getCurrentMonthString();
+      const storeGoalInfo = getStoreGoalForMonth(currentStore.storeId, currentMonthStr);
+      const storeGoalAmount = storeGoalInfo.goalAmount;
+      const storeGoalSource = storeGoalInfo.source;
+
+      // ========== ACUMULADO DEL VENDEDOR (mes actual, antes de esta venta) ==========
       const nowDate = new Date();
       const monthStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
+
       const sellerSalesBefore = sales.filter(s =>
         s.sellerUid === currentUser.uid &&
         s.status !== 'anulada' &&
@@ -2308,8 +2434,49 @@ function initPosPayments() {
         sum + Number(s.commissionBase || s.total || 0), 0);
       const accumulatedAfter = accumulatedBefore + commissionBase;
 
-      // 🎯 Pool y bonus se calculan sobre commissionBase (sin envío ni recargo)
-      const poolAmount = commissionBase * poolRate;
+      // ========== ACUMULADO DE LA TIENDA (mes actual, antes de esta venta) ==========
+      const storeSalesBefore = sales.filter(s =>
+        s.storeId === currentStore.storeId &&
+        s.status !== 'anulada' &&
+        s.createdAt?.seconds &&
+        new Date(s.createdAt.seconds * 1000) >= monthStart
+      );
+      const storeAccumulatedBefore = storeSalesBefore.reduce((sum, s) =>
+        sum + Number(s.commissionBase || s.total || 0), 0);
+      const storeAccumulatedAfter = storeAccumulatedBefore + commissionBase;
+
+      // ========== CÁLCULO DEL POOL ==========
+      let poolPortion = 0;   // cuánto del commissionBase cuenta para pool
+      let poolAmount = 0;
+
+      if (commissionMode === 'always') {
+        // Modo simple: pool sobre todo
+        poolPortion = commissionBase;
+        poolAmount = poolPortion * poolRate;
+      } else {
+        // Modo meta: pool solo sobre el excedente de la meta de tienda
+        if (storeGoalAmount === 0) {
+          // Truco comercial: meta 0 → todo cuenta como excedente
+          poolPortion = commissionBase;
+        } else if (storeAccumulatedBefore >= storeGoalAmount) {
+          // Ya superó la meta antes de esta venta → todo es excedente
+          poolPortion = commissionBase;
+        } else if (storeAccumulatedAfter <= storeGoalAmount) {
+          // Aún no llega a la meta → nada de pool
+          poolPortion = 0;
+        } else {
+          // Cruza la meta → solo la parte que la supera
+          poolPortion = storeAccumulatedAfter - storeGoalAmount;
+        }
+        poolAmount = poolPortion * poolRate;
+      }
+
+      // Redondeo consistente
+      poolAmount = Math.round(poolAmount);
+
+      // ========== BONUS PERSONAL (excedente de la meta personal) ==========
+      const goalAmount = Number(currentUserData.goalAmount || 0);
+      const bonusRate = Number(currentUserData.bonusRate || 0);
 
       let bonusPortion = 0;
       let bonusAmount = 0;
@@ -2321,9 +2488,30 @@ function initPosPayments() {
         }
         bonusAmount = bonusPortion * bonusRate;
       }
+      bonusAmount = Math.round(bonusAmount);
 
       const sellerCommissionAmount = poolAmount + bonusAmount;
       const storeCommissionAmount = 0;
+
+            // 🧪 TEST temporal — verificar cálculo de comisiones
+      console.log('🧪 CÁLCULO DE COMISIONES', {
+        commissionMode,
+        storeGoalAmount,
+        storeGoalSource,
+        storeAccumulatedBefore,
+        storeAccumulatedAfter,
+        commissionBase,
+        poolRate,
+        poolPortion,
+        poolAmount,
+        goalAmount,
+        accumulatedBefore,
+        accumulatedAfter,
+        bonusRate,
+        bonusPortion,
+        bonusAmount,
+        sellerCommissionAmount
+      });
 
     // ============ 🆕 MÉTODOS DE PAGO (múltiples) ============
     if (!payments.length) {
@@ -2423,6 +2611,12 @@ function initPosPayments() {
 
     // Estado del pago
     const paymentStatus = hasContraentrega ? 'pending' : 'completed';
+
+    // 🧪 DEBUG temporal — para no guardar durante pruebas
+    if (window.__DEBUG_NO_SAVE === true) {
+      alert('🧪 DEBUG activo: la venta NO se guardará.\n\nRevisa la consola (F12) y mira el objeto CÁLCULO DE COMISIONES.');
+      return;
+    }
 
     const btn = $('save-btn');
     btn.disabled = true; btn.innerText = '⏳ Guardando...';
