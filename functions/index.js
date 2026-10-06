@@ -77,6 +77,8 @@ exports.createUserAdmin = onCall({ cors: true, region: 'us-central1' }, async (r
       maxDevices: Number(data.maxDevices) || 1,
       pin: data.pin || null,
       kioskMode: !!data.kioskMode,
+      deviceAutoApprove: !!data.deviceAutoApprove,        // 🆕 faltaba este campo
+      employeeId: data.employeeId || null,                 // 🆕 vínculo con empleado
       active: data.active !== false,
       authorizedDevices: [],
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -96,7 +98,7 @@ exports.createUserAdmin = onCall({ cors: true, region: 'us-central1' }, async (r
       userRole: callerData.role,
       storeId: userProfile.storeId,
       after: userProfile,
-      note: `Usuario creado: ${name} (${userProfile.role})`,
+      note: `Usuario creado: ${name} (${userProfile.role})${userProfile.employeeId ? ' · vinculado a empleado' : ' · usuario externo'}`,
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
 
