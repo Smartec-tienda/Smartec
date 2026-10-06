@@ -253,18 +253,22 @@
     }
 
     // Salir
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-      logoutBtn.onclick = () => {
-        if (typeof opts.onLogout === 'function') {
-          opts.onLogout();
-        } else {
-          // Comportamiento por defecto: confirmar y redirigir
-          if (confirm('¿Cerrar sesión?')) {
-            window.location.href = 'home.html';
+    // ⚠️ El botón se renderiza 2 veces (desktop y móvil) con el mismo id.
+    //    Usamos querySelectorAll para asignar el listener a AMBOS.
+    const logoutBtns = document.querySelectorAll('#logout-btn');
+    if (logoutBtns.length) {
+      logoutBtns.forEach(btn => {
+        btn.onclick = () => {
+          if (typeof opts.onLogout === 'function') {
+            opts.onLogout();
+          } else {
+            // Comportamiento por defecto: confirmar y redirigir
+            if (confirm('¿Cerrar sesión?')) {
+              window.location.href = 'home.html';
+            }
           }
-        }
-      };
+        };
+      });
     }
 
     // Selector de tienda
