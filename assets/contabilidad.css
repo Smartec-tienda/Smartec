@@ -1,0 +1,134 @@
+:root{--sd:#0A2A4A;--sl:#4A7A9A}
+.bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+.text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+.border-sl{border-color:#4A7A9A}
+.scrollbar-thin::-webkit-scrollbar{width:6px;height:6px}
+.scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+.tab-active{
+  border-bottom-color:#0071E3;
+  color:#0071E3;
+  font-weight:600;
+  border-bottom-width:2px;
+}
+
+/* 🆕 Nav de tabs NO sticky (el header-app ya es sticky arriba) */
+#tabs-nav {
+  position: relative;
+  z-index: 20;
+}
+/* El body no debe tener overflow hidden */
+body { overflow-x: hidden; }
+#store-selector {
+  background-color: rgba(255,255,255,0.15);
+  color: #ffffff;
+  min-width: 200px;
+}
+#store-selector:hover { background-color: rgba(255,255,255,0.25); }
+#store-selector:focus { outline: none; border-color: rgba(255,255,255,0.6); }
+#store-selector option {
+  color: #0A2A4A;
+  background-color: #ffffff;
+  padding: 6px;
+  font-size: 14px;
+}
+  /* 🆕 Botones de cierre de modales: siempre visibles y clickeables */
+.sticky-close {
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  z-index: 30 !important;
+}
+/* En móvil subirlo un poco para que no quede bajo el header */
+@media (max-width: 767px) {
+  .sticky-close {
+    top: 8px !important;
+    right: 8px !important;
+  }
+}
+#store-selector option:checked { background-color: #4A7A9A; color: #ffffff; }
+
+/* ============================================================
+   SIDEBAR (layout lateral colapsable, estilo admin)
+============================================================ */
+
+#sidebar {
+  width: 260px;
+}
+#sidebar.collapsed {
+  width: 68px;
+}
+#sidebar.collapsed .sidebar-label,
+#sidebar.collapsed .sidebar-section-title {
+  display: none;
+}
+#sidebar.collapsed .sidebar-item {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+#sidebar.collapsed .sidebar-icon {
+  margin: 0;
+}
+#sidebar.collapsed #sidebar-collapse-icon {
+  transform: rotate(180deg);
+}
+
+/* Item del sidebar */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  margin: 2px 8px;
+  border-radius: 10px;
+  color: #4B5563;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(.2,.8,.2,1);
+  text-align: left;
+  width: calc(100% - 16px);
+  border: none;
+  background: transparent;
+}
+.sidebar-item:hover {
+  background: rgba(0, 113, 227, 0.08);
+  color: #0071E3;
+}
+.sidebar-item.tab-active {
+  background: #0071E3;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+}
+.sidebar-item.tab-active:hover {
+  background: #0071E3;
+  color: white;
+}
+.sidebar-icon {
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.sidebar-label {
+  white-space: nowrap;
+  overflow: hidden;
+}
+#sidebar-collapse-icon {
+  transition: transform 0.3s ease;
+}
+
+/* Móvil: sidebar oculto por defecto, se abre con clase .open */
+@media (max-width: 1023px) {
+  #sidebar {
+    transform: translateX(-100%);
+  }
+  #sidebar.open {
+    transform: translateX(0);
+  }
+}
