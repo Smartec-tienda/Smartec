@@ -13,6 +13,9 @@
 <script src="lib/common.js"></script>
 <script src="lib/cache.js"></script>
 <script src="components/favicon.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root{
     --bg:#F5F5F7;
@@ -297,14 +300,291 @@
 
 <!-- ============ APP (catálogo) ============ -->
 <div id="app-screen" class="hidden min-h-screen flex flex-col">
-  <!-- Aquí vivirá el catálogo (se llena en el Sub-paso 6.3) -->
-  <div class="flex-1 flex items-center justify-center p-8">
-    <div class="text-center">
-      <p class="text-lg font-bold text-[#1D1D1F] mb-2">✅ Sesión iniciada</p>
-      <p class="text-sm text-[#6E6E73]">Bienvenido, <span id="app-user-name" class="font-semibold"></span></p>
-      <p class="text-xs text-[#6E6E73] mt-3">El catálogo se construye en los siguientes sub-pasos.</p>
-      <button onclick="window.logout()" class="mt-6 text-xs text-[#FF375F] hover:underline font-semibold">Cerrar sesión</button>
+
+  <!-- ============ HEADER ============ -->
+  <header class="glass-strong border-b border-white/50 sticky top-0 z-30 shrink-0">
+    <div class="container mx-auto px-4 lg:px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
+
+      <!-- Logo / marca -->
+      <div class="flex items-center gap-3 min-w-0">
+        <div id="may-logo-container" class="shrink-0">
+          <h1 class="text-xl font-extrabold logo-mark tracking-tight">SMARTEC</h1>
+        </div>
+        <div class="hidden sm:block border-l border-black/10 pl-3">
+          <p class="text-[10px] font-bold text-[#BF5AF2] uppercase tracking-wider">Portal Mayoristas</p>
+          <p id="app-user-name" class="text-xs text-[#6E6E73] truncate font-medium">—</p>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="flex items-center gap-2 flex-wrap">
+
+        <!-- Buscador -->
+        <div class="relative">
+          <input
+            id="may-search"
+            type="text"
+            placeholder="🔍 Buscar producto..."
+            class="w-48 md:w-64 px-3 py-2 rounded-xl text-sm pr-8">
+        </div>
+
+        <!-- Botón PDF -->
+        <button
+          onclick="exportCatalogPDF()"
+          class="px-3 py-2 rounded-xl bg-[#FF375F] text-white text-xs font-semibold hover:bg-[#E0304F] transition flex items-center gap-1.5"
+          title="Descargar catálogo en PDF">
+          📄 PDF
+        </button>
+
+        <!-- Botón Excel -->
+        <button
+          onclick="exportCatalogExcel()"
+          class="px-3 py-2 rounded-xl bg-[#30D158] text-white text-xs font-semibold hover:bg-[#28B94E] transition flex items-center gap-1.5"
+          title="Descargar catálogo en Excel">
+          📊 Excel
+        </button>
+
+        <!-- Botón Carrito -->
+        <button
+          onclick="toggleMayCart()"
+          class="px-3 py-2 rounded-xl bg-[#0071E3] text-white text-xs font-semibold hover:bg-[#0077ED] transition flex items-center gap-1.5 relative">
+          🛒 Carrito
+          <span id="may-cart-badge" class="hidden bg-white text-[#0071E3] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center">0</span>
+        </button>
+
+        <!-- Cerrar sesión -->
+        <button
+          onclick="window.logout()"
+          class="px-3 py-2 rounded-xl bg-gray-100 text-[#1D1D1F] text-xs font-semibold hover:bg-gray-200 transition"
+          title="Cerrar sesión">
+          🚪
+        </button>
+
+      </div>
     </div>
+
+    <!-- Filtros por categoría -->
+    <div class="container mx-auto px-4 lg:px-6 pb-3">
+      <div id="may-category-filters" class="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+        <!-- Se llena por JS -->
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ CONTENIDO PRINCIPAL ============ -->
+  <main class="flex-1 container mx-auto px-4 lg:px-6 py-6">
+
+    <!-- Info del mayorista (tarjeta superior) -->
+    <div id="may-welcome-card" class="mb-6"></div>
+
+    <!-- Grid de productos -->
+    <div id="may-products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <!-- Se llena por JS -->
+    </div>
+
+    <!-- Sin productos -->
+    <p id="may-products-empty" class="hidden text-center py-16 text-[#6E6E73]">
+      📭 No hay productos disponibles en el catálogo mayorista.
+    </p>
+
+    <!-- Loading -->
+    <p id="may-products-loading" class="text-center py-16 text-[#6E6E73]">
+      ⏳ Cargando catálogo...
+    </p>
+
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="border-t border-black/5 mt-12 py-6 shrink-0">
+    <div class="container mx-auto px-4 lg:px-6 text-center text-xs text-[#6E6E73]">
+      <p>© 2026 Smartec · Portal Mayoristas</p>
+    </div>
+  </footer>
+
+</div>
+
+<!-- ============ PANEL LATERAL DEL CARRITO (oculto) ============ -->
+<div id="may-cart-panel" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="toggleMayCart()"></div>
+  <aside class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-apple-xl flex flex-col">
+    <!-- Header -->
+    <div class="border-b border-black/5 p-4 flex items-center justify-between shrink-0">
+      <h3 class="font-bold text-[#1D1D1F]">🛒 Carrito de cotización</h3>
+      <button onclick="toggleMayCart()" class="p-2 rounded-full hover:bg-gray-100 text-[#6E6E73]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Items -->
+    <div id="may-cart-items" class="flex-1 overflow-y-auto p-4 scrollbar-thin">
+      <p class="text-xs text-[#6E6E73] text-center py-8">Tu carrito está vacío</p>
+    </div>
+
+    <!-- Totales + Botón -->
+    <div class="border-t border-black/5 p-4 shrink-0 space-y-3">
+      <div class="flex justify-between text-sm">
+        <span class="text-[#6E6E73]">Productos</span>
+        <span id="may-cart-count" class="font-semibold">0</span>
+      </div>
+      <div class="flex justify-between text-lg font-bold">
+        <span>TOTAL</span>
+        <span id="may-cart-total">$0</span>
+      </div>
+      <button
+        id="may-cart-request-btn"
+        onclick="openQuoteRequestModal()"
+        class="w-full py-3 rounded-xl bg-gradient-to-r from-[#BF5AF2] to-[#0071E3] text-white font-bold hover:opacity-90 transition disabled:opacity-40"
+        disabled>
+        📋 Solicitar cotización
+      </button>
+    </div>
+  </aside>
+</div>
+<!-- ============ MODAL PICKER (selección de variante) ============ -->
+<div id="may-picker-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeMayPicker()"></div>
+  <div class="relative bg-white rounded-3xl shadow-apple-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 scrollbar-thin">
+
+    <button onclick="closeMayPicker()" class="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100 text-[#6E6E73]">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+
+    <!-- Imagen -->
+    <div class="aspect-square bg-gradient-to-br from-white to-gray-50 rounded-2xl mb-4 flex items-center justify-center overflow-hidden">
+      <img id="may-pick-img" src="" alt="" class="object-contain w-full h-full p-4">
+    </div>
+
+    <!-- Info -->
+    <p id="may-pick-sku" class="text-[10px] text-[#6E6E73] font-mono mb-1"></p>
+    <h3 id="may-pick-name" class="text-lg font-bold text-[#1D1D1F] leading-tight mb-2"></h3>
+
+    <!-- Precio -->
+    <div class="mb-4">
+      <div class="flex items-baseline gap-2 flex-wrap">
+        <p id="may-pick-price" class="text-2xl font-bold text-[#BF5AF2]">$0</p>
+        <span class="text-[10px] bg-[#BF5AF2]/15 text-[#BF5AF2] px-2 py-0.5 rounded-full font-bold">🏢 MAYORISTA</span>
+      </div>
+      <p id="may-pick-retail" class="text-xs text-[#6E6E73] mt-1 hidden"></p>
+    </div>
+
+    <!-- Stock -->
+    <p id="may-pick-stock" class="text-xs mb-4"></p>
+
+    <!-- Colores -->
+    <div id="may-pick-colors-wrap" class="mb-4 hidden">
+      <p class="text-xs font-semibold mb-2 text-[#1D1D1F]">Color:</p>
+      <div id="may-pick-colors" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <!-- Tallas / variantes -->
+    <div id="may-pick-sizes-wrap" class="mb-4 hidden">
+      <p class="text-xs font-semibold mb-2 text-[#1D1D1F]">Variante:</p>
+      <div id="may-pick-sizes" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <!-- Cantidad -->
+    <div class="mb-5">
+      <p class="text-xs font-semibold mb-2 text-[#1D1D1F]">Cantidad:</p>
+      <div class="inline-flex items-center border rounded-xl">
+        <button onclick="mayPickQty(-1)" class="px-3 py-2 hover:bg-gray-100 rounded-l-xl text-[#1D1D1F]">−</button>
+        <span id="may-pick-qty" class="px-4 py-2 font-semibold text-[#1D1D1F]">1</span>
+        <button onclick="mayPickQty(1)" class="px-3 py-2 hover:bg-gray-100 rounded-r-xl text-[#1D1D1F]">+</button>
+      </div>
+    </div>
+
+    <!-- Botón agregar -->
+    <button onclick="confirmMayAddToCart()" class="w-full py-3 rounded-xl bg-gradient-to-r from-[#BF5AF2] to-[#0071E3] text-white font-bold hover:opacity-90 transition">
+      ➕ Agregar al carrito
+    </button>
+
+  </div>
+</div>
+
+<!-- ============ MODAL SOLICITAR COTIZACIÓN ============ -->
+<div id="may-quote-modal" class="fixed inset-0 z-[70] hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeQuoteRequestModal()"></div>
+  <div class="relative bg-white rounded-3xl shadow-apple-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 scrollbar-thin">
+
+    <button onclick="closeQuoteRequestModal()" class="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100 text-[#6E6E73]">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+
+    <!-- Ícono -->
+    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#BF5AF2] to-[#0071E3] flex items-center justify-center mx-auto mb-3 shadow-apple text-2xl">
+      📋
+    </div>
+
+    <h3 class="text-lg font-bold text-[#1D1D1F] text-center tracking-tight mb-1">
+      Solicitar cotización
+    </h3>
+    <p class="text-xs text-[#6E6E73] text-center mb-5">
+      Enviaremos tu pedido al equipo comercial. Te contactaremos pronto.
+    </p>
+
+    <!-- Resumen del pedido -->
+    <div class="bg-[#BF5AF2]/5 border border-[#BF5AF2]/20 rounded-2xl p-4 mb-4">
+      <p class="text-xs font-bold text-[#BF5AF2] uppercase tracking-wider mb-3">Resumen del pedido</p>
+
+      <div id="may-quote-summary" class="space-y-2 mb-3 max-h-48 overflow-y-auto scrollbar-thin">
+        <!-- Se llena por JS -->
+      </div>
+
+      <div class="border-t border-[#BF5AF2]/20 pt-3 flex justify-between items-center">
+        <span class="text-sm font-semibold text-[#1D1D1F]">Total</span>
+        <span id="may-quote-total" class="text-lg font-bold text-[#BF5AF2]">$0</span>
+      </div>
+    </div>
+
+    <!-- Fecha deseada de entrega -->
+    <label class="text-xs font-semibold text-[#1D1D1F] block mb-1">
+      📅 Fecha deseada de entrega (opcional)
+    </label>
+    <input
+      id="may-quote-date"
+      type="date"
+      class="w-full px-3 py-2.5 rounded-xl text-sm mb-4">
+
+    <!-- Notas -->
+    <label class="text-xs font-semibold text-[#1D1D1F] block mb-1">
+      📝 Notas o comentarios (opcional)
+    </label>
+    <textarea
+      id="may-quote-notes"
+      rows="3"
+      placeholder="Ej: Necesito factura a nombre de la empresa, entregar en bodega, etc."
+      class="w-full px-3 py-2.5 rounded-xl text-sm mb-4"></textarea>
+
+    <!-- Datos del solicitante (preview) -->
+    <div class="bg-gray-50 rounded-2xl p-3 mb-4 text-xs">
+      <div class="flex justify-between mb-1">
+        <span class="text-[#6E6E73]">Solicitado por:</span>
+        <span id="may-quote-user" class="font-semibold text-[#1D1D1F]"></span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-[#6E6E73]">Empresa:</span>
+        <span id="may-quote-company" class="font-semibold text-[#1D1D1F]"></span>
+      </div>
+    </div>
+
+    <!-- Botones -->
+    <div class="flex gap-3">
+      <button onclick="closeQuoteRequestModal()" class="flex-1 bg-gray-100 text-[#1D1D1F] py-3 rounded-xl hover:bg-gray-200 font-semibold text-sm">
+        Cancelar
+      </button>
+      <button
+        id="may-quote-confirm-btn"
+        onclick="submitQuoteRequest()"
+        class="flex-1 bg-gradient-to-r from-[#BF5AF2] to-[#0071E3] text-white py-3 rounded-xl hover:opacity-90 font-bold text-sm">
+        📤 Enviar cotización
+      </button>
+    </div>
+
   </div>
 </div>
 
@@ -346,8 +626,11 @@ const appCheck = initializeAppCheck(app, {
 let currentUser = null;
 let currentUserData = null;
 let currentCustomer = null;   // Doc de customers con isWholesale: true
-let products = [];
-let cart = [];
+let products = [];            // Productos con wholesalePrice > 0
+let cart = [];                // Carrito de cotización
+let categories = {};          // Categorías desde settings
+let activeCategory = 'all';   // Filtro actual
+let searchTerm = '';          // Término de búsqueda
 
 /* ============ HELPERS ============ */
 const $ = id => document.getElementById(id);
@@ -521,6 +804,17 @@ onAuthStateChanged(auth, async user => {
   hideSplash();
 
   console.log('[Portal MAY] Sesión iniciada:', currentCustomer.wholesale?.companyName);
+
+  // 🆕 Cargar datos del portal
+  await loadPortalLogo();
+  await loadCategories();
+  await loadWholesaleProducts();
+
+  // 🆕 Renderizar
+  renderWelcomeCard();
+  renderCategoryFilters();
+  renderProducts();
+
 });
 
 /* ============================================================
@@ -547,6 +841,1267 @@ async function loadAndApplyLogo() {
 
 // Cargar el logo al iniciar
 loadAndApplyLogo();
+
+/* ============================================================
+   🆕 CARGA DE DATOS — Productos y categorías
+============================================================ */
+
+/**
+ * Carga productos activos que tengan wholesalePrice > 0.
+ */
+async function loadWholesaleProducts() {
+  try {
+    const snap = await getDocs(collection(db, 'products'));
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Filtrar: activos Y con wholesalePrice > 0
+    products = all.filter(p =>
+      p.active !== false &&
+      Number(p.wholesalePrice || 0) > 0
+    );
+
+    console.log(`[Portal MAY] ${products.length} productos mayoristas cargados`);
+  } catch (e) {
+    console.error('[Portal MAY] Error cargando productos:', e);
+    products = [];
+  }
+}
+
+/**
+ * Carga las categorías desde settings/general.
+ */
+async function loadCategories() {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'general'));
+    if (snap.exists()) {
+      const data = snap.data();
+      categories = data.categories || {};
+    }
+  } catch (e) {
+    console.error('[Portal MAY] Error cargando categorías:', e);
+    categories = {};
+  }
+}
+
+/**
+ * Carga el logo del portal desde settings.
+ */
+async function loadPortalLogo() {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'general'));
+    if (!snap.exists()) return;
+    const data = snap.data();
+    const container = $('may-logo-container');
+    if (container && data.logoUrl) {
+      container.innerHTML = `
+        <img src="${data.logoUrl}" alt="Smartec"
+             class="h-10 object-contain" decoding="async">
+      `;
+    }
+  } catch (e) {
+    console.warn('[Portal MAY] No se pudo cargar el logo:', e);
+  }
+}
+
+/* ============================================================
+   🆕 RENDER — Filtros por categoría
+============================================================ */
+function renderCategoryFilters() {
+  const el = $('may-category-filters');
+  if (!el) return;
+
+  // Categorías que tienen al menos 1 producto mayorista
+  const usedGroups = new Set(products.map(p => p.categoryGroup).filter(Boolean));
+
+  const groups = Object.entries(categories)
+    .filter(([slug, g]) => usedGroups.has(slug) && g.seasonalActive !== false)
+    .sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
+
+  const chips = [
+    `<button data-cat="all" class="may-cat-btn px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border ${activeCategory === 'all' ? 'bg-[#BF5AF2] text-white border-[#BF5AF2]' : 'border-gray-300 text-[#1D1D1F] hover:border-[#BF5AF2]'} transition">Todos</button>`,
+    ...groups.map(([slug, g]) => {
+      const isActive = activeCategory === slug;
+      return `<button data-cat="${slug}" class="may-cat-btn px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border ${isActive ? 'bg-[#BF5AF2] text-white border-[#BF5AF2]' : 'border-gray-300 text-[#1D1D1F] hover:border-[#BF5AF2]'} transition">${escapeHtml(g.name)}</button>`;
+    })
+  ].join('');
+
+  el.innerHTML = chips;
+
+  el.querySelectorAll('.may-cat-btn').forEach(btn => {
+    btn.onclick = () => {
+      activeCategory = btn.dataset.cat;
+      renderCategoryFilters();
+      renderProducts();
+    };
+  });
+}
+
+/* ============================================================
+   🆕 RENDER — Tarjeta de bienvenida del mayorista
+============================================================ */
+function renderWelcomeCard() {
+  const el = $('may-welcome-card');
+  if (!el) return;
+
+  if (!currentCustomer) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const w = currentCustomer.wholesale || {};
+  const companyName = w.companyName || currentCustomer.name || 'Mayorista';
+  const nit = w.nit || '—';
+  const termsMap = {
+    contado: 'Contado',
+    net_15: 'Net 15 días',
+    net_30: 'Net 30 días',
+    net_45: 'Net 45 días',
+    net_60: 'Net 60 días',
+    net_90: 'Net 90 días',
+    custom: 'Personalizado'
+  };
+  const termsLabel = w.paymentTerms === 'custom'
+    ? `Personalizado (${w.customTermsDays || 0} días)`
+    : (termsMap[w.paymentTerms] || '—');
+  const discountPct = ((w.discountBase || 0) * 100).toFixed(1);
+
+  el.innerHTML = `
+    <div class="bg-gradient-to-br from-[#BF5AF2]/8 to-[#5AC8FA]/8 border border-[#BF5AF2]/25 rounded-3xl p-5 shadow-apple">
+      <div class="flex items-start justify-between flex-wrap gap-3">
+        <div class="min-w-0 flex-1">
+          <p class="text-[10px] font-bold text-[#BF5AF2] uppercase tracking-wider mb-1">Bienvenido</p>
+          <h2 class="text-xl md:text-2xl font-bold text-[#1D1D1F] tracking-tight">${escapeHtml(companyName)}</h2>
+          <p class="text-xs text-[#6E6E73] mt-1">NIT: <span class="font-mono">${escapeHtml(nit)}</span></p>
+        </div>
+        <div class="flex gap-4 text-xs flex-wrap">
+          <div>
+            <p class="text-[10px] text-[#6E6E73] uppercase font-semibold">Condición</p>
+            <p class="font-bold text-[#1D1D1F]">${escapeHtml(termsLabel)}</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-[#6E6E73] uppercase font-semibold">Descuento base</p>
+            <p class="font-bold text-[#BF5AF2]">-${discountPct}%</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-[#6E6E73] uppercase font-semibold">Productos</p>
+            <p class="font-bold text-[#1D1D1F]">${products.length}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   🆕 RENDER — Grid de productos
+============================================================ */
+
+/**
+ * Calcula el precio unitario del mayorista para un producto (sin variante).
+ * El precio final se ajusta con el discountBase del mayorista actual.
+ */
+function computeWholesalePrice(product) {
+  const wp = Number(product.wholesalePrice) || 0;
+  if (wp <= 0) return 0;
+
+  const discount = Number(currentCustomer?.wholesale?.discountBase || 0);
+  const finalPrice = discount > 0 ? wp * (1 - discount) : wp;
+  return Math.round(finalPrice);
+}
+
+/**
+ * Devuelve el stock total de un producto sumando todas sus variantes
+ * en todas las tiendas (el mayorista puede pedir de cualquier tienda).
+ */
+function getTotalStockForProduct(product) {
+  if (!product.variants || !product.variants.length) return 0;
+
+  // Como no cargamos inventory en el portal, mostramos un stock referencial.
+  // Si quieres stock real, habría que cargar inventory por variante.
+  // Por ahora devolvemos null → "Disponible bajo pedido"
+  return null;
+}
+
+/**
+ * Renderiza el grid de productos mayoristas.
+ */
+function renderProducts() {
+  const grid = $('may-products-grid');
+  const empty = $('may-products-empty');
+  const loading = $('may-products-loading');
+
+  if (!grid) return;
+
+  // Ocultar loading
+  if (loading) loading.classList.add('hidden');
+
+  // Aplicar filtros
+  let list = products.slice();
+
+  // Filtro por categoría
+  if (activeCategory !== 'all') {
+    list = list.filter(p => p.categoryGroup === activeCategory);
+  }
+
+  // Filtro por búsqueda
+  if (searchTerm) {
+    list = list.filter(p =>
+      (p.name || '').toLowerCase().includes(searchTerm) ||
+      (p.sku || '').toLowerCase().includes(searchTerm)
+    );
+  }
+
+  // Ordenar alfabéticamente
+  list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  // Empty state
+  if (!list.length) {
+    grid.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+
+  // Render
+  grid.innerHTML = list.map(p => renderProductCard(p)).join('');
+}
+
+/**
+ * Devuelve el HTML de una tarjeta de producto.
+ */
+function renderProductCard(p) {
+  const wholesale = computeWholesalePrice(p);
+  const retail = Number(p.onSale && p.salePrice ? p.salePrice : p.price) || 0;
+  const hasRetail = retail > 0 && retail > wholesale;
+  const img = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/300x300/e5e7eb/9ca3af?text=Sin+imagen';
+
+  // Stock total (suma de variantes, solo como referencia)
+  const variantsCount = (p.variants || []).length;
+
+  // Badge de categoría
+  const catName = p.categoryGroupName || '';
+
+  return `
+    <div class="may-product-card bg-white rounded-2xl overflow-hidden shadow-apple hover:shadow-apple-xl transition-all duration-300 cursor-pointer flex flex-col"
+         onclick="openMayPicker('${p.id}')">
+
+      <!-- Imagen -->
+      <div class="aspect-square bg-gradient-to-br from-white to-gray-50 flex items-center justify-center overflow-hidden relative">
+        <img src="${img}" alt="${escapeHtml(p.name)}"
+             class="object-contain w-full h-full p-4 transition-transform duration-500 hover:scale-105"
+             loading="lazy">
+
+        <!-- Badge categoría -->
+        ${catName ? `
+          <span class="absolute top-2 left-2 bg-white/90 backdrop-blur text-[10px] font-semibold text-[#6E6E73] px-2 py-0.5 rounded-full shadow-sm">
+            ${escapeHtml(catName)}
+          </span>
+        ` : ''}
+
+        <!-- Badge promoción -->
+        ${p.onSale ? `
+          <span class="absolute top-2 right-2 bg-[#FF375F] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+            PROMO
+          </span>
+        ` : ''}
+      </div>
+
+      <!-- Info -->
+      <div class="p-3 md:p-4 flex flex-col flex-1">
+        <p class="text-[10px] text-[#6E6E73] font-mono truncate">${escapeHtml(p.sku) || '—'}</p>
+        <p class="text-xs md:text-sm font-semibold text-[#1D1D1F] leading-tight line-clamp-2 mb-2 flex-1">
+          ${escapeHtml(p.name)}
+        </p>
+
+        <!-- Precio mayorista -->
+        <div class="mb-2">
+          <div class="flex items-baseline gap-1.5 flex-wrap">
+            <p class="text-base md:text-lg font-bold text-[#BF5AF2]">${fmt(wholesale)}</p>
+            <span class="text-[9px] bg-[#BF5AF2]/15 text-[#BF5AF2] px-1.5 py-0.5 rounded-full font-bold">🏢 MAY</span>
+          </div>
+          ${hasRetail ? `
+            <p class="text-[10px] text-[#6E6E73] mt-0.5">
+              <span class="line-through">${fmt(retail)}</span>
+              <span class="text-[#30D158] font-semibold ml-1">Ahorras ${fmt(retail - wholesale)}</span>
+            </p>
+          ` : ''}
+        </div>
+
+        <!-- Variantes info -->
+        <p class="text-[10px] text-[#6E6E73] mb-3">
+          ${variantsCount > 1 ? `${variantsCount} variantes disponibles` : 'Variante única'}
+        </p>
+
+        <!-- Botón agregar -->
+        <button
+          type="button"
+          onclick="event.stopPropagation(); openMayPicker('${p.id}')"
+          class="w-full py-2 rounded-xl bg-[#BF5AF2] text-white text-xs font-bold hover:bg-[#A64DD6] transition">
+          ➕ Agregar al carrito
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   🆕 PICKER — Estado y lógica
+============================================================ */
+let mayPickerProduct = null;
+let mayPickerVariant = null;
+let mayPickerQtyVal = 1;
+
+window.openMayPicker = (productId) => {
+  const p = products.find(x => x.id === productId);
+  if (!p) return;
+
+  mayPickerProduct = p;
+  mayPickerQtyVal = 1;
+
+  // Seleccionar primera variante activa
+  mayPickerVariant = (p.variants || []).find(v => v.active !== false) || (p.variants || [])[0] || null;
+
+  // Poblar info
+  const img = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/300x300/e5e7eb/9ca3af?text=Sin+imagen';
+  $('may-pick-img').src = img;
+  $('may-pick-img').alt = p.name || '';
+  $('may-pick-sku').innerText = p.sku ? `SKU: ${p.sku}` : '';
+  $('may-pick-name').innerText = p.name || '—';
+
+  // Precio mayorista
+  const wholesale = computeWholesalePrice(p);
+  $('may-pick-price').innerText = fmt(wholesale);
+
+  // Precio retail tachado
+  const retail = Number(p.onSale && p.salePrice ? p.salePrice : p.price) || 0;
+  const retailEl = $('may-pick-retail');
+  if (retail > wholesale) {
+    retailEl.innerHTML = `Precio retail: <span class="line-through">${fmt(retail)}</span> · <span class="text-[#30D158] font-semibold">Ahorras ${fmt(retail - wholesale)}</span>`;
+    retailEl.classList.remove('hidden');
+  } else {
+    retailEl.classList.add('hidden');
+  }
+
+  // Stock (placeholder "disponible bajo pedido")
+  $('may-pick-stock').innerHTML = `
+    <span class="inline-flex items-center gap-1.5 bg-[#30D158]/10 text-[#30D158] px-3 py-1.5 rounded-lg font-semibold">
+      ✓ Disponible bajo pedido
+    </span>
+  `;
+
+  // Renderizar variantes
+  renderMayPickerVariants(p);
+
+  // Cantidad
+  $('may-pick-qty').innerText = '1';
+
+  // Mostrar modal
+  const modal = $('may-picker-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+window.closeMayPicker = () => {
+  const modal = $('may-picker-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  mayPickerProduct = null;
+  mayPickerVariant = null;
+  mayPickerQtyVal = 1;
+};
+
+/**
+ * Renderiza los selectores de color y talla.
+ */
+function renderMayPickerVariants(p) {
+  const variants = p.variants || [];
+
+  // Colores únicos
+  const uniqueColors = {};
+  variants.forEach(v => {
+    if (v.color && !uniqueColors[v.color]) {
+      uniqueColors[v.color] = { color: v.color, name: v.colorName || v.color };
+    }
+  });
+
+  // Tallas únicas
+  const uniqueSizes = {};
+  variants.forEach(v => {
+    if (v.size) uniqueSizes[v.size] = true;
+  });
+
+  const colorsWrap = $('may-pick-colors-wrap');
+  const sizesWrap = $('may-pick-sizes-wrap');
+
+  // Colores
+  if (Object.keys(uniqueColors).length > 0) {
+    colorsWrap.classList.remove('hidden');
+    const colorsDiv = $('may-pick-colors');
+
+    colorsDiv.innerHTML = Object.values(uniqueColors).map(c => {
+      const isSelected = mayPickerVariant?.color === c.color;
+      return `
+        <button type="button"
+                data-color="${escapeHtml(c.color)}"
+                class="may-color-btn w-10 h-10 rounded-full border-2 transition ${isSelected ? 'border-[#BF5AF2] ring-2 ring-[#BF5AF2]/30 scale-110' : 'border-gray-300 hover:border-[#BF5AF2]'}"
+                style="background:${escapeHtml(c.color)}"
+                title="${escapeHtml(c.name)}">
+        </button>
+      `;
+    }).join('');
+
+    colorsDiv.querySelectorAll('.may-color-btn').forEach(btn => {
+      btn.onclick = () => {
+        const newColor = btn.dataset.color;
+        const sameSize = variants.find(v => v.color === newColor && v.size === mayPickerVariant?.size);
+        const anyVariant = variants.find(v => v.color === newColor);
+        mayPickerVariant = sameSize || anyVariant || mayPickerVariant;
+        renderMayPickerVariants(p);
+      };
+    });
+  } else {
+    colorsWrap.classList.add('hidden');
+  }
+
+  // Tallas
+  if (Object.keys(uniqueSizes).length > 0) {
+    sizesWrap.classList.remove('hidden');
+    const sizesDiv = $('may-pick-sizes');
+
+    sizesDiv.innerHTML = Object.keys(uniqueSizes).map(s => {
+      const isSelected = mayPickerVariant?.size === s;
+      return `
+        <button type="button"
+                data-size="${escapeHtml(s)}"
+                class="may-size-btn px-4 py-2 rounded-xl border-2 text-xs font-semibold transition ${isSelected ? 'bg-[#BF5AF2] text-white border-[#BF5AF2]' : 'border-gray-300 text-[#1D1D1F] hover:border-[#BF5AF2]'}">
+          ${escapeHtml(s)}
+        </button>
+      `;
+    }).join('');
+
+    sizesDiv.querySelectorAll('.may-size-btn').forEach(btn => {
+      btn.onclick = () => {
+        const newSize = btn.dataset.size;
+        const sameColor = variants.find(v => v.size === newSize && v.color === mayPickerVariant?.color);
+        const anyVariant = variants.find(v => v.size === newSize);
+        mayPickerVariant = sameColor || anyVariant || mayPickerVariant;
+        renderMayPickerVariants(p);
+      };
+    });
+  } else {
+    sizesWrap.classList.add('hidden');
+  }
+}
+
+/**
+ * Ajusta la cantidad del picker.
+ */
+window.mayPickQty = (delta) => {
+  mayPickerQtyVal = Math.max(1, mayPickerQtyVal + delta);
+  $('may-pick-qty').innerText = mayPickerQtyVal;
+};
+
+/**
+ * Confirma y agrega al carrito.
+ */
+window.confirmMayAddToCart = () => {
+  if (!mayPickerProduct || !mayPickerVariant) return;
+
+  const p = mayPickerProduct;
+  const v = mayPickerVariant;
+  const unitPrice = computeWholesalePrice(p) + (Number(v.priceDelta) || 0);
+
+  // Verificar si ya está en el carrito con la misma variante
+  const existing = cart.find(it => it.productId === p.id && it.variantId === v.variantId);
+
+  if (existing) {
+    existing.qty += mayPickerQtyVal;
+  } else {
+    cart.push({
+      productId: p.id,
+      variantId: v.variantId,
+      sku: v.sku || p.sku || '',
+      name: p.name || '',
+      colorName: v.colorName || null,
+      color: v.color || null,
+      size: v.size || null,
+      qty: mayPickerQtyVal,
+      unitPrice: Math.round(unitPrice),
+      image: (p.images && p.images[0]) || null
+    });
+  }
+
+  closeMayPicker();
+  updateMayCartBadge();
+  renderMayCart();
+
+  // Feedback visual
+  showMayToast(`✅ ${p.name} agregado`);
+};
+
+/**
+ * Actualiza el badge del carrito.
+ */
+function updateMayCartBadge() {
+  const badge = $('may-cart-badge');
+  if (!badge) return;
+
+  const total = cart.reduce((s, it) => s + it.qty, 0);
+  if (total > 0) {
+    badge.classList.remove('hidden');
+    badge.classList.add('flex');
+    badge.innerText = total > 99 ? '99+' : total;
+  } else {
+    badge.classList.add('hidden');
+    badge.classList.remove('flex');
+  }
+}
+
+/**
+ * Muestra un toast temporal.
+ */
+function showMayToast(message) {
+  let toast = document.getElementById('may-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'may-toast';
+    toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1D1D1F] text-white px-6 py-3 rounded-2xl shadow-apple-xl z-[100] font-semibold text-sm opacity-0 transition-opacity duration-300 pointer-events-none';
+    document.body.appendChild(toast);
+  }
+  toast.innerText = message;
+  toast.style.opacity = '1';
+  clearTimeout(window.__mayToastTimer);
+  window.__mayToastTimer = setTimeout(() => {
+    toast.style.opacity = '0';
+  }, 1800);
+}
+
+/* ============================================================
+   🆕 CARRITO — Render y acciones
+============================================================ */
+
+/**
+ * Renderiza el contenido del carrito (lista de items + total).
+ */
+function renderMayCart() {
+  const itemsEl = $('may-cart-items');
+  const countEl = $('may-cart-count');
+  const totalEl = $('may-cart-total');
+  const btn = $('may-cart-request-btn');
+
+  if (!itemsEl) return;
+
+  // Si está vacío
+  if (!cart.length) {
+    itemsEl.innerHTML = `
+      <div class="text-center py-12">
+        <div class="text-5xl mb-3">🛒</div>
+        <p class="text-sm font-semibold text-[#1D1D1F] mb-1">Tu carrito está vacío</p>
+        <p class="text-xs text-[#6E6E73]">Agrega productos desde el catálogo</p>
+      </div>
+    `;
+    if (countEl) countEl.innerText = '0';
+    if (totalEl) totalEl.innerText = '$0';
+    if (btn) btn.disabled = true;
+    return;
+  }
+
+  // Render de items
+  itemsEl.innerHTML = cart.map((it, idx) => {
+    const subtotal = it.qty * it.unitPrice;
+    const img = it.image || 'https://placehold.co/80x80/e5e7eb/9ca3af?text=?';
+    const variantParts = [it.colorName, it.size].filter(Boolean).join(' · ');
+
+    return `
+      <div class="may-cart-item bg-gray-50 rounded-2xl p-3 mb-2 flex gap-3">
+        <img src="${img}" alt="${escapeHtml(it.name)}"
+             class="w-16 h-16 object-contain rounded-xl bg-white shrink-0">
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-semibold text-[#1D1D1F] truncate">${escapeHtml(it.name)}</p>
+          <p class="text-[10px] text-[#6E6E73] font-mono truncate">${escapeHtml(it.sku) || '—'}</p>
+          ${variantParts ? `<p class="text-[10px] text-[#6E6E73] truncate">${escapeHtml(variantParts)}</p>` : ''}
+          <p class="text-xs font-bold text-[#BF5AF2] mt-1">${fmt(it.unitPrice)}</p>
+
+          <div class="flex items-center justify-between mt-2">
+            <div class="inline-flex items-center border border-gray-200 rounded-xl bg-white">
+              <button onclick="changeMayCartQty(${idx}, -1)" class="px-2 py-0.5 hover:bg-gray-100 rounded-l-xl text-sm">−</button>
+              <span class="px-2 text-xs font-semibold">${it.qty}</span>
+              <button onclick="changeMayCartQty(${idx}, 1)" class="px-2 py-0.5 hover:bg-gray-100 rounded-r-xl text-sm">+</button>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-[#1D1D1F]">${fmt(subtotal)}</span>
+              <button onclick="removeMayCartItem(${idx})" class="text-[#FF375F] hover:text-[#E0304F] text-xs" title="Eliminar">✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Totales
+  const totalQty = cart.reduce((s, it) => s + it.qty, 0);
+  const totalAmount = cart.reduce((s, it) => s + (it.qty * it.unitPrice), 0);
+
+  if (countEl) countEl.innerText = totalQty;
+  if (totalEl) totalEl.innerText = fmt(totalAmount);
+  if (btn) btn.disabled = false;
+}
+
+/**
+ * Cambia la cantidad de un item.
+ */
+window.changeMayCartQty = (idx, delta) => {
+  if (!cart[idx]) return;
+  cart[idx].qty = Math.max(1, cart[idx].qty + delta);
+  renderMayCart();
+  updateMayCartBadge();
+};
+
+/**
+ * Elimina un item del carrito.
+ */
+window.removeMayCartItem = (idx) => {
+  if (!cart[idx]) return;
+  cart.splice(idx, 1);
+  renderMayCart();
+  updateMayCartBadge();
+};
+
+/**
+ * Abre/cierra el panel lateral del carrito.
+ */
+window.toggleMayCart = () => {
+  const panel = $('may-cart-panel');
+  if (!panel) return;
+
+  if (panel.classList.contains('hidden')) {
+    panel.classList.remove('hidden');
+    // Re-render por si cambió algo mientras estaba cerrado
+    renderMayCart();
+  } else {
+    panel.classList.add('hidden');
+  }
+};
+
+/* ============================================================
+   🆕 MODAL DE COTIZACIÓN — Lógica completa
+============================================================ */
+
+window.openQuoteRequestModal = () => {
+  if (!cart.length) {
+    alert('Tu carrito está vacío.');
+    return;
+  }
+
+  // Poblar resumen de items
+  const summaryEl = $('may-quote-summary');
+  const totalEl = $('may-quote-total');
+
+  if (summaryEl) {
+    summaryEl.innerHTML = cart.map(it => {
+      const variantParts = [it.colorName, it.size].filter(Boolean).join(' · ');
+      const subtotal = it.qty * it.unitPrice;
+      return `
+        <div class="flex justify-between items-start gap-2 text-xs">
+          <div class="min-w-0 flex-1">
+            <p class="font-semibold text-[#1D1D1F] truncate">${escapeHtml(it.name)}</p>
+            <p class="text-[10px] text-[#6E6E73] font-mono truncate">${escapeHtml(it.sku) || '—'}</p>
+            ${variantParts ? `<p class="text-[10px] text-[#6E6E73] truncate">${escapeHtml(variantParts)}</p>` : ''}
+          </div>
+          <div class="text-right whitespace-nowrap">
+            <p class="text-[10px] text-[#6E6E73]">${it.qty} × ${fmt(it.unitPrice)}</p>
+            <p class="font-bold text-[#BF5AF2]">${fmt(subtotal)}</p>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Calcular total
+  const total = cart.reduce((s, it) => s + (it.qty * it.unitPrice), 0);
+  if (totalEl) totalEl.innerText = fmt(total);
+
+  // Poblar datos del solicitante
+  const userEl = $('may-quote-user');
+  const companyEl = $('may-quote-company');
+  if (userEl) userEl.innerText = currentCustomer?.name || currentUser?.email || '—';
+  if (companyEl) companyEl.innerText = currentCustomer?.wholesale?.companyName || '—';
+
+  // Limpiar campos
+  const dateEl = $('may-quote-date');
+  const notesEl = $('may-quote-notes');
+  if (dateEl) dateEl.value = '';
+  if (notesEl) notesEl.value = '';
+
+  // Mostrar modal
+  const modal = $('may-quote-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  // Focus en el campo de fecha
+  setTimeout(() => dateEl?.focus(), 200);
+};
+
+window.closeQuoteRequestModal = () => {
+  const modal = $('may-quote-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+/**
+ * Envía la cotización a Firestore.
+ */
+window.submitQuoteRequest = async () => {
+  if (!cart.length) {
+    alert('Tu carrito está vacío.');
+    return;
+  }
+
+  const btn = $('may-quote-confirm-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = '⏳ Enviando...';
+  }
+
+  try {
+    const deliveryDate = $('may-quote-date')?.value || null;
+    const notes = $('may-quote-notes')?.value.trim() || '';
+
+    const w = currentCustomer?.wholesale || {};
+
+    // Items snapshot (congelamos precios al momento de la cotización)
+    const items = cart.map(it => ({
+      productId: it.productId,
+      variantId: it.variantId,
+      sku: it.sku || null,
+      name: it.name || '',
+      colorName: it.colorName || null,
+      color: it.color || null,
+      size: it.size || null,
+      qty: it.qty,
+      unitPrice: it.unitPrice,
+      subtotal: it.qty * it.unitPrice,
+      image: it.image || null
+    }));
+
+    const totalQty = items.reduce((s, it) => s + it.qty, 0);
+    const totalAmount = items.reduce((s, it) => s + it.subtotal, 0);
+
+    // Crear doc de cotización
+    const quoteData = {
+      // Cliente
+      customerId: currentCustomer?.id || null,
+      customerName: currentCustomer?.name || null,
+      companyName: w.companyName || null,
+      nit: w.nit || null,
+      phone: currentCustomer?.phone || null,
+      email: currentCustomer?.email || null,
+      linkedUserId: currentUser?.uid || null,
+
+      // Condiciones comerciales (snapshot)
+      paymentTerms: w.paymentTerms || null,
+      customTermsDays: w.customTermsDays || null,
+      discountBase: Number(w.discountBase || 0),
+
+      // Pedido
+      items,
+      totalQty,
+      totalAmount,
+
+      // Extras
+      deliveryDate,
+      notes,
+
+      // Estado
+      status: 'pendiente',   // 'pendiente' | 'aprobada' | 'rechazada' | 'convertida'
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    const ref = await addDoc(collection(db, 'wholesaleQuotes'), quoteData);
+
+    console.log('[Portal MAY] Cotización creada:', ref.id);
+
+    // Éxito
+    alert(`✅ Cotización enviada correctamente.\n\nTotal: ${fmt(totalAmount)}\nProductos: ${totalQty}\n\nTe contactaremos pronto.`);
+
+    // Cerrar modal
+    closeQuoteRequestModal();
+
+    // Vaciar carrito
+    cart = [];
+    renderMayCart();
+    updateMayCartBadge();
+
+    // Cerrar panel del carrito
+    const panel = $('may-cart-panel');
+    if (panel && !panel.classList.contains('hidden')) {
+      panel.classList.add('hidden');
+    }
+
+  } catch (e) {
+    console.error('[Portal MAY] Error enviando cotización:', e);
+    alert('❌ No se pudo enviar la cotización:\n\n' + (e.message || 'Error desconocido'));
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = '📤 Enviar cotización';
+    }
+  }
+};
+
+/* ============================================================
+   🆕 LISTENER DEL BUSCADOR
+============================================================ */
+(function initSearch() {
+  const input = $('may-search');
+  if (!input) return;
+
+  let timer = null;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      searchTerm = input.value.trim().toLowerCase();
+      renderProducts();
+    }, 250);
+  });
+})();
+
+
+/* ============================================================
+   🆕 ATAJOS — ESC cierra modales
+============================================================ */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+
+  // Modal de cotización abierto → cerrar
+  const quoteModal = $('may-quote-modal');
+  if (quoteModal && !quoteModal.classList.contains('hidden')) {
+    closeQuoteRequestModal();
+    return;
+  }
+
+  // Picker abierto → cerrar
+  const picker = $('may-picker-modal');
+  if (picker && !picker.classList.contains('hidden')) {
+    closeMayPicker();
+    return;
+  }
+
+  // Carrito abierto → cerrar
+  const cartPanel = $('may-cart-panel');
+  if (cartPanel && !cartPanel.classList.contains('hidden')) {
+    toggleMayCart();
+    return;
+  }
+});
+
+/* ============================================================
+   🆕 EXPORTAR CATÁLOGO A PDF
+============================================================ */
+window.exportCatalogPDF = () => {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('⚠️ La librería de PDF aún no ha cargado. Espera unos segundos.');
+    return;
+  }
+
+  if (!products.length) {
+    alert('No hay productos para exportar.');
+    return;
+  }
+
+  // Aplicar los mismos filtros que en pantalla
+  let list = products.slice();
+
+  if (activeCategory !== 'all') {
+    list = list.filter(p => p.categoryGroup === activeCategory);
+  }
+  if (searchTerm) {
+    list = list.filter(p =>
+      (p.name || '').toLowerCase().includes(searchTerm) ||
+      (p.sku || '').toLowerCase().includes(searchTerm)
+    );
+  }
+
+  list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  if (!list.length) {
+    alert('No hay productos que coincidan con los filtros actuales.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const M = 12; // margen
+
+  const w = currentCustomer?.wholesale || {};
+  const companyName = w.companyName || currentCustomer?.name || 'Mayorista';
+  const nit = w.nit || '—';
+  const contactName = currentCustomer?.name || '—';
+  const phone = currentCustomer?.phone || '—';
+  const email = currentCustomer?.email || '—';
+  const termsMap = {
+    contado: 'Contado', net_15: 'Net 15', net_30: 'Net 30',
+    net_45: 'Net 45', net_60: 'Net 60', net_90: 'Net 90'
+  };
+  const termsLabel = w.paymentTerms === 'custom'
+    ? `Personalizado (${w.customTermsDays || 0} días)`
+    : (termsMap[w.paymentTerms] || '—');
+  const discountPct = ((w.discountBase || 0) * 100).toFixed(1);
+
+  let y = M;
+
+  // ============ ENCABEZADO MORADO ============
+  doc.setFillColor(191, 90, 242); // #BF5AF2
+  doc.rect(0, 0, pageW, 22, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('SMARTEC', M, 10);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Catálogo Mayorista', M, 16);
+
+  doc.setFontSize(9);
+  doc.text(new Date().toLocaleString('es-CO'), pageW - M, 10, { align: 'right' });
+  doc.text(`Productos: ${list.length}`, pageW - M, 16, { align: 'right' });
+
+  y = 30;
+
+  // ============ INFO DEL MAYORISTA ============
+  doc.setTextColor(29, 29, 31);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text(companyName, M, y);
+  y += 6;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(85, 85, 85);
+  doc.text(`NIT: ${nit}`, M, y);
+  y += 4;
+  doc.text(`Contacto: ${contactName} · Tel: ${phone}`, M, y);
+  y += 4;
+  doc.text(`Email: ${email}`, M, y);
+  y += 4;
+  doc.text(`Condición de pago: ${termsLabel} · Descuento base: -${discountPct}%`, M, y);
+  y += 8;
+
+  // Línea separadora
+  doc.setDrawColor(191, 90, 242);
+  doc.setLineWidth(0.4);
+  doc.line(M, y, pageW - M, y);
+  y += 6;
+
+  // ============ TABLA DE PRODUCTOS ============
+  const rows = list.map(p => {
+    const wholesale = computeWholesalePrice(p);
+    const retail = Number(p.onSale && p.salePrice ? p.salePrice : p.price) || 0;
+    const cat = p.categoryGroupName || '—';
+    const variantsCount = (p.variants || []).length;
+
+    return [
+      p.sku || '—',
+      (p.name || '—').substring(0, 60),
+      cat.substring(0, 20),
+      String(variantsCount),
+      '$' + retail.toLocaleString('es-CO'),
+      '$' + wholesale.toLocaleString('es-CO')
+    ];
+  });
+
+  doc.autoTable({
+    startY: y,
+    head: [['SKU', 'Producto', 'Categoría', 'Var.', 'Retail', 'Mayorista']],
+    body: rows,
+    theme: 'striped',
+    headStyles: {
+      fillColor: [191, 90, 242],
+      textColor: 255,
+      fontStyle: 'bold',
+      fontSize: 8,
+      cellPadding: 2
+    },
+    bodyStyles: {
+      fontSize: 7.5,
+      cellPadding: 1.8,
+      textColor: [51, 51, 51]
+    },
+    alternateRowStyles: { fillColor: [250, 245, 255] },
+    columnStyles: {
+      0: { cellWidth: 24, font: 'courier' },
+      1: { cellWidth: 62 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 12, halign: 'center' },
+      4: { cellWidth: 24, halign: 'right' },
+      5: { cellWidth: 26, halign: 'right', fontStyle: 'bold', textColor: [140, 40, 190] }
+    },
+    margin: { left: M, right: M }
+  });
+
+  y = doc.lastAutoTable.finalY + 8;
+
+  // ============ RESUMEN FINAL ============
+  const avgPrice = list.reduce((s, p) => s + computeWholesalePrice(p), 0) / list.length;
+
+  doc.setFillColor(245, 240, 255);
+  doc.roundedRect(M, y, pageW - 2 * M, 20, 2, 2, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(140, 40, 190);
+  doc.text('RESUMEN', M + 4, y + 6);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(85, 85, 85);
+  doc.text(`Productos listados: ${list.length}`, M + 4, y + 12);
+  doc.text(`Precio mayorista promedio: $${Math.round(avgPrice).toLocaleString('es-CO')}`, M + 4, y + 17);
+
+  // ============ PIE DE PÁGINA ============
+  const pages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7.5);
+    doc.setTextColor(150, 150, 150);
+    doc.text(
+      `Smartec · Catálogo Mayorista · ${companyName} · Página ${i} de ${pages}`,
+      pageW / 2,
+      pageH - 6,
+      { align: 'center' }
+    );
+  }
+
+  // ============ DESCARGAR ============
+  const filename = `smartec_mayorista_${(companyName || 'catalogo').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(filename);
+};
+
+/* ============================================================
+   🆕 EXPORTAR CATÁLOGO A EXCEL
+============================================================ */
+window.exportCatalogExcel = async () => {
+  if (!window.ExcelJS) {
+    alert('⚠️ La librería de Excel aún no ha cargado. Espera unos segundos.');
+    return;
+  }
+
+  if (!products.length) {
+    alert('No hay productos para exportar.');
+    return;
+  }
+
+  // Aplicar los mismos filtros que en pantalla
+  let list = products.slice();
+
+  if (activeCategory !== 'all') {
+    list = list.filter(p => p.categoryGroup === activeCategory);
+  }
+  if (searchTerm) {
+    list = list.filter(p =>
+      (p.name || '').toLowerCase().includes(searchTerm) ||
+      (p.sku || '').toLowerCase().includes(searchTerm)
+    );
+  }
+
+  list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  if (!list.length) {
+    alert('No hay productos que coincidan con los filtros actuales.');
+    return;
+  }
+
+  const w = currentCustomer?.wholesale || {};
+  const companyName = w.companyName || currentCustomer?.name || 'Mayorista';
+  const nit = w.nit || '—';
+  const contactName = currentCustomer?.name || '—';
+  const phone = currentCustomer?.phone || '—';
+  const email = currentCustomer?.email || '—';
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Smartec';
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet('Catálogo Mayorista', {
+    properties: { defaultRowHeight: 18 }
+  });
+
+  // ============ TÍTULO ============
+  ws.mergeCells('A1:H1');
+  const titleCell = ws.getCell('A1');
+  titleCell.value = `SMARTEC · Catálogo Mayorista · ${companyName}`;
+  titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBF5AF2' } };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  ws.getRow(1).height = 32;
+
+  // ============ METADATOS ============
+  ws.mergeCells('A2:H2');
+  const metaCell = ws.getCell('A2');
+  metaCell.value = `NIT: ${nit}  ·  Contacto: ${contactName}  ·  Tel: ${phone}  ·  Email: ${email}`;
+  metaCell.font = { italic: true, size: 10, color: { argb: 'FF6E6E73' } };
+  metaCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  ws.getRow(2).height = 22;
+
+  ws.mergeCells('A3:H3');
+  const dateCell = ws.getCell('A3');
+  dateCell.value = `Generado: ${new Date().toLocaleString('es-CO')}  ·  Productos: ${list.length}`;
+  dateCell.font = { size: 9, color: { argb: 'FF6E6E73' } };
+  dateCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  ws.getRow(3).height = 20;
+
+  ws.addRow([]); // fila vacía
+
+  // ============ COLUMNAS ============
+  const headers = [
+    { header: 'SKU', width: 20 },
+    { header: 'Producto', width: 42 },
+    { header: 'Categoría', width: 22 },
+    { header: 'Marca', width: 18 },
+    { header: 'Variantes', width: 10 },
+    { header: 'Precio Retail', width: 18 },
+    { header: 'Precio Mayorista', width: 20 },
+    { header: 'Ahorro', width: 16 }
+  ];
+
+  ws.columns = headers.map(h => ({ width: h.width }));
+
+  // Fila de encabezados (fila 5)
+  const headerRow = ws.addRow(headers.map(h => h.header));
+  headerRow.height = 26;
+  headerRow.eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8C28BE' } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    cell.border = {
+      top:    { style: 'thin', color: { argb: 'FF6B1E9A' } },
+      bottom: { style: 'thin', color: { argb: 'FF6B1E9A' } },
+      left:   { style: 'thin', color: { argb: 'FF6B1E9A' } },
+      right:  { style: 'thin', color: { argb: 'FF6B1E9A' } }
+    };
+  });
+
+  // ============ FILAS ============
+  list.forEach((p, idx) => {
+    const wholesale = computeWholesalePrice(p);
+    const retail = Number(p.onSale && p.salePrice ? p.salePrice : p.price) || 0;
+    const savings = retail - wholesale;
+    const variantsCount = (p.variants || []).length;
+
+    const row = ws.addRow([
+      p.sku || '—',
+      p.name || '—',
+      p.categoryGroupName || '—',
+      p.brand || '—',
+      variantsCount,
+      retail,
+      wholesale,
+      savings
+    ]);
+
+    // Estilos
+    const isZebra = idx % 2 === 1;
+    row.eachCell((cell, colIdx) => {
+      cell.border = {
+        top:    { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        left:   { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right:  { style: 'thin', color: { argb: 'FFE5E7EB' } }
+      };
+      cell.alignment = { vertical: 'middle', wrapText: colIdx === 1 };
+      if (isZebra) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F4FF' } };
+      }
+    });
+
+    // Columna SKU → mono
+    row.getCell(1).font = { family: 3, color: { argb: 'FF6E6E73' }, size: 10 };
+
+    // Columna Producto → bold
+    row.getCell(2).font = { bold: true, color: { argb: 'FF1D1D1F' } };
+
+    // Variantes → centrado
+    row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
+    row.getCell(5).font = { color: { argb: 'FF1D1D1F' } };
+
+    // Precio retail → tachado si hay mayorista
+    const retailCell = row.getCell(6);
+    retailCell.numFmt = '"$"#,##0';
+    retailCell.font = {
+      color: { argb: 'FF6E6E73' },
+      strike: wholesale > 0 && retail > wholesale
+    };
+    retailCell.alignment = { horizontal: 'right', vertical: 'middle' };
+
+    // Precio mayorista → morado + bold
+    const wholeCell = row.getCell(7);
+    wholeCell.numFmt = '"$"#,##0';
+    wholeCell.font = { bold: true, color: { argb: 'FF8C28BE' } };
+    wholeCell.alignment = { horizontal: 'right', vertical: 'middle' };
+
+    // Ahorro → verde
+    const savingsCell = row.getCell(8);
+    savingsCell.numFmt = '"$"#,##0';
+    savingsCell.font = {
+      color: { argb: savings > 0 ? 'FF16A34A' : 'FF9CA3AF' },
+      bold: savings > 0
+    };
+    savingsCell.alignment = { horizontal: 'right', vertical: 'middle' };
+  });
+
+  // ============ TOTALES AL FINAL ============
+  ws.addRow([]);
+  const totalRow = ws.addRow([
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    ''
+  ]);
+
+  const totalLabelRow = ws.addRow(['', 'TOTAL PRODUCTOS:', '', '', '', '', '', list.length]);
+  totalLabelRow.getCell(2).font = { bold: true, color: { argb: 'FF8C28BE' } };
+  totalLabelRow.getCell(8).font = { bold: true, color: { argb: 'FF8C28BE' } };
+  totalLabelRow.getCell(8).alignment = { horizontal: 'right' };
+
+  const avgRow = ws.addRow(['', 'PRECIO MAYORISTA PROMEDIO:', '', '', '', '', '', list.reduce((s, p) => s + computeWholesalePrice(p), 0) / list.length]);
+  avgRow.getCell(2).font = { bold: true, color: { argb: 'FF8C28BE' } };
+  avgRow.getCell(8).numFmt = '"$"#,##0';
+  avgRow.getCell(8).font = { bold: true, color: { argb: 'FF8C28BE' } };
+  avgRow.getCell(8).alignment = { horizontal: 'right' };
+
+  // ============ CONFIGURACIÓN FINAL ============
+  ws.views = [{ state: 'frozen', ySplit: 5 }];
+  ws.autoFilter = {
+    from: { row: 5, column: 1 },
+    to:   { row: 5, column: headers.length }
+  };
+
+  // ============ DESCARGAR ============
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `smartec_mayorista_${(companyName || 'catalogo').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  console.log(`[Portal MAY] Excel exportado: ${list.length} productos`);
+};
+
 
 console.log('[Smartec] mayoristas.html cargado');
 
