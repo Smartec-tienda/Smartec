@@ -792,6 +792,8 @@ onAuthStateChanged(auth, async user => {
 
   currentCustomer = foundCustomer;
 
+  currentCustomer = foundCustomer;
+
   // Mostrar app
   $('app-user-name').innerText =
     currentCustomer.wholesale?.companyName ||
@@ -801,19 +803,46 @@ onAuthStateChanged(auth, async user => {
   $('app-screen').classList.remove('hidden');
   $('app-screen').classList.add('flex');
 
+  // 🆕 Ocultar splash INMEDIATAMENTE (no esperar a las cargas)
   hideSplash();
 
   console.log('[Portal MAY] Sesión iniciada:', currentCustomer.wholesale?.companyName);
 
-  // 🆕 Cargar datos del portal
-  await loadPortalLogo();
-  await loadCategories();
-  await loadWholesaleProducts();
+  // 🆕 Cargar datos del portal (con try/catch para no romper el flujo)
+  try {
+    await loadPortalLogo();
+    await loadCategories();
+    await loadWholesaleProducts();
 
-  // 🆕 Renderizar
-  renderWelcomeCard();
-  renderCategoryFilters();
-  renderProducts();
+    // 🆕 Renderizar
+    renderWelcomeCard();
+    renderCategoryFilters();
+    renderProducts();
+
+    // 🆕 Ocultar el mensaje de "cargando productos"
+    const loadingEl = $('may-products-loading');
+    if (loadingEl) loadingEl.classList.add('hidden');
+
+  } catch (err) {
+    console.error('[Portal MAY] Error cargando datos:', err);
+
+    // Mostrar mensaje de error en el grid
+    const grid = $('may-products-grid');
+    if (grid) {
+      grid.innerHTML = `
+        <div class="col-span-full text-center py-12">
+          <p class="text-3xl mb-2">⚠️</p>
+          <p class="text-sm font-semibold text-[#FF375F] mb-1">No se pudo cargar el catálogo</p>
+          <p class="text-xs text-[#6E6E73]">${err.message || 'Error desconocido'}</p>
+          <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-[#BF5AF2] text-white rounded-xl text-xs font-semibold">
+            🔄 Reintentar
+          </button>
+        </div>
+      `;
+    }
+    const loadingEl = $('may-products-loading');
+    if (loadingEl) loadingEl.classList.add('hidden');
+  }
 
 });
 
