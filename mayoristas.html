@@ -410,23 +410,18 @@ onAuthStateChanged(auth, async user => {
     return;
   }
 
-  // Buscar el doc del cliente mayorista por email
+  // 🆕 Buscar el doc del cliente mayorista por linkedUserId (uid)
   let foundCustomer = null;
   try {
     const q = query(
       collection(db, 'customers'),
-      where('email', '==', user.email.toLowerCase())
+      where('wholesale.linkedUserId', '==', user.uid),
+      where('isWholesale', '==', true)
     );
     const s = await getDocs(q);
     if (!s.empty) {
-      // Tomar el primer doc con isWholesale
-      for (const d of s.docs) {
-        const data = d.data();
-        if (data.isWholesale === true) {
-          foundCustomer = { id: d.id, ...data };
-          break;
-        }
-      }
+      const d = s.docs[0];
+      foundCustomer = { id: d.id, ...d.data() };
     }
   } catch (e) {
     console.warn('[Auth] Error buscando customer:', e);
