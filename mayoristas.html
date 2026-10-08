@@ -1865,6 +1865,8 @@ window.exportCatalogPDF = async () => {
 
   if (!list.length) {
     alert('No hay productos que coincidan con los filtros actuales.');
+    console.timeEnd('[PDF] validaciones');
+    console.timeEnd('[PDF] TOTAL');
     return;
   }
 
@@ -2160,8 +2162,6 @@ window.exportCatalogExcel = async () => {
       savings
     ]);
 
-    console.timeEnd('[Excel] agregar filas');
-
     // Estilos (optimizado — sin fill zebra)
     row.eachCell((cell, colIdx) => {
       cell.border = {
@@ -2208,6 +2208,8 @@ window.exportCatalogExcel = async () => {
     savingsCell.alignment = { horizontal: 'right', vertical: 'middle' };
   });
 
+   console.timeEnd('[Excel] agregar filas');
+   
   // ============ TOTALES AL FINAL ============
   ws.addRow([]);
   const totalRow = ws.addRow([
