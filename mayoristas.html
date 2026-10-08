@@ -13,9 +13,14 @@
 <script src="lib/common.js"></script>
 <script src="lib/cache.js"></script>
 <script src="components/favicon.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<!-- Librerías pesadas: se cargan bajo demanda desde mayoristas.html -->
+<script>
+  window.__SMARTEC_LAZY_LIBS = {
+    jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    autotable: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
+    exceljs: 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
+  };
+</script>
 <style>
   :root{
     --bg:#F5F5F7;
@@ -636,6 +641,57 @@ let searchTerm = '';          // Término de búsqueda
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
 const escapeHtml = window.Smartec?.escapeHtml || (s => String(s||''));
+
+/* ============================================================
+   🆕 CARGA DIFERIDA DE LIBRERÍAS PESADAS (jsPDF, AutoTable, ExcelJS)
+   Se cargan SOLO cuando se llama a loadLazyLibs().
+============================================================ */
+const _lazyLoaded = { jspdf: false, autotable: false, exceljs: false };
+const _lazyPromises = { jspdf: null, exceljs: null };
+
+function _injectScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('No se pudo cargar: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function loadLazyLibs(needed) {
+  const urls = window.__SMARTEC_LAZY_LIBS || {};
+  const tasks = [];
+  const wantJsPDF = needed === 'jspdf' || needed === 'both';
+  const wantExcel = needed === 'exceljs' || needed === 'both';
+
+  if (wantJsPDF && !_lazyLoaded.jspdf) {
+    if (!_lazyPromises.jspdf) {
+      _lazyPromises.jspdf = (async () => {
+        if (!window.jspdf) await _injectScript(urls.jspdf);
+        if (!window.jspdf?.jsPDF?.API?.autoTable) await _injectScript(urls.autotable);
+        _lazyLoaded.jspdf = true;
+        _lazyLoaded.autotable = true;
+        console.log('[LazyLibs] jsPDF + AutoTable listos');
+      })();
+    }
+    tasks.push(_lazyPromises.jspdf);
+  }
+
+  if (wantExcel && !_lazyLoaded.exceljs) {
+    if (!_lazyPromises.exceljs) {
+      _lazyPromises.exceljs = (async () => {
+        if (!window.ExcelJS) await _injectScript(urls.exceljs);
+        _lazyLoaded.exceljs = true;
+        console.log('[LazyLibs] ExcelJS listo');
+      })();
+    }
+    tasks.push(_lazyPromises.exceljs);
+  }
+
+  await Promise.all(tasks);
+}
 
 function hideSplash() {
   if (document.body.classList.contains('app-loading')) {
@@ -1830,6 +1886,16 @@ document.addEventListener('keydown', (e) => {
    🆕 EXPORTAR CATÁLOGO A PDF
 ============================================================ */
 window.exportCatalogPDF = async () => {
+  // 🆕 Cargar jsPDF bajo demanda si aún no está
+  if (!window.jspdf) {
+    try {
+      await loadLazyLibs('jspdf');
+    } catch (e) {
+      alert('⚠️ No se pudo cargar la librería de PDF. Verifica tu conexión.\n\n' + e.message);
+      return;
+    }
+  }
+
   console.time('[PDF] TOTAL');
   console.time('[PDF] validaciones');
 
@@ -2033,9 +2099,14 @@ window.exportCatalogPDF = async () => {
    🆕 EXPORTAR CATÁLOGO A EXCEL
 ============================================================ */
 window.exportCatalogExcel = async () => {
+  // 🆕 Cargar ExcelJS bajo demanda si aún no está
   if (!window.ExcelJS) {
-    alert('⚠️ La librería de Excel aún no ha cargado. Espera unos segundos.');
-    return;
+    try {
+      await loadLazyLibs('exceljs');
+    } catch (e) {
+      alert('⚠️ No se pudo cargar la librería de Excel. Verifica tu conexión.\n\n' + e.message);
+      return;
+    }
   }
 
   if (!products.length) {

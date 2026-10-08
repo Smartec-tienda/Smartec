@@ -74,6 +74,63 @@ function hideSplash() {
 }
 
 /* ============================================================
+   🆕 CARGA DIFERIDA DE LIBRERÍAS PESADAS (jsPDF, AutoTable, ExcelJS)
+   Se cargan SOLO cuando se llama a loadLazyLibs(). Quedan cacheadas
+   en window.__SMARTEC_LAZY_LOADED para no recargarlas dos veces.
+============================================================ */
+const _lazyLoaded = { jspdf: false, autotable: false, exceljs: false };
+const _lazyPromises = { jspdf: null, autotable: null, exceljs: null };
+
+function _injectScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('No se pudo cargar: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function loadLazyLibs(needed) {
+  // needed: 'jspdf' | 'exceljs' | 'both'
+  const urls = window.__SMARTEC_LAZY_LIBS || {};
+  const tasks = [];
+
+  const wantJsPDF = needed === 'jspdf' || needed === 'both';
+  const wantExcel = needed === 'exceljs' || needed === 'both';
+
+  if (wantJsPDF && !_lazyLoaded.jspdf) {
+    if (!_lazyPromises.jspdf) {
+      _lazyPromises.jspdf = (async () => {
+        if (!window.jspdf) await _injectScript(urls.jspdf);
+        if (!window.jspdf?.jsPDF?.API?.autoTable) await _injectScript(urls.autotable);
+        _lazyLoaded.jspdf = true;
+        _lazyLoaded.autotable = true;
+        console.log('[LazyLibs] jsPDF + AutoTable listos');
+      })();
+    }
+    tasks.push(_lazyPromises.jspdf);
+  }
+
+  if (wantExcel && !_lazyLoaded.exceljs) {
+    if (!_lazyPromises.exceljs) {
+      _lazyPromises.exceljs = (async () => {
+        if (!window.ExcelJS) await _injectScript(urls.exceljs);
+        _lazyLoaded.exceljs = true;
+        console.log('[LazyLibs] ExcelJS listo');
+      })();
+    }
+    tasks.push(_lazyPromises.exceljs);
+  }
+
+  await Promise.all(tasks);
+}
+
+// Exponer global para usarlas desde cualquier parte
+window.loadLazyLibs = loadLazyLibs;
+
+/* ============================================================
    🆕 SIDEBAR — Toggle y colapso
 ============================================================ */
 window.toggleSidebar = () => {
@@ -4626,6 +4683,10 @@ window.viewAudit = (id) => {
    Se llaman desde los botones de la UI. Ya no preguntan nada.
 ============================================================ */
 window.exportAuditExcelDirect = async () => {
+  if (!window.ExcelJS) {
+    try { await loadLazyLibs('exceljs'); }
+    catch (e) { alert('⚠️ No se pudo cargar la librería de Excel.\n\n' + e.message); return; }
+  }
   const list = getFilteredAudit();
   if (!list.length) {
     alert('No hay eventos para exportar con los filtros actuales.');
@@ -4635,6 +4696,10 @@ window.exportAuditExcelDirect = async () => {
 };
 
 window.exportAuditPDFDirect = async () => {
+  if (!window.jspdf) {
+    try { await loadLazyLibs('jspdf'); }
+    catch (e) { alert('⚠️ No se pudo cargar la librería de PDF.\n\n' + e.message); return; }
+  }
   const list = getFilteredAudit();
   if (!list.length) {
     alert('No hay eventos para exportar con los filtros actuales.');
@@ -10159,7 +10224,11 @@ function renderReportReconciliation(filtered) {
   }).join('');
 }
 
-window.exportReconciliationPDF = () => {
+window.exportReconciliationPDF = async () => {
+  if (!window.jspdf) {
+    try { await loadLazyLibs('jspdf'); }
+    catch (e) { alert('⚠️ No se pudo cargar la librería de PDF.\n\n' + e.message); return; }
+  }
   const { jsPDF } = window.jspdf;
   const filtered = getFilteredSales();
 
@@ -10906,9 +10975,14 @@ function stripEmojis(text) {
    EXPORTAR REPORTES A EXCEL — con formato profesional
 ============================================================ */
 window.exportReportsExcel = async () => {
+  // 🆕 Cargar ExcelJS bajo demanda si aún no está
   if (!window.ExcelJS) {
-    alert('⚠️ La librería de Excel aún no ha cargado. Espera unos segundos y vuelve a intentar.');
-    return;
+    try {
+      await loadLazyLibs('exceljs');
+    } catch (e) {
+      alert('⚠️ No se pudo cargar la librería de Excel. Verifica tu conexión.\n\n' + e.message);
+      return;
+    }
   }
 
   const filtered = getFilteredSales();
@@ -11703,7 +11777,17 @@ window.exportReportsExcel = async () => {
 };
 
 /* ============ EXPORTAR PDF (respeta la selección del personalizador) ============ */
-window.exportReportsPDF = () => {
+window.exportReportsPDF = async () => {
+  // 🆕 Cargar jsPDF bajo demanda si aún no está
+  if (!window.jspdf) {
+    try {
+      await loadLazyLibs('jspdf');
+    } catch (e) {
+      alert('⚠️ No se pudo cargar la librería de PDF. Verifica tu conexión.\n\n' + e.message);
+      return;
+    }
+  }
+
   const { jsPDF } = window.jspdf;
   const filtered = getFilteredSales();
 
@@ -13842,7 +13926,11 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-window.exportAccountingPDF = () => {
+window.exportAccountingPDF = async () => {
+  if (!window.jspdf) {
+    try { await loadLazyLibs('jspdf'); }
+    catch (e) { alert('⚠️ No se pudo cargar la librería de PDF.\n\n' + e.message); return; }
+  }
   const { jsPDF } = window.jspdf;
   const list = getFilteredExpenses();
   const salesFiltered = getFilteredSales();
