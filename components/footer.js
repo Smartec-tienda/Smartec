@@ -52,6 +52,11 @@
                   🛒 Punto de venta
                 </a>
               </li>
+              <li>
+                <a href="/mayoristas.html" class="hover:text-[#BF5AF2] transition inline-flex items-center gap-1.5">
+                  🏢 Portal Mayoristas
+                </a>
+              </li>
             </ul>
             <h4 class="font-semibold mb-4 text-sm text-[#1D1D1F]">Síguenos</h4>
             <div class="flex gap-2">
