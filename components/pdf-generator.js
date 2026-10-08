@@ -271,7 +271,6 @@
 
     
     y = doc.lastAutoTable.finalY + 8;
-    y = doc.lastAutoTable.finalY + 8;
 
     // 🆕 Nota al pie sobre excepciones de precio
     if (sale.hasPriceExceptions && Array.isArray(sale.priceExceptions) && sale.priceExceptions.length) {
@@ -581,10 +580,6 @@
     dashedLine(y);
     y += 4;
 
-        y += 0.5;
-    dashedLine(y);
-    y += 4;
-
     // 🆕 Aviso de excepción de precio
     if (sale.hasPriceExceptions && Array.isArray(sale.priceExceptions) && sale.priceExceptions.length) {
       doc.setFont('courier', 'bold');
@@ -848,8 +843,6 @@
     });
 
     y = doc.lastAutoTable.finalY + 4;
-
-        y = doc.lastAutoTable.finalY + 4;
 
     // 🆕 Nota de excepciones de precio
     if (sale.hasPriceExceptions && Array.isArray(sale.priceExceptions) && sale.priceExceptions.length) {
