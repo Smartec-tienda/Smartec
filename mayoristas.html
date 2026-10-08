@@ -762,10 +762,19 @@ window.logout = async () => {
 onAuthStateChanged(auth, async user => {
   $('loading-screen').classList.add('hidden');
 
-  if (!user) {
-    $('login-screen').classList.remove('hidden');
-    $('login-screen').classList.add('flex');
-  // 🆕 Ocultar splash INMEDIATAMENTE — versión agresiva
+if (!user) {
+  // 🆕 Ocultar TODAS las demás pantallas
+  $('app-screen').classList.add('hidden');
+  $('app-screen').classList.remove('flex');
+  $('blocked-screen').classList.add('hidden');
+  $('blocked-screen').classList.remove('flex');
+  $('loading-screen').classList.add('hidden');
+
+  // Mostrar login
+  $('login-screen').classList.remove('hidden');
+  $('login-screen').classList.add('flex');
+
+  // Ocultar splash a la fuerza
   document.body.classList.remove('app-loading');
   const splashEl = document.getElementById('app-splash');
   if (splashEl) {
@@ -773,8 +782,8 @@ onAuthStateChanged(auth, async user => {
     splashEl.style.pointerEvents = 'none';
     splashEl.style.display = 'none';
   }
-    return;
-  }
+  return;
+}
 
   currentUser = user;
 
@@ -868,7 +877,12 @@ onAuthStateChanged(auth, async user => {
 
   currentCustomer = foundCustomer;
 
-  currentCustomer = foundCustomer;
+  // 🆕 Ocultar TODAS las pantallas antes de mostrar la app
+  $('login-screen').classList.add('hidden');
+  $('login-screen').classList.remove('flex');
+  $('blocked-screen').classList.add('hidden');
+  $('blocked-screen').classList.remove('flex');
+  $('loading-screen').classList.add('hidden');
 
   // Mostrar app
   $('app-user-name').innerText =
