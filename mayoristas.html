@@ -1830,21 +1830,26 @@ document.addEventListener('keydown', (e) => {
    🆕 EXPORTAR CATÁLOGO A PDF
 ============================================================ */
 window.exportCatalogPDF = async () => {
+  console.time('[PDF] TOTAL');
+  console.time('[PDF] validaciones');
+
   if (!window.jspdf || !window.jspdf.jsPDF) {
     alert('⚠️ La librería de PDF aún no ha cargado. Espera unos segundos.');
+    console.timeEnd('[PDF] validaciones');
+    console.timeEnd('[PDF] TOTAL');
     return;
   }
 
   if (!products.length) {
     alert('No hay productos para exportar.');
+    console.timeEnd('[PDF] validaciones');
+    console.timeEnd('[PDF] TOTAL');
     return;
   }
 
-  // 🆕 Aviso visual
-  showMayToast('⏳ Generando PDF, espera unos segundos...');
-
   // Aplicar los mismos filtros que en pantalla
   let list = products.slice();
+  console.timeEnd('[PDF] validaciones');
 
   if (activeCategory !== 'all') {
     list = list.filter(p => p.categoryGroup === activeCategory);
@@ -1863,11 +1868,13 @@ window.exportCatalogPDF = async () => {
     return;
   }
 
+  console.time('[PDF] crear jsPDF');
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const M = 12; // margen
+  console.timeEnd('[PDF] crear jsPDF');
 
   const w = currentCustomer?.wholesale || {};
   const companyName = w.companyName || currentCustomer?.name || 'Mayorista';
@@ -1946,6 +1953,7 @@ window.exportCatalogPDF = async () => {
     ];
   });
 
+  console.time('[PDF] autoTable');
   doc.autoTable({
     startY: y,
     head: [['SKU', 'Producto', 'Categoría', 'Var.', 'Retail', 'Mayorista']],
@@ -1974,6 +1982,8 @@ window.exportCatalogPDF = async () => {
     },
     margin: { left: M, right: M }
   });
+
+  console.timeEnd('[PDF] autoTable');
 
   y = doc.lastAutoTable.finalY + 8;
 
@@ -2009,8 +2019,12 @@ window.exportCatalogPDF = async () => {
   }
 
   // ============ DESCARGAR ============
+  console.time('[PDF] doc.save');
   const filename = `smartec_mayorista_${(companyName || 'catalogo').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
   doc.save(filename);
+  console.timeEnd('[PDF] doc.save');
+
+  console.timeEnd('[PDF] TOTAL');
 };
 
 /* ============================================================
@@ -2060,13 +2074,17 @@ window.exportCatalogExcel = async () => {
   const phone = currentCustomer?.phone || '—';
   const email = currentCustomer?.email || '—';
 
+  console.time('[Excel] crear Workbook');
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Smartec';
   wb.created = new Date();
+  console.timeEnd('[Excel] crear Workbook');
 
+  console.time('[Excel] addWorksheet');
   const ws = wb.addWorksheet('Catálogo Mayorista', {
     properties: { defaultRowHeight: 18 }
   });
+  console.timeEnd('[Excel] addWorksheet');
 
   // ============ TÍTULO ============
   ws.mergeCells('A1:H1');
@@ -2124,6 +2142,7 @@ window.exportCatalogExcel = async () => {
   });
 
   // ============ FILAS ============
+  console.time('[Excel] agregar filas');
   list.forEach((p, idx) => {
     const wholesale = computeWholesalePrice(p);
     const retail = Number(p.onSale && p.salePrice ? p.salePrice : p.price) || 0;
@@ -2140,6 +2159,8 @@ window.exportCatalogExcel = async () => {
       wholesale,
       savings
     ]);
+
+    console.timeEnd('[Excel] agregar filas');
 
     // Estilos (optimizado — sin fill zebra)
     row.eachCell((cell, colIdx) => {
@@ -2219,10 +2240,17 @@ window.exportCatalogExcel = async () => {
   };
 
   // ============ DESCARGAR ============
+  console.time('[Excel] writeBuffer');
   const buffer = await wb.xlsx.writeBuffer();
+  console.timeEnd('[Excel] writeBuffer');
+
+  console.time('[Excel] crear Blob');
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   });
+  console.timeEnd('[Excel] crear Blob');
+
+  console.time('[Excel] crear URL y descargar');
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -2231,6 +2259,7 @@ window.exportCatalogExcel = async () => {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+  console.timeEnd('[Excel] crear URL y descargar');
 
   console.log(`[Portal MAY] Excel exportado: ${list.length} productos`);
 };
