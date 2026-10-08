@@ -13,9 +13,9 @@
 <script src="lib/common.js"></script>
 <script src="lib/cache.js"></script>
 <script src="components/favicon.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root{
     --bg:#F5F5F7;
@@ -1829,7 +1829,7 @@ document.addEventListener('keydown', (e) => {
 /* ============================================================
    🆕 EXPORTAR CATÁLOGO A PDF
 ============================================================ */
-window.exportCatalogPDF = () => {
+window.exportCatalogPDF = async () => {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     alert('⚠️ La librería de PDF aún no ha cargado. Espera unos segundos.');
     return;
@@ -1839,6 +1839,9 @@ window.exportCatalogPDF = () => {
     alert('No hay productos para exportar.');
     return;
   }
+
+  // 🆕 Aviso visual
+  showMayToast('⏳ Generando PDF, espera unos segundos...');
 
   // Aplicar los mismos filtros que en pantalla
   let list = products.slice();
@@ -2024,6 +2027,12 @@ window.exportCatalogExcel = async () => {
     return;
   }
 
+  // 🆕 Aviso visual
+  showMayToast('⏳ Generando Excel, espera unos segundos...');
+
+  // 🆕 Dar tiempo a que se muestre el toast antes de bloquear el hilo
+  await new Promise(resolve => setTimeout(resolve, 50));
+
   // Aplicar los mismos filtros que en pantalla
   let list = products.slice();
 
@@ -2132,8 +2141,7 @@ window.exportCatalogExcel = async () => {
       savings
     ]);
 
-    // Estilos
-    const isZebra = idx % 2 === 1;
+    // Estilos (optimizado — sin fill zebra)
     row.eachCell((cell, colIdx) => {
       cell.border = {
         top:    { style: 'thin', color: { argb: 'FFE5E7EB' } },
@@ -2142,9 +2150,6 @@ window.exportCatalogExcel = async () => {
         right:  { style: 'thin', color: { argb: 'FFE5E7EB' } }
       };
       cell.alignment = { vertical: 'middle', wrapText: colIdx === 1 };
-      if (isZebra) {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F9FC' } };
-      }
     });
 
     // Columna SKU → mono
