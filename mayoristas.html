@@ -22,10 +22,9 @@
     --text:#1D1D1F;
     --text-dim:#6E6E73;
     --blue:#0071E3;
-    --purple:#BF5AF2;
-    --pink:#FF375F;
-    --sd:#0A2A4A;
-    --sl:#4A7A9A;
+    --sd:#0A2A4A;         /* Azul marino — principal */
+    --sl:#4A7A9A;         /* Azul medio — secundario */
+    --sl-light:#8FB4D0;   /* Azul claro — hover */
   }
 
   *{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased}
@@ -84,7 +83,7 @@
   }
 
   .btn-apple{
-    background:linear-gradient(135deg, #BF5AF2, #0071E3);
+    background:linear-gradient(135deg, #0A2A4A, #0071E3);
     color:white;
     font-weight:600;
     letter-spacing:-0.01em;
@@ -119,7 +118,7 @@
   input::placeholder,textarea::placeholder{color:var(--text-dim)}
 
   .logo-mark{
-    background:linear-gradient(135deg, #BF5AF2, #0071E3);
+    background:linear-gradient(135deg, #0A2A4A, #0071E3);
     -webkit-background-clip:text;
     background-clip:text;
     color:transparent;
@@ -228,7 +227,7 @@
 <!-- ============ SPLASH SCREEN ============ -->
 <div id="app-splash" class="fixed inset-0 z-[9999] flex items-center justify-center mesh-bg transition-opacity duration-300">
   <div class="text-center">
-    <div class="w-12 h-12 border-4 border-[#BF5AF2]/20 border-t-[#BF5AF2] rounded-full animate-spin mx-auto"></div>
+    <div class="w-12 h-12 border-4 border-[#0A2A4A]/20 border-t-[#0A2A4A] rounded-full animate-spin mx-auto"></div>
     <p class="text-xs text-[#6E6E73] mt-4 font-medium tracking-wide">Cargando Portal Mayoristas…</p>
   </div>
 </div>
@@ -237,7 +236,7 @@
 <div id="login-screen" class="hidden min-h-screen items-center justify-center p-4 relative overflow-hidden">
 
   <!-- Orbes de fondo -->
-  <div class="hero-orb w-[500px] h-[500px] bg-[#BF5AF2]/25" style="top:-200px;left:-150px;position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none"></div>
+  <div class="hero-orb w-[500px] h-[500px] bg-[#0A2A4A]/25" style="top:-200px;left:-150px;position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none"></div>
   <div class="hero-orb w-[400px] h-[400px] bg-[#5AC8FA]/25" style="bottom:-100px;right:-100px;position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none"></div>
 
   <!-- Card de login -->
@@ -273,7 +272,7 @@
 <!-- ============ VERIFICANDO SESIÓN ============ -->
 <div id="loading-screen" class="min-h-screen flex items-center justify-center p-4">
   <div class="text-center fade-up">
-    <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-[#BF5AF2]/20 border-t-[#BF5AF2] mb-4"></div>
+    <div class="inline-block animate-spin rounded-full h-10 w-10 border-2 border-[#0A2A4A]/20 border-t-[#0A2A4A] mb-4"></div>
     <p class="text-[#1D1D1F] font-semibold text-sm">Verificando sesión...</p>
   </div>
 </div>
@@ -281,7 +280,7 @@
 <!-- ============ PANTALLA BLOQUEADA ============ -->
 <div id="blocked-screen" class="hidden min-h-screen items-center justify-center p-4">
   <div class="glass-strong p-8 rounded-3xl shadow-apple-xl w-full max-w-lg border border-white/70 fade-up text-center">
-    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF375F] to-[#BF5AF2] flex items-center justify-center mx-auto mb-4 shadow-apple">
+    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF375F] to-[#0A2A4A] flex items-center justify-center mx-auto mb-4 shadow-apple">
       <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
       </svg>
@@ -311,7 +310,7 @@
           <h1 class="text-xl font-extrabold logo-mark tracking-tight">SMARTEC</h1>
         </div>
         <div class="hidden sm:block border-l border-black/10 pl-3">
-          <p class="text-[10px] font-bold text-[#BF5AF2] uppercase tracking-wider">Portal Mayoristas</p>
+          <p class="text-[10px] font-bold text-[#0A2A4A] uppercase tracking-wider">Portal Mayoristas</p>
           <p id="app-user-name" class="text-xs text-[#6E6E73] truncate font-medium">—</p>
         </div>
       </div>
@@ -435,7 +434,7 @@
       <button
         id="may-cart-request-btn"
         onclick="openQuoteRequestModal()"
-        class="w-full py-3 rounded-xl bg-gradient-to-r from-[#BF5AF2] to-[#0071E3] text-white font-bold hover:opacity-90 transition disabled:opacity-40"
+        class="w-full py-3 rounded-xl bg-gradient-to-r from-[#0A2A4A] to-[#4A7A9A] text-white font-bold hover:opacity-90 transition disabled:opacity-40"
         disabled>
         📋 Solicitar cotización
       </button>
@@ -465,8 +464,8 @@
     <!-- Precio -->
     <div class="mb-4">
       <div class="flex items-baseline gap-2 flex-wrap">
-        <p id="may-pick-price" class="text-2xl font-bold text-[#BF5AF2]">$0</p>
-        <span class="text-[10px] bg-[#BF5AF2]/15 text-[#BF5AF2] px-2 py-0.5 rounded-full font-bold">🏢 MAYORISTA</span>
+        <p id="may-pick-price" class="text-2xl font-bold text-[#0A2A4A]">$0</p>
+        <span class="text-[10px] bg-[#0A2A4A]/15 text-[#0A2A4A] px-2 py-0.5 rounded-full font-bold">🏢 MAYORISTA</span>
       </div>
       <p id="may-pick-retail" class="text-xs text-[#6E6E73] mt-1 hidden"></p>
     </div>
@@ -497,7 +496,7 @@
     </div>
 
     <!-- Botón agregar -->
-    <button onclick="confirmMayAddToCart()" class="w-full py-3 rounded-xl bg-gradient-to-r from-[#BF5AF2] to-[#0071E3] text-white font-bold hover:opacity-90 transition">
+    <button onclick="confirmMayAddToCart()" class="w-full py-3 rounded-xl bg-gradient-to-r from-[#0A2A4A] to-[#4A7A9A] text-white font-bold hover:opacity-90 transition">
       ➕ Agregar al carrito
     </button>
 
@@ -516,7 +515,7 @@
     </button>
 
     <!-- Ícono -->
-    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#BF5AF2] to-[#0071E3] flex items-center justify-center mx-auto mb-3 shadow-apple text-2xl">
+    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0A2A4A] to-[#4A7A9A] flex items-center justify-center mx-auto mb-3 shadow-apple text-2xl">
       📋
     </div>
 
@@ -528,16 +527,16 @@
     </p>
 
     <!-- Resumen del pedido -->
-    <div class="bg-[#BF5AF2]/5 border border-[#BF5AF2]/20 rounded-2xl p-4 mb-4">
-      <p class="text-xs font-bold text-[#BF5AF2] uppercase tracking-wider mb-3">Resumen del pedido</p>
+    <div class="bg-[#0A2A4A]/5 border border-[#0A2A4A]/20 rounded-2xl p-4 mb-4">
+      <p class="text-xs font-bold text-[#0A2A4A] uppercase tracking-wider mb-3">Resumen del pedido</p>
 
       <div id="may-quote-summary" class="space-y-2 mb-3 max-h-48 overflow-y-auto scrollbar-thin">
         <!-- Se llena por JS -->
       </div>
 
-      <div class="border-t border-[#BF5AF2]/20 pt-3 flex justify-between items-center">
+      <div class="border-t border-[#0A2A4A]/20 pt-3 flex justify-between items-center">
         <span class="text-sm font-semibold text-[#1D1D1F]">Total</span>
-        <span id="may-quote-total" class="text-lg font-bold text-[#BF5AF2]">$0</span>
+        <span id="may-quote-total" class="text-lg font-bold text-[#0A2A4A]">$0</span>
       </div>
     </div>
 
@@ -580,7 +579,7 @@
       <button
         id="may-quote-confirm-btn"
         onclick="submitQuoteRequest()"
-        class="flex-1 bg-gradient-to-r from-[#BF5AF2] to-[#0071E3] text-white py-3 rounded-xl hover:opacity-90 font-bold text-sm">
+        class="flex-1 bg-gradient-to-r from-[#0A2A4A] to-[#4A7A9A] text-white py-3 rounded-xl hover:opacity-90 font-bold text-sm">
         📤 Enviar cotización
       </button>
     </div>
@@ -933,7 +932,7 @@ if (!user) {
           <p class="text-3xl mb-2">⚠️</p>
           <p class="text-sm font-semibold text-[#FF375F] mb-1">No se pudo cargar el catálogo</p>
           <p class="text-xs text-[#6E6E73]">${err.message || 'Error desconocido'}</p>
-          <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-[#BF5AF2] text-white rounded-xl text-xs font-semibold">
+          <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-[#0A2A4A] text-white rounded-xl text-xs font-semibold">
             🔄 Reintentar
           </button>
         </div>
@@ -1046,10 +1045,10 @@ function renderCategoryFilters() {
     .sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
 
   const chips = [
-    `<button data-cat="all" class="may-cat-btn px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border ${activeCategory === 'all' ? 'bg-[#BF5AF2] text-white border-[#BF5AF2]' : 'border-gray-300 text-[#1D1D1F] hover:border-[#BF5AF2]'} transition">Todos</button>`,
+    `<button data-cat="all" class="may-cat-btn px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border ${activeCategory === 'all' ? 'bg-[#0A2A4A] text-white border-[#0A2A4A]' : 'border-gray-300 text-[#1D1D1F] hover:border-[#0A2A4A]'} transition">Todos</button>`,
     ...groups.map(([slug, g]) => {
       const isActive = activeCategory === slug;
-      return `<button data-cat="${slug}" class="may-cat-btn px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border ${isActive ? 'bg-[#BF5AF2] text-white border-[#BF5AF2]' : 'border-gray-300 text-[#1D1D1F] hover:border-[#BF5AF2]'} transition">${escapeHtml(g.name)}</button>`;
+      return `<button data-cat="${slug}" class="may-cat-btn px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border ${isActive ? 'bg-[#0A2A4A] text-white border-[#0A2A4A]' : 'border-gray-300 text-[#1D1D1F] hover:border-[#0A2A4A]'} transition">${escapeHtml(g.name)}</button>`;
     })
   ].join('');
 
@@ -1094,10 +1093,10 @@ function renderWelcomeCard() {
   const discountPct = ((w.discountBase || 0) * 100).toFixed(1);
 
   el.innerHTML = `
-    <div class="bg-gradient-to-br from-[#BF5AF2]/8 to-[#5AC8FA]/8 border border-[#BF5AF2]/25 rounded-3xl p-5 shadow-apple">
+    <div class="bg-gradient-to-br from-[#0A2A4A]/8 to-[#5AC8FA]/8 border border-[#0A2A4A]/25 rounded-3xl p-5 shadow-apple">
       <div class="flex items-start justify-between flex-wrap gap-3">
         <div class="min-w-0 flex-1">
-          <p class="text-[10px] font-bold text-[#BF5AF2] uppercase tracking-wider mb-1">Bienvenido</p>
+          <p class="text-[10px] font-bold text-[#0A2A4A] uppercase tracking-wider mb-1">Bienvenido</p>
           <h2 class="text-xl md:text-2xl font-bold text-[#1D1D1F] tracking-tight">${escapeHtml(companyName)}</h2>
           <p class="text-xs text-[#6E6E73] mt-1">NIT: <span class="font-mono">${escapeHtml(nit)}</span></p>
         </div>
@@ -1108,7 +1107,7 @@ function renderWelcomeCard() {
           </div>
           <div>
             <p class="text-[10px] text-[#6E6E73] uppercase font-semibold">Descuento base</p>
-            <p class="font-bold text-[#BF5AF2]">-${discountPct}%</p>
+            <p class="font-bold text-[#0A2A4A]">-${discountPct}%</p>
           </div>
           <div>
             <p class="text-[10px] text-[#6E6E73] uppercase font-semibold">Productos</p>
@@ -1244,8 +1243,8 @@ function renderProductCard(p) {
         <!-- Precio mayorista -->
         <div class="mb-2">
           <div class="flex items-baseline gap-1.5 flex-wrap">
-            <p class="text-base md:text-lg font-bold text-[#BF5AF2]">${fmt(wholesale)}</p>
-            <span class="text-[9px] bg-[#BF5AF2]/15 text-[#BF5AF2] px-1.5 py-0.5 rounded-full font-bold">🏢 MAY</span>
+            <p class="text-base md:text-lg font-bold text-[#0A2A4A]">${fmt(wholesale)}</p>
+            <span class="text-[9px] bg-[#0A2A4A]/15 text-[#0A2A4A] px-1.5 py-0.5 rounded-full font-bold">🏢 MAY</span>
           </div>
           ${hasRetail ? `
             <p class="text-[10px] text-[#6E6E73] mt-0.5">
@@ -1264,7 +1263,7 @@ function renderProductCard(p) {
         <button
           type="button"
           onclick="event.stopPropagation(); openMayPicker('${p.id}')"
-          class="w-full py-2 rounded-xl bg-[#BF5AF2] text-white text-xs font-bold hover:bg-[#A64DD6] transition">
+          class="w-full py-2 rounded-xl bg-[#0A2A4A] text-white text-xs font-bold hover:bg-[#4A7A9A] transition">
           ➕ Agregar al carrito
         </button>
       </div>
@@ -1372,7 +1371,7 @@ function renderMayPickerVariants(p) {
       return `
         <button type="button"
                 data-color="${escapeHtml(c.color)}"
-                class="may-color-btn w-10 h-10 rounded-full border-2 transition ${isSelected ? 'border-[#BF5AF2] ring-2 ring-[#BF5AF2]/30 scale-110' : 'border-gray-300 hover:border-[#BF5AF2]'}"
+                class="may-color-btn w-10 h-10 rounded-full border-2 transition ${isSelected ? 'border-[#0A2A4A] ring-2 ring-[#0A2A4A]/30 scale-110' : 'border-gray-300 hover:border-[#0A2A4A]'}"
                 style="background:${escapeHtml(c.color)}"
                 title="${escapeHtml(c.name)}">
         </button>
@@ -1402,7 +1401,7 @@ function renderMayPickerVariants(p) {
       return `
         <button type="button"
                 data-size="${escapeHtml(s)}"
-                class="may-size-btn px-4 py-2 rounded-xl border-2 text-xs font-semibold transition ${isSelected ? 'bg-[#BF5AF2] text-white border-[#BF5AF2]' : 'border-gray-300 text-[#1D1D1F] hover:border-[#BF5AF2]'}">
+                class="may-size-btn px-4 py-2 rounded-xl border-2 text-xs font-semibold transition ${isSelected ? 'bg-[#0A2A4A] text-white border-[#0A2A4A]' : 'border-gray-300 text-[#1D1D1F] hover:border-[#0A2A4A]'}">
           ${escapeHtml(s)}
         </button>
       `;
@@ -1549,7 +1548,7 @@ function renderMayCart() {
           <p class="text-xs font-semibold text-[#1D1D1F] truncate">${escapeHtml(it.name)}</p>
           <p class="text-[10px] text-[#6E6E73] font-mono truncate">${escapeHtml(it.sku) || '—'}</p>
           ${variantParts ? `<p class="text-[10px] text-[#6E6E73] truncate">${escapeHtml(variantParts)}</p>` : ''}
-          <p class="text-xs font-bold text-[#BF5AF2] mt-1">${fmt(it.unitPrice)}</p>
+          <p class="text-xs font-bold text-[#0A2A4A] mt-1">${fmt(it.unitPrice)}</p>
 
           <div class="flex items-center justify-between mt-2">
             <div class="inline-flex items-center border border-gray-200 rounded-xl bg-white">
@@ -1639,7 +1638,7 @@ window.openQuoteRequestModal = () => {
           </div>
           <div class="text-right whitespace-nowrap">
             <p class="text-[10px] text-[#6E6E73]">${it.qty} × ${fmt(it.unitPrice)}</p>
-            <p class="font-bold text-[#BF5AF2]">${fmt(subtotal)}</p>
+            <p class="font-bold text-[#0A2A4A]">${fmt(subtotal)}</p>
           </div>
         </div>
       `;
@@ -1884,7 +1883,7 @@ window.exportCatalogPDF = () => {
   let y = M;
 
   // ============ ENCABEZADO MORADO ============
-  doc.setFillColor(191, 90, 242); // #BF5AF2
+  doc.setFillColor(191, 90, 242); // #0A2A4A
   doc.rect(0, 0, pageW, 22, 'F');
 
   doc.setTextColor(255, 255, 255);
