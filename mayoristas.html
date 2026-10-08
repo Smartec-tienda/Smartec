@@ -707,7 +707,52 @@ $('login-btn').onclick = async () => {
 window.logout = async () => {
   try {
     await signOut(auth);
-    window.location.href = 'home.html';
+
+    // 🆕 En lugar de ir a home.html, quedarse en mayoristas.html
+    // El onAuthStateChanged detectará que no hay user y mostrará el login.
+
+    // Forzar limpieza de estado
+    currentUser = null;
+    currentUserData = null;
+    currentCustomer = null;
+    products = [];
+    cart = [];
+    categories = {};
+    activeCategory = 'all';
+    searchTerm = '';
+
+    // Ocultar la app y mostrar el login manualmente (por si acaso)
+    const appScreen = $('app-screen');
+    if (appScreen) {
+      appScreen.classList.add('hidden');
+      appScreen.classList.remove('flex');
+    }
+
+    const blockedScreen = $('blocked-screen');
+    if (blockedScreen) {
+      blockedScreen.classList.add('hidden');
+      blockedScreen.classList.remove('flex');
+    }
+
+    const loginScreen = $('login-screen');
+    if (loginScreen) {
+      loginScreen.classList.remove('hidden');
+      loginScreen.classList.add('flex');
+    }
+
+    // Limpiar campos del login
+    const emailEl = $('login-email');
+    const passEl = $('login-pass');
+    if (emailEl) emailEl.value = '';
+    if (passEl) passEl.value = '';
+
+    // Ocultar errores previos
+    const errEl = $('login-error');
+    if (errEl) {
+      errEl.classList.add('hidden');
+      errEl.innerText = '';
+    }
+
   } catch (e) {
     console.warn('Error al cerrar sesión:', e);
   }
@@ -720,7 +765,14 @@ onAuthStateChanged(auth, async user => {
   if (!user) {
     $('login-screen').classList.remove('hidden');
     $('login-screen').classList.add('flex');
-    hideSplash();
+  // 🆕 Ocultar splash INMEDIATAMENTE — versión agresiva
+  document.body.classList.remove('app-loading');
+  const splashEl = document.getElementById('app-splash');
+  if (splashEl) {
+    splashEl.style.opacity = '0';
+    splashEl.style.pointerEvents = 'none';
+    splashEl.style.display = 'none';
+  }
     return;
   }
 
