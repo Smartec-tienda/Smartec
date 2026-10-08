@@ -193,6 +193,28 @@
     opacity: 0;
     pointer-events: none;
   }
+    /* ============ FIX — Forzar colores correctos en el login ============ */
+  #login-screen .btn-apple {
+    background: var(--blue) !important;
+    color: #ffffff !important;
+    box-shadow:
+      0 1px 2px rgba(0,113,227,0.2),
+      0 4px 12px rgba(0,113,227,0.3) !important;
+  }
+  #login-screen .btn-apple:hover {
+    background: #0077ED !important;
+  }
+  #login-screen input {
+    background: rgba(255,255,255,0.8) !important;
+    border: 1px solid rgba(0,0,0,0.08) !important;
+    color: var(--text) !important;
+  }
+  #login-screen input:focus {
+    border-color: var(--blue) !important;
+    box-shadow: 0 0 0 4px rgba(0,113,227,0.15) !important;
+    background: white !important;
+  }
+
 </style>
 </head>
 <body class="min-h-screen app-loading">
@@ -342,27 +364,59 @@ function hideSplash() {
 /* ============ LOGIN ============ */
 $('login-btn').onclick = async () => {
   const err = $('login-error');
-  err.classList.add('hidden');
-
-  const email = $('login-email').value.trim();
-  const pass = $('login-pass').value;
-
-  if (!email) return (err.innerText = 'Ingresa tu correo', err.classList.remove('hidden'));
-  if (!pass) return (err.innerText = 'Ingresa tu contraseña', err.classList.remove('hidden'));
-
+  const emailEl = $('login-email');
+  const passEl = $('login-pass');
   const btn = $('login-btn');
+
+  // Limpiar errores previos
+  err.classList.add('hidden');
+  err.innerText = '';
+
+  const email = emailEl.value.trim();
+  const pass = passEl.value;
+
+  if (!email) {
+    err.innerText = 'Ingresa tu correo';
+    err.classList.remove('hidden');
+    emailEl.focus();
+    return;
+  }
+  if (!pass) {
+    err.innerText = 'Ingresa tu contraseña';
+    err.classList.remove('hidden');
+    passEl.focus();
+    return;
+  }
+
   btn.disabled = true;
   btn.innerText = 'Ingresando...';
 
   try {
     await signInWithEmailAndPassword(auth, email, pass);
+    // Éxito → el onAuthStateChanged toma el control
   } catch (e) {
-    err.innerText = 'Credenciales inválidas. Verifica tu correo y contraseña.';
-    err.classList.remove('hidden');
-    console.warn('[Login] Error:', e.code, e.message);
-  } finally {
+    // 🔴 Restaurar el formulario para permitir reintentar
     btn.disabled = false;
     btn.innerText = 'Ingresar';
+
+    // Mensaje específico según el error
+    let msg = 'No se pudo iniciar sesión. Verifica tus datos.';
+    if (e.code === 'auth/invalid-email') msg = 'El correo no tiene un formato válido.';
+    else if (e.code === 'auth/user-not-found') msg = 'No existe una cuenta con ese correo.';
+    else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') msg = 'Contraseña incorrecta. Intenta de nuevo.';
+    else if (e.code === 'auth/too-many-requests') msg = 'Demasiados intentos. Espera unos minutos.';
+    else if (e.code === 'auth/network-request-failed') msg = 'Sin conexión. Verifica tu internet.';
+
+    err.innerText = msg;
+    err.classList.remove('hidden');
+
+    // 🆕 Habilitar de nuevo los inputs y limpiar solo la contraseña
+    emailEl.disabled = false;
+    passEl.disabled = false;
+    passEl.value = '';
+    passEl.focus();
+
+    console.warn('[Login] Error:', e.code, e.message);
   }
 };
 
@@ -495,6 +549,24 @@ async function loadAndApplyLogo() {
 loadAndApplyLogo();
 
 console.log('[Smartec] mayoristas.html cargado');
+
+/* ============ ATAJOS EN EL LOGIN ============ */
+(function initLoginShortcuts() {
+  const emailEl = $('login-email');
+  const passEl = $('login-pass');
+  if (!emailEl || !passEl) return;
+
+  // Enter en cualquier input dispara el login
+  [emailEl, passEl].forEach(el => {
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        $('login-btn')?.click();
+      }
+    });
+  });
+})();
+
 </script>
 
 </body>
