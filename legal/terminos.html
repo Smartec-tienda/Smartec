@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Términos y Condiciones · Smartec</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="../lib/firebase-config.js"></script>
+<script src="../lib/common.js"></script>
+<script src="../lib/cache.js"></script>
+<script src="../components/header-app.js"></script>
+<script src="../components/favicon.js"></script>
+<script src="../components/legal-config.js"></script>
+<script src="../components/footer.js"></script>
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .legal-content h2 {
+    color: #0A2A4A;
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-top: 1.75rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.01em;
+  }
+  .legal-content h3 {
+    color: #1D1D1F;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .legal-content p {
+    color: #3A3A3C;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+  }
+  .legal-content ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .legal-content li {
+    color: #3A3A3C;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.35rem;
+  }
+  .legal-content strong { color: #0A2A4A; font-weight: 600; }
+  .legal-content a { color: #0071E3; text-decoration: underline; }
+  .legal-content .destacado {
+    background: rgba(74, 122, 154, 0.08);
+    border-left: 3px solid #4A7A9A;
+    padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+  }
+  .legal-content .aviso {
+    background: rgba(255, 159, 10, 0.08);
+    border-left: 3px solid #FF9F0A;
+    padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+  }
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<div class="mesh-bg"></div>
+
+<div id="smartec-header-app"></div>
+
+<main class="container mx-auto px-4 md:px-6 py-10 max-w-4xl">
+
+  <div class="glass-strong rounded-3xl shadow-apple-xl border border-white/70 p-6 md:p-10">
+
+    <div class="border-b border-black/10 pb-6 mb-6">
+      <p class="text-[10px] uppercase tracking-wider font-bold text-sl mb-2">Documento legal</p>
+      <h1 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight mb-2">
+        Términos y Condiciones de Uso
+      </h1>
+      <p class="text-xs text-[#6E6E73]">
+        Última actualización: <span id="legal-last-update">—</span>
+      </p>
+    </div>
+
+    <div class="legal-content">
+
+      <div class="destacado">
+        <p>
+          Los presentes Términos y Condiciones (en adelante, los <strong>"Términos"</strong>) regulan
+          el acceso y uso de la plataforma <strong id="legal-platform">—</strong> (en adelante, la
+          <strong>"Plataforma"</strong>), operada por <strong id="legal-name">—</strong>,
+          identificada con NIT <strong id="legal-nit">—</strong>, con domicilio en
+          <strong id="legal-address">—</strong> (en adelante, el <strong>"Proveedor"</strong>).
+        </p>
+        <p>
+          El acceso o uso de la Plataforma implica la aceptación plena y sin reservas de estos
+          Términos. Si el usuario no está de acuerdo, debe abstenerse de usar la Plataforma.
+        </p>
+      </div>
+
+      <h2>1. Definiciones</h2>
+      <ul>
+        <li><strong>Plataforma:</strong> el software de gestión comercial y contable operado por el Proveedor, accesible vía web.</li>
+        <li><strong>Proveedor:</strong> <span id="legal-name-2">—</span>, titular de los derechos sobre la Plataforma.</li>
+        <li><strong>Comerciante:</strong> persona natural o jurídica que contrata el uso de la Plataforma para gestionar su operación comercial.</li>
+        <li><strong>Usuario:</strong> persona natural que accede a la Plataforma, ya sea en calidad de Comerciante, empleado del Comerciante o cliente final.</li>
+        <li><strong>Servicios:</strong> las funcionalidades ofrecidas por la Plataforma (gestión de ventas, inventario, contabilidad, clientes, etc.).</li>
+      </ul>
+
+      <h2>2. Objeto</h2>
+      <p>
+        El Proveedor ofrece a través de la Plataforma un servicio de software como servicio (SaaS)
+        para la gestión comercial y contable de tiendas y negocios. El acceso se realiza vía web
+        y no requiere instalación local.
+      </p>
+
+      <h2>3. Requisitos de acceso</h2>
+      <ul>
+        <li>Ser mayor de 18 años o contar con capacidad legal para contratar.</li>
+        <li>Proporcionar información veraz, exacta y actualizada al momento del registro.</li>
+        <li>Contar con conexión a Internet y un dispositivo compatible.</li>
+        <li>Aceptar la <a href="politica-datos.html">Política de Tratamiento de Datos</a> y la <a href="privacidad.html">Política de Privacidad</a>.</li>
+      </ul>
+
+      <h2>4. Registro y cuenta</h2>
+      <p>
+        Para acceder a los Servicios, el Comerciante debe crear una cuenta proporcionando los
+        datos solicitados. El Comerciante es responsable de:
+      </p>
+      <ul>
+        <li>Mantener la confidencialidad de sus credenciales de acceso.</li>
+        <li>Todas las actividades realizadas desde su cuenta.</li>
+        <li>Informar de inmediato cualquier uso no autorizado de su cuenta.</li>
+        <li>Gestionar los usuarios (empleados) que cree dentro de su cuenta y sus permisos.</li>
+      </ul>
+
+      <h2>5. Uso permitido</h2>
+      <p>El Usuario se compromete a usar la Plataforma conforme a la ley, la moral y el orden público. En particular, se obliga a <strong>no</strong>:</p>
+      <ul>
+        <li>Usar la Plataforma para actividades ilícitas o fraudulentas.</li>
+        <li>Intentar acceder sin autorización a sistemas, datos o cuentas de terceros.</li>
+        <li>Reproducir, distribuir, modificar o crear obras derivadas de la Plataforma sin autorización escrita del Proveedor.</li>
+        <li>Introducir virus, malware o cualquier código dañino.</li>
+        <li>Sobrecargar la infraestructura o interferir con el funcionamiento normal del servicio.</li>
+        <li>Recolectar datos de otros usuarios sin su consentimiento.</li>
+        <li>Usar la Plataforma para enviar comunicaciones no solicitadas (spam).</li>
+      </ul>
+
+      <h2>6. Propiedad intelectual</h2>
+      <p>
+        Todos los derechos de propiedad intelectual sobre la Plataforma, su código fuente, diseño,
+        marcas, logos, textos, imágenes y demás contenidos son propiedad del Proveedor o de sus
+        licenciantes. El uso de la Plataforma no otorga al Usuario ningún derecho de propiedad
+        sobre ella, sino únicamente una licencia limitada, no exclusiva, no transferible y
+        revocable para usar los Servicios conforme a estos Términos.
+      </p>
+
+      <h2>7. Datos del Comerciante y de sus clientes</h2>
+      <p>
+        El Comerciante es el único responsable de los datos que carga en la Plataforma (productos,
+        clientes, ventas, proveedores, etc.). El Proveedor actúa como <strong>Encargado del
+        Tratamiento</strong> de dichos datos, conforme a la <a href="politica-datos.html">Política
+        de Tratamiento de Datos Personales</a>.
+      </p>
+      <p>
+        El Proveedor no será responsable por el uso indebido que el Comerciante haga de los datos
+        personales de sus clientes, ni por el incumplimiento de las obligaciones legales que le
+        correspondan como Responsable del Tratamiento.
+      </p>
+
+      <h2>8. Disponibilidad del servicio</h2>
+      <p>
+        El Proveedor hará sus mejores esfuerzos para mantener la Plataforma disponible de forma
+        continua. Sin embargo, no garantiza una disponibilidad ininterrumpida ni libre de errores.
+        Pueden presentarse interrupciones por mantenimiento, actualizaciones, fallas técnicas,
+        causas de fuerza mayor o hechos de terceros.
+      </p>
+      <div class="aviso">
+        <p>
+          El Proveedor <strong>no será responsable</strong> por daños o perjuicios derivados de
+          interrupciones del servicio, pérdida de datos por causas ajenas a su control, o uso
+          indebido de la Plataforma por parte del Usuario.
+        </p>
+      </div>
+
+      <h2>9. Limitación de responsabilidad</h2>
+      <p>En la máxima medida permitida por la ley, el Proveedor no será responsable por:</p>
+      <ul>
+        <li>Daños indirectos, incidentales, especiales o consecuenciales.</li>
+        <li>Lucro cesante, pérdida de oportunidad o de datos.</li>
+        <li>Daños derivados del uso o imposibilidad de uso de la Plataforma.</li>
+        <li>Conductas de terceros, incluyendo otros usuarios de la Plataforma.</li>
+      </ul>
+      <p>
+        La responsabilidad total del Proveedor, en cualquier caso, se limitará al monto efectivamente
+        pagado por el Comerciante por el uso de la Plataforma en los últimos <strong>tres (3) meses</strong>
+        anteriores al hecho que origine la reclamación.
+      </p>
+
+      <h2>10. Suspensión y terminación</h2>
+      <p>El Proveedor podrá suspender o terminar el acceso a la Plataforma, sin previo aviso y sin responsabilidad, cuando:</p>
+      <ul>
+        <li>El Usuario incumpla estos Términos o la ley.</li>
+        <li>Exista uso fraudulento o ilícito.</li>
+        <li>Exista riesgo para la seguridad de la Plataforma o de otros usuarios.</li>
+        <li>Lo requiera una autoridad competente.</li>
+      </ul>
+      <p>
+        El Comerciante podrá dar por terminado el uso de la Plataforma en cualquier momento,
+        cesando el pago correspondiente. Las obligaciones de pago ya causadas subsistirán hasta
+        su cancelación total.
+      </p>
+
+      <h2>11. Modificaciones</h2>
+      <p>
+        El Proveedor se reserva el derecho de modificar estos Términos en cualquier momento. Las
+        modificaciones sustanciales serán informadas al Comerciante con antelación razonable. El
+        uso continuado de la Plataforma tras la modificación implica la aceptación de los nuevos
+        Términos.
+      </p>
+
+      <h2>12. Comunicaciones</h2>
+      <p>
+        Las comunicaciones oficiales entre el Proveedor y el Usuario se realizarán a través del
+        correo electrónico registrado o mediante avisos publicados en la Plataforma.
+      </p>
+
+      <h2>13. Ley aplicable y jurisdicción</h2>
+      <p>
+        Estos Términos se rigen por las leyes de la República de
+        <strong id="legal-country">—</strong>. Cualquier controversia será resuelta por los jueces
+        competentes de <strong id="legal-jurisdiction">—</strong>, sin perjuicio de las normas de
+        protección al consumidor que resulten aplicables.
+      </p>
+
+      <h2>14. Contacto</h2>
+      <p>Para consultas sobre estos Términos, el Usuario puede comunicarse con el Proveedor a través de:</p>
+      <ul>
+        <li><strong>Correo:</strong> <span id="legal-email">—</span></li>
+        <li><strong>Teléfono:</strong> <span id="legal-phone">—</span></li>
+        <li><strong>Dirección:</strong> <span id="legal-address-2">—</span></li>
+      </ul>
+
+    </div>
+
+  </div>
+
+</main>
+
+<div id="smartec-footer"></div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const L = window.SMARTEC_LEGAL || {};
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val !== undefined && val !== null) el.innerText = val;
+    };
+
+    set('legal-name', L.legalName);
+    set('legal-name-2', L.legalName);
+    set('legal-nit', L.nit);
+    set('legal-platform', L.platformName);
+    set('legal-address', L.address);
+    set('legal-address-2', L.address);
+    set('legal-email', L.email);
+    set('legal-phone', L.phone);
+    set('legal-last-update', L.lastUpdate);
+    set('legal-country', L.country);
+    set('legal-jurisdiction', L.jurisdiction);
+
+    if (window.SmartecHeaderApp) {
+      window.SmartecHeaderApp.render({
+        showTitle: true,
+        titleText: 'Términos y Condiciones',
+        showHomeLink: true,
+        homeLinkHref: 'index.html',
+        homeLinkLabel: 'Tienda'
+      });
+    }
+
+    if (window.SmartecFooter) {
+      window.SmartecFooter.render({ targetId: 'smartec-footer' });
+    }
+  });
+</script>
+
+</body>
+</html>

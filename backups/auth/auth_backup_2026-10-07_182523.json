@@ -1,0 +1,100 @@
+{"users": [
+{
+  "localId": "0hXTG0cU2qXjVuxeiH9dUha4XvK2",
+  "email": "vendedor2@prueba.com",
+  "emailVerified": false,
+  "passwordHash": "zvR8gtX0hgnuHprB+ZRkD3rIvxJHTFYzriwaIbEgnfG/oFmYUFyWJUXf3t/cd0v601qc+rl1fTtwvwwgzVUleQ==",
+  "salt": "hMwniVGZcIJJew==",
+  "lastSignedInAt": "1790458895951",
+  "createdAt": "1789934472023",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "BPq5sMATHycoJ1zX7JdJRMQylKE2",
+  "email": "jossuarez.j@gmail.com",
+  "emailVerified": true,
+  "passwordHash": "6qYsEeCotq/OE3JxSLFfLhzC2Vkho1zaN2bCzjA4aL/w9tGX1Nzz4frFz0pdBRzwYk9C0IMXeoT2/il3H6+gvw==",
+  "salt": "YsBsPluXG1KE/Q==",
+  "displayName": "Alex",
+  "lastSignedInAt": "1791326490748",
+  "createdAt": "1790393900439",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "EfyAvqsTFZZsCcQfXps4fGVonzL2",
+  "email": "carlosprueba@prueba.com",
+  "emailVerified": false,
+  "passwordHash": "nZKR78pKppK6AIh4Xz5oo0iPJnD6Tt6AZq5WhsVHLbzn07nImbYChOEupZ6cY/IlsvKaD5lJQa2BBA1V53Qv9A==",
+  "salt": "hagZwDFejwHfdA==",
+  "displayName": "Carlos Prueba",
+  "lastSignedInAt": "1790538784913",
+  "createdAt": "1790459306386",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "Q0OHR83Di1OgJ10guy1f6wUGn7v1",
+  "email": "superadmin@prueba.com",
+  "emailVerified": false,
+  "passwordHash": "n6fTpPLodo+oi1c0zVPZSTCJjy+W7nJUiT+yncmrFwxy9sDxNhukFUm5XKNQasz3MQEyznd3xgG+RTzgMMoXGQ==",
+  "salt": "zvp43NHvN9bORA==",
+  "lastSignedInAt": "1791326972903",
+  "createdAt": "1789934579542",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "R74HIl4iUhQG59hyv60S2qC2IX33",
+  "email": "admin1@prueba.com",
+  "emailVerified": false,
+  "passwordHash": "7uzZzhl3uGJYFHwHqMneiLmIDkxPBYvoh4vCtETp+RQ6n0tlc+skwbXOB8hudA1Nle4ZDUIAkchO25MjlYSBKQ==",
+  "salt": "hFOJ7KWZUu6XzQ==",
+  "lastSignedInAt": "1790544067643",
+  "createdAt": "1789934510257",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "hsZQgSePRWQ59FTN7ggwlZGWow13",
+  "email": "vendedor4@prueba.com",
+  "emailVerified": false,
+  "passwordHash": "TQlrcFtQz3qu2Oi0a+7ok/R8J+8uwx2YZO5COpyETukJ1/lp3Rxlw9pAmuBUmuz1TPug/GmszloCk1bfFWVHQQ==",
+  "salt": "E4Wlylvw4YwZiA==",
+  "createdAt": "1789934491547",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "ipGOw8fTpiOhAd8JqiyE3CuKciE2",
+  "email": "admin2@prueba.com",
+  "emailVerified": false,
+  "passwordHash": "kM1yzzxcQRCO/z/xMXF5Q7eipUvWBXnLE1tFNLhuszg/R2ylUJ0RoGa8NOVz0ySX+0bb3FRNvj4xArVZ9YAxEA==",
+  "salt": "xRmWBB78LFjSDw==",
+  "lastSignedInAt": "1790459016047",
+  "createdAt": "1789934559007",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "ktPh2udmckcnwUh7g73YPBYVzd42",
+  "email": "vendedor3@prueba.com",
+  "emailVerified": false,
+  "passwordHash": "RlEc/jZVlwWMRk4YRPN4rFedidnyiyBJS7sUWTPz7CLLGLXCA6HloHfTixcQPxC4f52Lu+2o/mun0aAtHLGuig==",
+  "salt": "HarwsrJ23lVymg==",
+  "createdAt": "1789934481719",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "qN5W4wCMg2fuPKupfc5BZiZMzwk1",
+  "email": "vendedor1@prueba.com",
+  "emailVerified": false,
+  "passwordHash": "sHyQ8FmR4fziVswfHM/rj0jzbhtZOJewiX5SiVNSNif6SeB6ffmBuGAhjwikfxVwtGNrYsbqLglzIMDOx5Y65A==",
+  "salt": "gmTk8ojT0AflqQ==",
+  "lastSignedInAt": "1791326330721",
+  "createdAt": "1789934457426",
+  "disabled": false,
+  "providerUserInfo": []
+}]}

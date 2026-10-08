@@ -2985,6 +2985,19 @@ window.openProductForm = (p = null) => {
       <div><label class="text-xs font-semibold">Precio venta</label><input id="f-price" type="number" value="${v.price||''}" class="w-full px-3 py-2 border rounded"></div>
       <div><label class="text-xs font-semibold">IVA %</label><input id="f-taxRate" type="number" step="0.01" value="${(v.taxRate||0)*100}" class="w-full px-3 py-2 border rounded"></div>
     </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold">🔒 Precio mínimo de venta</label>
+        <input id="f-minPrice" type="number" value="${v.minPrice||''}" placeholder="Ej: 900000" class="w-full px-3 py-2 border rounded">
+        <p class="text-[10px] text-gray-400 mt-1">Mínimo autorizado al vendedor. Si se deja vacío, se usa 0 (sin restricción).</p>
+      </div>
+      <div>
+        <label class="text-xs font-semibold">🏷️ Precio mayorista (referencia)</label>
+        <input id="f-wholesalePrice" type="number" value="${v.wholesalePrice||''}" placeholder="Opcional" class="w-full px-3 py-2 border rounded">
+        <p class="text-[10px] text-gray-400 mt-1">Referencia comercial. Independiente del mínimo.</p>
+      </div>
+    </div>
     <div class="grid grid-cols-3 gap-3 mb-3">
       <div><label class="text-xs font-semibold">Garantía (meses)</label><input id="f-warranty" type="number" value="${v.warrantyMonths||12}" class="w-full px-3 py-2 border rounded"></div>
       <label class="flex items-center gap-2 text-sm mt-5">
@@ -3350,6 +3363,8 @@ window.saveProduct = async (existingId) => {
     categoryName: tree[group].subcategories[sub].name,
     cost: Number($('f-cost').value)||0,
     price: Number($('f-price').value)||0,
+    minPrice: Number($('f-minPrice').value)||0,
+    wholesalePrice: Number($('f-wholesalePrice').value)||0,
     taxRate: (Number($('f-taxRate').value)||0)/100,
     warrantyMonths: Number($('f-warranty').value)||12,
     serialRequired: $('f-serial').checked,
@@ -3361,6 +3376,19 @@ window.saveProduct = async (existingId) => {
     updatedAt: serverTimestamp()
   };
   if (!data.name) return alert('El nombre es obligatorio');
+
+    // 🆕 Validar coherencia de precios
+  if (data.minPrice > 0 && data.price > 0 && data.minPrice > data.price) {
+    return alert('⚠️ El precio mínimo no puede ser mayor que el precio de venta.');
+  }
+  if (data.salePrice > 0 && data.minPrice > 0 && data.minPrice > data.salePrice) {
+    return alert('⚠️ El precio mínimo no puede ser mayor que el precio de oferta.');
+  }
+  if (data.wholesalePrice > 0 && data.minPrice > 0 && data.wholesalePrice < data.minPrice) {
+    if (!confirm('⚠️ El precio mayorista es menor que el precio mínimo de venta. ¿Continuar de todas formas?')) {
+      return;
+    }
+  }
 
   const isNew = !existingId;
   let docId = existingId;
@@ -3824,17 +3852,34 @@ window.viewSale = async (id) => {
     <div class="mb-4">
       <p class="font-bold text-sd mb-2 text-sm">Productos</p>
       <div class="space-y-2">
-        ${(s.items||[]).map(it => `
-          <div class="flex justify-between border-b pb-2 text-sm">
+        ${(s.items||[]).map(it => {
+          const hasEx = !!it.priceException;
+          return `
+          <div class="flex justify-between border-b pb-2 text-sm ${hasEx ? 'bg-orange-50/50 -mx-1 px-1 rounded' : ''}">
             <div class="min-w-0 flex-1">
-              <p class="font-medium text-sd truncate">${escapeHtml(it.name)}</p>
+              <p class="font-medium text-sd truncate">
+                ${hasEx ? '⚠️ ' : ''}${escapeHtml(it.name)}
+              </p>
               <p class="text-[10px] text-gray-400">${escapeHtml(it.sku)} ${it.color?'· '+colorNameFromHex(it.color):''} ${escapeHtml(it.size)?'· '+escapeHtml(it.size):''}</p>
+              ${hasEx ? `
+                <p class="text-[10px] text-orange-600 font-semibold mt-0.5">
+                  🔒 Mín: ${fmt(it.priceException.minPrice)} → ${fmt(it.priceException.finalPrice)}
+                  (${it.priceException.differencePct.toFixed(1)}%)
+                </p>
+                <p class="text-[10px] text-orange-500 leading-tight">
+                  ✅ ${escapeHtml(it.priceException.authorizedByName || '—')} · ${escapeHtml(it.priceException.authorizedByRole || '—')}
+                </p>
+                <p class="text-[10px] text-gray-500 italic leading-tight">
+                  "${escapeHtml(it.priceException.reason || '')}"
+                </p>
+              ` : ''}
             </div>
             <div class="text-right whitespace-nowrap ml-3">
               <p class="text-xs">${it.qty} × ${fmt(it.unitPrice)}</p>
-              <p class="font-bold text-sl">${fmt(it.qty*it.unitPrice)}</p>
+              <p class="font-bold ${hasEx ? 'text-orange-600' : 'text-sl'}">${fmt(it.qty*it.unitPrice)}</p>
             </div>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
     </div>
         <div class="bg-gray-50 p-3 rounded-lg text-sm space-y-1 mb-4">
@@ -3868,6 +3913,39 @@ window.viewSale = async (id) => {
         <span>${fmt((s.poolAmount || s.commissionAmount || 0) + (s.bonusAmount || 0))}</span>
       </div>
     </div>
+
+    ${s.hasPriceExceptions && Array.isArray(s.priceExceptions) && s.priceExceptions.length ? `
+      <div class="bg-orange-50 border-2 border-orange-300 rounded-lg p-3 text-sm mb-4">
+        <p class="font-bold text-orange-700 mb-2 flex items-center gap-2">
+          ⚠️ Excepciones de precio autorizadas (${s.priceExceptions.length})
+        </p>
+        <div class="space-y-2">
+          ${s.priceExceptions.map(ex => `
+            <div class="bg-white rounded-lg p-2 text-xs border border-orange-200">
+              <p class="font-semibold text-orange-800 mb-1">${escapeHtml(ex.name)}</p>
+              <div class="grid grid-cols-2 gap-1 text-[10px] text-gray-600">
+                <div>Mínimo: <b class="text-red-600">${fmt(ex.minPrice)}</b></div>
+                <div>Vendido: <b class="text-orange-600">${fmt(ex.finalPrice)}</b></div>
+                <div>Diferencia: <b class="text-red-600">-${fmt(Math.abs(ex.difference))}</b></div>
+                <div>Rebaja: <b>${ex.differencePct.toFixed(1)}%</b></div>
+              </div>
+              <div class="mt-1.5 pt-1.5 border-t border-orange-100 text-[10px]">
+                <p class="text-gray-500">
+                  <b>Autorizado por:</b> ${escapeHtml(ex.authorizedByName || '—')} · ${escapeHtml(ex.authorizedByRole || '—')}
+                </p>
+                <p class="text-gray-500 italic mt-0.5">
+                  <b>Motivo:</b> "${escapeHtml(ex.reason || '—')}"
+                </p>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <p class="text-[10px] text-orange-600 mt-2 pt-2 border-t border-orange-200">
+          Total descontado por excepciones: <b>-${fmt(s.totalDiscountFromExceptions || 0)}</b>
+        </p>
+      </div>
+    ` : ''}
+
     ${s.status === 'anulada' ? `
       <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm mb-3">
         <p class="font-bold text-red-700 mb-1">Venta anulada</p>
@@ -4093,7 +4171,8 @@ function auditActionBadge(action) {
     logout:  { bg: 'bg-gray-100 text-gray-700',    label: '🚪 Logout' },
     cancel:  { bg: 'bg-orange-100 text-orange-700', label: '📉 Anulación' },
     seed:    { bg: 'bg-yellow-100 text-yellow-700', label: '🌱 Migración' },
-    cleanup: { bg: 'bg-pink-100 text-pink-700',    label: '🧹 Limpieza' }
+    cleanup: { bg: 'bg-pink-100 text-pink-700',    label: '🧹 Limpieza' },
+    price_exception: { bg: 'bg-amber-100 text-amber-700', label: '⚠️ Excepción precio' }
   };
   const m = map[action] || { bg: 'bg-gray-100 text-gray-700', label: action };
   return `<span class="text-[10px] px-2 py-0.5 rounded ${m.bg} font-semibold whitespace-nowrap">${m.label}</span>`;

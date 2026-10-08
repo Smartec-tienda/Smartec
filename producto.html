@@ -13,6 +13,7 @@
 <script src="lib/common.js"></script>
 <script src="lib/cache.js"></script>
 <script src="components/favicon.js"></script>
+<script src="components/header-public.js"></script>
 <script src="components/footer.js"></script>
 
 <style>
@@ -426,25 +427,8 @@
 <!-- Fondo mesh -->
 <div class="mesh-bg"></div>
 
-<!-- ============ NAVBAR ============ -->
-<header class="glass-strong sticky top-0 z-40 border-b border-white/50">
-  <div class="container mx-auto px-4 lg:px-6 py-3 flex items-center gap-3">
-    <button onclick="history.back()" class="p-2.5 rounded-full hover:bg-black/5 transition text-[#1D1D1F]">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-    </button>
-
-    <a href="index.html" id="header-logo-link" class="shrink-0 flex items-center" style="visibility:hidden">
-      <span id="header-logo" class="text-2xl font-extrabold logo-mark">SMARTEC</span>
-    </a>
-
-    <div class="flex-1"></div>
-
-    <a href="index.html" class="hidden md:inline-flex items-center gap-1.5 text-sm font-medium text-[#1D1D1F] hover:text-[#0071E3] transition px-4 py-2 rounded-full hover:bg-black/5">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-      Volver al catálogo
-    </a>
-  </div>
-</header>
+<!-- ============ HEADER PÚBLICO (inyectado por header-public.js) ============ -->
+<div id="smartec-header-public"></div>
 
 <!-- ============ CARGANDO ============ -->
 <div id="loading" class="container mx-auto px-4 py-20 text-center">
@@ -754,9 +738,19 @@ async function init() {
   // 🆕 Cargar logo dinámico y esperar a que termine
   const settingsData = await loadAndApplyLogoAndGetSettings();
 
+  // 🆕 Inyectar header público (logo + buscador, sin categorías)
+  if (window.SmartecHeaderPublic) {
+    await window.SmartecHeaderPublic.render({
+      settings: settingsData || {},
+      hideCategories: true,
+      showBackButton: true,
+      searchRedirect: 'index.html'
+    });
+  }
+
   // 🆕 Inyectar footer dinámico vía footer.js
   if (window.SmartecFooter) {
-    window.SmartecFooter.render({
+    await window.SmartecFooter.render({
       settings: settingsData || {}
     });
   }
@@ -1383,31 +1377,15 @@ document.addEventListener('keydown', (e) => {
  * NO hace visible el header hasta tener el logo listo (evita FOUC).
  */
 async function loadAndApplyLogoAndGetSettings() {
-  const link = $('header-logo-link');
-  const headerContainer = $('header-logo');
   let setData = {};
-
   try {
     const snap = await getDoc(doc(db, 'settings', 'general'));
     setData = snap.exists() ? snap.data() : {};
-
-    // ============ HEADER ============
-    if (headerContainer) {
-      if (setData.logoUrl) {
-        headerContainer.outerHTML = `<img id="header-logo" src="${setData.logoUrl}" alt="Smartec" class="h-8 md:h-9 object-contain" decoding="async">`;
-      }
-      // Si no hay logoUrl, se queda el texto SMARTEC (que ya está en el HTML)
-    }
   } catch (e) {
     console.warn('[Producto] No se pudo cargar settings:', e);
-  } finally {
-    // Mostrar el header (con logo si hay, o texto si no)
-    if (link) link.style.visibility = 'visible';
   }
-
   return setData;
 }
-
 init();
 </script>
 </body>

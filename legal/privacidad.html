@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aviso de Privacidad · Smartec</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="../lib/firebase-config.js"></script>
+<script src="../lib/common.js"></script>
+<script src="../lib/cache.js"></script>
+<script src="../components/header-app.js"></script>
+<script src="../components/favicon.js"></script>
+<script src="../components/legal-config.js"></script>
+<script src="../components/footer.js"></script>
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .legal-content h2 {
+    color: #0A2A4A;
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-top: 1.75rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.01em;
+  }
+  .legal-content h3 {
+    color: #1D1D1F;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .legal-content p {
+    color: #3A3A3C;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+  }
+  .legal-content ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .legal-content li {
+    color: #3A3A3C;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.35rem;
+  }
+  .legal-content strong { color: #0A2A4A; font-weight: 600; }
+  .legal-content a { color: #0071E3; text-decoration: underline; }
+  .legal-content .destacado {
+    background: rgba(74, 122, 154, 0.08);
+    border-left: 3px solid #4A7A9A;
+    padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+  }
+  .legal-content .aviso {
+    background: rgba(255, 159, 10, 0.08);
+    border-left: 3px solid #FF9F0A;
+    padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+  }
+  .legal-content .card-resumen {
+    background: rgba(255,255,255,0.6);
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 0.75rem 0;
+  }
+  .legal-content .card-resumen .titulo {
+    font-weight: 700;
+    color: #0A2A4A;
+    font-size: 0.85rem;
+    margin-bottom: 0.35rem;
+  }
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<div class="mesh-bg"></div>
+
+<div id="smartec-header-app"></div>
+
+<main class="container mx-auto px-4 md:px-6 py-10 max-w-4xl">
+
+  <div class="glass-strong rounded-3xl shadow-apple-xl border border-white/70 p-6 md:p-10">
+
+    <div class="border-b border-black/10 pb-6 mb-6">
+      <p class="text-[10px] uppercase tracking-wider font-bold text-sl mb-2">Documento legal</p>
+      <h1 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight mb-2">
+        Aviso de Privacidad
+      </h1>
+      <p class="text-xs text-[#6E6E73]">
+        Última actualización: <span id="legal-last-update">—</span>
+      </p>
+    </div>
+
+    <div class="legal-content">
+
+      <div class="destacado">
+        <p>
+          Este Aviso de Privacidad es una comunicación breve, verbal o escrita, mediante la cual
+          el <strong>Proveedor</strong> informa al <strong>Titular</strong> la existencia de las
+          políticas de Tratamiento de datos personales y la forma de acceder a ellas, conforme
+          al <strong>Decreto 1377 de 2013</strong> (Colombia).
+        </p>
+        <p>
+          El documento completo de las políticas está disponible en
+          <a href="politica-datos.html">Política de Tratamiento de Datos Personales</a>.
+        </p>
+      </div>
+
+      <h2>1. Quién trata tus datos</h2>
+      <p>
+        Los datos personales que se recolectan a través de la plataforma
+        <strong id="legal-platform">—</strong> son tratados por:
+      </p>
+      <div class="card-resumen">
+        <p class="titulo">Encargado del Tratamiento</p>
+        <p>
+          <strong id="legal-name">—</strong><br>
+          NIT: <span id="legal-nit">—</span><br>
+          Dirección: <span id="legal-address">—</span><br>
+          Correo: <span id="legal-email">—</span><br>
+          Teléfono: <span id="legal-phone">—</span>
+        </p>
+      </div>
+      <p>
+        Cuando el Titular interactúa con un <strong>Comerciante</strong> específico a través de
+        la plataforma, el <strong>Responsable del Tratamiento</strong> es dicho Comerciante, y
+        el Proveedor actúa como <strong>Encargado</strong>.
+      </p>
+
+      <h2>2. Para qué usamos tus datos</h2>
+      <p>Los datos personales son tratados para:</p>
+      <ul>
+        <li>Permitir el funcionamiento de la plataforma.</li>
+        <li>Gestionar la relación comercial con el Comerciante.</li>
+        <li>Emitir documentos comerciales.</li>
+        <li>Atender consultas y reclamos.</li>
+        <li>Cumplir con obligaciones legales, contables y tributarias.</li>
+        <li>Prevenir fraudes y garantizar la seguridad.</li>
+      </ul>
+
+      <h2>3. Qué datos usamos</h2>
+      <ul>
+        <li>Nombre y apellidos.</li>
+        <li>Documento de identidad.</li>
+        <li>Correo electrónico.</li>
+        <li>Teléfono.</li>
+        <li>Dirección.</li>
+        <li>Información comercial y transaccional.</li>
+        <li>Datos técnicos (IP, dispositivo, logs).</li>
+      </ul>
+
+      <h2>4. Con quién compartimos tus datos</h2>
+      <p>
+        Los datos pueden compartirse con el Comerciante con quien el Titular tiene relación
+        comercial, con proveedores de infraestructura tecnológica, y con autoridades cuando
+        exista obligación legal. No se venden datos personales a terceros.
+      </p>
+
+      <h2>5. Tus derechos</h2>
+      <p>Como Titular, tienes derecho a:</p>
+      <ul>
+        <li><strong>Conocer, actualizar y rectificar</strong> tus datos.</li>
+        <li><strong>Solicitar prueba de la autorización</strong> otorgada.</li>
+        <li><strong>Ser informado</strong> sobre el uso de tus datos.</li>
+        <li><strong>Presentar quejas</strong> ante la Superintendencia de Industria y Comercio.</li>
+        <li><strong>Revocar la autorización</strong> y/o pedir la supresión de tus datos.</li>
+        <li><strong>Acceder gratuitamente</strong> a tus datos.</li>
+      </ul>
+
+      <h2>6. Cómo ejercer tus derechos</h2>
+      <p>Puedes ejercerlos escribiendo a:</p>
+      <ul>
+        <li><strong>Correo:</strong> <span id="legal-email-2">—</span></li>
+        <li><strong>Teléfono:</strong> <span id="legal-phone-2">—</span></li>
+        <li><strong>Dirección:</strong> <span id="legal-address-2">—</span></li>
+      </ul>
+      <p>
+        Responderemos en un plazo máximo de <strong>quince (15) días hábiles</strong> para
+        consultas y reclamos, prorrogables por ocho (8) días hábiles adicionales cuando sea
+        necesario.
+      </p>
+
+      <h2>7. Seguridad</h2>
+      <p>
+        Adoptamos medidas técnicas, humanas y administrativas razonables para proteger tus
+        datos: cifrado HTTPS, autenticación segura, control de acceso por roles, auditoría de
+        operaciones y backups programados.
+      </p>
+
+      <h2>8. Vigencia</h2>
+      <p>
+        Este Aviso rige desde el <strong id="legal-effective">—</strong> y puede actualizarse.
+        La versión vigente estará siempre publicada en este sitio.
+      </p>
+
+      <h2>9. Más información</h2>
+      <p>Consulta los documentos completos:</p>
+      <ul>
+        <li><a href="politica-datos.html">Política de Tratamiento de Datos Personales</a></li>
+        <li><a href="autorizacion.html">Autorización de Tratamiento de Datos</a></li>
+        <li><a href="terminos.html">Términos y Condiciones de Uso</a></li>
+        <li><a href="cookies.html">Política de Cookies</a></li>
+      </ul>
+
+      <h2>10. Autoridad de control</h2>
+      <p>
+        La autoridad competente es la <strong id="legal-authority">—</strong>, con domicilio en
+        <strong id="legal-authority-address">—</strong> y sitio web
+        <a id="legal-authority-url" href="#" target="_blank" rel="noopener">—</a>.
+      </p>
+
+    </div>
+
+  </div>
+
+</main>
+
+<div id="smartec-footer"></div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const L = window.SMARTEC_LEGAL || {};
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val !== undefined && val !== null) el.innerText = val;
+    };
+    const setHref = (id, url, text) => {
+      const el = document.getElementById(id);
+      if (el && url) { el.href = url; if (text) el.innerText = text; }
+    };
+
+    set('legal-name', L.legalName);
+    set('legal-nit', L.nit);
+    set('legal-platform', L.platformName);
+    set('legal-address', L.address);
+    set('legal-address-2', L.address);
+    set('legal-email', L.email);
+    set('legal-email-2', L.email);
+    set('legal-phone', L.phone);
+    set('legal-phone-2', L.phone);
+    set('legal-last-update', L.lastUpdate);
+    set('legal-effective', L.effectiveDate);
+
+    if (L.authority) {
+      set('legal-authority', L.authority.name);
+      set('legal-authority-address', L.authority.address);
+      setHref('legal-authority-url', L.authority.website, L.authority.website);
+    }
+
+    if (window.SmartecHeaderApp) {
+      window.SmartecHeaderApp.render({
+        showTitle: true,
+        titleText: 'Aviso de Privacidad',
+        showHomeLink: true,
+        homeLinkHref: 'index.html',
+        homeLinkLabel: 'Tienda'
+      });
+    }
+
+    if (window.SmartecFooter) {
+      window.SmartecFooter.render({ targetId: 'smartec-footer' });
+    }
+  });
+</script>
+
+</body>
+</html>

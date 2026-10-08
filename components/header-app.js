@@ -35,8 +35,8 @@
     const logoUrl = settings.logoUrl || null;
     const logoHtml = logoUrl
       ? `<img id="header-app-logo-img" src="${logoUrl}" alt="Smartec"
-              class="h-6 md:h-10 object-contain" decoding="async">`
-      : `<span id="header-app-logo-text" class="text-base md:text-xl font-extrabold logo-mark">SMARTEC</span>`;
+              class="h-6 sm:h-8 lg:h-10 object-contain" decoding="async">`
+      : `<span id="header-app-logo-text" class="text-base sm:text-lg lg:text-xl font-extrabold logo-mark">SMARTEC</span>`;
 
     // Info del vendedor
     const sellerInfoHtml = opts.showSellerInfo && user.email
@@ -147,9 +147,9 @@
         <div class="px-3 md:px-4 py-2 md:py-3">
 
           <!-- ═══════════════════════════════════════════
-               DESKTOP (md+): Todo en una fila
+               DESKTOP (lg+): Todo en una fila
           ═══════════════════════════════════════════ -->
-          <div class="hidden md:flex items-center justify-between gap-3">
+          <div class="hidden lg:flex items-center justify-between gap-3">
 
             <!-- Logo + título + tienda -->
             <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -178,9 +178,9 @@
           </div>
 
           <!-- ═══════════════════════════════════════════
-               MÓVIL (<md): 2 filas
+               MÓVIL + TABLET (<lg): 2 filas
           ═══════════════════════════════════════════ -->
-          <div class="flex md:hidden flex-col gap-2">
+          <div class="flex lg:hidden flex-col gap-2">
 
             <!-- Fila 1: Logo + acciones esenciales -->
             <div class="flex items-center justify-between gap-2">

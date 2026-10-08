@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autorización de Tratamiento de Datos · Smartec</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="../lib/firebase-config.js"></script>
+<script src="../lib/common.js"></script>
+<script src="../lib/cache.js"></script>
+<script src="../components/header-public.js"></script>
+<script src="../components/favicon.js"></script>
+<script src="../components/legal-config.js"></script>
+<script src="../components/footer.js"></script>
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .legal-content h2 {
+    color: #0A2A4A;
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-top: 1.75rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.01em;
+  }
+  .legal-content h3 {
+    color: #1D1D1F;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .legal-content p {
+    color: #3A3A3C;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+  }
+  .legal-content ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .legal-content li {
+    color: #3A3A3C;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.35rem;
+  }
+  .legal-content strong { color: #0A2A4A; font-weight: 600; }
+  .legal-content a { color: #0071E3; text-decoration: underline; }
+  .legal-content .destacado {
+    background: rgba(74, 122, 154, 0.08);
+    border-left: 3px solid #4A7A9A;
+    padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+  }
+  .legal-content .aviso {
+    background: rgba(255, 159, 10, 0.08);
+    border-left: 3px solid #FF9F0A;
+    padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+  }
+  .legal-content .firma-box {
+    border: 1px dashed #4A7A9A;
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1rem 0;
+    background: rgba(74, 122, 154, 0.04);
+  }
+  .legal-content .campo-firma {
+    border-bottom: 1px solid #0A2A4A;
+    padding: 2rem 0 0.25rem 0;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    color: #6E6E73;
+  }
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<div class="mesh-bg"></div>
+
+<div id="smartec-header-public"></div>
+
+<main class="container mx-auto px-4 md:px-6 py-10 max-w-4xl">
+
+  <div class="glass-strong rounded-3xl shadow-apple-xl border border-white/70 p-6 md:p-10">
+
+    <div class="border-b border-black/10 pb-6 mb-6">
+      <p class="text-[10px] uppercase tracking-wider font-bold text-sl mb-2">Documento legal</p>
+      <h1 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight mb-2">
+        Autorización de Tratamiento de Datos Personales
+      </h1>
+      <p class="text-xs text-[#6E6E73]">
+        Última actualización: <span id="legal-last-update">—</span>
+      </p>
+    </div>
+
+    <div class="legal-content">
+
+      <div class="destacado">
+        <p>
+          Este documento contiene el modelo de autorización que el <strong>Titular</strong> otorga
+          para el tratamiento de sus datos personales, en cumplimiento de la
+          <strong>Ley 1581 de 2012</strong> y el <strong>Decreto 1377 de 2013</strong>.
+        </p>
+        <p>
+          La autorización puede ser obtenida por escrito, de forma verbal, o mediante conductas
+          inequívocas que permitan concluir su otorgamiento, según lo dispuesto por la ley.
+        </p>
+      </div>
+
+      <h2>1. Identificación del Responsable del Tratamiento</h2>
+      <p>
+        El Responsable del Tratamiento es el <strong>Comerciante</strong> con quien el Titular
+        tiene o tuvo una relación comercial (compra, crédito, prestación de servicios, etc.).
+        Cuando el Titular interactúa directamente con la plataforma
+        <strong id="legal-platform">—</strong>, el <strong>Encargado del Tratamiento</strong> es
+        <strong id="legal-name">—</strong>, identificada con NIT <strong id="legal-nit">—</strong>,
+        con domicilio en <strong id="legal-address">—</strong>.
+      </p>
+
+      <h2>2. Datos que se autorizan tratar</h2>
+      <p>El Titular autoriza el tratamiento de los siguientes datos personales:</p>
+      <ul>
+        <li>Nombre y apellidos.</li>
+        <li>Número de documento de identidad.</li>
+        <li>Correo electrónico.</li>
+        <li>Número de teléfono fijo y/o celular.</li>
+        <li>Dirección física.</li>
+        <li>Información comercial y transaccional (compras, créditos, pagos).</li>
+        <li>Datos técnicos de uso de la plataforma (IP, dispositivo, logs).</li>
+      </ul>
+
+      <h2>3. Finalidades del Tratamiento</h2>
+      <p>Los datos serán tratados para las siguientes finalidades:</p>
+      <ul>
+        <li>Gestionar la relación comercial entre el Titular y el Comerciante.</li>
+        <li>Emitir documentos comerciales (facturas, remisiones, comprobantes).</li>
+        <li>Atender consultas, quejas y reclamos.</li>
+        <li>Cumplir con obligaciones legales, contables, tributarias y de auditoría.</li>
+        <li>Prevenir fraudes y garantizar la seguridad de la información.</li>
+        <li>Enviar comunicaciones relacionadas con la operación del Comerciante, cuando exista autorización previa.</li>
+        <li>Realizar análisis estadísticos y de mejora del servicio.</li>
+      </ul>
+
+      <h2>4. Derechos del Titular</h2>
+      <p>El Titular tiene derecho a:</p>
+      <ul>
+        <li><strong>Conocer, actualizar y rectificar</strong> sus datos personales.</li>
+        <li><strong>Solicitar prueba de la autorización</strong> otorgada.</li>
+        <li><strong>Ser informado</strong> sobre el uso que se ha dado a sus datos.</li>
+        <li><strong>Presentar quejas</strong> ante la Superintendencia de Industria y Comercio.</li>
+        <li><strong>Revocar la autorización</strong> y/o solicitar la supresión de sus datos.</li>
+        <li><strong>Acceder de forma gratuita</strong> a sus datos personales.</li>
+      </ul>
+      <p>
+        Para ejercer estos derechos, el Titular puede escribir a
+        <strong id="legal-email">—</strong> o comunicarse al teléfono
+        <strong id="legal-phone">—</strong>.
+      </p>
+
+      <h2>5. Carácter facultativo de la autorización</h2>
+      <p>
+        La autorización es <strong>facultativa</strong>. El Titular no está obligado a otorgarla.
+        Sin embargo, si no la otorga, el Comerciante podría no estar en capacidad de prestarle
+        algunos servicios (por ejemplo, emitir facturas o gestionar créditos).
+      </p>
+
+      <h2>6. Vigencia de la autorización</h2>
+      <p>
+        La presente autorización tendrá vigencia durante el tiempo en que el Titular mantenga
+        relación comercial con el Comerciante, y se extenderá por el término adicional necesario
+        para cumplir con obligaciones legales, contables, tributarias y de auditoría, que con
+        carácter general es de <strong id="legal-retention">—</strong> años.
+      </p>
+
+      <h2>7. Revocatoria</h2>
+      <p>
+        El Titular puede revocar esta autorización en cualquier momento, siempre que no exista
+        un deber legal o contractual de permanencia. La revocatoria se realizará mediante
+        solicitud escrita dirigida al correo <strong id="legal-email-2">—</strong>, indicando
+        claramente la voluntad de revocar.
+      </p>
+
+      <h2>8. Transferencia y transmisión</h2>
+      <p>
+        El Titular autoriza la transferencia y transmisión de sus datos a terceros ubicados
+        dentro o fuera de Colombia, cuando ello sea necesario para las finalidades descritas,
+        para el cumplimiento de obligaciones legales, o cuando medie autorización previa.
+      </p>
+
+      <h2>9. Manifestación de la autorización</h2>
+      <p>
+        El Titular manifiesta que ha leído y comprendido el contenido de esta autorización y de
+        la <a href="politica-datos.html">Política de Tratamiento de Datos Personales</a>, y que
+        otorga su consentimiento libre, previo, expreso e informado para el tratamiento de sus
+        datos personales en los términos aquí descritos.
+      </p>
+
+      <div class="firma-box">
+        <h3>Datos del Titular</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+          <div>
+            <div class="campo-firma">Nombre completo</div>
+          </div>
+          <div>
+            <div class="campo-firma">Número de documento</div>
+          </div>
+          <div>
+            <div class="campo-firma">Correo electrónico</div>
+          </div>
+          <div>
+            <div class="campo-firma">Teléfono</div>
+          </div>
+        </div>
+
+        <h3 class="mt-6">Firma</h3>
+        <div class="campo-firma mt-8">Firma del Titular</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          <div>
+            <div class="campo-firma">Fecha</div>
+          </div>
+          <div>
+            <div class="campo-firma">Lugar</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="aviso">
+        <p>
+          <strong>Nota:</strong> cuando la autorización se obtiene de forma verbal o mediante
+          conductas inequívocas (por ejemplo, al aceptar una casilla en un formulario web),
+          debe quedar registro de ello. En la plataforma
+          <strong id="legal-platform-2">—</strong>, la autorización se entiende otorgada al
+          momento en que el Titular marca la casilla correspondiente durante un registro,
+          una compra o cualquier interacción que implique el suministro de sus datos.
+        </p>
+      </div>
+
+      <h2>10. Contacto</h2>
+      <p>Para consultas sobre esta autorización, el Titular puede comunicarse con:</p>
+      <ul>
+        <li><strong>Responsable del Tratamiento:</strong> el Comerciante con quien tenga la relación comercial.</li>
+        <li><strong>Encargado del Tratamiento:</strong> <span id="legal-name-2">—</span>, correo <span id="legal-email-3">—</span>, teléfono <span id="legal-phone-2">—</span>.</li>
+      </ul>
+
+    </div>
+
+  </div>
+
+</main>
+
+<div id="smartec-footer"></div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const L = window.SMARTEC_LEGAL || {};
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val !== undefined && val !== null) el.innerText = val;
+    };
+
+    set('legal-name', L.legalName);
+    set('legal-name-2', L.legalName);
+    set('legal-nit', L.nit);
+    set('legal-platform', L.platformName);
+    set('legal-platform-2', L.platformName);
+    set('legal-address', L.address);
+    set('legal-email', L.email);
+    set('legal-email-2', L.email);
+    set('legal-email-3', L.email);
+    set('legal-phone', L.phone);
+    set('legal-phone-2', L.phone);
+    set('legal-last-update', L.lastUpdate);
+    set('legal-retention', L.dataRetentionYears);
+
+    if (window.SmartecHeaderPublic) {
+      window.SmartecHeaderPublic.render();
+    }
+
+    if (window.SmartecFooter) {
+      window.SmartecFooter.render({ targetId: 'smartec-footer' });
+    }
+  });
+</script>
+
+</body>
+</html>

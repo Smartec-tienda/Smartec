@@ -144,6 +144,14 @@
           <span class="sidebar-label">Estado Financiero</span>
         </button>
 
+                <!-- SECCIÓN: Comercial -->
+        <p class="sidebar-section-title px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6E6E73]">Comercial</p>
+
+        <button class="sidebar-item tab-btn" data-tab="mayoristas" title="Mayoristas">
+          <span class="sidebar-icon">🏢</span>
+          <span class="sidebar-label">Mayoristas</span>
+        </button>
+
         <!-- SECCIÓN: Cartera -->
         <p class="sidebar-section-title px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6E6E73]">Cartera</p>
 
@@ -1168,6 +1176,87 @@
     <div id="aux-content"></div>
   </main>
 
+  <!-- ============================================================
+       TAB: MAYORISTAS
+  ============================================================ -->
+  <main id="tab-mayoristas" class="hidden flex-1 container mx-auto p-4 md:p-6 tab-con-content">
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+      <div>
+        <h2 class="text-2xl font-extrabold text-[#1D1D1F] tracking-tight">Mayoristas</h2>
+        <p class="text-xs text-[#6E6E73]">Clientes con precios especiales al por mayor · Acceso al catálogo B2B</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <input id="may-search" type="text" placeholder="Buscar por nombre, NIT o email..." class="px-4 py-2 rounded-full text-sm glass-soft border border-white/60 min-w-[240px]">
+        <button onclick="openWholesaleForm()" class="btn-apple px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-2">
+          + Nuevo mayorista
+        </button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div id="may-kpis" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+
+    <!-- Filtros -->
+    <div class="glass-strong rounded-2xl shadow-apple-lg p-4 mb-4 border border-white/60">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Estado</label>
+          <select id="may-filter-status" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+            <option value="activo">✅ Activos</option>
+            <option value="suspendido">⏸️ Suspendidos</option>
+            <option value="moroso">🔴 Morosos</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Condición de pago</label>
+          <select id="may-filter-terms" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todas</option>
+            <option value="contado">Contado</option>
+            <option value="net_15">Net 15</option>
+            <option value="net_30">Net 30</option>
+            <option value="net_45">Net 45</option>
+            <option value="net_60">Net 60</option>
+            <option value="net_90">Net 90</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Ordenar por</label>
+          <select id="may-filter-order" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="date">Más recientes</option>
+            <option value="name">Nombre (A-Z)</option>
+            <option value="total">Total comprado</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button onclick="clearMayFilters()" class="text-xs text-[#FF375F] hover:underline font-semibold w-full text-right">Limpiar filtros</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="glass-strong rounded-2xl shadow-apple-lg overflow-hidden border border-white/60">
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[1100px]">
+          <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Empresa / Contacto</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">NIT</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Contacto</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Condiciones</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Total comprado</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Compras</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Estado</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="may-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <p id="may-empty" class="hidden text-center py-8 text-[#6E6E73]">Sin mayoristas registrados. Haz clic en "+ Nuevo mayorista" para crear el primero.</p>
+  </main>
 
   <!-- ============================================================
        TAB: PROVEEDORES
@@ -1489,6 +1578,21 @@
     </button>
     <h3 id="supplier-title" class="text-xl font-bold text-[#1D1D1F] mb-4 pr-10 tracking-tight">Proveedor</h3>
     <div id="supplier-body"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL FORM MAYORISTA
+============================================================ -->
+<div id="may-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-md pointer-events-auto" onclick="closeWholesaleForm()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-2xl w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeWholesaleForm()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 id="may-modal-title" class="text-xl font-bold text-[#1D1D1F] mb-1 pr-10 tracking-tight">Nuevo mayorista</h3>
+    <p id="may-modal-subtitle" class="text-xs text-[#6E6E73] mb-5">Se creará la cuenta de acceso al catálogo B2B</p>
+    <div id="may-modal-body"></div>
   </div>
 </div>
 

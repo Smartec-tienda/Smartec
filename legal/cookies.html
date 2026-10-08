@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Política de Cookies · Smartec</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="../lib/firebase-config.js"></script>
+<script src="../lib/common.js"></script>
+<script src="../lib/cache.js"></script>
+<script src="../components/header-app.js"></script>
+<script src="../components/favicon.js"></script>
+<script src="../components/legal-config.js"></script>
+<script src="../components/footer.js"></script>
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .legal-content h2 {
+    color: #0A2A4A;
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-top: 1.75rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.01em;
+  }
+  .legal-content h3 {
+    color: #1D1D1F;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .legal-content p {
+    color: #3A3A3C;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+  }
+  .legal-content ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .legal-content li {
+    color: #3A3A3C;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.35rem;
+  }
+  .legal-content strong { color: #0A2A4A; font-weight: 600; }
+  .legal-content a { color: #0071E3; text-decoration: underline; }
+  .legal-content .destacado {
+    background: rgba(74, 122, 154, 0.08);
+    border-left: 3px solid #4A7A9A;
+    padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+  }
+  .legal-content .aviso {
+    background: rgba(255, 159, 10, 0.08);
+    border-left: 3px solid #FF9F0A;
+    padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+  }
+  .legal-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.8rem;
+  }
+  .legal-content table th {
+    background: rgba(74, 122, 154, 0.12);
+    color: #0A2A4A;
+    font-weight: 700;
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+  .legal-content table td {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid rgba(0,0,0,0.08);
+    color: #3A3A3C;
+    vertical-align: top;
+  }
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<div class="mesh-bg"></div>
+
+<div id="smartec-header-app"></div>
+
+<main class="container mx-auto px-4 md:px-6 py-10 max-w-4xl">
+
+  <div class="glass-strong rounded-3xl shadow-apple-xl border border-white/70 p-6 md:p-10">
+
+    <div class="border-b border-black/10 pb-6 mb-6">
+      <p class="text-[10px] uppercase tracking-wider font-bold text-sl mb-2">Documento legal</p>
+      <h1 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight mb-2">
+        Política de Cookies
+      </h1>
+      <p class="text-xs text-[#6E6E73]">
+        Última actualización: <span id="legal-last-update">—</span>
+      </p>
+    </div>
+
+    <div class="legal-content">
+
+      <div class="destacado">
+        <p>
+          Esta Política de Cookies explica qué son las cookies, cómo las utiliza la plataforma
+          <strong id="legal-platform">—</strong> operada por
+          <strong id="legal-name">—</strong>, y cómo el Usuario puede gestionarlas.
+        </p>
+      </div>
+
+      <h2>1. ¿Qué son las cookies?</h2>
+      <p>
+        Las cookies son pequeños archivos de texto que se almacenan en el navegador del Usuario
+        cuando visita un sitio web. Permiten que el sitio recuerde información sobre la visita,
+        como el idioma preferido, las credenciales de acceso (en algunos casos) y otras
+        preferencias, lo que facilita una navegación más eficiente.
+      </p>
+      <p>
+        Además de las cookies, existen otras tecnologías similares como el <em>localStorage</em>
+        y el <em>sessionStorage</em>, que también se utilizan para almacenar información en el
+        navegador. Esta Política cubre todas ellas.
+      </p>
+
+      <h2>2. Tipos de cookies que utilizamos</h2>
+
+      <h3>2.1. Cookies técnicas o necesarias</h3>
+      <p>
+        Son indispensables para el funcionamiento de la plataforma. Sin ellas, no se podría
+        iniciar sesión, mantener la sesión activa, ni proteger la cuenta del Usuario.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Finalidad</th>
+            <th>Duración</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sesión de autenticación (Firebase Auth)</td>
+            <td>Mantener la sesión iniciada del Usuario.</td>
+            <td>Hasta cerrar sesión o expirar</td>
+          </tr>
+          <tr>
+            <td>smartec_contab_store</td>
+            <td>Recordar la tienda seleccionada en el panel contable.</td>
+            <td>Hasta cerrar el navegador (sessionStorage)</td>
+          </tr>
+          <tr>
+            <td>smartec_contab_sidebar_collapsed</td>
+            <td>Recordar si el menú lateral está colapsado o expandido.</td>
+            <td>Persistente</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>2.2. Cookies de preferencias</h3>
+      <p>
+        Permiten recordar las preferencias del Usuario, como el idioma, el tema visual o la
+        tienda seleccionada. No son estrictamente necesarias, pero mejoran la experiencia.
+      </p>
+
+      <h3>2.3. Cookies analíticas o de medición</h3>
+      <p>
+        Permiten medir de forma anónima el uso de la plataforma para mejorar su funcionamiento
+        (por ejemplo, saber cuántos usuarios acceden, qué secciones visitan con mayor frecuencia).
+        Los datos son agregados y no identifican al Usuario.
+      </p>
+
+      <h3>2.4. Cookies publicitarias</h3>
+      <p>
+        La plataforma <strong>no utiliza cookies publicitarias</strong> de terceros para mostrar
+        anuncios. Si en el futuro se llegaran a utilizar, esta Política sería actualizada y se
+        solicitaría el consentimiento correspondiente.
+      </p>
+
+      <h2>3. Finalidad</h2>
+      <p>Las cookies que utilizamos se emplean para:</p>
+      <ul>
+        <li>Garantizar el funcionamiento correcto de la plataforma.</li>
+        <li>Mantener la sesión del Usuario autenticado.</li>
+        <li>Recordar preferencias de uso.</li>
+        <li>Medir el uso de la plataforma para mejorarla.</li>
+        <li>Garantizar la seguridad de las cuentas.</li>
+      </ul>
+
+      <h2>4. Cookies de terceros</h2>
+      <p>
+        La plataforma utiliza servicios de terceros que pueden establecer cookies propias, como
+        Firebase (Google) para autenticación y almacenamiento. Estos terceros tienen sus propias
+        políticas de cookies y privacidad, que se pueden consultar en:
+      </p>
+      <ul>
+        <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase · Google Privacy</a></li>
+        <li><a href="https://policies.google.com/technologies/cookies" target="_blank" rel="noopener">Google Cookies</a></li>
+      </ul>
+
+      <h2>5. Cómo gestionar las cookies</h2>
+      <p>
+        El Usuario puede aceptar, rechazar o eliminar las cookies en cualquier momento desde la
+        configuración de su navegador. A continuación los enlaces a las instrucciones de los
+        navegadores más comunes:
+      </p>
+      <ul>
+        <li><a href="https://support.google.com/chrome/answer/95647" target="_blank" rel="noopener">Google Chrome</a></li>
+        <li><a href="https://support.mozilla.org/es/kb/habilitar-y-deshabilitar-cookies-sitios-web-rastrear-preferencias" target="_blank" rel="noopener">Mozilla Firefox</a></li>
+        <li><a href="https://support.apple.com/es-es/guide/safari/sfri11471/mac" target="_blank" rel="noopener">Safari</a></li>
+        <li><a href="https://support.microsoft.com/es-es/microsoft-edge/eliminar-las-cookies-en-microsoft-edge-63947406-40ac-c3b8-57b9-2a946a29ae09" target="_blank" rel="noopener">Microsoft Edge</a></li>
+      </ul>
+      <div class="aviso">
+        <p>
+          <strong>Atención:</strong> si el Usuario desactiva las cookies técnicas o necesarias,
+          algunas funcionalidades de la plataforma podrían dejar de funcionar correctamente
+          (por ejemplo, el inicio de sesión o el mantenimiento de la sesión activa).
+        </p>
+      </div>
+
+      <h2>6. Almacenamiento local (localStorage / sessionStorage)</h2>
+      <p>
+        Además de cookies, la plataforma utiliza las tecnologías <em>localStorage</em> y
+        <em>sessionStorage</em> para:
+      </p>
+      <ul>
+        <li>Guardar temporalmente datos de sesión y preferencias.</li>
+        <li>Almacenar en caché información para agilizar la navegación.</li>
+        <li>Recordar el estado de la interfaz (menús, filtros, etc.).</li>
+      </ul>
+      <p>
+        El Usuario puede borrar estos datos desde la configuración de su navegador en cualquier
+        momento.
+      </p>
+
+      <h2>7. Consentimiento</h2>
+      <p>
+        Al continuar navegando en la plataforma, el Usuario acepta el uso de las cookies
+        descritas en esta Política. Si no está de acuerdo, puede desactivarlas desde su
+        navegador, teniendo en cuenta las limitaciones señaladas en el punto 5.
+      </p>
+
+      <h2>8. Modificaciones</h2>
+      <p>
+        Esta Política podrá ser modificada en cualquier momento. Las modificaciones sustanciales
+        serán comunicadas a través de la plataforma. La versión vigente estará siempre publicada
+        en este mismo sitio.
+      </p>
+
+      <h2>9. Contacto</h2>
+      <p>Para consultas sobre esta Política de Cookies, el Usuario puede comunicarse con:</p>
+      <ul>
+        <li><strong>Correo:</strong> <span id="legal-email">—</span></li>
+        <li><strong>Teléfono:</strong> <span id="legal-phone">—</span></li>
+        <li><strong>Dirección:</strong> <span id="legal-address">—</span></li>
+      </ul>
+
+    </div>
+
+  </div>
+
+</main>
+
+<div id="smartec-footer"></div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const L = window.SMARTEC_LEGAL || {};
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val !== undefined && val !== null) el.innerText = val;
+    };
+
+    set('legal-name', L.legalName);
+    set('legal-platform', L.platformName);
+    set('legal-address', L.address);
+    set('legal-email', L.email);
+    set('legal-phone', L.phone);
+    set('legal-last-update', L.lastUpdate);
+
+    if (window.SmartecHeaderApp) {
+      window.SmartecHeaderApp.render({
+        showTitle: true,
+        titleText: 'Política de Cookies',
+        showHomeLink: true,
+        homeLinkHref: 'index.html',
+        homeLinkLabel: 'Tienda'
+      });
+    }
+
+    if (window.SmartecFooter) {
+      window.SmartecFooter.render({ targetId: 'smartec-footer' });
+    }
+  });
+</script>
+
+</body>
+</html>

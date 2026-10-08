@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Política de Tratamiento de Datos · Smartec</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="../lib/firebase-config.js"></script>
+<script src="../lib/common.js"></script>
+<script src="../lib/cache.js"></script>
+<script src="../components/header-app.js"></script>
+<script src="../components/favicon.js"></script>
+<script src="../components/legal-config.js"></script>
+<script src="../components/footer.js"></script>
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+  :root{--sd:#0A2A4A;--sl:#4A7A9A}
+  .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
+  .text-sd{color:#0A2A4A}.text-sl{color:#4A7A9A}
+  .legal-content h2 {
+    color: #0A2A4A;
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-top: 1.75rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.01em;
+  }
+  .legal-content h3 {
+    color: #1D1D1F;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .legal-content p {
+    color: #3A3A3C;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+  }
+  .legal-content ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .legal-content li {
+    color: #3A3A3C;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.35rem;
+  }
+  .legal-content strong { color: #0A2A4A; font-weight: 600; }
+  .legal-content a { color: #0071E3; text-decoration: underline; }
+  .legal-content .destacado {
+    background: rgba(74, 122, 154, 0.08);
+    border-left: 3px solid #4A7A9A;
+    padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+  }
+  .legal-content .aviso {
+    background: rgba(255, 159, 10, 0.08);
+    border-left: 3px solid #FF9F0A;
+    padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+  }
+</style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+
+<div class="mesh-bg"></div>
+
+<!-- Header público -->
+<div id="smartec-header-app"></div>
+
+<main class="container mx-auto px-4 md:px-6 py-10 max-w-4xl">
+
+  <div class="glass-strong rounded-3xl shadow-apple-xl border border-white/70 p-6 md:p-10">
+
+    <!-- Encabezado del documento -->
+    <div class="border-b border-black/10 pb-6 mb-6">
+      <p class="text-[10px] uppercase tracking-wider font-bold text-sl mb-2">Documento legal</p>
+      <h1 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight mb-2">
+        Política de Tratamiento de Datos Personales
+      </h1>
+      <p class="text-xs text-[#6E6E73]">
+        Última actualización: <span id="legal-last-update">—</span>
+      </p>
+    </div>
+
+    <!-- Contenido legal -->
+    <div class="legal-content" id="legal-content">
+
+      <div class="destacado">
+        <p>
+          En cumplimiento de la <strong>Ley 1581 de 2012</strong>, el <strong>Decreto 1377 de 2013</strong>
+          y las normas que las modifiquen o sustituyan, <strong id="legal-name">—</strong>,
+          identificada con NIT <strong id="legal-nit">—</strong>, con domicilio en
+          <strong id="legal-address">—</strong>, en su calidad de <strong>Proveedor de la plataforma
+          <span id="legal-platform">—</span></strong>, presenta a continuación su Política de
+          Tratamiento de Datos Personales, aplicable a todas las personas naturales cuyos datos
+          sean recolectados, almacenados, usados, circulados o suprimidos en el marco de la
+          operación de la plataforma.
+        </p>
+      </div>
+
+      <h2>1. Definiciones</h2>
+      <p>Para efectos de la presente Política, se adoptan las siguientes definiciones, conforme al artículo 3 de la Ley 1581 de 2012:</p>
+      <ul>
+        <li><strong>Dato personal:</strong> cualquier información vinculada o que pueda asociarse a una o varias personas naturales determinadas o determinables.</li>
+        <li><strong>Dato público:</strong> dato calificado como tal según la ley, o que por su naturaleza no sea semiprivado, privado o sensible.</li>
+        <li><strong>Dato sensible:</strong> dato que afecta la intimidad del Titular o cuyo uso indebido puede generar discriminación (origen racial o étnico, orientación sexual, datos de salud, entre otros).</li>
+        <li><strong>Titular:</strong> persona natural cuyos datos personales sean objeto de Tratamiento.</li>
+        <li><strong>Tratamiento:</strong> cualquier operación sobre datos personales, como recolección, almacenamiento, uso, circulación o supresión.</li>
+        <li><strong>Responsable del Tratamiento:</strong> persona natural o jurídica que decide sobre la base de datos y/o el Tratamiento de los datos.</li>
+        <li><strong>Encargado del Tratamiento:</strong> persona natural o jurídica que realiza el Tratamiento por cuenta del Responsable.</li>
+        <li><strong>Autorización:</strong> consentimiento previo, expreso e informado del Titular para llevar a cabo el Tratamiento de sus datos personales.</li>
+        <li><strong>Base de datos:</strong> conjunto organizado de datos personales objeto de Tratamiento.</li>
+        <li><strong>Aviso de privacidad:</strong> comunicación verbal o escrita mediante la cual se informa al Titular la existencia de las políticas de Tratamiento y la forma de acceder a ellas.</li>
+      </ul>
+
+      <h2>2. Roles frente al Tratamiento de datos</h2>
+      <p>
+        La plataforma <strong id="legal-platform-2">—</strong> es un software de gestión comercial y contable
+        operado por <strong id="legal-name-2">—</strong> (en adelante, <strong>el Proveedor</strong>).
+        En la operación diaria, intervienen tres roles claramente diferenciados:
+      </p>
+      <ul>
+        <li>
+          <strong>Proveedor (Smartec):</strong> es quien provee el software, administra la infraestructura
+          tecnológica y actúa como <strong>Encargado del Tratamiento</strong> respecto de los datos que
+          los Comerciantes cargan en la plataforma. El Proveedor <strong>no</strong> es el Responsable
+          frente a los Titulares finales.
+        </li>
+        <li>
+          <strong>Comerciante o Tienda:</strong> es la persona natural o jurídica que contrata el uso de la
+          plataforma para gestionar su operación comercial. Actúa como <strong>Responsable del Tratamiento</strong>
+          frente a los Titulares (sus clientes, proveedores y empleados), y es quien define las finalidades
+          del Tratamiento.
+        </li>
+        <li>
+          <strong>Titular:</strong> es la persona natural cuyos datos son tratados en la plataforma
+          (compradores, proveedores, empleados del Comerciante, etc.).
+        </li>
+      </ul>
+      <div class="aviso">
+        <p>
+          <strong>Importante:</strong> cuando el Titular interactúa con un Comerciante específico
+          (por ejemplo, al realizar una compra en la tienda pública del Comerciante), el
+          <strong>Responsable del Tratamiento</strong> es dicho Comerciante. El Proveedor solo
+          custodia la información como encargado técnico. Las solicitudes relacionadas con los
+          datos personales deben dirigirse, en primera instancia, al Comerciante con quien el
+          Titular tuvo la relación comercial.
+        </p>
+      </div>
+
+      <h2>3. Datos que se recolectan</h2>
+      <p>La plataforma puede recolectar, según el rol y la interacción del Titular, las siguientes categorías de datos:</p>
+      <h3>3.1. Datos de identificación y contacto</h3>
+      <ul>
+        <li>Nombre y apellidos.</li>
+        <li>Número de documento de identidad (cédula, NIT, pasaporte, según aplique).</li>
+        <li>Correo electrónico.</li>
+        <li>Número de teléfono fijo y/o celular.</li>
+        <li>Dirección física.</li>
+      </ul>
+      <h3>3.2. Datos comerciales y transaccionales</h3>
+      <ul>
+        <li>Historial de compras y ventas.</li>
+        <li>Información de facturación.</li>
+        <li>Métodos de pago utilizados (sin almacenar datos completos de tarjetas).</li>
+        <li>Información de créditos y cuentas por cobrar.</li>
+      </ul>
+      <h3>3.3. Datos técnicos y de uso</h3>
+      <ul>
+        <li>Dirección IP.</li>
+        <li>Tipo de dispositivo y navegador.</li>
+        <li>Registros de actividad (logs) para fines de seguridad y auditoría.</li>
+        <li>Cookies y tecnologías similares (ver la Política de Cookies).</li>
+      </ul>
+
+      <h2>4. Finalidades del Tratamiento</h2>
+      <p>Los datos personales recolectados serán utilizados para las siguientes finalidades:</p>
+      <ul>
+        <li>Permitir el funcionamiento de la plataforma y la gestión operativa del Comerciante.</li>
+        <li>Gestionar la relación comercial entre el Comerciante y sus clientes, proveedores y empleados.</li>
+        <li>Emitir documentos comerciales (facturas, remisiones, comprobantes).</li>
+        <li>Atender consultas, quejas y reclamos.</li>
+        <li>Cumplir con obligaciones legales, contables, tributarias y de auditoría.</li>
+        <li>Prevenir fraudes y garantizar la seguridad de la información.</li>
+        <li>Realizar análisis estadísticos y de mejora del servicio.</li>
+        <li>Enviar comunicaciones relacionadas con la operación del Comerciante, cuando exista autorización previa.</li>
+      </ul>
+      <div class="destacado">
+        <p>
+          Los datos personales <strong>no serán utilizados para finalidades distintas</strong> a las aquí
+          descritas, salvo que medie una nueva autorización del Titular o un mandato legal.
+        </p>
+      </div>
+
+      <h2>5. Autorización del Titular</h2>
+      <p>
+        El Proveedor y los Comerciantes obtendrán la autorización previa, expresa e informada del
+        Titular para el Tratamiento de sus datos personales, salvo en los casos expresamente
+        exceptuados por la ley. La autorización podrá constar por escrito, de forma verbal, o
+        mediante conductas inequívocas que permitan concluir su otorgamiento.
+      </p>
+      <p>
+        El Titular puede consultar el modelo de autorización en el documento
+        <a href="autorizacion.html">Autorización de Tratamiento de Datos</a>.
+      </p>
+
+      <h2>6. Derechos del Titular</h2>
+      <p>De conformidad con el artículo 8 de la Ley 1581 de 2012, el Titular tiene los siguientes derechos:</p>
+      <ul>
+        <li><strong>Conocer, actualizar y rectificar</strong> sus datos personales frente a los Responsables o Encargados del Tratamiento.</li>
+        <li><strong>Solicitar prueba de la autorización</strong> otorgada, salvo cuando la ley exceptúe dicha obligación.</li>
+        <li><strong>Ser informado</strong> sobre el uso que se ha dado a sus datos personales.</li>
+        <li><strong>Presentar quejas</strong> ante la Superintendencia de Industria y Comercio por infracciones a la ley.</li>
+        <li><strong>Revocar la autorización</strong> y/o solicitar la supresión de sus datos, cuando no exista un deber legal o contractual de permanencia.</li>
+        <li><strong>Acceder de forma gratuita</strong> a sus datos personales que hayan sido objeto de Tratamiento.</li>
+      </ul>
+
+      <h2>7. Procedimiento para ejercer los derechos</h2>
+      <p>
+        El Titular puede ejercer sus derechos enviando una solicitud al correo electrónico
+        <strong id="legal-email">—</strong> o por comunicación escrita a la dirección
+        <strong id="legal-address-2">—</strong>.
+      </p>
+      <h3>7.1. Consultas</h3>
+      <p>
+        Las consultas serán atendidas en un término máximo de <strong>quince (15) días hábiles</strong>
+        contados a partir de la fecha de recibo. Cuando no sea posible atender la consulta dentro
+        de dicho término, se informará al interesado, expresando los motivos de la demora y
+        señalando la fecha en que se atenderá su consulta, la cual no podrá superar los
+        <strong>ocho (8) días hábiles</strong> siguientes al vencimiento del primer término.
+      </p>
+      <h3>7.2. Reclamos</h3>
+      <p>
+        Los reclamos serán atendidos en un término máximo de <strong>quince (15) días hábiles</strong>
+        contados a partir del día siguiente a la fecha de su recibo. Si no es posible atenderlo
+        dentro de dicho término, se informará al interesado los motivos de la demora y la fecha
+        en que se atenderá, la cual no podrá superar los <strong>ocho (8) días hábiles</strong>
+        siguientes al vencimiento del primer término.
+      </p>
+
+      <h2>8. Seguridad de la información</h2>
+      <p>
+        El Proveedor adopta medidas técnicas, humanas y administrativas razonables para
+        garantizar la seguridad de los datos personales y evitar su adulteración, pérdida,
+        consulta, uso o acceso no autorizado o fraudulento. Entre otras:
+      </p>
+      <ul>
+        <li>Cifrado de comunicaciones mediante HTTPS.</li>
+        <li>Autenticación de usuarios mediante Firebase Authentication.</li>
+        <li>Reglas de acceso por roles (superadmin, admin, vendedor).</li>
+        <li>Registros de auditoría de las operaciones críticas.</li>
+        <li>Backups programados de la información.</li>
+      </ul>
+
+      <h2>9. Conservación de los datos</h2>
+      <p>
+        Los datos personales serán conservados durante el tiempo necesario para cumplir con las
+        finalidades descritas y con las obligaciones legales, contables, tributarias y de
+        auditoría aplicables. Con carácter general, se conservarán por un término de
+        <strong id="legal-retention">—</strong> años, salvo que una norma especial disponga otro plazo.
+      </p>
+
+      <h2>10. Transferencia y transmisión de datos</h2>
+      <p>
+        El Proveedor podrá transmitir o transferir datos personales a terceros ubicados dentro o
+        fuera de Colombia, cuando ello sea necesario para la operación de la plataforma, para el
+        cumplimiento de obligaciones legales o cuando medie autorización del Titular. En todo
+        caso, se exigirá a los terceros el cumplimiento de los estándares de protección
+        aplicables en Colombia.
+      </p>
+
+      <h2>11. Datos de menores de edad</h2>
+      <p>
+        La plataforma no está dirigida a menores de 18 años. En caso de que se llegaren a tratar
+        datos de menores, se hará con autorización de sus representantes legales y respetando su
+        interés superior, conforme a la ley.
+      </p>
+
+      <h2>12. Vigencia y modificaciones</h2>
+      <p>
+        La presente Política rige a partir del <strong id="legal-effective">—</strong> y podrá ser
+        modificada en cualquier momento. Las modificaciones sustanciales serán informadas a los
+        Titulares a través de los canales dispuestos por el Proveedor. La versión vigente estará
+        siempre publicada en este mismo sitio.
+      </p>
+
+      <h2>13. Autoridad de control</h2>
+      <p>
+        La autoridad competente para conocer de las quejas y reclamos relacionados con el
+        Tratamiento de datos personales en Colombia es la
+        <strong id="legal-authority">—</strong>, con domicilio en
+        <strong id="legal-authority-address">—</strong> y sitio web
+        <a id="legal-authority-url" href="#" target="_blank" rel="noopener">—</a>.
+      </p>
+
+      <h2>14. Contacto</h2>
+      <p>
+        Para cualquier consulta relacionada con esta Política, el Titular puede comunicarse con
+        el Proveedor a través de:
+      </p>
+      <ul>
+        <li><strong>Correo:</strong> <span id="legal-email-2">—</span></li>
+        <li><strong>Teléfono:</strong> <span id="legal-phone">—</span></li>
+        <li><strong>Dirección:</strong> <span id="legal-address-3">—</span></li>
+      </ul>
+
+    </div>
+
+  </div>
+
+</main>
+
+<!-- Footer -->
+<div id="smartec-footer"></div>
+
+<script>
+  // ============================================================
+  // Rellenar los placeholders con datos de SMARTEC_LEGAL
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', () => {
+    const L = window.SMARTEC_LEGAL || {};
+
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val !== undefined && val !== null) el.innerText = val;
+    };
+    const setHref = (id, url, text) => {
+      const el = document.getElementById(id);
+      if (el && url) {
+        el.href = url;
+        if (text) el.innerText = text;
+      }
+    };
+
+    // Identidad
+    set('legal-name', L.legalName);
+    set('legal-name-2', L.legalName);
+    set('legal-nit', L.nit);
+    set('legal-platform', L.platformName);
+    set('legal-platform-2', L.platformName);
+    set('legal-address', L.address);
+    set('legal-address-2', L.address);
+    set('legal-address-3', L.address);
+    set('legal-email', L.email);
+    set('legal-email-2', L.email);
+    set('legal-phone', L.phone);
+
+    // Fechas
+    set('legal-last-update', L.lastUpdate);
+    set('legal-effective', L.effectiveDate);
+
+    // Retención
+    set('legal-retention', L.dataRetentionYears);
+
+    // Autoridad
+    if (L.authority) {
+      set('legal-authority', L.authority.name);
+      set('legal-authority-address', L.authority.address);
+      setHref('legal-authority-url', L.authority.website, L.authority.website);
+    }
+
+    // Renderizar header si está disponible
+    if (window.SmartecHeaderApp) {
+      window.SmartecHeaderApp.render({
+        showTitle: true,
+        titleText: 'Política de Tratamiento de Datos',
+        showHomeLink: true,
+        homeLinkHref: 'index.html',
+        homeLinkLabel: 'Tienda'
+      });
+    }
+
+    // Renderizar footer
+    if (window.SmartecFooter) {
+      window.SmartecFooter.render({ targetId: 'smartec-footer' });
+    }
+  });
+</script>
+
+</body>
+</html>

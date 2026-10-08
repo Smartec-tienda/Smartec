@@ -60,6 +60,21 @@
     };
   }
 
+    /* 🆕 Detecta si la venta es mayorista y devuelve datos resumidos */
+  function getWholesaleInfo(sale) {
+    if (!sale || sale.saleMode !== 'wholesale') return null;
+    const w = sale.wholesaleCustomer || {};
+    return {
+      isWholesale: true,
+      companyName: w.companyName || sale.customer?.name || 'Sin nombre',
+      nit: w.nit || '',
+      contactName: w.contactName || sale.customer?.name || '',
+      paymentTerms: w.paymentTerms || null,
+      discountBase: Number(w.discountBase || 0),
+      customerId: w.customerId || null
+    };
+  }
+
   /* ============================================================
      1. PDF REMISIÓN (Carta 216×279mm)
   ============================================================ */
@@ -120,8 +135,43 @@
       doc.text(`Sede: ${c.storeName}`, pageW - M, y + 24, { align: 'right' });
     }
 
+    // 🆕 Badge MAYORISTA (si aplica)
+    const wInfo = getWholesaleInfo(sale);
+    let extraHeaderHeight = 0;
+    if (wInfo) {
+      // Caja morada debajo del tipo de documento
+      const boxW = 85;
+      const boxH = wInfo.nit ? 14 : 10;
+      const boxX = pageW - M - boxW;
+      const boxY = y + 28;
+
+      doc.setFillColor(245, 235, 255); // morado muy suave
+      doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'F');
+      doc.setDrawColor(191, 90, 242);   // borde morado
+      doc.setLineWidth(0.4);
+      doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'S');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(191, 90, 242);
+      doc.text('🏢 VENTA MAYORISTA', boxX + 4, boxY + 5.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(85, 85, 85);
+      doc.text(wInfo.companyName.substring(0, 45), boxX + 4, boxY + 10);
+
+      if (wInfo.nit) {
+        doc.setFontSize(7);
+        doc.setTextColor(110, 110, 115);
+        doc.text(`NIT: ${wInfo.nit}`, boxX + 4, boxY + 13.5);
+      }
+
+      extraHeaderHeight = boxH + 2;
+    }
+
     // Línea separadora
-    y = Math.max(infoY, y + 26) + 4;
+    y = Math.max(infoY, y + 26) + 4 + extraHeaderHeight;
     doc.setDrawColor(0, 113, 227);
     doc.setLineWidth(0.5);
     doc.line(M, y, pageW - M, y);
@@ -168,12 +218,23 @@
       const variantParts = [];
       if (it.colorName) variantParts.push(it.colorName);
       if (it.size) variantParts.push(it.size);
+
+      // 🆕 Marcar el producto con ⚠️ si tiene excepción
+      const nameDisplay = it.priceException
+        ? `⚠️ ${it.name || '-'}`
+        : (it.name || '-');
+
+      // 🆕 Mostrar precio de lista tachado si hay excepción
+      const priceDisplay = it.priceException
+        ? `${fmt(it.unitPrice)}*`
+        : fmt(it.unitPrice);
+
       return [
         it.sku || '-',
-        it.name || '-',
+        nameDisplay,
         variantParts.join(' · ') || '—',
         String(it.qty || 0),
-        fmt(it.unitPrice),
+        priceDisplay,
         fmt((it.qty || 0) * (it.unitPrice || 0))
       ];
     });
@@ -208,7 +269,36 @@
       margin: { left: M, right: M },
     });
 
+    
     y = doc.lastAutoTable.finalY + 8;
+    y = doc.lastAutoTable.finalY + 8;
+
+    // 🆕 Nota al pie sobre excepciones de precio
+    if (sale.hasPriceExceptions && Array.isArray(sale.priceExceptions) && sale.priceExceptions.length) {
+      const exLines = sale.priceExceptions.map(ex => {
+        return `   • ${ex.name}: mín ${fmt(ex.minPrice)} → ${fmt(ex.finalPrice)} (-${fmt(Math.abs(ex.difference))}, ${ex.differencePct.toFixed(1)}%) · Autorizó: ${ex.authorizedByName || '—'} · Motivo: ${ex.reason || '—'}`;
+      });
+
+      const headerText = '⚠️ EXCEPCIONES DE PRECIO AUTORIZADAS:';
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 149, 10); // naranja
+      doc.text(headerText, M, y);
+      y += 4;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(120, 120, 120);
+      exLines.forEach(line => {
+        const wrapped = doc.splitTextToSize(line, pageW - 2 * M);
+        wrapped.forEach(l => {
+          doc.text(l, M, y);
+          y += 3.2;
+        });
+      });
+      y += 3;
+    }
+
 
     // ============ TOTALES ============
     const totals = [
@@ -384,9 +474,43 @@
       y += 4;
     }
 
-    y += 1;
-    solidLine(y);
-    y += 4;
+    // 🆕 Badge MAYORISTA (si aplica)
+    const wInfo = getWholesaleInfo(sale);
+    if (wInfo) {
+      y += 1;
+      solidLine(y);
+      y += 4;
+
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(8);
+      centerText('** MAYORISTA **', y + 3);
+      y += 4;
+
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(7);
+
+      // Nombre de la empresa (con split si es largo)
+      const companyLines = doc.splitTextToSize(wInfo.companyName, W - 2 * M);
+      companyLines.forEach(l => { centerText(l, y + 3); y += 3.5; });
+
+      if (wInfo.nit) {
+        centerText(`NIT: ${wInfo.nit}`, y + 3);
+        y += 3.5;
+      }
+
+      if (wInfo.discountBase > 0) {
+        centerText(`Desc. aplicado: -${(wInfo.discountBase * 100).toFixed(1)}%`, y + 3);
+        y += 3.5;
+      }
+
+      y += 1;
+      dashedLine(y);
+      y += 4;
+    } else {
+      y += 1;
+      solidLine(y);
+      y += 4;
+    }
 
     // ============ CLIENTE ============
     doc.setFont('courier', 'bold');
@@ -418,7 +542,11 @@
 
     doc.setFont('courier', 'normal');
     (sale.items || []).forEach(it => {
-      const nameLines = doc.splitTextToSize(it.name || '-', W - 2 * M);
+      // 🆕 Marcar con ⚠️ si tiene excepción
+      const nameDisplay = it.priceException
+        ? `! ${it.name || '-'}`
+        : (it.name || '-');
+      const nameLines = doc.splitTextToSize(nameDisplay, W - 2 * M);
       nameLines.forEach(l => { doc.text(l, M, y + 3); y += 3.5; });
 
       const variantParts = [];
@@ -439,11 +567,37 @@
       doc.text(right, W - M, y + 3, { align: 'right' });
       doc.setFont('courier', 'normal');
       y += 4.5;
+
+      // 🆕 Si tiene excepción, mostrar referencia de mínimo
+      if (it.priceException) {
+        doc.setFontSize(6);
+        doc.text(`  (min ${fmt(it.priceException.minPrice)})`, M, y + 3);
+        y += 3;
+        doc.setFontSize(7);
+      }
     });
 
     y += 0.5;
     dashedLine(y);
     y += 4;
+
+        y += 0.5;
+    dashedLine(y);
+    y += 4;
+
+    // 🆕 Aviso de excepción de precio
+    if (sale.hasPriceExceptions && Array.isArray(sale.priceExceptions) && sale.priceExceptions.length) {
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(6.5);
+      const warnLines = doc.splitTextToSize(
+        '! PRECIO AUTORIZADO POR ADMINISTRADOR',
+        W - 2 * M
+      );
+      warnLines.forEach(l => { centerText(l, y + 3); y += 3; });
+      y += 1;
+      dashedLine(y);
+      y += 4;
+    }
 
     // ============ TOTALES ============
     doc.setFontSize(7.5);
@@ -577,7 +731,41 @@
       doc.text(`Sede: ${c.storeName}`, pageW - M, y + 19.5, { align: 'right' });
     }
 
-    y = Math.max(infoY, y + 21) + 4;
+    // 🆕 Badge MAYORISTA (si aplica)
+    const wInfo = getWholesaleInfo(sale);
+    let extraHeaderHeight = 0;
+    if (wInfo) {
+      const boxW = 60;
+      const boxH = wInfo.nit ? 12 : 8;
+      const boxX = pageW - M - boxW;
+      const boxY = y + 23;
+
+      doc.setFillColor(245, 235, 255);
+      doc.roundedRect(boxX, boxY, boxW, boxH, 1.5, 1.5, 'F');
+      doc.setDrawColor(191, 90, 242);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(boxX, boxY, boxW, boxH, 1.5, 1.5, 'S');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(191, 90, 242);
+      doc.text('🏢 MAYORISTA', boxX + 3, boxY + 4.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(85, 85, 85);
+      doc.text(wInfo.companyName.substring(0, 32), boxX + 3, boxY + 8.5);
+
+      if (wInfo.nit) {
+        doc.setFontSize(6);
+        doc.setTextColor(110, 110, 115);
+        doc.text(`NIT: ${wInfo.nit}`, boxX + 3, boxY + 11.5);
+      }
+
+      extraHeaderHeight = boxH + 2;
+    }
+
+    y = Math.max(infoY, y + 21) + 4 + extraHeaderHeight;
     doc.setDrawColor(0, 113, 227);
     doc.setLineWidth(0.4);
     doc.line(M, y, pageW - M, y);
@@ -619,7 +807,10 @@
       const variantParts = [];
       if (it.colorName) variantParts.push(it.colorName);
       if (it.size) variantParts.push(it.size);
-      const name = (it.name || '-') + (variantParts.length ? '\n' + variantParts.join(' · ') : '');
+
+      const nameBase = (it.name || '-') + (variantParts.length ? '\n' + variantParts.join(' · ') : '');
+      const name = it.priceException ? `⚠️ ${nameBase}` : nameBase;
+
       return [
         it.sku || '-',
         name,
@@ -657,6 +848,26 @@
     });
 
     y = doc.lastAutoTable.finalY + 4;
+
+        y = doc.lastAutoTable.finalY + 4;
+
+    // 🆕 Nota de excepciones de precio
+    if (sale.hasPriceExceptions && Array.isArray(sale.priceExceptions) && sale.priceExceptions.length) {
+      const exNote = sale.priceExceptions.map(ex =>
+        `⚠️ ${ex.name}: ${fmt(ex.finalPrice)} (mín ${fmt(ex.minPrice)}) · ${ex.authorizedByName || '—'}`
+      ).join('\n');
+
+      doc.setFillColor(255, 245, 230);
+      const wrapped = doc.splitTextToSize(exNote, pageW - 2 * M - 4);
+      const h = wrapped.length * 3 + 5;
+      doc.rect(M, y, pageW - 2 * M, h, 'F');
+      doc.setFillColor(255, 149, 10);
+      doc.rect(M, y, 1.2, h, 'F');
+      doc.setFontSize(6);
+      doc.setTextColor(180, 100, 0);
+      doc.text(wrapped, M + 3, y + 3.5);
+      y += h + 3;
+    }
 
     // ============ TOTALES ============
     const totalsW = 60;
