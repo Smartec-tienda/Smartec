@@ -53,7 +53,7 @@
                 </a>
               </li>
               <li>
-                <a href="mayoristas.html" class="hover:text-[#BF5AF2] transition inline-flex items-center gap-1.5">
+                <a href="mayoristas.html" class="hover:text-[#0A2A4A] transition inline-flex items-center gap-1.5">
                   🏢 Portal Mayoristas
                 </a>
               </li>

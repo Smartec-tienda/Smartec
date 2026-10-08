@@ -27,9 +27,9 @@
     --text:#1D1D1F;
     --text-dim:#6E6E73;
     --blue:#0071E3;
-    --blue-light:#5AC8FA;
-    --purple:#BF5AF2;
-    --pink:#FF375F;
+    --blue-light:#4A7A9A;
+    --purple:#0A2A4A;
+    --pink:#0A2A4A;
     --orange:#FF9F0A;
     --green:#30D158;
     --sd:#0A2A4A;
@@ -53,7 +53,7 @@
     z-index:-1;
     background:
       radial-gradient(at 20% 20%, rgba(90,200,250,0.15) 0%, transparent 50%),
-      radial-gradient(at 80% 10%, rgba(191,90,242,0.12) 0%, transparent 50%),
+      radial-gradient(at 80% 10%, rgba(10,42,74,0.12) 0%, transparent 50%),
       radial-gradient(at 70% 80%, rgba(255,55,95,0.08) 0%, transparent 50%),
       radial-gradient(at 10% 90%, rgba(255,159,10,0.08) 0%, transparent 50%),
       #F5F5F7;
@@ -196,7 +196,7 @@
 
   /* ============ LOGO MARK ============ */
   .logo-mark{
-    background:linear-gradient(135deg, #0071E3, #BF5AF2);
+    background:linear-gradient(135deg, #0071E3, #0A2A4A);
     -webkit-background-clip:text;
     background-clip:text;
     color:transparent;
@@ -257,7 +257,7 @@
     .mesh-bg{
       background:
         radial-gradient(at 20% 20%, rgba(90,200,250,0.10) 0%, transparent 50%),
-        radial-gradient(at 80% 10%, rgba(191,90,242,0.08) 0%, transparent 50%),
+        radial-gradient(at 80% 10%, rgba(10,42,74,0.08) 0%, transparent 50%),
         #F5F5F7;
     }
   }
@@ -287,8 +287,8 @@
 <div id="login-screen" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
 
   <!-- Orbes de fondo -->
-  <div class="hero-orb w-[500px] h-[500px] bg-[#5AC8FA]/30" style="top:-200px;left:-150px;position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none"></div>
-  <div class="hero-orb w-[400px] h-[400px] bg-[#BF5AF2]/25" style="bottom:-100px;right:-100px;position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none"></div>
+  <div class="hero-orb w-[500px] h-[500px] bg-[#4A7A9A]/30" style="top:-200px;left:-150px;position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none"></div>
+  <div class="hero-orb w-[400px] h-[400px] bg-[#0A2A4A]/25" style="bottom:-100px;right:-100px;position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none"></div>
 
   <!-- Card de login -->
   <div class="relative glass-strong p-8 rounded-3xl shadow-apple-xl w-full max-w-sm border border-white/70 fade-up">
@@ -330,7 +330,7 @@
     </button>
 
     <div class="text-center mb-5">
-      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#5AC8FA] to-[#0071E3] flex items-center justify-center mx-auto mb-3 shadow-apple">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4A7A9A] to-[#0071E3] flex items-center justify-center mx-auto mb-3 shadow-apple">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
         </svg>
@@ -356,7 +356,7 @@
   <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto"></div>
   <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-lg w-full p-6 pointer-events-auto border border-white/70 fade-up">
     <div class="text-center mb-5">
-      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF375F] to-[#BF5AF2] flex items-center justify-center mx-auto mb-3 shadow-apple">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0A2A4A] to-[#0A2A4A] flex items-center justify-center mx-auto mb-3 shadow-apple">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
         </svg>
@@ -365,7 +365,7 @@
       <p class="text-sm text-[#6E6E73] mt-1">No puedes acceder desde este dispositivo.</p>
     </div>
 
-    <div class="bg-[#FF375F]/10 border border-[#FF375F]/20 rounded-2xl p-4 mb-5 text-xs space-y-2">
+    <div class="bg-[#0A2A4A]/10 border border-[#0A2A4A]/20 rounded-2xl p-4 mb-5 text-xs space-y-2">
       <div class="flex justify-between items-center">
         <span class="text-[#6E6E73]">Dispositivos autorizados:</span>
         <b id="db-count" class="text-[#1D1D1F]">—</b>
@@ -384,7 +384,7 @@
       <button id="db-request-btn" onclick="submitDeviceRequest()" class="w-full btn-apple py-3 rounded-xl font-bold">
         🆘 Solicitar autorización al superadmin
       </button>
-      <button onclick="logoutFromDeviceGuard()" class="w-full text-[#FF375F] hover:text-[#E0304F] py-2 text-xs font-semibold">
+      <button onclick="logoutFromDeviceGuard()" class="w-full text-[#0A2A4A] hover:text-[#E0304F] py-2 text-xs font-semibold">
         Cerrar sesión
       </button>
     </div>
@@ -400,7 +400,7 @@
     </button>
 
     <div class="text-center mb-5">
-      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#5AC8FA] to-[#0071E3] flex items-center justify-center mx-auto mb-3 shadow-apple">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4A7A9A] to-[#0071E3] flex items-center justify-center mx-auto mb-3 shadow-apple">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
         </svg>
@@ -431,7 +431,7 @@
   <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto"></div>
   <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-md w-full p-6 pointer-events-auto border border-white/70 fade-up">
     <div class="text-center mb-5">
-      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#30D158] to-[#5AC8FA] flex items-center justify-center mx-auto mb-3 shadow-apple">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#30D158] to-[#4A7A9A] flex items-center justify-center mx-auto mb-3 shadow-apple">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
         </svg>
@@ -463,7 +463,7 @@
   <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto"></div>
   <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-md w-full p-6 pointer-events-auto border border-white/70 fade-up">
     <div class="text-center mb-5">
-      <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#5AC8FA] to-[#0071E3] flex items-center justify-center mx-auto mb-3 shadow-apple">
+      <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#4A7A9A] to-[#0071E3] flex items-center justify-center mx-auto mb-3 shadow-apple">
         <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
         </svg>
@@ -488,7 +488,7 @@
       <button onclick="switchToPasswordFromUnlock()" class="w-full btn-glass py-2.5 rounded-xl font-semibold text-sm">
         Usar correo y contraseña
       </button>
-      <button onclick="closeSessionCompletely()" class="w-full text-[#FF375F] hover:text-[#E0304F] py-2 text-xs font-semibold">
+      <button onclick="closeSessionCompletely()" class="w-full text-[#0A2A4A] hover:text-[#E0304F] py-2 text-xs font-semibold">
         Cerrar sesión completamente
       </button>
     </div>
@@ -533,14 +533,14 @@
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
     <div class="text-center mb-5">
-      <div id="shift-modal-icon" class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#30D158] to-[#5AC8FA] flex items-center justify-center mx-auto mb-3 text-3xl shadow-apple">🟢</div>
+      <div id="shift-modal-icon" class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#30D158] to-[#4A7A9A] flex items-center justify-center mx-auto mb-3 text-3xl shadow-apple">🟢</div>
       <h3 id="shift-modal-title" class="text-xl font-bold text-[#1D1D1F] tracking-tight">Marcar entrada</h3>
       <p id="shift-modal-subtitle" class="text-sm text-[#6E6E73] mt-1"></p>
     </div>
     <div id="shift-modal-body"></div>
     <!-- Botón de escape (solo se muestra cuando el modal es obligatorio) -->
     <div id="shift-modal-escape" class="hidden mt-3 pt-3 border-t border-black/5">
-      <button onclick="SmartecShift.forceLogoutFromShift()" class="w-full text-[#FF375F] hover:text-[#E0304F] py-2 text-xs font-semibold">
+      <button onclick="SmartecShift.forceLogoutFromShift()" class="w-full text-[#0A2A4A] hover:text-[#E0304F] py-2 text-xs font-semibold">
         🚪 Cerrar sesión (si no puedes marcar entrada)
       </button>
     </div>
@@ -564,7 +564,7 @@ const firebaseConfig = window.__FIREBASE_CONFIG;
 if (!firebaseConfig) {
   document.body.innerHTML = `
     <div style="padding:40px;font-family:-apple-system,sans-serif;text-align:center;color:#1D1D1F">
-      <h2 style="color:#FF375F">Error de configuración</h2>
+      <h2 style="color:#0A2A4A">Error de configuración</h2>
       <p>No se encontró configuración de Firebase para este dominio.</p>
       <p style="color:#6E6E73;font-size:14px">Contacta al administrador del sistema.</p>
     </div>
@@ -2268,7 +2268,7 @@ function renderModules(role) {
 
     // Badge dinámico (solo si la tarjeta lo declara)
     const badgeTag = m.badge
-      ? `<span id="home-badge-${m.badge}" class="hidden absolute top-3 right-3 bg-[#FF375F] text-white text-[10px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center shadow-apple">0</span>`
+      ? `<span id="home-badge-${m.badge}" class="hidden absolute top-3 right-3 bg-[#0A2A4A] text-white text-[10px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center shadow-apple">0</span>`
       : '';
 
     const content = `

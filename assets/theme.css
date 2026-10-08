@@ -15,9 +15,9 @@
   --text:#1D1D1F;
   --text-dim:#6E6E73;
   --blue:#0071E3;
-  --blue-light:#5AC8FA;
-  --purple:#BF5AF2;
-  --pink:#FF375F;
+  --blue-light:#4A7A9A;
+  --purple:#0A2A4A;
+  --pink:#0A2A4A;
   --orange:#FF9F0A;
   --green:#30D158;
   --glass:rgba(255,255,255,0.72);
@@ -55,7 +55,7 @@ body{
   z-index:-1;
   background:
     radial-gradient(at 20% 20%, rgba(90,200,250,0.15) 0%, transparent 50%),
-    radial-gradient(at 80% 10%, rgba(191,90,242,0.12) 0%, transparent 50%),
+    radial-gradient(at 80% 10%, rgba(10,42,74,0.12) 0%, transparent 50%),
     radial-gradient(at 70% 80%, rgba(255,55,95,0.08) 0%, transparent 50%),
     radial-gradient(at 10% 90%, rgba(255,159,10,0.08) 0%, transparent 50%),
     #F5F5F7;
@@ -197,7 +197,7 @@ select option{background:white;color:var(--text)}
    9. LOGO MARK (texto con gradiente)
 ============================================================ */
 .logo-mark{
-  background:linear-gradient(135deg, #0071E3, #BF5AF2);
+  background:linear-gradient(135deg, #0071E3, #0A2A4A);
   -webkit-background-clip:text;
   background-clip:text;
   color:transparent;
@@ -286,7 +286,7 @@ select option{background:white;color:var(--text)}
   .mesh-bg{
     background:
       radial-gradient(at 20% 20%, rgba(90,200,250,0.10) 0%, transparent 50%),
-      radial-gradient(at 80% 10%, rgba(191,90,242,0.08) 0%, transparent 50%),
+      radial-gradient(at 80% 10%, rgba(10,42,74,0.08) 0%, transparent 50%),
       #F5F5F7;
   }
 }

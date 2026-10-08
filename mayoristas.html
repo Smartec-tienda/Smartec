@@ -33,14 +33,14 @@
   html{scroll-behavior:smooth}
   body{background:var(--bg);color:var(--text);overflow-x:hidden}
 
-  .mesh-bg{
+   .mesh-bg{
     position:fixed;
     inset:0;
     z-index:-1;
     background:
-      radial-gradient(at 20% 20%, rgba(191,90,242,0.15) 0%, transparent 50%),
-      radial-gradient(at 80% 10%, rgba(90,200,250,0.10) 0%, transparent 50%),
-      radial-gradient(at 70% 80%, rgba(191,90,242,0.08) 0%, transparent 50%),
+      radial-gradient(at 20% 20%, rgba(10,42,74,0.10) 0%, transparent 50%),
+      radial-gradient(at 80% 10%, rgba(74,122,154,0.10) 0%, transparent 50%),
+      radial-gradient(at 70% 80%, rgba(10,42,74,0.06) 0%, transparent 50%),
       #F5F5F7;
   }
 
@@ -89,14 +89,14 @@
     letter-spacing:-0.01em;
     transition:all .3s cubic-bezier(.2,.8,.2,1);
     box-shadow:
-      0 1px 2px rgba(191,90,242,0.2),
-      0 4px 12px rgba(191,90,242,0.3);
+      0 1px 2px rgba(10,42,74,0.2),
+      0 4px 12px rgba(10,42,74,0.3);
   }
   .btn-apple:hover{
     transform:scale(1.02);
     box-shadow:
-      0 1px 2px rgba(191,90,242,0.3),
-      0 6px 20px rgba(191,90,242,0.4);
+      0 1px 2px rgba(10,42,74,0.3),
+      0 6px 20px rgba(10,42,74,0.4);
   }
   .btn-apple:active{transform:scale(0.98)}
   .btn-apple:disabled{opacity:0.4;cursor:not-allowed;transform:none}
@@ -112,7 +112,7 @@
   input:focus,select:focus,textarea:focus{
     outline:none;
     border-color:var(--purple);
-    box-shadow:0 0 0 4px rgba(191,90,242,0.15);
+    box-shadow:0 0 0 4px rgba(10,42,74,0.15);
     background:white;
   }
   input::placeholder,textarea::placeholder{color:var(--text-dim)}
@@ -237,7 +237,7 @@
 
   <!-- Orbes de fondo -->
   <div class="hero-orb w-[500px] h-[500px] bg-[#0A2A4A]/25" style="top:-200px;left:-150px;position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none"></div>
-  <div class="hero-orb w-[400px] h-[400px] bg-[#5AC8FA]/25" style="bottom:-100px;right:-100px;position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none"></div>
+  <div class="hero-orb w-[400px] h-[400px] bg-[#4A7A9A]/25" style="bottom:-100px;right:-100px;position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none"></div>
 
   <!-- Card de login -->
   <div class="relative glass-strong p-8 rounded-3xl shadow-apple-xl w-full max-w-sm border border-white/70 fade-up">
@@ -280,7 +280,7 @@
 <!-- ============ PANTALLA BLOQUEADA ============ -->
 <div id="blocked-screen" class="hidden min-h-screen items-center justify-center p-4">
   <div class="glass-strong p-8 rounded-3xl shadow-apple-xl w-full max-w-lg border border-white/70 fade-up text-center">
-    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF375F] to-[#0A2A4A] flex items-center justify-center mx-auto mb-4 shadow-apple">
+    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0A2A4A] to-[#0A2A4A] flex items-center justify-center mx-auto mb-4 shadow-apple">
       <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
       </svg>
@@ -330,7 +330,7 @@
         <!-- Botón PDF -->
         <button
           onclick="exportCatalogPDF()"
-          class="px-3 py-2 rounded-xl bg-[#FF375F] text-white text-xs font-semibold hover:bg-[#E0304F] transition flex items-center gap-1.5"
+          class="px-3 py-2 rounded-xl bg-[#0A2A4A] text-white text-xs font-semibold hover:bg-[#4A7A9A] transition flex items-center gap-1.5"
           title="Descargar catálogo en PDF">
           📄 PDF
         </button>
@@ -338,7 +338,7 @@
         <!-- Botón Excel -->
         <button
           onclick="exportCatalogExcel()"
-          class="px-3 py-2 rounded-xl bg-[#30D158] text-white text-xs font-semibold hover:bg-[#28B94E] transition flex items-center gap-1.5"
+          class="px-3 py-2 rounded-xl bg-[#4A7A9A] text-white text-xs font-semibold hover:bg-[#0A2A4A] transition flex items-center gap-1.5"
           title="Descargar catálogo en Excel">
           📊 Excel
         </button>
@@ -605,7 +605,7 @@ const firebaseConfig = window.__FIREBASE_CONFIG;
 if (!firebaseConfig) {
   document.body.innerHTML = `
     <div style="padding:40px;font-family:-apple-system,sans-serif;text-align:center;color:#1D1D1F">
-      <h2 style="color:#FF375F">Error de configuración</h2>
+      <h2 style="color:#0A2A4A">Error de configuración</h2>
       <p>No se encontró configuración de Firebase para este dominio.</p>
       <p style="color:#6E6E73;font-size:14px">Contacta al administrador del sistema.</p>
     </div>
@@ -930,7 +930,7 @@ if (!user) {
       grid.innerHTML = `
         <div class="col-span-full text-center py-12">
           <p class="text-3xl mb-2">⚠️</p>
-          <p class="text-sm font-semibold text-[#FF375F] mb-1">No se pudo cargar el catálogo</p>
+          <p class="text-sm font-semibold text-[#0A2A4A] mb-1">No se pudo cargar el catálogo</p>
           <p class="text-xs text-[#6E6E73]">${err.message || 'Error desconocido'}</p>
           <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-[#0A2A4A] text-white rounded-xl text-xs font-semibold">
             🔄 Reintentar
@@ -1093,7 +1093,7 @@ function renderWelcomeCard() {
   const discountPct = ((w.discountBase || 0) * 100).toFixed(1);
 
   el.innerHTML = `
-    <div class="bg-gradient-to-br from-[#0A2A4A]/8 to-[#5AC8FA]/8 border border-[#0A2A4A]/25 rounded-3xl p-5 shadow-apple">
+    <div class="bg-gradient-to-br from-[#0A2A4A]/8 to-[#4A7A9A]/8 border border-[#0A2A4A]/25 rounded-3xl p-5 shadow-apple">
       <div class="flex items-start justify-between flex-wrap gap-3">
         <div class="min-w-0 flex-1">
           <p class="text-[10px] font-bold text-[#0A2A4A] uppercase tracking-wider mb-1">Bienvenido</p>
@@ -1227,7 +1227,7 @@ function renderProductCard(p) {
 
         <!-- Badge promoción -->
         ${p.onSale ? `
-          <span class="absolute top-2 right-2 bg-[#FF375F] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+          <span class="absolute top-2 right-2 bg-[#0A2A4A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
             PROMO
           </span>
         ` : ''}
@@ -1558,7 +1558,7 @@ function renderMayCart() {
             </div>
             <div class="flex items-center gap-2">
               <span class="text-xs font-bold text-[#1D1D1F]">${fmt(subtotal)}</span>
-              <button onclick="removeMayCartItem(${idx})" class="text-[#FF375F] hover:text-[#E0304F] text-xs" title="Eliminar">✕</button>
+              <button onclick="removeMayCartItem(${idx})" class="text-[#0A2A4A] hover:text-[#E0304F] text-xs" title="Eliminar">✕</button>
             </div>
           </div>
         </div>
@@ -1883,7 +1883,7 @@ window.exportCatalogPDF = () => {
   let y = M;
 
   // ============ ENCABEZADO MORADO ============
-  doc.setFillColor(191, 90, 242); // #0A2A4A
+  doc.setFillColor(10, 42, 74); // #0A2A4A
   doc.rect(0, 0, pageW, 22, 'F');
 
   doc.setTextColor(255, 255, 255);
@@ -1920,7 +1920,7 @@ window.exportCatalogPDF = () => {
   y += 8;
 
   // Línea separadora
-  doc.setDrawColor(191, 90, 242);
+  doc.setDrawColor(10, 42, 74);
   doc.setLineWidth(0.4);
   doc.line(M, y, pageW - M, y);
   y += 6;
@@ -1948,7 +1948,7 @@ window.exportCatalogPDF = () => {
     body: rows,
     theme: 'striped',
     headStyles: {
-      fillColor: [191, 90, 242],
+      fillColor: [10, 42, 74],
       textColor: 255,
       fontStyle: 'bold',
       fontSize: 8,
@@ -1959,14 +1959,14 @@ window.exportCatalogPDF = () => {
       cellPadding: 1.8,
       textColor: [51, 51, 51]
     },
-    alternateRowStyles: { fillColor: [250, 245, 255] },
+    alternateRowStyles: { fillColor: [245, 249, 252] },
     columnStyles: {
       0: { cellWidth: 24, font: 'courier' },
       1: { cellWidth: 62 },
       2: { cellWidth: 30 },
       3: { cellWidth: 12, halign: 'center' },
       4: { cellWidth: 24, halign: 'right' },
-      5: { cellWidth: 26, halign: 'right', fontStyle: 'bold', textColor: [140, 40, 190] }
+      5: { cellWidth: 26, halign: 'right', fontStyle: 'bold', textColor: [10, 42, 74] }
     },
     margin: { left: M, right: M }
   });
@@ -1976,12 +1976,12 @@ window.exportCatalogPDF = () => {
   // ============ RESUMEN FINAL ============
   const avgPrice = list.reduce((s, p) => s + computeWholesalePrice(p), 0) / list.length;
 
-  doc.setFillColor(245, 240, 255);
+  doc.setFillColor(240, 245, 250);
   doc.roundedRect(M, y, pageW - 2 * M, 20, 2, 2, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(140, 40, 190);
+   doc.setTextColor(10, 42, 74);
   doc.text('RESUMEN', M + 4, y + 6);
 
   doc.setFont('helvetica', 'normal');
@@ -2063,7 +2063,7 @@ window.exportCatalogExcel = async () => {
   const titleCell = ws.getCell('A1');
   titleCell.value = `SMARTEC · Catálogo Mayorista · ${companyName}`;
   titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
-  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBF5AF2' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A2A4A' } };
   titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
   ws.getRow(1).height = 32;
 
@@ -2103,13 +2103,13 @@ window.exportCatalogExcel = async () => {
   headerRow.height = 26;
   headerRow.eachCell(cell => {
     cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8C28BE' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4A7A9A' } };
     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     cell.border = {
-      top:    { style: 'thin', color: { argb: 'FF6B1E9A' } },
-      bottom: { style: 'thin', color: { argb: 'FF6B1E9A' } },
-      left:   { style: 'thin', color: { argb: 'FF6B1E9A' } },
-      right:  { style: 'thin', color: { argb: 'FF6B1E9A' } }
+        top:    { style: 'thin', color: { argb: 'FF4A7A9A' } },
+        bottom: { style: 'thin', color: { argb: 'FF4A7A9A' } },
+        left:   { style: 'thin', color: { argb: 'FF4A7A9A' } },
+        right:  { style: 'thin', color: { argb: 'FF4A7A9A' } }
     };
   });
 
@@ -2142,7 +2142,7 @@ window.exportCatalogExcel = async () => {
       };
       cell.alignment = { vertical: 'middle', wrapText: colIdx === 1 };
       if (isZebra) {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F4FF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F9FC' } };
       }
     });
 
@@ -2168,7 +2168,7 @@ window.exportCatalogExcel = async () => {
     // Precio mayorista → morado + bold
     const wholeCell = row.getCell(7);
     wholeCell.numFmt = '"$"#,##0';
-    wholeCell.font = { bold: true, color: { argb: 'FF8C28BE' } };
+    wholeCell.font = { bold: true, color: { argb: 'FF0A2A4A' } };s
     wholeCell.alignment = { horizontal: 'right', vertical: 'middle' };
 
     // Ahorro → verde
@@ -2195,14 +2195,14 @@ window.exportCatalogExcel = async () => {
   ]);
 
   const totalLabelRow = ws.addRow(['', 'TOTAL PRODUCTOS:', '', '', '', '', '', list.length]);
-  totalLabelRow.getCell(2).font = { bold: true, color: { argb: 'FF8C28BE' } };
-  totalLabelRow.getCell(8).font = { bold: true, color: { argb: 'FF8C28BE' } };
+  totalLabelRow.getCell(2).font = { bold: true, color: { argb: 'FF0A2A4A' } };
+  totalLabelRow.getCell(8).font = { bold: true, color: { argb: 'FF0A2A4A' } };
   totalLabelRow.getCell(8).alignment = { horizontal: 'right' };
 
   const avgRow = ws.addRow(['', 'PRECIO MAYORISTA PROMEDIO:', '', '', '', '', '', list.reduce((s, p) => s + computeWholesalePrice(p), 0) / list.length]);
-  avgRow.getCell(2).font = { bold: true, color: { argb: 'FF8C28BE' } };
+  avgRow.getCell(2).font = { bold: true, color: { argb: 'FF0A2A4A' } };
   avgRow.getCell(8).numFmt = '"$"#,##0';
-  avgRow.getCell(8).font = { bold: true, color: { argb: 'FF8C28BE' } };
+  avgRow.getCell(8).font = { bold: true, color: { argb: 'FF0A2A4A' } };
   avgRow.getCell(8).alignment = { horizontal: 'right' };
 
   // ============ CONFIGURACIÓN FINAL ============

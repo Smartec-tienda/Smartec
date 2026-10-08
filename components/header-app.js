@@ -103,7 +103,7 @@
     // Botón Salir
     const logoutBtnHtml = opts.showLogoutButton
       ? `<button id="logout-btn"
-            class="bg-[#FF375F] hover:bg-[#E0304F] text-white px-4 py-1.5 rounded-full transition text-xs font-semibold shadow-apple">
+            class="bg-[#0A2A4A] hover:bg-[#E0304F] text-white px-4 py-1.5 rounded-full transition text-xs font-semibold shadow-apple">
             Salir
          </button>`
       : '';

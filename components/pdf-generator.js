@@ -147,13 +147,13 @@
 
       doc.setFillColor(245, 235, 255); // morado muy suave
       doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'F');
-      doc.setDrawColor(191, 90, 242);   // borde morado
+      doc.setDrawColor(10, 42, 74);   // borde morado
       doc.setLineWidth(0.4);
       doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'S');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
-      doc.setTextColor(191, 90, 242);
+      doc.setTextColor(10, 42, 74);
       doc.text('🏢 VENTA MAYORISTA', boxX + 4, boxY + 5.5);
 
       doc.setFont('helvetica', 'normal');
@@ -742,13 +742,13 @@
 
       doc.setFillColor(245, 235, 255);
       doc.roundedRect(boxX, boxY, boxW, boxH, 1.5, 1.5, 'F');
-      doc.setDrawColor(191, 90, 242);
+      doc.setDrawColor(10, 42, 74);
       doc.setLineWidth(0.3);
       doc.roundedRect(boxX, boxY, boxW, boxH, 1.5, 1.5, 'S');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
-      doc.setTextColor(191, 90, 242);
+      doc.setTextColor(10, 42, 74);
       doc.text('🏢 MAYORISTA', boxX + 3, boxY + 4.5);
 
       doc.setFont('helvetica', 'normal');

@@ -27,9 +27,9 @@
     --text:#1D1D1F;
     --text-dim:#6E6E73;
     --blue:#0071E3;
-    --blue-light:#5AC8FA;
-    --purple:#BF5AF2;
-    --pink:#FF375F;
+    --blue-light:#4A7A9A;
+    --purple:#0A2A4A;
+    --pink:#0A2A4A;
     --orange:#FF9F0A;
     --green:#30D158;
     --sd:#0A2A4A;
@@ -271,7 +271,7 @@
 
   /* ============ LOGO MARK ============ */
   .logo-mark{
-    background:linear-gradient(135deg, #0071E3, #BF5AF2);
+    background:linear-gradient(135deg, #0071E3, #0A2A4A);
     -webkit-background-clip:text;
     background-clip:text;
     color:transparent;
@@ -745,7 +745,7 @@ function actualizarProgreso(progreso) {
       dotClass = 'bg-[#0071E3] animate-pulse';
       statusLabel = 'Buscando…';
     } else if (p.status === 'error') {
-      dotClass = 'bg-[#FF375F]';
+      dotClass = 'bg-[#0A2A4A]';
       statusLabel = 'Sin respuesta';
     } else {
       dotClass = 'bg-[#C7C7CC]';
@@ -926,7 +926,7 @@ const firebaseConfig = window.__FIREBASE_CONFIG;
 if (!firebaseConfig) {
   document.body.innerHTML = `
     <div style="padding:40px;font-family:-apple-system,sans-serif;text-align:center;color:#1D1D1F">
-      <h2 style="color:#FF375F">Error de configuración</h2>
+      <h2 style="color:#0A2A4A">Error de configuración</h2>
       <p>No   se encontró configuración de Firebase para este dominio.</p>
       <p style="color:#6E6E73;font-size:14px">Contacta al administrador del sistema.</p>
     </div>
