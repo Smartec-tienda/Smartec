@@ -743,7 +743,15 @@ onAuthStateChanged(auth, async user => {
     $('blocked-message').innerText = 'Esta cuenta no tiene acceso al portal de mayoristas.';
     $('blocked-screen').classList.remove('hidden');
     $('blocked-screen').classList.add('flex');
-    hideSplash();
+
+    // 🆕 Ocultar splash a la fuerza
+    document.body.classList.remove('app-loading');
+    const splashEl = document.getElementById('app-splash');
+    if (splashEl) {
+      splashEl.style.opacity = '0';
+      splashEl.style.pointerEvents = 'none';
+      splashEl.style.display = 'none';
+    }
     return;
   }
 
@@ -771,7 +779,15 @@ onAuthStateChanged(auth, async user => {
     $('blocked-message').innerText = 'Tu cuenta no está registrada como mayorista. Contacta al administrador.';
     $('blocked-screen').classList.remove('hidden');
     $('blocked-screen').classList.add('flex');
-    hideSplash();
+
+    // 🆕 Ocultar splash a la fuerza
+    document.body.classList.remove('app-loading');
+    const splashEl = document.getElementById('app-splash');
+    if (splashEl) {
+      splashEl.style.opacity = '0';
+      splashEl.style.pointerEvents = 'none';
+      splashEl.style.display = 'none';
+    }
     return;
   }
 
@@ -786,7 +802,15 @@ onAuthStateChanged(auth, async user => {
       'Tu cuenta de mayorista está ' + statusLabel + '. Contacta al administrador para reactivarla.';
     $('blocked-screen').classList.remove('hidden');
     $('blocked-screen').classList.add('flex');
-    hideSplash();
+
+    // 🆕 Ocultar splash a la fuerza
+    document.body.classList.remove('app-loading');
+    const splashEl = document.getElementById('app-splash');
+    if (splashEl) {
+      splashEl.style.opacity = '0';
+      splashEl.style.pointerEvents = 'none';
+      splashEl.style.display = 'none';
+    }
     return;
   }
 
@@ -803,8 +827,17 @@ onAuthStateChanged(auth, async user => {
   $('app-screen').classList.remove('hidden');
   $('app-screen').classList.add('flex');
 
-  // 🆕 Ocultar splash INMEDIATAMENTE (no esperar a las cargas)
-  hideSplash();
+  // 🆕 Ocultar splash INMEDIATAMENTE — versión agresiva
+  document.body.classList.remove('app-loading');
+
+  const splashEl = document.getElementById('app-splash');
+  if (splashEl) {
+    splashEl.style.opacity = '0';
+    splashEl.style.pointerEvents = 'none';
+    splashEl.style.display = 'none'; // ← a la fuerza
+  }
+
+  console.log('[Portal MAY] Sesión iniciada:', currentCustomer.wholesale?.companyName);
 
   console.log('[Portal MAY] Sesión iniciada:', currentCustomer.wholesale?.companyName);
 
