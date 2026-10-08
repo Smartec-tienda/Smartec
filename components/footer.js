@@ -43,17 +43,17 @@
             <h4 class="font-semibold mb-4 text-sm text-[#1D1D1F]">Accesos</h4>
             <ul class="space-y-2 text-sm text-[#6E6E73] mb-5">
               <li>
-                <a href="/home.html" class="hover:text-[#0071E3] transition inline-flex items-center gap-1.5">
+                <a href="home.html" class="hover:text-[#0071E3] transition inline-flex items-center gap-1.5">
                   🏠 Ir a la plataforma
                 </a>
               </li>
               <li>
-                <a href="/venta.html" class="hover:text-[#0071E3] transition inline-flex items-center gap-1.5">
+                <a href="venta.html" class="hover:text-[#0071E3] transition inline-flex items-center gap-1.5">
                   🛒 Punto de venta
                 </a>
               </li>
               <li>
-                <a href="/mayoristas.html" class="hover:text-[#BF5AF2] transition inline-flex items-center gap-1.5">
+                <a href="mayoristas.html" class="hover:text-[#BF5AF2] transition inline-flex items-center gap-1.5">
                   🏢 Portal Mayoristas
                 </a>
               </li>
