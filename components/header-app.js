@@ -270,14 +270,25 @@
         };
       });
     }
-
     // Selector de tienda
     const storeSel = document.getElementById('header-app-store-selector');
     if (storeSel && typeof opts.onStoreChange === 'function') {
       storeSel.onchange = () => {
         const newStoreId = storeSel.value;
-        const store = (opts.stores || []).find(s => s.storeId === newStoreId);
-        if (store) opts.onStoreChange(store);
+
+        let store;
+        if (newStoreId === 'all') {
+          // 🆕 Caso especial: "Todas las tiendas"
+          store = { storeId: 'all', name: 'Todas las tiendas' };
+        } else {
+          store = (opts.stores || []).find(s => s.storeId === newStoreId);
+        }
+
+        if (store) {
+          opts.onStoreChange(store);
+        } else {
+          console.warn('[HeaderApp] Tienda no encontrada:', newStoreId);
+        }
       };
     }
   }

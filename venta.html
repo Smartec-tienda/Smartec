@@ -13,6 +13,7 @@
   <script src="lib/common.js"></script>
   <script src="lib/cache.js"></script>
   <script src="lib/fifo.js"></script>
+  <script src="lib/accounting-engine.js"></script>
   <script src="components/header-app.js"></script>
   <script src="components/favicon.js"></script>
   <script src="security/fingerprint.js"></script>
@@ -405,178 +406,193 @@
         <div id="products-grid" class="lg:flex-1 lg:overflow-y-auto p-3 md:p-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 auto-rows-max scrollbar-thin"></div>
       </section>
 
-      <!-- RIGHT: Panel carrito (oculto por defecto) -->
-      <aside id="cart-section" class="hidden glass-strong flex-col lg:overflow-hidden transition-all duration-300 lg:w-[420px] xl:w-[480px] border-l border-white/50">
+<!-- RIGHT: Panel carrito (oculto por defecto) -->
+<aside id="cart-section" class="hidden glass-strong flex-col lg:overflow-hidden transition-all duration-300 lg:w-[420px] xl:w-[480px] border-l border-white/50">
 
-        <!-- Header del panel -->
-        <div class="border-b border-white/50 p-3 flex items-center justify-between shrink-0">
-            <button onclick="toggleCart()" class="text-[#1D1D1F] hover:text-[#0071E3] flex items-center gap-2 text-sm font-semibold transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-            </svg>
-            Seguir comprando
-          </button>
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-bold text-[#1D1D1F] tracking-tight">Carrito</span>
-            <button onclick="clearCart()" class="text-xs text-[#0A2A4A] hover:underline font-semibold">Vaciar</button>
-          </div>
+  <!-- Header del panel (FIJO) -->
+  <div class="border-b border-white/50 p-3 flex items-center justify-between shrink-0">
+    <button onclick="toggleCart()" class="text-[#1D1D1F] hover:text-[#0071E3] flex items-center gap-2 text-sm font-semibold transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Seguir comprando
+    </button>
+    <div class="flex items-center gap-2">
+      <span class="text-sm font-bold text-[#1D1D1F] tracking-tight">Carrito</span>
+      <button onclick="clearCart()" class="text-xs text-[#0A2A4A] hover:underline font-semibold">Vaciar</button>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR CON SCROLL INTERNO (Retail + Cliente + Items) -->
+  <div class="flex-1 lg:overflow-y-auto scrollbar-thin flex flex-col">
+
+    <!-- Selector Retail / Mayorista -->
+    <div class="border-b border-white/50 px-3 py-3 shrink-0">
+      <div class="grid grid-cols-2 gap-1.5 bg-black/5 rounded-2xl p-1" id="sale-mode-toggle">
+        <button type="button" onclick="setSaleMode('retail')" data-mode="retail"
+          class="sale-mode-btn py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5">
+          🛒 Retail
+        </button>
+        <button type="button" onclick="setSaleMode('wholesale')" data-mode="wholesale"
+          class="sale-mode-btn py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5">
+          🏢 Mayorista
+        </button>
+      </div>
+
+      <!-- Buscador de mayorista (oculto por defecto) -->
+      <div id="wholesale-search-wrap" class="hidden mt-3">
+        <label class="text-xs font-semibold text-[#1D1D1F] block mb-1">🏢 Buscar mayorista</label>
+        <div class="relative">
+          <input
+            id="wholesale-search-input"
+            type="text"
+            placeholder="Escribe nombre, NIT o teléfono..."
+            class="w-full px-3 py-2.5 rounded-xl text-sm pr-9"
+            autocomplete="off">
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[#6E6E73] text-sm">🔍</span>
         </div>
 
-      <!-- 🆕 Selector Retail / Mayorista -->
-      <div class="border-b border-white/50 px-3 py-3 shrink-0">
-        <div class="grid grid-cols-2 gap-1.5 bg-black/5 rounded-2xl p-1" id="sale-mode-toggle">
-          <button type="button" onclick="setSaleMode('retail')" data-mode="retail"
-            class="sale-mode-btn py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5">
-            🛒 Retail
-          </button>
-          <button type="button" onclick="setSaleMode('wholesale')" data-mode="wholesale"
-            class="sale-mode-btn py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5">
-            🏢 Mayorista
-          </button>
+        <div id="wholesale-search-results"
+          class="hidden mt-2 bg-white rounded-xl shadow-apple-lg max-h-64 overflow-y-auto scrollbar-thin border border-black/5">
         </div>
 
-        <!-- Buscador de mayorista (oculto por defecto) -->
-        <div id="wholesale-search-wrap" class="hidden mt-3">
-          <label class="text-xs font-semibold text-[#1D1D1F] block mb-1">🏢 Buscar mayorista</label>
-          <div class="relative">
-            <input
-              id="wholesale-search-input"
-              type="text"
-              placeholder="Escribe nombre, NIT o teléfono..."
-              class="w-full px-3 py-2.5 rounded-xl text-sm pr-9"
-              autocomplete="off">
-            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[#6E6E73] text-sm">🔍</span>
-          </div>
+        <div id="wholesale-selected-chip" class="hidden mt-2">
+        </div>
 
-          <!-- Resultados (oculto hasta que escriba) -->
-          <div id="wholesale-search-results"
-            class="hidden mt-2 bg-white rounded-xl shadow-apple-lg max-h-64 overflow-y-auto scrollbar-thin border border-black/5">
-            <!-- Se llena dinámicamente por JS en el próximo sub-paso -->
-          </div>
+        <p class="text-[10px] text-[#6E6E73] mt-2 leading-relaxed">
+          💡 Al elegir un mayorista se aplicarán automáticamente sus precios B2B.
+        </p>
+      </div>
+    </div>
 
-          <!-- Chip del mayorista seleccionado (oculto hasta que elija uno) -->
-          <div id="wholesale-selected-chip" class="hidden mt-2">
-            <!-- Se llena dinámicamente por JS en el próximo sub-paso -->
-          </div>
+    <!-- Datos del cliente -->
+    <div class="p-4 border-b border-white/50 shrink-0">
 
-          <!-- Nota informativa -->
-          <p class="text-[10px] text-[#6E6E73] mt-2 leading-relaxed">
-            💡 Al elegir un mayorista se aplicarán automáticamente sus precios B2B.
-          </p>
+      <!-- TARJETA DEL MAYORISTA -->
+      <div id="wholesale-card-wrap" class="hidden mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-bold text-[#1D1D1F] tracking-tight">🏢 Mayorista seleccionado</h3>
+          <button type="button" onclick="changeWholesaleCustomer()"
+            class="text-[11px] text-[#0071E3] hover:underline font-semibold">
+            Cambiar
+          </button>
+        </div>
+        <div id="wholesale-card-body">
         </div>
       </div>
 
-        <!-- Datos del cliente (modo mixto: retail vs mayorista) -->
-        <div class="p-4 border-b border-white/50 shrink-0">
+      <!-- COLAPSABLE "Editar datos para esta venta" -->
+      <div id="wholesale-edit-wrap" class="hidden mb-3">
+        <button type="button" onclick="toggleWholesaleEditSection()"
+          class="w-full flex items-center justify-between text-xs font-semibold text-[#6E6E73] hover:text-[#1D1D1F] transition py-2">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 transition-transform" id="wholesale-edit-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+            Editar datos para esta venta (opcional)
+          </span>
+        </button>
+      </div>
 
-          <!-- 🆕 TARJETA DEL MAYORISTA (solo visible en modo mayorista) -->
-          <div id="wholesale-card-wrap" class="hidden mb-4">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-bold text-[#1D1D1F] tracking-tight">🏢 Mayorista seleccionado</h3>
-              <button type="button" onclick="changeWholesaleCustomer()"
-                class="text-[11px] text-[#0071E3] hover:underline font-semibold">
-                Cambiar
-              </button>
-            </div>
-            <div id="wholesale-card-body">
-              <!-- Se llena por JS -->
-            </div>
-          </div>
+      <!-- FORMULARIO DEL CLIENTE -->
+      <div id="customer-form-wrap">
+        <h3 class="text-sm font-bold text-[#1D1D1F] mb-3 flex items-center gap-2 tracking-tight">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          Datos del Cliente
+        </h3>
+        <div class="grid grid-cols-2 gap-2">
+          <input id="c-name" placeholder="Nombre *" class="col-span-2 px-3 py-2.5 rounded-xl text-sm">
+          <input id="c-phone" placeholder="Teléfono/WhatsApp *" class="px-3 py-2.5 rounded-xl text-sm">
+          <input id="c-email" type="email" placeholder="Correo" class="px-3 py-2.5 rounded-xl text-sm">
+          <p id="c-phone-status" class="col-span-2 text-[10px] text-[#6E6E73] -mt-1"></p>
+          <input id="c-address" placeholder="Dirección" class="col-span-2 px-3 py-2.5 rounded-xl text-sm">
+          <input id="c-city" placeholder="Ciudad" class="px-3 py-2.5 rounded-xl text-sm">
 
-          <!-- 🆕 SECCIÓN COLAPSABLE "Editar datos para esta venta" (solo en modo mayorista) -->
-          <div id="wholesale-edit-wrap" class="hidden mb-3">
-            <button type="button" onclick="toggleWholesaleEditSection()"
-              class="w-full flex items-center justify-between text-xs font-semibold text-[#6E6E73] hover:text-[#1D1D1F] transition py-2">
-              <span class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 transition-transform" id="wholesale-edit-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
-                Editar datos para esta venta (opcional)
-              </span>
+          <!-- PAGOS MÚLTIPLES -->
+          <div class="col-span-2">
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-semibold text-[#1D1D1F]">Métodos de pago *</label>
+              <span id="payments-status" class="text-[10px] font-semibold">—</span>
+            </div>
+            <div id="payment-rows" class="space-y-2"></div>
+            <button type="button" onclick="addPaymentRow()" class="w-full mt-2 py-2.5 border-2 border-dashed border-black/15 rounded-xl text-xs font-semibold text-[#6E6E73] hover:border-[#0071E3] hover:text-[#0071E3] transition">
+              + Agregar otro método
             </button>
-          </div>
-
-          <!-- 🆕 FORMULARIO DEL CLIENTE (retail libre / mayorista colapsable) -->
-          <div id="customer-form-wrap">
-            <h3 class="text-sm font-bold text-[#1D1D1F] mb-3 flex items-center gap-2 tracking-tight">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-              Datos del Cliente
-            </h3>
-            <div class="grid grid-cols-2 gap-2">
-              <input id="c-name" placeholder="Nombre *" class="col-span-2 px-3 py-2.5 rounded-xl text-sm">
-              <input id="c-phone" placeholder="Teléfono/WhatsApp *" class="px-3 py-2.5 rounded-xl text-sm">
-              <input id="c-email" type="email" placeholder="Correo" class="px-3 py-2.5 rounded-xl text-sm">
-              <p id="c-phone-status" class="col-span-2 text-[10px] text-[#6E6E73] -mt-1"></p>
-              <input id="c-address" placeholder="Dirección" class="col-span-2 px-3 py-2.5 rounded-xl text-sm">
-              <input id="c-city" placeholder="Ciudad" class="px-3 py-2.5 rounded-xl text-sm">
-
-              <!-- PAGOS MÚLTIPLES -->
-              <div class="col-span-2">
-                <div class="flex justify-between items-center mb-1">
-                  <label class="text-xs font-semibold text-[#1D1D1F]">Métodos de pago *</label>
-                  <span id="payments-status" class="text-[10px] font-semibold">—</span>
-                </div>
-                <div id="payment-rows" class="space-y-2"></div>
-                <button type="button" onclick="addPaymentRow()" class="w-full mt-2 py-2.5 border-2 border-dashed border-black/15 rounded-xl text-xs font-semibold text-[#6E6E73] hover:border-[#0071E3] hover:text-[#0071E3] transition">
-                  + Agregar otro método
-                </button>
-                <div id="payment-cta-note" class="hidden mt-2">
-                  <div class="bg-[#FF9F0A]/10 border border-[#FF9F0A]/30 rounded-xl p-2 text-xs text-[#9A6700]">
-                    ⚠️ <b>Contra entrega:</b> la venta quedará como <b>PAGO PENDIENTE</b> hasta confirmar el cobro.
-                  </div>
-                </div>
+            <div id="payment-cta-note" class="hidden mt-2">
+              <div class="bg-[#FF9F0A]/10 border border-[#FF9F0A]/30 rounded-xl p-2 text-xs text-[#9A6700]">
+                ⚠️ <b>Contra entrega:</b> la venta quedará como <b>PAGO PENDIENTE</b> hasta confirmar el cobro.
               </div>
-
-              <input id="c-notes" placeholder="Notas / observaciones" class="col-span-2 px-3 py-2.5 rounded-xl text-sm">
-            </div>
-          </div>
-        </div>
-
-         <!-- Lista de productos del carrito -->
-        <div class="flex-1 lg:overflow-y-auto p-4 scrollbar-thin">
-          <div id="cart-items" class="space-y-2">
-            <p class="text-xs text-[#6E6E73] text-center py-8">Agrega productos desde el catálogo</p>
-          </div>
-        </div>
-
-        <!-- Totales -->
-        <div class="border-t border-white/50 p-4 shrink-0 shadow-apple-lg">
-          <div class="space-y-2 text-sm mb-3">
-            <div class="flex justify-between">
-              <span class="text-[#6E6E73]">Subtotal</span>
-              <span id="t-subtotal" class="font-semibold text-[#1D1D1F]">$0</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-[#6E6E73]">Descuento</span>
-              <input id="t-discount" type="number" value="0" min="0" class="w-24 text-right px-2 py-1.5 rounded-xl text-sm">
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-[#6E6E73]">Envío</span>
-              <input id="t-shipping" type="number" value="0" min="0" class="w-24 text-right px-2 py-1.5 rounded-xl text-sm">
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-[#6E6E73]">Recargo tarjeta</span>
-              <select id="t-cardsurcharge" class="w-24 text-right px-2 py-1.5 rounded-xl text-sm">
-                <option value="0">0%</option>
-                <option value="0.03">3%</option>
-                <option value="0.04">4%</option>
-                <option value="0.05">5%</option>
-              </select>
-            </div>
-            <div class="flex justify-between text-xs text-[#6E6E73]" id="t-cardsurcharge-row" style="display:none;">
-              <span>Recargo aplicado</span>
-              <span id="t-cardsurcharge-amount">$0</span>
-            </div>
-            <div class="flex justify-between text-lg font-bold text-[#1D1D1F] pt-2 border-t border-black/10 tracking-tight">
-              <span>TOTAL</span><span id="t-total">$0</span>
             </div>
           </div>
 
-          <button id="save-btn" class="btn-apple w-full py-3 rounded-xl font-bold disabled:opacity-40" disabled>
-            💾 Registrar venta
-          </button>
+          <input id="c-notes" placeholder="Notas / observaciones" class="col-span-2 px-3 py-2.5 rounded-xl text-sm">
         </div>
-      </aside>
+      </div>
+    </div>
+
+    <!-- Lista de productos del carrito -->
+    <div class="p-4">
+      <div id="cart-items" class="space-y-2">
+        <p class="text-xs text-[#6E6E73] text-center py-8">Agrega productos desde el catálogo</p>
+      </div>
+    </div>
+
+  </div>
+  <!-- FIN CONTENEDOR CON SCROLL -->
+
+  <!-- Totales (FIJO ABAJO) -->
+  <!-- Totales (FIJO ABAJO) -->
+  <div class="border-t border-white/50 p-4 shrink-0 shadow-apple-lg bg-white/60 backdrop-blur">
+
+    <!-- Header con TOTAL + toggle colapsable -->
+    <div class="flex justify-between items-center mb-3">
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-bold text-[#1D1D1F] tracking-tight">TOTAL</span>
+        <button type="button" id="totals-toggle-btn" onclick="toggleTotalsBreakdown()"
+          class="text-[#6E6E73] hover:text-[#1D1D1F] transition p-1"
+          title="Ver/ocultar desglose">
+          <svg id="totals-toggle-chevron" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+      </div>
+      <span id="t-total" class="text-lg font-bold text-[#1D1D1F] tracking-tight">$0</span>
+    </div>
+
+    <!-- Desglose colapsable (oculto por defecto) -->
+    <div id="totals-breakdown" class="hidden space-y-2 text-sm mb-3 pb-3 border-b border-black/10">
+      <div class="flex justify-between">
+        <span class="text-[#6E6E73]">Subtotal</span>
+        <span id="t-subtotal" class="font-semibold text-[#1D1D1F]">$0</span>
+      </div>
+      <div class="flex justify-between items-center">
+        <span class="text-[#6E6E73]">Descuento</span>
+        <input id="t-discount" type="number" value="0" min="0" class="w-24 text-right px-2 py-1.5 rounded-xl text-sm">
+      </div>
+      <div class="flex justify-between items-center">
+        <span class="text-[#6E6E73]">Envío</span>
+        <input id="t-shipping" type="number" value="0" min="0" class="w-24 text-right px-2 py-1.5 rounded-xl text-sm">
+      </div>
+      <div class="flex justify-between items-center">
+        <span class="text-[#6E6E73]">Recargo tarjeta</span>
+        <select id="t-cardsurcharge" class="w-24 text-right px-2 py-1.5 rounded-xl text-sm">
+          <option value="0">0%</option>
+          <option value="0.03">3%</option>
+          <option value="0.04">4%</option>
+          <option value="0.05">5%</option>
+        </select>
+      </div>
+      <div class="flex justify-between text-xs text-[#6E6E73]" id="t-cardsurcharge-row" style="display:none;">
+        <span>Recargo aplicado</span>
+        <span id="t-cardsurcharge-amount">$0</span>
+      </div>
+    </div>
+
+    <button id="save-btn" class="btn-apple w-full py-3 rounded-xl font-bold disabled:opacity-40" disabled>
+      💾 Registrar venta
+    </button>
+  </div>
+</aside>
     </div>
   </div>
 
@@ -821,7 +837,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import {
   getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
-  updateDoc, serverTimestamp, query, where
+  updateDoc, serverTimestamp, query, where, Timestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
@@ -1380,23 +1396,17 @@ function renderPosPaymentRows() {
   if (!container) return;
 
   const payments = window.__posPayments || [];
-  // 🆕 Comparamos contra el total base. El recargo de tarjeta se "sobreentiende":
-  //    si hay fila de tarjeta con monto X y rate R, esa fila representa X base,
-  //    y el datáfono realmente pasa X × (1+R). El total a cuadrar es:
-  //    totalBase + (X × R)
   const totalBase = computePosTotalBase();
   const surchargeInfo = computePosSurcharge();
-  const totalConRecargo = totalBase + surchargeInfo.amount;
 
   // La suma de filas tal como están ingresadas debe cubrir totalBase
-  // (porque el recargo se cobra DENTRO del monto de tarjeta)
   const sum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
   const remaining = totalBase - sum;
 
   // Status del header
   if (statusEl) {
     if (_posHasContraentrega) {
-      statusEl.innerHTML = '<span class="text-amber-600">📦 Contra entrega (pago pendiente)</span>';
+      statusEl.innerHTML = '<span class="text-amber-600">📦 Pago pendiente</span>';
     } else if (Math.abs(remaining) < 1) {
       statusEl.innerHTML = '<span class="text-green-600">✅ Cuadra</span>';
     } else if (remaining > 0) {
@@ -1406,7 +1416,7 @@ function renderPosPaymentRows() {
     }
   }
 
-  // Opciones de métodos (contraentrega excluido si hay más de 1 pago)
+  // Opciones de métodos
   const methods = [
     { v: 'efectivo', l: '💵 Efectivo' },
     { v: 'transferencia', l: '🔄 Transferencia' },
@@ -1415,11 +1425,10 @@ function renderPosPaymentRows() {
     { v: 'contraentrega', l: '📦 Contra entrega' }
   ];
 
-  // Si ya hay un método contraentrega seleccionado en cualquier fila,
-  // solo permitir 1 fila y bloquear el botón "+ agregar"
+  // ¿Hay contraentrega activa?
   const hasCTA = payments.some(p => p.method === 'contraentrega');
 
-  // Opciones de canales (transferencia / crédito)
+  // Canales
   const transferChannels = (paymentChannelsList || [])
     .filter(c => c.type === 'transferencia' && c.active !== false);
   const creditChannels = (paymentChannelsList || [])
@@ -1449,25 +1458,41 @@ function renderPosPaymentRows() {
 
   // Render
   container.innerHTML = payments.map((p, idx) => {
-    const methodOpts = methods.map(m =>
-      `<option value="${m.v}" ${p.method === m.v ? 'selected' : ''}>${m.l}</option>`
-    ).join('');
+    const isCTA = p.method === 'contraentrega';
+
+    // Bloquear cambios si hay contraentrega y esta fila NO es la CTA
+    const lockRow = hasCTA && !isCTA;
+
+    const methodOpts = methods.map(m => {
+      // Si hay CTA activa, bloquear la opción de cambiar a otros métodos en la fila CTA
+      const disabled = (isCTA && m.v !== 'contraentrega') ? 'disabled' : '';
+      return `<option value="${m.v}" ${p.method === m.v ? 'selected' : ''} ${disabled}>${m.l}</option>`;
+    }).join('');
+
+    // Input de monto: si es CTA → deshabilitado, gris, informativo
+    const amountInput = isCTA
+      ? `<input type="number" value="${p.amount || 0}" disabled
+           class="px-2 py-1.5 border rounded-lg text-xs text-right font-semibold bg-gray-100 text-gray-500 cursor-not-allowed"
+           title="El monto se cobrará al entregar el pedido">`
+      : `<input type="number" value="${p.amount || 0}" min="0" step="100"
+           onchange="updatePaymentRow(${idx}, 'amount', this.value)"
+           class="px-2 py-1.5 border rounded-lg text-xs text-right font-semibold">`;
 
     return `
-      <div class="border rounded-lg p-2.5 bg-gray-50" data-row-idx="${idx}">
+      <div class="border rounded-lg p-2.5 ${isCTA ? 'bg-amber-50 border-amber-300' : 'bg-gray-50'}" data-row-idx="${idx}">
         <div class="flex justify-between items-center mb-1.5">
-          <p class="text-[10px] font-semibold text-gray-500">Pago ${idx + 1} de ${payments.length}</p>
-          ${payments.length > 1 ? `
+          <p class="text-[10px] font-semibold ${isCTA ? 'text-amber-700' : 'text-gray-500'}">
+            ${isCTA ? '📦 Pago pendiente (contra entrega)' : `Pago ${idx + 1} de ${payments.length}`}
+          </p>
+          ${payments.length > 1 && !lockRow ? `
             <button type="button" onclick="removePaymentRow(${idx})" class="text-red-500 hover:text-red-700 text-[10px] font-semibold">✕ Quitar</button>
           ` : ''}
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <select onchange="updatePaymentRow(${idx}, 'method', this.value)" class="px-2 py-1.5 border rounded-lg text-xs">
+          <select ${lockRow ? 'disabled' : ''} onchange="updatePaymentRow(${idx}, 'method', this.value)" class="px-2 py-1.5 border rounded-lg text-xs ${lockRow ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}">
             ${methodOpts}
           </select>
-          <input type="number" value="${p.amount || 0}" min="0" step="100"
-            onchange="updatePaymentRow(${idx}, 'amount', this.value)"
-            class="px-2 py-1.5 border rounded-lg text-xs text-right font-semibold">
+          ${amountInput}
         </div>
         ${renderChannelSelect(p, idx)}
       </div>
@@ -1488,17 +1513,30 @@ function renderPosPaymentRows() {
     }
   }
 
-  // Aviso de contraentrega
+  // Aviso de contraentrega (rediseñado)
   const ctaNote = $('payment-cta-note');
   if (ctaNote) {
-    if (_posHasContraentrega) ctaNote.classList.remove('hidden');
-    else ctaNote.classList.add('hidden');
+    if (_posHasContraentrega) {
+      ctaNote.classList.remove('hidden');
+      ctaNote.innerHTML = `
+        <div class="bg-amber-50 border border-amber-300 rounded-xl p-3">
+          <p class="text-xs font-bold text-amber-800 mb-1">📦 VENTA CONTRA ENTREGA</p>
+          <p class="text-[11px] text-amber-700 leading-relaxed">
+            El monto de <b>${fmt(totalBase)}</b> se cobrará cuando se entregue el pedido.
+          </p>
+          <p class="text-[10px] text-amber-600 mt-1.5">
+            El pago se registrará desde <b>Domicilios → Cobros pendientes</b>.
+          </p>
+        </div>
+      `;
+    } else {
+      ctaNote.classList.add('hidden');
+    }
   }
 
   // Revalidar botón guardar
   validatePaymentForm();
 }
-
 /**
  * Agrega una nueva fila de pago.
  */
@@ -1618,19 +1656,19 @@ function validatePaymentForm() {
     return;
   }
 
-  // Contraentrega especial
+  // Contraentrega especial: se permite registrar sin cuadre
   if (_posHasContraentrega) {
-    // Contraentrega debe ser la única fila
+    // Debe ser la única fila
     if (payments.length > 1) {
       btn.disabled = true;
       return;
     }
-    // Contraentrega no requiere monto exacto (se cobra después)
+    // OK: contraentrega se cobra después
     btn.disabled = false;
     return;
   }
 
-  // Sin contraentrega: la suma efectiva (con recargo aplicado) debe cuadrar
+  // Sin contraentrega: la suma efectiva debe cuadrar
   const totalBase = computePosTotalBase();
   const surchargeInfo = computePosSurcharge();
   const totalConRecargo = totalBase + surchargeInfo.amount;
@@ -1654,7 +1692,6 @@ function validatePaymentForm() {
   // Todo OK
   btn.disabled = false;
 }
-
 /**
  * Inicializa el sistema de pagos (al abrir el POS por primera vez).
  */
@@ -1941,36 +1978,7 @@ function initPosPayments() {
     return inv ? Number(inv.stock||0) : 0;
   }
 
-    /**
-   * 🆕 Devuelve el costo FIFO promedio actual de una variante en la tienda.
-   * Se usa para calcular la utilidad en el momento de la venta.
-   * NO se muestra al vendedor, solo es un dato interno.
-   */
-  function getCurrentAvgCostFIFO(variantId) {
-    if (!currentStore) return 0;
-    const storeId = currentStore.storeId;
-    const invId = `${storeId}_${variantId}`;
-    let inv = inventory.find(i => i.id === invId);
-    if (!inv) inv = inventory.find(i => i.storeId === storeId && i.variantId === variantId);
-
-    const product = products.find(p => (p.variants||[]).some(v => v.variantId === variantId));
-    const fallbackCost = Number(product?.cost || 0);
-
-    if (!inv) {
-      // Sin registro de inventario → usar el costo del producto
-      return fallbackCost;
-    }
-
-    // Normalizar: si no tiene batches, se crea uno de respaldo con el stock + costo del producto
-    const normalized = window.SmartecFIFO.normalizeInventory(
-      { stock: inv.stock, batches: inv.batches },
-      fallbackCost
-    );
-
-    return window.SmartecFIFO.avgCostFromBatches(normalized.batches);
-  }
-
-    /**
+     /**
    * 🆕 Devuelve el costo FIFO promedio actual de una variante en la tienda.
    * Se usa para calcular la utilidad en el momento de la venta.
    */
@@ -3052,20 +3060,69 @@ function initPosPayments() {
       $('save-btn').disabled = cart.length === 0;
     }
   } 
-    window.updateTotals = updateTotals;
-      // 🆕 Listener para el select de recargo tarjeta
-  (function() {
-    const sel = $('t-cardsurcharge');
-    if (sel && !sel.dataset.listener) {
-      sel.dataset.listener = '1';
-      sel.addEventListener('change', () => {
-        updateTotals();
-      });
+
+    /* ============================================================
+     🆕 Colapsable del desglose de totales
+  ============================================================ */
+  window.toggleTotalsBreakdown = () => {
+    const breakdown = $('totals-breakdown');
+    const chevron = $('totals-toggle-chevron');
+    if (!breakdown) return;
+
+    const isHidden = breakdown.classList.contains('hidden');
+
+    if (isHidden) {
+      breakdown.classList.remove('hidden');
+      if (chevron) chevron.style.transform = 'rotate(180deg)';
+    } else {
+      breakdown.classList.add('hidden');
+      if (chevron) chevron.style.transform = 'rotate(0deg)';
     }
-  })();
+  };
+
+window.updateTotals = updateTotals;
+
+/* ============================================================
+   🆕 Listeners de los campos de totales (descuento, envío, recargo)
+   Se disparan en tiempo real para recalcular subtotal/total.
+============================================================ */
+(function() {
+  const discountInput = $('t-discount');
+  const shippingInput = $('t-shipping');
+  const surchargeSelect = $('t-cardsurcharge');
+
+  if (discountInput && !discountInput.dataset.listener) {
+    discountInput.dataset.listener = '1';
+    discountInput.addEventListener('input', () => updateTotals());
+    discountInput.addEventListener('change', () => updateTotals());
+  }
+
+  if (shippingInput && !shippingInput.dataset.listener) {
+    shippingInput.dataset.listener = '1';
+    shippingInput.addEventListener('input', () => updateTotals());
+    shippingInput.addEventListener('change', () => updateTotals());
+  }
+
+  if (surchargeSelect && !surchargeSelect.dataset.listener) {
+    surchargeSelect.dataset.listener = '1';
+    surchargeSelect.addEventListener('change', () => updateTotals());
+  }
+})();
   /* ============ GUARDAR VENTA ============ */
   $('save-btn').onclick = async () => {
     if (!cart.length) return;
+
+        // 🆕 Helpers de fecha (deben estar ANTES de createCarteraFromSale)
+    const todayStr = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    };
+    const addDays = (dateStr, days) => {
+      const d = new Date(dateStr + 'T12:00:00');
+      d.setDate(d.getDate() + Number(days || 0));
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    };
+
 
     const customer = {
       name: $('c-name').value.trim(),
@@ -3787,7 +3844,54 @@ function initPosPayments() {
           const d = new Date(s.createdAt.seconds * 1000);
           return d >= startOfMonth2 && s.status !== 'anulada';
         });
-      
+  
+      // 🆕 CONTABILIZACIÓN AUTOMÁTICA
+      // Generar comprobante contable (no bloquea si falla)
+      try {
+        const saleForContab = {
+          id: saleRef.id,
+          documentNumber,
+          storeId: currentStore.storeId,
+          storeName: currentStore.name,
+          customer,
+          items,
+          subtotal, discount, shipping,
+          surchargeRate, surchargeAmount,
+          total, totalCost, profit,
+          commissionBase,
+          saleMode,
+          isWholesaleSale: saleMode === 'wholesale',
+          wholesaleCustomer: wholesaleSnapshot,
+          paymentMethod,
+          paymentStatus,
+          paymentBreakdown,
+          createdAt: { seconds: Math.floor(Date.now() / 1000) }
+        };
+        await generateComprobanteFromSale(saleForContab);
+      } catch (contabErr) {
+        console.warn('[Contab] Error al generar comprobante (venta sí guardada):', contabErr);
+      }
+
+      // 🆕 CREAR REGISTRO EN CARTERA SI ES PAGO PENDIENTE
+      try {
+        if (paymentStatus === 'pending') {
+          await createCarteraFromSale({
+            saleId: saleRef.id,
+            documentNumber,
+            storeId: currentStore.storeId,
+            storeName: currentStore.name,
+            customer,
+            total,
+            date: new Date().toISOString().split('T')[0],
+            dueDate: addDays(todayStr(), 30),   // 30 días por defecto
+            paymentMethod,
+            paymentBreakdown
+          });
+        }
+      } catch (carteraErr) {
+        console.warn('[Cartera] Error creando registro (venta sí guardada):', carteraErr);
+      }
+
       $('success-doc-value').innerText = documentNumber || '—';
 
       // 🆕 Poblar info del modal de éxito
@@ -4254,6 +4358,216 @@ function initPosPayments() {
       catalog.classList.remove('hidden');
     }
   });
+
+    /* ============================================================
+     🆕 CREAR REGISTRO EN CARTERA
+     Cuando una venta queda pendiente de pago (contraentrega o crédito),
+     se crea automáticamente un registro en la colección 'cartera'.
+  ============================================================ */
+  async function createCarteraFromSale(saleData) {
+    if (!saleData) {
+      console.warn('[Cartera] ⚠️ saleData vacío, no se crea registro');
+      return null;
+    }
+
+    console.log('[Cartera] 🟡 Intentando crear registro para venta:', saleData.saleId, '·', saleData.customer?.name, '·', saleData.total);
+
+    try {
+      // 1. Idempotencia: verificar que no exista ya
+      const dupQuery = query(
+        collection(db, 'cartera'),
+        where('saleId', '==', saleData.saleId)
+      );
+      const dupSnap = await getDocs(dupQuery);
+      if (!dupSnap.empty) {
+        console.log('[Cartera] ℹ️ Registro ya existe para venta', saleData.saleId);
+        return dupSnap.docs[0].id;
+      }
+
+      // 2. Determinar cliente NIT (si lo tiene)
+      const clientNit = saleData.customer?.nit || saleData.customer?.document || '';
+
+      // 3. Determinar tipo de cobro según método de pago
+      const method = saleData.paymentMethod || 'contraentrega';
+      const tipoCobro = method === 'credito' ? 'credito'
+                      : method === 'contraentrega' ? 'contraentrega'
+                      : 'otro';
+
+      // 4. Notas con info del pago
+      let notes = 'Generado automáticamente desde venta';
+      if (saleData.paymentBreakdown?.length) {
+        notes += ` · ${saleData.paymentBreakdown.map(p => p.method).join(', ')}`;
+      }
+
+      // 5. Crear el doc
+      const carteraData = {
+        // Datos de la venta origen
+        saleId: saleData.saleId,
+        documentNumber: saleData.documentNumber || null,
+        sourceType: 'sale',
+
+        // Cliente
+        clientName: saleData.customer?.name || 'Cliente',
+        clientNit: clientNit,
+        clientPhone: saleData.customer?.phone || '',
+        clientEmail: saleData.customer?.email || '',
+
+        // Factura
+        invoiceNumber: saleData.documentNumber || null,
+
+        // Fechas
+        date: saleData.date || todayStr(),
+        dueDate: saleData.dueDate || addDays(saleData.date || todayStr(), 30),
+
+        // Montos
+        amount: Number(saleData.total || 0),
+        payments: [],
+
+        // Clasificación
+        tipoCobro,
+        paymentMethod: method,
+        paymentBreakdown: saleData.paymentBreakdown || [],
+
+        // Tienda
+        storeId: saleData.storeId,
+        storeName: saleData.storeName,
+
+        // Meta
+        notes,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        createdBy: currentUser?.email || null
+      };
+
+      const ref = await addDoc(collection(db, 'cartera'), carteraData);
+      console.log('[Cartera] Registro creado:', ref.id, '·', carteraData.clientName, '·', fmt(carteraData.amount));
+
+      // 6. Guardar carteraId en la venta para vincular
+      try {
+        await updateDoc(doc(db, 'sales', saleData.saleId), {
+          carteraId: ref.id
+        });
+      } catch (linkErr) {
+        console.warn('[Cartera] No se pudo vincular carteraId en la venta:', linkErr);
+      }
+
+      // 7. Auditoría
+      await audit({
+        action: 'create',
+        collection: 'cartera',
+        docId: ref.id,
+        after: { clientName: carteraData.clientName, amount: carteraData.amount, tipoCobro },
+        note: `CxC automática: ${carteraData.clientName} · ${fmt(carteraData.amount)} · ${tipoCobro}`
+      });
+
+      return ref.id;
+
+    } catch (e) {
+      console.error('[Cartera] Error creando registro:', e);
+      return null;
+    }
+  }
+
+  window.createCarteraFromSale = createCarteraFromSale;
+
+    /* ============================================================
+     🆕 CONTABILIZACIÓN AUTOMÁTICA DE LA VENTA
+     Genera el comprobante contable y lo proyecta a movimientos.
+     Se llama después de guardar la venta en 'sales'.
+  ============================================================ */
+  async function generateComprobanteFromSale(saleData) {
+    try {
+      if (!window.SmartecAccounting || !window.SmartecAccounting.buildComprobanteFromSale) {
+        console.warn('[Contab] accounting-engine no disponible — se omite comprobante');
+        return null;
+      }
+
+      // 1. Cargar config PUC desde settings/accounting (si existe)
+      let pucConfig = {};
+      try {
+        const setSnap = await getDoc(doc(db, 'settings', 'accounting'));
+        if (setSnap.exists()) {
+          const setData = setSnap.data();
+          pucConfig = setData.puc || {};
+        }
+      } catch (e) {
+        console.warn('[Contab] No se pudo leer settings/accounting:', e);
+      }
+
+      // 2. Construir el comprobante
+      const comprobante = window.SmartecAccounting.buildComprobanteFromSale(
+        saleData,
+        pucConfig,
+        {
+          createdBy: currentUser?.uid || null,
+          createdByName: currentUserData?.name || currentUser?.email || null
+        }
+      );
+
+      if (!comprobante || !comprobante.items || !comprobante.items.length) {
+        console.warn('[Contab] Comprobante vacío — no se inserta');
+        return null;
+      }
+
+      // 3. Idempotencia: verificar si ya existe comprobante para esta venta
+      const dupQuery = query(
+        collection(db, 'comprobantes'),
+        where('sourceType', '==', 'sale'),
+        where('sourceId', '==', saleData.id || saleData.sourceId)
+      );
+      const dupSnap = await getDocs(dupQuery);
+      if (!dupSnap.empty) {
+        console.log('[Contab] Comprobante ya existe para venta', saleData.id, '— saltando');
+        return dupSnap.docs[0].id;
+      }
+
+      // 4. Insertar el comprobante en Firestore
+      const compRef = await addDoc(collection(db, 'comprobantes'), {
+        ...comprobante,
+        createdAt: serverTimestamp()
+      });
+
+      console.log('[Contab] Comprobante creado:', compRef.id, '·', comprobante.concept);
+
+      // 5. Proyectar a movimientos
+      try {
+        const pucBase = (window.SmartecPUC && window.SmartecPUC.getBase)
+          ? window.SmartecPUC.getBase()
+          : [];
+        const pucMap = window.SmartecAccounting.buildPucMap(pucBase);
+
+        const movements = window.SmartecAccounting.buildMovementsFromComprobante(
+          { id: compRef.id, ...comprobante },
+          pucMap,
+          {
+            createdBy: currentUser?.uid || null,
+            createdByName: currentUserData?.name || currentUser?.email || null
+          }
+        );
+
+        for (const mv of movements) {
+          if (mv.dateTs && mv.dateTs instanceof Date) {
+            mv.dateTs = Timestamp.fromDate(mv.dateTs);
+          }
+          await addDoc(collection(db, 'movimientos'), mv);
+        }
+        console.log('[Contab] Movimientos creados:', movements.length);
+      } catch (movErr) {
+        console.warn('[Contab] Error proyectando movimientos:', movErr);
+        // No bloqueamos el flujo — el comprobante ya quedó guardado
+      }
+
+      return compRef.id;
+
+    } catch (e) {
+      console.error('[Contab] Error generando comprobante:', e);
+      // No bloqueamos la venta — solo logueamos
+      return null;
+    }
+  }
+
+  // 🆕 Exponer a window para verificación y consistencia
+  window.generateComprobanteFromSale = generateComprobanteFromSale;
 
   /* ============================================================
     SINCRONIZAR CLIENTE AL REGISTRAR VENTA

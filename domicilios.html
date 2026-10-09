@@ -843,6 +843,90 @@ function validateConfirmPayment() {
   btn.disabled = false;
 }
 
+/* ============================================================
+   🆕 CERRAR REGISTRO DE CARTERA AL CONFIRMAR EL COBRO
+   - Busca el registro de cartera vinculado a la venta
+   - Agrega el pago al array `payments`
+   - Marca el registro como pagado
+============================================================ */
+async function closeCarteraFromSale({ saleId, paidAmount, paidAt, paymentBreakdown, notes }) {
+  if (!saleId) return null;
+
+  try {
+    // 1. Buscar el registro de cartera
+    const q = query(
+      collection(db, 'cartera'),
+      where('saleId', '==', saleId)
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      console.log('[Cartera] No hay registro de cartera para esta venta (no aplica)');
+      return null;
+    }
+
+    // Tomar el primero (no debería haber más de uno)
+    const carteraDoc = snap.docs[0];
+    const carteraData = { id: carteraDoc.id, ...carteraDoc.data() };
+
+    // 2. Verificar idempotencia: si ya está pagada, no duplicar
+    const existingPayments = carteraData.payments || [];
+    const totalAbonadoAntes = existingPayments.reduce((s,p) => s + Number(p.amount||0), 0);
+    const monto = Number(carteraData.amount || 0);
+
+    if (totalAbonadoAntes >= monto) {
+      console.log('[Cartera] Registro ya estaba pagado completamente — saltando');
+      return carteraDoc.id;
+    }
+
+    // 3. Agregar el pago
+    const newPayment = {
+      amount: Number(paidAmount || 0),
+      date: paidAt || new Date().toISOString().split('T')[0],
+      note: notes || 'Cobro confirmado',
+      method: paymentBreakdown?.[0]?.method || 'efectivo',
+      paymentBreakdown: paymentBreakdown || [],
+      registeredBy: currentUser?.email || null,
+      registeredAt: new Date().toISOString()
+    };
+
+    const updatedPayments = [...existingPayments, newPayment];
+    const totalAbonado = updatedPayments.reduce((s,p) => s + Number(p.amount||0), 0);
+    const saldoNuevo = monto - totalAbonado;
+    const isPaid = saldoNuevo <= 0;
+
+    // 4. Actualizar el registro
+    await updateDoc(doc(db, 'cartera', carteraDoc.id), {
+      payments: updatedPayments,
+      status: isPaid ? 'paid' : 'partial',
+      paidAt: isPaid ? (paidAt || new Date().toISOString().split('T')[0]) : null,
+      paidInFullBy: isPaid ? (currentUser?.email || null) : null,
+      updatedAt: serverTimestamp(),
+      updatedBy: currentUser?.email || null
+    });
+
+    console.log('[Cartera] Registro actualizado:', carteraDoc.id, '·', isPaid ? 'PAGADA' : 'Abono parcial');
+
+    // 5. Auditoría
+    await audit({
+      action: 'update',
+      collection: 'cartera',
+      docId: carteraDoc.id,
+      before: { payments: existingPayments, status: carteraData.status },
+      after: { payments: updatedPayments, status: isPaid ? 'paid' : 'partial' },
+      note: `CxC ${isPaid ? 'PAGADA' : 'abono'}: ${carteraData.clientName} · ${fmt(paidAmount)}`
+    });
+
+    return carteraDoc.id;
+
+  } catch (e) {
+    console.error('[Cartera] Error cerrando registro:', e);
+    return null;
+  }
+}
+
+window.closeCarteraFromSale = closeCarteraFromSale;
+
 /* ============ GUARDAR COBRO ============ */
 window.submitConfirmPayment = async () => {
   const modal = $('confirm-payment-modal');
@@ -960,8 +1044,22 @@ window.submitConfirmPayment = async () => {
       note: `Cobro confirmado (domicilios): ${noteParts.join(' + ')} · ${fmt(totalToCharge)}`
     });
 
+    // 🆕 ACTUALIZAR REGISTRO DE CARTERA (si existe)
+    try {
+      await closeCarteraFromSale({
+        saleId: saleId,
+        paidAmount: totalToCharge,
+        paidAt: new Date().toISOString().split('T')[0],
+        paymentBreakdown,
+        notes: notes || 'Cobro confirmado desde domicilios'
+      });
+    } catch (carteraErr) {
+      console.warn('[Cartera] Error actualizando registro (cobro sí confirmado):', carteraErr);
+    }
+
     window.SmartecCache.invalidate('pendingSales');
     window.SmartecCache.invalidate('sales');
+    window.SmartecCache.invalidate('cartera_all');
 
     closeConfirmPaymentModal();
 

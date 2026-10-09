@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
   updateDoc, deleteDoc, serverTimestamp, query, where, orderBy, limit,
-  startAfter, onSnapshot
+  startAfter, onSnapshot, Timestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
@@ -51,6 +51,9 @@ let stores = [], users = [], products = [], inventory = [],
 let currentProductImages = [];
 let shiftsAll = [];  // 🕒 todos los turnos (entradas/salidas)
 let paymentChannels = [];      // 🆕 cuentas/canales de pago
+/* 🆕 Empleados (para vincular con users) */
+let employeesPendingList = [];   // Empleados con requiresLogin:true y userCreated:false
+let _loadedEmployees = false;    // Flag de carga
 let paymentPlatforms = [];     // 🆕 catálogo de bancos/plataformas
 let suppliers = [];            // 🆕 maestro de proveedores
 let accountingSettings = { defaultTermsDays: 30, defaultAlertDays: 5 }; // 🆕
@@ -59,7 +62,12 @@ let transferRequestsAll = [];   // 🆕 solicitudes de traslado (tiempo real)
 let deviceRequestsAll = [];     // 🆕 solicitudes de dispositivo (tiempo real)
 let deviceAttemptsAll = [];     // 🆕 intentos de acceso bloqueados (tiempo real)
 let cashWithdrawalsAll = [];    // 🆕 retiros de caja (superadmin)
-
+/* 🆕 PUC — cache local para el select de cuentas contables en canales de pago */
+let _pucAccountsCache = null;        // Se llena la primera vez que se abre el form de canal
+let _pucLoadingPromise = null;       // Evita cargas duplicadas en paralelo
+/* 🆕 Tarjetas de crédito — catálogo para gastos */
+let creditCards = [];                // Tarjetas de crédito (colección creditCards)
+let _loadedCreditCards = false;      // Flag de carga
 /* ============================================================
    HELPERS
 ============================================================ */
@@ -446,6 +454,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         renderStores();
       }
       else if (tab === 'sellers') {
+        // 🆕 Cargar empleados pendientes antes de renderizar
+        await loadPendingEmployees();
         renderSellers();
       }
       else if (tab === 'products') {
@@ -496,13 +506,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         }
         await ensureAuditLogsLoaded();
         renderAudit();
-      }
-      else if (tab === 'accounting') {
-        // 🆕 Contabilidad: cargar gastos + proveedores on demand
-        const mainEl = $('tab-accounting');
-        // (Si quieres un spinner, aquí se podría poner)
-        await ensureAccountingLoaded();
-        renderAccounting();
       }
       else if (tab === 'settings') {
         // 🆕 Configuración: cargar canales + plataformas on demand
@@ -698,6 +701,9 @@ async function loadAll() {
       return s.docs.map(d => ({id:d.id,...d.data()}));
     }).then(v => { deviceAttemptsAll = v; _loaded.deviceAttempts = true; })
   ]);
+
+    // 🆕 Cargar empleados pendientes de credenciales (en background)
+  loadPendingEmployees().catch(e => console.warn('[Admin] Error cargando empleados pendientes:', e));
 
   // Render inicial
   renderDashboard();
@@ -916,9 +922,29 @@ async function ensureAccountingLoaded() {
   ]);
 }
 
+/* ============================================================
+   🆕 CARGA DE TARJETAS DE CRÉDITO
+============================================================ */
+async function loadCreditCards(force = false) {
+  if (_loadedCreditCards && !force) return creditCards;
+  try {
+    const snap = await getDocs(collection(db, 'creditCards'));
+    creditCards = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    _loadedCreditCards = true;
+    console.log(`[Admin/Tarjetas] ${creditCards.length} tarjetas cargadas`);
+    return creditCards;
+  } catch (e) {
+    console.warn('[Admin/Tarjetas] Error cargando:', e);
+    creditCards = [];
+    return [];
+  }
+}
+
 // ===== CONFIGURACIÓN (canales + plataformas) =====
 async function ensureSettingsDataLoaded() {
-  if (_loaded.paymentChannels && _loaded.paymentPlatforms) return;
+  if (_loaded.paymentChannels && _loaded.paymentPlatforms && _loadedCreditCards) return;
   const C = window.SmartecCache;
 
   await Promise.all([
@@ -930,7 +956,10 @@ async function ensureSettingsDataLoaded() {
     !_loaded.paymentPlatforms ? C.wrap('paymentPlatforms', async () => {
       const s = await getDocs(collection(db,'paymentPlatforms'));
       return s.docs.map(d => ({id:d.id,...d.data()}));
-    }).then(v => { paymentPlatforms = v; _loaded.paymentPlatforms = true; }) : Promise.resolve()
+    }).then(v => { paymentPlatforms = v; _loaded.paymentPlatforms = true; }) : Promise.resolve(),
+
+    // 🆕 Tarjetas de crédito
+    !_loadedCreditCards ? loadCreditCards() : Promise.resolve()
   ]);
 }
 
@@ -939,7 +968,7 @@ function prefetchCommons() {
   console.log('[Lazy] Prefetch en background iniciado');
   // Precargar en background las 3 secciones más usadas
   Promise.all([
-    ensureAccountingLoaded(),
+    // Contabilidad ya no está en admin (se movió a contabilidad.html)
     // Auditoría NO se precarga (es pesada)
     // Configuración NO se precarga (poco uso)
   ]).then(() => {
@@ -2490,10 +2519,306 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ============================================================
+   🆕 RENDER: Empleados pendientes de credenciales
+============================================================ */
+function renderPendingEmployees() {
+  const block = document.getElementById('pending-employees-block');
+  const list = document.getElementById('pending-employees-list');
+  const countEl = document.getElementById('pending-employees-count');
+  if (!block || !list) return;
+
+  if (!employeesPendingList.length) {
+    block.classList.add('hidden');
+    return;
+  }
+
+  block.classList.remove('hidden');
+  if (countEl) countEl.innerText = employeesPendingList.length;
+
+  // Mapeo de etiquetas de rol
+  const roleLabels = {
+    'vendedor':   { icon: '💼', label: 'Vendedor' },
+    'admin':      { icon: '🏢', label: 'Admin de tienda' },
+    'superadmin': { icon: '👑', label: 'Superadmin' }
+  };
+
+  list.innerHTML = employeesPendingList.map(e => {
+    const role = e.businessRole || 'vendedor';
+    const roleMeta = roleLabels[role] || { icon: '👤', label: role };
+    const store = stores.find(s => s.storeId === e.storeId);
+    const email = e.email || '(sin email)';
+
+    return `
+      <div class="bg-white rounded-lg p-3 flex items-center gap-3 flex-wrap">
+        <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0 text-lg">
+          ${roleMeta.icon}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-sd truncate">${escapeHtml(e.name)}</p>
+          <p class="text-[10px] text-gray-500 truncate">
+            ${escapeHtml(roleMeta.label)} · ${escapeHtml(e.position || '—')} · ${escapeHtml(store?.name || e.storeId || '—')}
+          </p>
+          <p class="text-[10px] text-gray-400 truncate">✉️ ${escapeHtml(email)}</p>
+        </div>
+        <button onclick="createCredentialsForEmployee('${e.id}')"
+          class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-lg whitespace-nowrap transition">
+          🔑 Crear credenciales
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   🆕 Abrir el form de usuario pre-rellenado con datos del empleado
+============================================================ */
+window.createCredentialsForEmployee = async (employeeId) => {
+  const emp = employeesPendingList.find(e => e.id === employeeId);
+  if (!emp) return;
+
+  // Guardar el ID del empleado para vincularlo al crear el user
+  window.__pendingEmployeeId = employeeId;
+
+  // Abrir el formulario de usuario con datos pre-rellenados
+  // Construimos un "user" ficticio con los datos del empleado para que
+  // openSellerForm lo trate como "nuevo usuario"
+  const fakeUserData = {
+    id: null,                     // null → modo creación
+    name: emp.name || '',
+    email: emp.email || '',
+    role: emp.businessRole === 'superadmin' ? 'superadmin'
+        : emp.businessRole === 'admin'      ? 'admin'
+        : 'vendedor',
+    storeId: emp.storeId || '',
+    commissionRate: 0,
+    goalAmount: 0,
+    bonusRate: 0,
+    maxDevices: 1,
+    pin: null,
+    kioskMode: false,
+    deviceAutoApprove: true,
+    active: true
+  };
+
+  // Llamar al form existente (pasando null + overrides)
+  openSellerFormFromEmployee(fakeUserData);
+};
+
+/* ============================================================
+   🆕 Abre el form de usuario con datos del empleado
+   Es como openSellerForm pero recibe datos pre-armados
+============================================================ */
+function openSellerFormFromEmployee(employeeData) {
+  $('form-title').innerText = `Crear credenciales para ${employeeData.name}`;
+  $('form-body').innerHTML = `
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs">
+      <p class="font-semibold text-amber-800 mb-1">🔑 Creando credenciales de acceso</p>
+      <p class="text-amber-700">Los datos del empleado se han pre-rellenado. Solo ingresa la contraseña inicial y ajusta lo necesario.</p>
+    </div>
+
+    <label class="text-xs font-semibold">Nombre *</label>
+    <input id="f-name" value="${escapeHtml(employeeData.name)}" class="w-full px-3 py-2 border rounded mb-3">
+
+    <label class="text-xs font-semibold">Email *</label>
+    <input id="f-email" type="email" value="${escapeHtml(employeeData.email)}" placeholder="usuario@ejemplo.com" class="w-full px-3 py-2 border rounded mb-3">
+    <p class="text-[10px] text-gray-400 -mt-2 mb-3">Este email debe coincidir con el que registraste en Nómina.</p>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold">Rol</label>
+        <select id="f-role" class="w-full px-3 py-2 border rounded">
+          <option value="vendedor" ${employeeData.role === 'vendedor' ? 'selected' : ''}>Vendedor</option>
+          <option value="admin" ${employeeData.role === 'admin' ? 'selected' : ''}>Admin de tienda</option>
+          <option value="superadmin" ${employeeData.role === 'superadmin' ? 'selected' : ''}>Superadmin</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Tienda</label>
+        <select id="f-storeId" class="w-full px-3 py-2 border rounded">
+          <option value="">— Ninguna —</option>
+          ${stores.map(s => `<option value="${s.storeId}" ${employeeData.storeId === s.storeId ? 'selected' : ''}>${s.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold">Comisión individual (%)</label>
+        <input id="f-commission" type="number" step="0.01" value="0" class="w-full px-3 py-2 border rounded">
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Meta mensual ($)</label>
+        <input id="f-goal" type="number" value="" placeholder="0" class="w-full px-3 py-2 border rounded">
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Bonus al cumplir (%)</label>
+        <input id="f-bonus" type="number" step="0.01" value="0" class="w-full px-3 py-2 border rounded">
+      </div>
+    </div>
+
+    <div class="border-t pt-3 mt-3 mb-3">
+      <p class="text-xs font-semibold text-sd mb-2">🔒 Control de acceso y dispositivos</p>
+      <div class="grid grid-cols-3 gap-3 mb-2">
+        <div>
+          <label class="text-xs font-semibold">Máx. dispositivos</label>
+          <input id="f-maxDevices" type="number" min="1" max="10" value="1" class="w-full px-3 py-2 border rounded">
+        </div>
+        <div>
+          <label class="text-xs font-semibold">PIN acceso rápido</label>
+          <input id="f-pin" type="text" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="1234" class="w-full px-3 py-2 border rounded font-mono text-center tracking-widest">
+        </div>
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 text-sm">
+            <input id="f-kioskMode" type="checkbox" class="w-4 h-4">
+            <span>Modo kiosco</span>
+          </label>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mt-2">
+        <div>
+          <label class="flex items-center gap-2 text-sm">
+            <input id="f-deviceAutoApprove" type="checkbox" checked class="w-4 h-4">
+            <span>Auto-autorizar dispositivos nuevos</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <label class="flex items-center gap-2 text-sm mb-3">
+      <input id="f-active" type="checkbox" checked class="w-4 h-4"> Activo
+    </label>
+    <button onclick="saveSellerFromEmployee()" class="w-full bg-amber-600 text-white py-2 rounded-lg hover:bg-amber-700 font-semibold">
+      🔑 Crear credenciales
+    </button>
+  `;
+  openForm();
+}
+
+/* ============================================================
+   🆕 Guardar el user y vincularlo al empleado
+============================================================ */
+window.saveSellerFromEmployee = async () => {
+  const employeeId = window.__pendingEmployeeId;
+  if (!employeeId) return alert('Error: no se encontró el empleado');
+
+  const emp = employeesPendingList.find(e => e.id === employeeId);
+  if (!emp) return alert('Error: el empleado ya no existe');
+
+  const name = $('f-name').value.trim();
+  const email = $('f-email').value.trim();
+  const role = $('f-role').value;
+  const storeId = $('f-storeId').value || null;
+  const commissionRate = (Number($('f-commission').value) || 0) / 100;
+  const goalAmount = Number($('f-goal').value) || 0;
+  const bonusRate = (Number($('f-bonus').value) || 0) / 100;
+  const maxDevices = Number($('f-maxDevices').value) || 1;
+  const pin = $('f-pin').value.trim() || null;
+  const kioskMode = $('f-kioskMode').checked;
+  const deviceAutoApprove = $('f-deviceAutoApprove').checked;
+  const active = $('f-active').checked;
+
+  if (!name) return alert('El nombre es obligatorio');
+  if (!email) return alert('El email es obligatorio');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return alert('Email inválido');
+
+  // Pedir contraseña
+  const password = prompt(
+    `🔐 Crear credenciales para: ${name}\n\n` +
+    `Email: ${email}\n` +
+    `Rol: ${role}\n\n` +
+    `Ingresa la contraseña inicial (mínimo 6 caracteres):`
+  );
+  if (!password) return;
+  if (password.length < 6) return alert('⚠️ La contraseña debe tener al menos 6 caracteres');
+
+  if (!confirm(
+    `¿Crear las credenciales?\n\n` +
+    `Nombre: ${name}\n` +
+    `Email: ${email}\n` +
+    `Rol: ${role}\n` +
+    `Tienda: ${storeId || 'Ninguna'}`
+  )) return;
+
+  try {
+    // 1. Crear el user en Firebase Auth via Cloud Function
+    const createUserFn = httpsCallable(functions, 'createUserAdmin');
+    const result = await createUserFn({
+      email,
+      password,
+      name,
+      role,
+      storeId,
+      commissionRate,
+      goalAmount,
+      bonusRate,
+      maxDevices,
+      pin,
+      kioskMode,
+      deviceAutoApprove,
+      active
+    });
+
+    if (!result.data?.success) {
+      throw new Error('La función no confirmó la creación');
+    }
+
+    const newUid = result.data.uid;
+    if (!newUid) throw new Error('No se recibió el UID del usuario creado');
+
+    // 2. Vincular el empleado con el user
+    await updateDoc(doc(db, 'empleados', employeeId), {
+      userId: newUid,
+      userCreated: true,
+      email: email,          // por si acaso cambió
+      updatedAt: serverTimestamp(),
+      updatedBy: currentUser.email
+    });
+
+    // 3. Guardar employeeId en el user
+    try {
+      await updateDoc(doc(db, 'users', newUid), {
+        employeeId: employeeId
+      });
+    } catch (linkErr) {
+      console.warn('[Admin] No se pudo vincular employeeId en el user:', linkErr);
+    }
+
+    // 4. Auditoría
+    await audit({
+      action: 'create',
+      collection: 'users',
+      docId: newUid,
+      after: { email, role, storeId, employeeId },
+      note: `Credenciales creadas para empleado: ${name} · Rol: ${role}`
+    });
+
+    // 5. Invalidar cachés
+    window.SmartecCache.invalidate('users');
+    window.SmartecCache.invalidate('empleados_all');
+    _loadedEmployees = false;  // forzar recarga
+
+    // 6. Limpiar y recargar
+    window.__pendingEmployeeId = null;
+    closeForm();
+
+    await loadPendingEmployees(true);
+    await loadAll();
+    renderSellers();
+
+    alert(`✅ Credenciales creadas\n\n${name} ya puede iniciar sesión con:\n${email}`);
+  } catch (e) {
+    console.error('Error creando credenciales:', e);
+    alert('❌ Error: ' + (e.message || 'desconocido'));
+  }
+};
+
+/* ============================================================
    VENDEDORES / USUARIOS
 ============================================================ */
 function renderSellers() {
-  const filter = $('sellers-store-filter').value;
+  renderPendingEmployees();
+
+  const filter = $('sellers-store-filter').value;  
   const tb = $('sellers-tbody');
   let list = users;
   if (filter !== 'all') list = list.filter(u => u.storeId === filter);
@@ -4296,6 +4621,112 @@ window.cancelSale = async (id) => {
     await addDoc(collection(db, 'inventoryMovements'), mov);
   }
 
+    // ============================================================
+  // 2.5 🆕 GENERAR COMPROBANTE DE REVERSIÓN CONTABLE
+  // ============================================================
+  try {
+    if (window.SmartecAccounting && window.SmartecAccounting.buildReversalMovements) {
+      
+      // a) Buscar el comprobante original de esta venta
+      const compQuery = query(
+        collection(db, 'comprobantes'),
+        where('sourceType', '==', 'sale'),
+        where('sourceId', '==', id),
+        limit(1)
+      );
+      const compSnap = await getDocs(compQuery);
+
+      if (!compSnap.empty) {
+        const originalComp = { id: compSnap.docs[0].id, ...compSnap.docs[0].data() };
+
+        // b) Verificar idempotencia: ¿ya existe un comprobante de reversión?
+        const reversalQuery = query(
+          collection(db, 'comprobantes'),
+          where('sourceType', '==', 'sale_reversal'),
+          where('sourceId', '==', id),
+          limit(1)
+        );
+        const reversalSnap = await getDocs(reversalQuery);
+
+        if (reversalSnap.empty) {
+          // c) Buscar los movimientos originales
+          const movsQuery = query(
+            collection(db, 'movimientos'),
+            where('comprobanteId', '==', originalComp.id)
+          );
+          const movsSnap = await getDocs(movsQuery);
+          const originalMovs = movsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          // d) Construir el comprobante de reversión
+          const reversalComp = {
+            type: 'reversal',
+            date: todayStr(),
+            concept: `[REVERSIÓN] ${originalComp.concept}`,
+            storeId: originalComp.storeId,
+            storeName: originalComp.storeName || '',
+            sourceType: 'sale_reversal',
+            sourceId: id,
+            sourceRef: originalComp.number || originalComp.sourceRef,
+            reversalOf: originalComp.id,
+            reversalReason: reason.trim(),
+            items: originalComp.items.map(it => ({
+              accountCode: it.accountCode,
+              accountName: it.accountName,
+              // Invertir D↔C
+              type: it.type === 'D' ? 'C' : 'D',
+              amount: it.amount,
+              note: `Reversión: ${it.note || ''}`.trim()
+            })),
+            totalDebit: originalComp.totalCredit,
+            totalCredit: originalComp.totalDebit,
+            status: 'activo',
+            notes: `Reversión automática por anulación: ${reason.trim()}`,
+            createdAt: serverTimestamp(),
+            createdBy: currentUser.uid,
+            createdByName: currentUserData.name || currentUser.email
+          };
+
+          const revCompRef = await addDoc(collection(db, 'comprobantes'), reversalComp);
+
+          // e) Proyectar los movimientos de reversión
+          const pucBase = (window.SmartecPUC && window.SmartecPUC.getBase)
+            ? window.SmartecPUC.getBase()
+            : [];
+          const pucMap = window.SmartecAccounting.buildPucMap(pucBase);
+
+          const reversalMovs = window.SmartecAccounting.buildReversalMovements(
+            { id: revCompRef.id, ...reversalComp },
+            originalMovs,
+            {
+              createdBy: currentUser.uid,
+              createdByName: currentUserData.name || currentUser.email,
+              reason: reason.trim()
+            }
+          );
+
+          for (const mv of reversalMovs) {
+            if (mv.dateTs && mv.dateTs instanceof Date) {
+              mv.dateTs = Timestamp.fromDate(mv.dateTs);
+            }
+            await addDoc(collection(db, 'movimientos'), mv);
+          }
+
+          console.log('[Contab] Reversión creada:', revCompRef.id, '·', reversalComp.concept);
+          console.log('[Contab] Movimientos de reversión:', reversalMovs.length);
+        } else {
+          console.log('[Contab] Reversión ya existe para venta', id, '— saltando');
+        }
+      } else {
+        console.warn('[Contab] No se encontró comprobante original para venta', id);
+      }
+    } else {
+      console.warn('[Contab] accounting-engine no disponible — se omite reversión');
+    }
+  } catch (revErr) {
+    console.error('[Contab] Error generando reversión:', revErr);
+    // No bloqueamos la anulación — la venta se anula sí o sí
+  }
+
   // ============================================================
   // 3. Marcar la venta como anulada
   // ============================================================
@@ -5363,6 +5794,681 @@ window.loadPaymentPlatforms = async () => {
   }
 };
 
+/* ============================================================
+   🆕 CARGA DE EMPLEADOS PENDIENTES DE CREDENCIALES
+   Filtra: requiresLogin === true && userCreated !== true
+============================================================ */
+async function loadPendingEmployees(force = false) {
+  if (_loadedEmployees && !force) return employeesPendingList;
+  try {
+    const snap = await getDocs(collection(db, 'empleados'));
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    employeesPendingList = all.filter(e =>
+      (e.requiresLogin === true || (e.businessRole && e.businessRole !== 'solo-empleado')) &&
+      e.userCreated !== true &&
+      e.status !== 'retirado'   // Los retirados no cuentan
+    );
+
+    _loadedEmployees = true;
+    console.log(`[Admin/Empleados] ${employeesPendingList.length} pendientes de credenciales`);
+    return employeesPendingList;
+  } catch (e) {
+    console.warn('[Admin/Empleados] Error cargando:', e);
+    employeesPendingList = [];
+    return [];
+  }
+}
+/* ============================================================
+   🆕 TARJETAS DE CRÉDITO — CRUD
+============================================================ */
+
+/**
+ * Abre el modal con la lista de tarjetas.
+ */
+window.openCreditCardsModal = async () => {
+  const modal = $('credit-cards-modal');
+  if (!modal) return;
+
+  // Asegurar que estén cargadas
+  if (!_loadedCreditCards) {
+    await loadCreditCards();
+  }
+
+  renderCreditCardsList();
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+window.closeCreditCardsModal = () => {
+  const modal = $('credit-cards-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+/**
+ * Abre el formulario de tarjeta (nuevo o editar).
+ */
+window.openCreditCardForm = async (cardId = null) => {
+  const modal = $('credit-card-form-modal');
+  const titleEl = $('credit-card-form-title');
+  const bodyEl = $('credit-card-form-body');
+  if (!modal || !bodyEl) return;
+
+  await ensurePucLoadedForAdmin();
+
+  const existing = cardId ? creditCards.find(c => c.id === cardId) : null;
+  const card = existing || {
+    name: '',
+    bank: '',
+    brand: 'Visa',
+    last4: '',
+    pucAccountCode: '210505',
+    pucAccountName: 'Bancos nacionales',
+    active: true,
+    notes: ''
+  };
+
+  titleEl.innerText = existing ? 'Editar tarjeta' : 'Nueva tarjeta de crédito';
+
+  const bankOptions = [
+    'Banco Nacional de Colombia',
+    'Bancolombia',
+    'Davivienda',
+    'BBVA',
+    'Banco de Bogotá',
+    'Banco de Occidente',
+    'Scotiabank Colpatria',
+    'Banco Popular',
+    'Banco Caja Social',
+    'Otro'
+  ];
+
+  const brandOptions = ['Visa', 'Mastercard', 'American Express', 'Discover', 'Otra'];
+
+  const pucMovable = (_pucAccountsCache || []).filter(a =>
+    a.acceptsMovement &&
+    a.active !== false &&
+    a.code.startsWith('21')
+  ).sort((a, b) => a.code.localeCompare(b.code));
+
+  const pucOpts = pucMovable.map(a => {
+    const sel = card.pucAccountCode === a.code ? 'selected' : '';
+    return `<option value="${a.code}" data-name="${escapeHtml(a.name)}" ${sel}>${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`;
+  }).join('');
+
+  bodyEl.innerHTML = `
+    <div class="space-y-4">
+
+      <div>
+        <label class="text-xs font-semibold text-sd">Nombre descriptivo *</label>
+        <input id="ccf-name" type="text" value="${escapeHtml(card.name)}" placeholder="Ej: Visa Bancolombia Principal"
+          class="w-full px-3 py-2 border rounded-lg mt-1">
+        <p class="text-[10px] text-gray-400 mt-1">Como la identificas para elegirla al pagar un gasto.</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-sd">Banco emisor *</label>
+          <select id="ccf-bank" class="w-full px-3 py-2 border rounded-lg mt-1">
+            <option value="">— Selecciona —</option>
+            ${bankOptions.map(b => `<option value="${escapeHtml(b)}" ${card.bank === b ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-sd">Franquicia *</label>
+          <select id="ccf-brand" class="w-full px-3 py-2 border rounded-lg mt-1">
+            ${brandOptions.map(b => `<option value="${escapeHtml(b)}" ${card.brand === b ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold text-sd">Últimos 4 dígitos *</label>
+        <input id="ccf-last4" type="text" maxlength="4" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(card.last4)}" placeholder="1234"
+          class="w-full px-3 py-2 border rounded-lg mt-1 font-mono text-center tracking-widest">
+      </div>
+
+      <div class="border-t pt-4">
+        <div class="flex justify-between items-center mb-1">
+          <label class="text-xs font-semibold text-sd">💼 Cuenta PUC (pasivo) *</label>
+          <span class="text-[10px] text-gray-400">Obligaciones financieras (clase 21)</span>
+        </div>
+        <p class="text-[10px] text-gray-500 mb-2">
+          Cuenta donde se registra la deuda cuando pagas un gasto con esta tarjeta.
+        </p>
+        <select id="ccf-puc" class="w-full px-3 py-2 border rounded-lg text-sm">
+          <option value="">— Selecciona una cuenta —</option>
+          ${pucOpts}
+        </select>
+        <p id="ccf-puc-hint" class="text-[10px] text-gray-400 mt-1">
+          💡 Por defecto <b>210505 · Bancos nacionales</b>. Puedes crear subcuentas específicas desde Contabilidad → PUC.
+        </p>
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold text-sd">Notas (opcional)</label>
+        <textarea id="ccf-notes" rows="2" class="w-full px-3 py-2 border rounded-lg mt-1 text-sm"
+          placeholder="Ej: Cupo 5M, corte día 15, pago día 5">${escapeHtml(card.notes || '')}</textarea>
+      </div>
+
+      <label class="flex items-center gap-2 text-sm">
+        <input id="ccf-active" type="checkbox" ${card.active !== false ? 'checked' : ''} class="w-4 h-4">
+        Tarjeta activa
+      </label>
+
+      <div class="flex gap-3 pt-2">
+        <button onclick="closeCreditCardForm()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">
+          Cancelar
+        </button>
+        <button onclick="saveCreditCard('${cardId || ''}')" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold">
+          💾 Guardar
+        </button>
+      </div>
+
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+window.closeCreditCardForm = () => {
+  const modal = $('credit-card-form-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+/**
+ * Guarda (crea o actualiza) una tarjeta.
+ */
+window.saveCreditCard = async (cardId = '') => {
+  const name = ($('ccf-name')?.value || '').trim();
+  const bank = ($('ccf-bank')?.value || '').trim();
+  const brand = ($('ccf-brand')?.value || '').trim();
+  const last4 = ($('ccf-last4')?.value || '').trim();
+  const pucAccountCode = ($('ccf-puc')?.value || '').trim();
+  const notes = ($('ccf-notes')?.value || '').trim();
+  const active = $('ccf-active')?.checked !== false;
+
+  if (!name) return alert('⚠️ El nombre es obligatorio');
+  if (!bank) return alert('⚠️ Debes seleccionar el banco emisor');
+  if (!brand) return alert('⚠️ Debes seleccionar la franquicia');
+  if (!last4 || !/^\d{4}$/.test(last4)) return alert('⚠️ Los últimos 4 dígitos deben ser exactamente 4 números');
+  if (!pucAccountCode) return alert('⚠️ Debes asignar una cuenta PUC');
+
+  const pucAcc = (_pucAccountsCache || []).find(a => a.code === pucAccountCode);
+  const pucAccountName = pucAcc ? pucAcc.name : '';
+
+  const data = {
+    name,
+    bank,
+    brand,
+    last4,
+    pucAccountCode,
+    pucAccountName,
+    notes,
+    active,
+    updatedAt: serverTimestamp(),
+    updatedBy: currentUser.email
+  };
+
+  try {
+    if (cardId) {
+      const before = creditCards.find(c => c.id === cardId);
+      await updateDoc(doc(db, 'creditCards', cardId), data);
+
+      await audit({
+        action: 'update',
+        collection: 'creditCards',
+        docId: cardId,
+        before,
+        after: data,
+        note: `Tarjeta editada: ${name} · ${brand} ${bank} ···· ${last4}`
+      });
+    } else {
+      const ref = await addDoc(collection(db, 'creditCards'), {
+        ...data,
+        createdAt: serverTimestamp(),
+        createdBy: currentUser.email
+      });
+
+      await audit({
+        action: 'create',
+        collection: 'creditCards',
+        docId: ref.id,
+        after: data,
+        note: `Tarjeta creada: ${name} · ${brand} ${bank} ···· ${last4}`
+      });
+    }
+
+    await loadCreditCards(true);
+    closeCreditCardForm();
+    renderCreditCardsList();
+    renderPaymentStats();
+
+    alert(cardId ? '✅ Tarjeta actualizada' : '✅ Tarjeta creada');
+  } catch (e) {
+    console.error('Error guardando tarjeta:', e);
+    alert('Error: ' + e.message);
+  }
+};
+
+/**
+ * Activa/desactiva una tarjeta.
+ */
+window.toggleCreditCard = async (cardId) => {
+  const card = creditCards.find(c => c.id === cardId);
+  if (!card) return;
+
+  const willActivate = card.active === false;
+  if (!confirm(`¿${willActivate ? 'Activar' : 'Desactivar'} la tarjeta "${card.name}"?`)) return;
+
+  try {
+    await updateDoc(doc(db, 'creditCards', cardId), {
+      active: willActivate,
+      updatedAt: serverTimestamp()
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'creditCards',
+      docId: cardId,
+      before: { active: card.active },
+      after: { active: willActivate },
+      note: `Tarjeta ${willActivate ? 'activada' : 'desactivada'}: ${card.name}`
+    });
+
+    await loadCreditCards(true);
+    renderCreditCardsList();
+    renderPaymentStats();
+  } catch (e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  }
+};
+
+/**
+ * Elimina una tarjeta.
+ */
+window.deleteCreditCard = async (cardId) => {
+  const card = creditCards.find(c => c.id === cardId);
+  if (!card) return;
+
+  if (!confirm(`⚠️ ¿Eliminar la tarjeta "${card.name}"?\n\nEsta acción no se puede deshacer.\n\nSi solo quieres ocultarla, usa "Desactivar".`)) return;
+
+  try {
+    await deleteDoc(doc(db, 'creditCards', cardId));
+
+    await audit({
+      action: 'delete',
+      collection: 'creditCards',
+      docId: cardId,
+      before: card,
+      note: `Tarjeta eliminada: ${card.name} · ${card.brand} ${card.bank}`
+    });
+
+    await loadCreditCards(true);
+    renderCreditCardsList();
+    renderPaymentStats();
+
+    alert('✅ Tarjeta eliminada');
+  } catch (e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  }
+};
+
+/**
+ * Renderiza la lista de tarjetas dentro del modal.
+ */
+function renderCreditCardsList() {
+  const listEl = $('credit-cards-list');
+  const emptyEl = $('credit-cards-empty');
+  if (!listEl) return;
+
+  if (!creditCards.length) {
+    listEl.innerHTML = '';
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    return;
+  }
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  listEl.innerHTML = creditCards.map(card => {
+    const active = card.active !== false;
+    const badge = active
+      ? '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Activa</span>'
+      : '<span class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-semibold">Inactiva</span>';
+
+    const last4 = card.last4 ? `•••• ${card.last4}` : '—';
+    const brand = card.brand || 'Tarjeta';
+    const bank = card.bank || '—';
+    const puc = card.pucAccountCode || '—';
+    const pucName = card.pucAccountName || '';
+
+    return `
+      <div class="border rounded-lg p-4 flex items-center gap-3 ${active ? 'bg-white' : 'bg-gray-50 opacity-70'}">
+        <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-2xl bg-amber-50 border-2 border-amber-200">
+          💳
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <p class="font-semibold text-sd text-sm truncate">${escapeHtml(card.name)}</p>
+            ${badge}
+          </div>
+          <p class="text-xs text-gray-500 mt-0.5">
+            ${escapeHtml(brand)} · ${escapeHtml(bank)} · <span class="font-mono">${escapeHtml(last4)}</span>
+          </p>
+          <p class="text-xs text-gray-500 mt-0.5">
+            💼 PUC: <b class="text-sd">${escapeHtml(puc)}</b>${pucName ? ' · ' + escapeHtml(pucName) : ''}
+          </p>
+        </div>
+
+        <div class="flex gap-2 shrink-0">
+          <button onclick="openCreditCardForm('${card.id}')" class="text-sl hover:text-sd text-xs font-semibold px-2 py-1" title="Editar">
+            ✏️ Editar
+          </button>
+          <button onclick="toggleCreditCard('${card.id}')" class="text-xs font-semibold px-2 py-1 ${active ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800'}" title="${active ? 'Desactivar' : 'Activar'}">
+            ${active ? '⏸ Desactivar' : '▶ Activar'}
+          </button>
+          <button onclick="deleteCreditCard('${card.id}')" class="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1" title="Eliminar">
+            🗑
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/**
+ * Abre el formulario de tarjeta (nuevo o editar).
+ */
+window.openCreditCardForm = async (cardId = null) => {
+  const modal = $('credit-card-form-modal');
+  const titleEl = $('credit-card-form-title');
+  const bodyEl = $('credit-card-form-body');
+  if (!modal || !bodyEl) return;
+
+  // Asegurar que el PUC esté cargado
+  await ensurePucLoadedForAdmin();
+
+  const existing = cardId ? creditCards.find(c => c.id === cardId) : null;
+  const card = existing || {
+    name: '',
+    bank: '',
+    brand: 'Visa',
+    last4: '',
+    pucAccountCode: '210505',
+    pucAccountName: 'Bancos nacionales',
+    active: true,
+    notes: ''
+  };
+
+  titleEl.innerText = existing ? 'Editar tarjeta' : 'Nueva tarjeta de crédito';
+
+  // Bancos comunes (los del PUC)
+  const bankOptions = [
+    'Banco Nacional de Colombia',
+    'Bancolombia',
+    'Davivienda',
+    'BBVA',
+    'Banco de Bogotá',
+    'Banco de Occidente',
+    'Scotiabank Colpatria',
+    'Banco Popular',
+    'Banco Caja Social',
+    'Otro'
+  ];
+
+  // Franquicias
+  const brandOptions = ['Visa', 'Mastercard', 'American Express', 'Discover', 'Otra'];
+
+  // Cuentas PUC disponibles (clase 21 - Obligaciones financieras)
+  const pucMovable = (_pucAccountsCache || []).filter(a =>
+    a.acceptsMovement &&
+    a.active !== false &&
+    a.code.startsWith('21')
+  ).sort((a, b) => a.code.localeCompare(b.code));
+
+  const pucOpts = pucMovable.map(a => {
+    const sel = card.pucAccountCode === a.code ? 'selected' : '';
+    return `<option value="${a.code}" data-name="${escapeHtml(a.name)}" ${sel}>${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`;
+  }).join('');
+
+  bodyEl.innerHTML = `
+    <div class="space-y-4">
+
+      <div>
+        <label class="text-xs font-semibold text-sd">Nombre descriptivo *</label>
+        <input id="ccf-name" type="text" value="${escapeHtml(card.name)}" placeholder="Ej: Visa Bancolombia Principal"
+          class="w-full px-3 py-2 border rounded-lg mt-1">
+        <p class="text-[10px] text-gray-400 mt-1">Como la identificas para elegirla al pagar un gasto.</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-sd">Banco emisor *</label>
+          <select id="ccf-bank" class="w-full px-3 py-2 border rounded-lg mt-1">
+            <option value="">— Selecciona —</option>
+            ${bankOptions.map(b => `<option value="${escapeHtml(b)}" ${card.bank === b ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-sd">Franquicia *</label>
+          <select id="ccf-brand" class="w-full px-3 py-2 border rounded-lg mt-1">
+            ${brandOptions.map(b => `<option value="${escapeHtml(b)}" ${card.brand === b ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold text-sd">Últimos 4 dígitos *</label>
+        <input id="ccf-last4" type="text" maxlength="4" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(card.last4)}" placeholder="1234"
+          class="w-full px-3 py-2 border rounded-lg mt-1 font-mono text-center tracking-widest">
+      </div>
+
+      <div class="border-t pt-4">
+        <div class="flex justify-between items-center mb-1">
+          <label class="text-xs font-semibold text-sd">💼 Cuenta PUC (pasivo) *</label>
+          <span class="text-[10px] text-gray-400">Obligaciones financieras (clase 21)</span>
+        </div>
+        <p class="text-[10px] text-gray-500 mb-2">
+          Cuenta donde se registra la deuda cuando pagas un gasto con esta tarjeta.
+        </p>
+        <select id="ccf-puc" class="w-full px-3 py-2 border rounded-lg text-sm">
+          <option value="">— Selecciona una cuenta —</option>
+          ${pucOpts}
+        </select>
+        <p id="ccf-puc-hint" class="text-[10px] text-gray-400 mt-1">
+          💡 Por defecto <b>210505 · Bancos nacionales</b>. Puedes crear subcuentas específicas desde Contabilidad → PUC.
+        </p>
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold text-sd">Notas (opcional)</label>
+        <textarea id="ccf-notes" rows="2" class="w-full px-3 py-2 border rounded-lg mt-1 text-sm"
+          placeholder="Ej: Cupo 5M, corte día 15, pago día 5">${escapeHtml(card.notes || '')}</textarea>
+      </div>
+
+      <label class="flex items-center gap-2 text-sm">
+        <input id="ccf-active" type="checkbox" ${card.active !== false ? 'checked' : ''} class="w-4 h-4">
+        Tarjeta activa
+      </label>
+
+      <div class="flex gap-3 pt-2">
+        <button onclick="closeCreditCardForm()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">
+          Cancelar
+        </button>
+        <button onclick="saveCreditCard('${cardId || ''}')" class="flex-1 bg-sd text-white py-2.5 rounded-lg hover:bg-sl font-semibold">
+          💾 Guardar
+        </button>
+      </div>
+
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+window.closeCreditCardForm = () => {
+  const modal = $('credit-card-form-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+/**
+ * Guarda (crea o actualiza) una tarjeta.
+ */
+window.saveCreditCard = async (cardId = '') => {
+  const name = ($('ccf-name')?.value || '').trim();
+  const bank = ($('ccf-bank')?.value || '').trim();
+  const brand = ($('ccf-brand')?.value || '').trim();
+  const last4 = ($('ccf-last4')?.value || '').trim();
+  const pucAccountCode = ($('ccf-puc')?.value || '').trim();
+  const notes = ($('ccf-notes')?.value || '').trim();
+  const active = $('ccf-active')?.checked !== false;
+
+  // Validaciones
+  if (!name) return alert('⚠️ El nombre es obligatorio');
+  if (!bank) return alert('⚠️ Debes seleccionar el banco emisor');
+  if (!brand) return alert('⚠️ Debes seleccionar la franquicia');
+  if (!last4 || !/^\d{4}$/.test(last4)) return alert('⚠️ Los últimos 4 dígitos deben ser exactamente 4 números');
+  if (!pucAccountCode) return alert('⚠️ Debes asignar una cuenta PUC');
+
+  // Resolver nombre de la cuenta PUC
+  const pucAcc = (_pucAccountsCache || []).find(a => a.code === pucAccountCode);
+  const pucAccountName = pucAcc ? pucAcc.name : '';
+
+  const data = {
+    name,
+    bank,
+    brand,
+    last4,
+    pucAccountCode,
+    pucAccountName,
+    notes,
+    active,
+    updatedAt: serverTimestamp(),
+    updatedBy: currentUser.email
+  };
+
+  try {
+    if (cardId) {
+      // Editar
+      const before = creditCards.find(c => c.id === cardId);
+      await updateDoc(doc(db, 'creditCards', cardId), data);
+
+      await audit({
+        action: 'update',
+        collection: 'creditCards',
+        docId: cardId,
+        before,
+        after: data,
+        note: `Tarjeta editada: ${name} · ${brand} ${bank} ···· ${last4}`
+      });
+    } else {
+      // Crear
+      const ref = await addDoc(collection(db, 'creditCards'), {
+        ...data,
+        createdAt: serverTimestamp(),
+        createdBy: currentUser.email
+      });
+
+      await audit({
+        action: 'create',
+        collection: 'creditCards',
+        docId: ref.id,
+        after: data,
+        note: `Tarjeta creada: ${name} · ${brand} ${bank} ···· ${last4}`
+      });
+    }
+
+    // Recargar
+    await loadCreditCards(true);
+
+    // Refrescar UI
+    closeCreditCardForm();
+    renderCreditCardsList();
+    renderPaymentStats();
+
+    alert(cardId ? '✅ Tarjeta actualizada' : '✅ Tarjeta creada');
+  } catch (e) {
+    console.error('Error guardando tarjeta:', e);
+    alert('Error: ' + e.message);
+  }
+};
+
+/**
+ * Activa/desactiva una tarjeta.
+ */
+window.toggleCreditCard = async (cardId) => {
+  const card = creditCards.find(c => c.id === cardId);
+  if (!card) return;
+
+  const willActivate = card.active === false;
+  if (!confirm(`¿${willActivate ? 'Activar' : 'Desactivar'} la tarjeta "${card.name}"?`)) return;
+
+  try {
+    await updateDoc(doc(db, 'creditCards', cardId), {
+      active: willActivate,
+      updatedAt: serverTimestamp()
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'creditCards',
+      docId: cardId,
+      before: { active: card.active },
+      after: { active: willActivate },
+      note: `Tarjeta ${willActivate ? 'activada' : 'desactivada'}: ${card.name}`
+    });
+
+    await loadCreditCards(true);
+    renderCreditCardsList();
+    renderPaymentStats();
+  } catch (e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  }
+};
+
+/**
+ * Elimina una tarjeta.
+ */
+window.deleteCreditCard = async (cardId) => {
+  const card = creditCards.find(c => c.id === cardId);
+  if (!card) return;
+
+  if (!confirm(`⚠️ ¿Eliminar la tarjeta "${card.name}"?\n\nEsta acción no se puede deshacer.\n\nSi solo quieres ocultarla, usa "Desactivar".`)) return;
+
+  try {
+    await deleteDoc(doc(db, 'creditCards', cardId));
+
+    await audit({
+      action: 'delete',
+      collection: 'creditCards',
+      docId: cardId,
+      before: card,
+      note: `Tarjeta eliminada: ${card.name} · ${card.brand} ${card.bank}`
+    });
+
+    await loadCreditCards(true);
+    renderCreditCardsList();
+    renderPaymentStats();
+
+    alert('✅ Tarjeta eliminada');
+  } catch (e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  }
+};
+
 function renderPaymentStats() {
   // Transferencias activas
   const transferCount = paymentChannels.filter(c =>
@@ -5374,8 +6480,12 @@ function renderPaymentStats() {
     c.type === 'credito' && c.active !== false
   ).length;
 
+  // 🆕 Tarjetas activas
+  const cardsCount = (creditCards || []).filter(c => c.active !== false).length;
+
   const tEl = $('channels-count-transferencia');
   const cEl = $('channels-count-credito');
+  const ccEl = $('channels-count-tarjetas');
 
   if (tEl) tEl.innerText = transferCount === 0
     ? 'Sin cuentas configuradas'
@@ -5384,6 +6494,10 @@ function renderPaymentStats() {
   if (cEl) cEl.innerText = creditCount === 0
     ? 'Sin entidades configuradas'
     : `${creditCount} entidad${creditCount !== 1 ? 'es' : ''} activa${creditCount !== 1 ? 's' : ''}`;
+
+  if (ccEl) ccEl.innerText = cardsCount === 0
+    ? 'Sin tarjetas configuradas'
+    : `${cardsCount} tarjeta${cardsCount !== 1 ? 's' : ''} activa${cardsCount !== 1 ? 's' : ''}`;
 }
 
 window.openChannelsModal = (type) => {
@@ -5436,7 +6550,7 @@ window.closeChannelsModal = () => {
   modal.classList.remove('flex');
 };
 
-window.openChannelForm = (channelId = null) => {
+window.openChannelForm = async (channelId = null) => {
   const modal = $('channel-form-modal');
   const titleEl = $('channel-form-title');
   const bodyEl = $('channel-form-body');
@@ -5473,6 +6587,9 @@ window.openChannelForm = (channelId = null) => {
     active: true,
     notes: ''
   };
+
+    // 🆕 Asegurar que el PUC esté cargado antes de renderizar
+  await ensurePucLoadedForAdmin();
 
   titleEl.innerText = existing ? 'Editar canal' : 'Nuevo canal';
 
@@ -5568,6 +6685,32 @@ window.openChannelForm = (channelId = null) => {
                class="w-full px-3 py-2 border rounded-lg mt-1">
       </div>
 
+            <!-- 🆕 Cuenta PUC contable -->
+      <div class="border-t pt-4">
+        <div class="flex justify-between items-center mb-1">
+          <label class="text-xs font-semibold text-sd">💼 Cuenta PUC contable *</label>
+          <span class="text-[10px] text-gray-400">Obligatoria</span>
+        </div>
+        <p class="text-[10px] text-gray-500 mb-2">
+          Cuenta contable donde se registrará el dinero de este canal cuando se cierre una venta.
+        </p>
+
+        <!-- Buscador -->
+        <input
+          id="cf-puc-search"
+          type="text"
+          placeholder="🔍 Buscar cuenta por código o nombre..."
+          class="w-full px-3 py-2 border rounded-lg text-xs mb-2"
+          autocomplete="off">
+
+        <!-- Select agrupado -->
+        <select id="cf-puc-account" class="w-full px-3 py-2 border rounded-lg text-sm" size="1">
+          ${buildPucOptionsHtml(channel.pucAccountCode || '')}
+        </select>
+
+        <p id="cf-puc-hint" class="text-[10px] text-gray-400 mt-1"></p>
+      </div>
+
       <!-- Vista previa + personalización -->
       <div class="border-t pt-4">
         <p class="text-xs font-semibold text-sd mb-2">Vista previa</p>
@@ -5639,6 +6782,69 @@ window.openChannelForm = (channelId = null) => {
     const el = $(id);
     if (el) el.addEventListener('input', updatePreview);
   });
+
+  // 🆕 Preselección inteligente de cuenta PUC
+  const pucSelect = $('cf-puc-account');
+  const pucHint = $('cf-puc-hint');
+  if (pucSelect) {
+    // Si es edición y ya tiene cuenta → ya viene seleccionada desde buildPucOptionsHtml
+    // Si es nuevo y no hay selección → sugerir según tipo
+    if (!existing && !pucSelect.value) {
+      const suggested = suggestPucAccount(type);
+      if (suggested) {
+        pucSelect.value = suggested.code;
+        if (pucHint) {
+          pucHint.innerText = `💡 Sugerida automáticamente: ${suggested.code} ${suggested.name}`;
+        }
+      }
+    } else if (existing && existing.pucAccountCode) {
+      if (pucHint) {
+        pucHint.innerText = `💼 Actualmente asignada: ${existing.pucAccountCode} ${existing.pucAccountName || ''}`;
+      }
+    }
+  }
+
+  // 🆕 Buscador del select de PUC
+  const pucSearch = $('cf-puc-search');
+  if (pucSearch && pucSelect) {
+    pucSearch.addEventListener('input', () => {
+      const term = pucSearch.value.toLowerCase().trim();
+      const allOptions = _pucAccountsCache || [];
+      const currentValue = pucSelect.value;
+
+      const filtered = !term
+        ? allOptions
+        : allOptions.filter(a =>
+            a.code.toLowerCase().includes(term) ||
+            a.name.toLowerCase().includes(term)
+          );
+
+      // Reconstruir el select con las cuentas filtradas
+      const classLabels = {
+        '1': '🔵 ACTIVO', '2': '🟠 PASIVO', '3': '🟣 PATRIMONIO',
+        '4': '🟢 INGRESOS', '5': '🔴 GASTOS', '6': '🟤 COSTOS DE VENTA',
+        '7': '⚫ COSTOS DE PRODUCCIÓN', '8': '⚪ CUENTAS DE ORDEN D', '9': '⚪ CUENTAS DE ORDEN C'
+      };
+      const byClass = {};
+      filtered.forEach(acc => {
+        const c = acc.code.charAt(0);
+        if (!byClass[c]) byClass[c] = [];
+        byClass[c].push(acc);
+      });
+
+      let html = '<option value="">— Selecciona una cuenta —</option>';
+      Object.keys(byClass).sort().forEach(c => {
+        html += `<optgroup label="${classLabels[c] || 'CLASE ' + c}">`;
+        byClass[c].forEach(acc => {
+          const sel = acc.code === currentValue ? ' selected' : '';
+          html += `<option value="${acc.code}"${sel}>${escapeHtml(pucLabel(acc))}</option>`;
+        });
+        html += '</optgroup>';
+      });
+
+      pucSelect.innerHTML = html;
+    });
+  }
 
   updatePreview();  
 
@@ -6172,7 +7378,20 @@ window.saveChannel = async (channelId = '') => {
   }
 
   const btn = event?.target;
+
+  // 🆕 Cuenta PUC contable (obligatoria)
+  const pucAccountCode = ($('cf-puc-account')?.value || '').trim();
+  if (!pucAccountCode) {
+    alert('⚠️ Debes asignar una cuenta PUC contable al canal.\n\nEs obligatoria para la trazabilidad contable.');
+    return;
+  }
+
+  // Bloquear el botón (después de validar)
   if (btn) { btn.disabled = true; btn.innerText = '⏳ Guardando...'; }
+
+  // Resolver nombre para snapshot
+  const pucAcc = (_pucAccountsCache || []).find(a => a.code === pucAccountCode);
+  const pucAccountName = pucAcc ? pucAcc.name : '';
 
   const data = {
     code,
@@ -6185,6 +7404,8 @@ window.saveChannel = async (channelId = '') => {
     notes,
     commissionRate,
     active,
+    pucAccountCode,
+    pucAccountName,
     updatedAt: serverTimestamp()
   };
 
@@ -6305,6 +7526,135 @@ window.updatePreview = () => {
   `;
 };
 
+/* ============================================================
+   🆕 PUC — Carga unificada (base + custom) para el select de canales
+============================================================ */
+async function ensurePucLoadedForAdmin() {
+  if (_pucAccountsCache) return _pucAccountsCache;
+  if (_pucLoadingPromise) return _pucLoadingPromise;
+
+  _pucLoadingPromise = (async () => {
+    try {
+      // 1. Base oficial desde lib/puc.js
+      const base = (window.SmartecPUC && window.SmartecPUC.getBase) ? window.SmartecPUC.getBase() : [];
+
+      // 2. Custom desde Firestore (colección puc_cuentas)
+      let custom = [];
+      try {
+        const snap = await getDocs(collection(db, 'puc_cuentas'));
+        custom = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.warn('[Admin/PUC] No se pudieron leer cuentas custom:', e);
+      }
+
+      // 3. Normalizar custom
+      const customNorm = custom.map(c => ({
+        code: c.code,
+        name: c.name,
+        parentCode: c.parentCode || null,
+        nature: c.nature || 'D',
+        level: c.level || c.code.length,
+        acceptsMovement: c.acceptsMovement !== false,
+        active: c.active !== false,
+        origin: 'custom'
+      }));
+
+      // 4. Fusionar (custom gana sobre base si mismo code)
+      const baseNorm = base.map(c => ({ ...c, origin: 'base' }));
+      const codesCustom = new Set(customNorm.map(c => c.code));
+      const baseFiltered = baseNorm.filter(c => !codesCustom.has(c.code));
+
+      const merged = [...baseFiltered, ...customNorm];
+
+      // 5. Filtrar SOLO las que aceptan movimiento y están activas
+      _pucAccountsCache = merged
+        .filter(a => a.acceptsMovement && a.active !== false)
+        .sort((a, b) => a.code.localeCompare(b.code));
+
+      console.log(`[Admin/PUC] ${_pucAccountsCache.length} cuentas cargadas para el select`);
+      return _pucAccountsCache;
+    } catch (e) {
+      console.error('[Admin/PUC] Error cargando PUC:', e);
+      _pucAccountsCache = [];
+      return [];
+    } finally {
+      _pucLoadingPromise = null;
+    }
+  })();
+
+  return _pucLoadingPromise;
+}
+
+/**
+ * Devuelve la etiqueta legible de una cuenta: "110505 · Caja general"
+ */
+function pucLabel(acc) {
+  return `${acc.code} · ${acc.name}`;
+}
+
+/**
+ * Encuentra la cuenta default según el tipo de canal.
+ * - transferencia → 111005 (o primera subcuenta de 1110)
+ * - credito       → 130505 (o primera subcuenta de 1305)
+ */
+function suggestPucAccount(type) {
+  if (!_pucAccountsCache || !_pucAccountsCache.length) return null;
+
+  const preferredCode = type === 'credito' ? '130505' : '111005';
+  const prefix = type === 'credito' ? '1305' : '1110';
+
+  // 1. Match exacto
+  const exact = _pucAccountsCache.find(a => a.code === preferredCode);
+  if (exact) return exact;
+
+  // 2. Primera subcuenta con ese prefijo
+  const firstOfPrefix = _pucAccountsCache.find(a => a.code.startsWith(prefix));
+  if (firstOfPrefix) return firstOfPrefix;
+
+  // 3. Sin match
+  return null;
+}
+
+/**
+ * Renderiza las opciones agrupadas por clase contable (1..6).
+ */
+function buildPucOptionsHtml(selectedCode = '') {
+  if (!_pucAccountsCache || !_pucAccountsCache.length) {
+    return '<option value="">— PUC no disponible —</option>';
+  }
+
+  const classLabels = {
+    '1': '🔵 ACTIVO',
+    '2': '🟠 PASIVO',
+    '3': '🟣 PATRIMONIO',
+    '4': '🟢 INGRESOS',
+    '5': '🔴 GASTOS',
+    '6': '🟤 COSTOS DE VENTA',
+    '7': '⚫ COSTOS DE PRODUCCIÓN',
+    '8': '⚪ CUENTAS DE ORDEN D',
+    '9': '⚪ CUENTAS DE ORDEN C'
+  };
+
+  const byClass = {};
+  _pucAccountsCache.forEach(acc => {
+    const c = acc.code.charAt(0);
+    if (!byClass[c]) byClass[c] = [];
+    byClass[c].push(acc);
+  });
+
+  let html = '<option value="">— Selecciona una cuenta —</option>';
+  Object.keys(byClass).sort().forEach(c => {
+    const label = classLabels[c] || `CLASE ${c}`;
+    html += `<optgroup label="${label}">`;
+    byClass[c].forEach(acc => {
+      const selected = acc.code === selectedCode ? ' selected' : '';
+      html += `<option value="${acc.code}" data-name="${escapeHtml(acc.name)}"${selected}>${escapeHtml(pucLabel(acc))}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  return html;
+}
+
 async function reloadPaymentChannels() {
   try {
     const s = await getDocs(collection(db,'paymentChannels'));
@@ -6399,7 +7749,10 @@ function renderChannelCard(c) {
     const commissionLine = (c.type === 'credito' && c.commissionRate)
     ? `<p class="text-xs text-gray-500 mt-0.5">Comisión comercio: <b class="text-sl">${(c.commissionRate*100).toFixed(2)}%</b></p>`
     : '';
-
+  // 🆕 Línea de cuenta PUC
+  const pucLine = c.pucAccountCode
+    ? `<p class="text-xs text-gray-500 mt-0.5">💼 PUC: <b class="text-sd">${escapeHtml(c.pucAccountCode)}</b>${c.pucAccountName ? ' · ' + escapeHtml(c.pucAccountName) : ''}</p>`
+    : '<p class="text-xs text-amber-600 mt-0.5">⚠️ Sin cuenta PUC asignada</p>';
   // Badge de estado
   const badge = active
     ? '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Activo</span>'
@@ -6421,6 +7774,7 @@ function renderChannelCard(c) {
           ${badge}
         </div>
         ${account ? `<p class="text-xs text-gray-500 mt-0.5">Cuenta: <span class="font-mono">${account}</span></p>` : ''}
+        ${pucLine}
         ${commissionLine}
       </div>
 
@@ -15492,6 +16846,7 @@ window.loadMoreAudit = loadMoreAudit;
 
 /* 🆕 Exponer funciones de retiros al window (para consola y otros módulos) */
 window.loadCashWithdrawalsAll = loadCashWithdrawalsAll;
+window.loadCreditCards = loadCreditCards;
 window.renderWithdrawals = renderWithdrawals;
 window.renderWithdrawalsContent = renderWithdrawalsContent;
 window.updateWithdrawalsBadge = updateWithdrawalsBadge;

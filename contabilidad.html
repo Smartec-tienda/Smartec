@@ -1053,12 +1053,14 @@
 
       <div class="glass-strong rounded-2xl shadow-apple-lg overflow-hidden border border-white/60">
         <div class="overflow-x-auto scrollbar-thin">
-          <table class="w-full text-sm min-w-[1000px]">
+          <table class="w-full text-sm min-w-[1200px]">
             <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
               <tr>
                 <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Nombre</th>
                 <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Cédula</th>
                 <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Cargo</th>
+                <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Rol negocio</th>
+                <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Acceso al sistema</th>
                 <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Salario base</th>
                 <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Aux. transp.</th>
                 <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">ARL</th>
@@ -1673,6 +1675,26 @@
     </button>
     <h3 id="supplier-title" class="text-xl font-bold text-[#1D1D1F] mb-4 pr-10 tracking-tight">Proveedor</h3>
     <div id="supplier-body"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     🆕 MODAL CONVERTIR COTIZACIÓN EN VENTA
+============================================================ -->
+<div id="quote-convert-modal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeQuoteConvertModal()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-2xl w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeQuoteConvertModal()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+
+    <div class="text-center mb-5">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0A2A4A] to-[#4A7A9A] flex items-center justify-center mx-auto mb-3 text-3xl shadow-apple">💰</div>
+      <h3 class="text-xl font-bold text-[#1D1D1F] tracking-tight">Convertir en venta</h3>
+      <p id="qc-subtitle" class="text-xs text-[#6E6E73] mt-1"></p>
+    </div>
+
+    <div id="qc-body"></div>
   </div>
 </div>
 
