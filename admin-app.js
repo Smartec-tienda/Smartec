@@ -58,6 +58,7 @@ let currentAccView = 'summary'; // 🆕 vista actual de contabilidad
 let transferRequestsAll = [];   // 🆕 solicitudes de traslado (tiempo real)
 let deviceRequestsAll = [];     // 🆕 solicitudes de dispositivo (tiempo real)
 let deviceAttemptsAll = [];     // 🆕 intentos de acceso bloqueados (tiempo real)
+let cashWithdrawalsAll = [];    // 🆕 retiros de caja (superadmin)
 
 /* ============================================================
    HELPERS
@@ -479,6 +480,14 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         }
         renderTransfers();
       }
+      else if (tab === 'withdrawals') {
+        // 🆕 Retiros de caja — cargar/refrescar al entrar
+        if (typeof renderWithdrawals === 'function') {
+          renderWithdrawals();
+        } else {
+          console.warn('[Admin/Retiros] renderWithdrawals no existe todavía');
+        }
+      }
       else if (tab === 'audit') {
         // 🆕 Auditoría: cargar solo cuando entras (es pesada)
         const tbody = $('audit-tbody');
@@ -574,6 +583,9 @@ const _hasMore = {
    a cada pestaña) o con "Cargar más" (paginación).
 ============================================================ */
 async function loadAll() {
+  // 🆕 Limpiar cache de retiros para asegurar datos frescos
+  window.SmartecCache?.invalidate('cashWithdrawals_all');
+
   const C = window.SmartecCache;
 
   await Promise.all([
@@ -1189,13 +1201,24 @@ function renderDashboard() {
   }
 
   let invCost = 0, invPrice = 0, unitsStock = 0;
+  const FIFO = window.SmartecFIFO;
   invFiltered.forEach(i => {
     const p = products.find(x => x.id === i.productId);
     if (!p) return;
-    const cost = Number(p.cost || 0);
+
+    // 🆕 Costo FIFO desde los lotes
+    const fallbackCost = Number(p.cost || 0);
+    const normalized = FIFO.normalizeInventory(
+      { stock: i.stock, batches: i.batches },
+      fallbackCost
+    );
+    const batchValue = normalized.batches.reduce((sum, b) => {
+      return sum + (Number(b.qty || 0) * Number(b.cost || 0));
+    }, 0);
+    invCost += batchValue;
+
     const price = (p.onSale && p.salePrice) ? Number(p.salePrice) : Number(p.price || 0);
     const st = Number(i.stock || 0);
-    invCost += cost * st;
     invPrice += price * st;
     unitsStock += st;
   });
@@ -3911,30 +3934,59 @@ window.viewSale = async (id) => {
       <div class="space-y-2">
         ${(s.items||[]).map(it => {
           const hasEx = !!it.priceException;
+          const consumed = Array.isArray(it.consumedBatches) ? it.consumedBatches : [];
+
+          // 🆕 Bloque de consumo FIFO
+          let fifoHtml = '';
+          if (consumed.length) {
+            fifoHtml = `
+              <div class="mt-1.5 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                <p class="text-[10px] text-blue-700 font-bold uppercase mb-1">📦 Consumo FIFO (${consumed.length} lote${consumed.length !== 1 ? 's' : ''})</p>
+                ${consumed.map(c => `
+                  <div class="flex justify-between text-[10px] text-blue-800">
+                    <span>${c.qty} und × ${fmt(c.cost)}</span>
+                    <span class="font-mono font-semibold">= ${fmt(c.qty * c.cost)}</span>
+                  </div>
+                `).join('')}
+                <div class="flex justify-between text-[10px] text-blue-900 font-bold mt-1 pt-1 border-t border-blue-200">
+                  <span>Costo real unitario</span>
+                  <span>${fmt(it.unitCost)}</span>
+                </div>
+              </div>
+            `;
+          }
+
           return `
-          <div class="flex justify-between border-b pb-2 text-sm ${hasEx ? 'bg-orange-50/50 -mx-1 px-1 rounded' : ''}">
-            <div class="min-w-0 flex-1">
-              <p class="font-medium text-sd truncate">
-                ${hasEx ? '⚠️ ' : ''}${escapeHtml(it.name)}
-              </p>
-              <p class="text-[10px] text-gray-400">${escapeHtml(it.sku)} ${it.color?'· '+colorNameFromHex(it.color):''} ${escapeHtml(it.size)?'· '+escapeHtml(it.size):''}</p>
-              ${hasEx ? `
-                <p class="text-[10px] text-orange-600 font-semibold mt-0.5">
-                  🔒 Mín: ${fmt(it.priceException.minPrice)} → ${fmt(it.priceException.finalPrice)}
-                  (${it.priceException.differencePct.toFixed(1)}%)
+          <div class="border-b pb-2 text-sm ${hasEx ? 'bg-orange-50/50 -mx-1 px-1 rounded' : ''}">
+            <div class="flex justify-between">
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-sd truncate">
+                  ${hasEx ? '⚠️ ' : ''}${escapeHtml(it.name)}
                 </p>
-                <p class="text-[10px] text-orange-500 leading-tight">
-                  ✅ ${escapeHtml(it.priceException.authorizedByName || '—')} · ${escapeHtml(it.priceException.authorizedByRole || '—')}
+                <p class="text-[10px] text-gray-400">${escapeHtml(it.sku)} ${it.color?'· '+colorNameFromHex(it.color):''} ${escapeHtml(it.size)?'· '+escapeHtml(it.size):''}</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">
+                  💵 Costo unitario: <b>${fmt(it.unitCost)}</b>
+                  ${consumed.length ? '' : '<span class="text-gray-400">(estimado)</span>'}
                 </p>
-                <p class="text-[10px] text-gray-500 italic leading-tight">
-                  "${escapeHtml(it.priceException.reason || '')}"
-                </p>
-              ` : ''}
+                ${hasEx ? `
+                  <p class="text-[10px] text-orange-600 font-semibold mt-0.5">
+                    🔒 Mín: ${fmt(it.priceException.minPrice)} → ${fmt(it.priceException.finalPrice)}
+                    (${it.priceException.differencePct.toFixed(1)}%)
+                  </p>
+                  <p class="text-[10px] text-orange-500 leading-tight">
+                    ✅ ${escapeHtml(it.priceException.authorizedByName || '—')} · ${escapeHtml(it.priceException.authorizedByRole || '—')}
+                  </p>
+                  <p class="text-[10px] text-gray-500 italic leading-tight">
+                    "${escapeHtml(it.priceException.reason || '')}"
+                  </p>
+                ` : ''}
+              </div>
+              <div class="text-right whitespace-nowrap ml-3">
+                <p class="text-xs">${it.qty} × ${fmt(it.unitPrice)}</p>
+                <p class="font-bold ${hasEx ? 'text-orange-600' : 'text-sl'}">${fmt(it.qty*it.unitPrice)}</p>
+              </div>
             </div>
-            <div class="text-right whitespace-nowrap ml-3">
-              <p class="text-xs">${it.qty} × ${fmt(it.unitPrice)}</p>
-              <p class="font-bold ${hasEx ? 'text-orange-600' : 'text-sl'}">${fmt(it.qty*it.unitPrice)}</p>
-            </div>
+            ${fifoHtml}
           </div>`;
         }).join('')}
       </div>
@@ -4159,34 +4211,118 @@ window.cancelSale = async (id) => {
   const reason = prompt('Motivo de la anulación (obligatorio):');
   if (!reason || !reason.trim()) return alert('Debes escribir el motivo');
 
-  await updateDoc(doc(db,'sales',id), {
+  const FIFO = window.SmartecFIFO;
+  const movimientosReversion = [];
+
+  // ============================================================
+  // 1. Reintegrar stock a los lotes (FIFO)
+  // ============================================================
+  for (const it of (s.items || [])) {
+    const invId = `${s.storeId}_${it.variantId || ''}`;
+    const invRef = doc(db, 'inventory', invId);
+    const invSnap = await getDoc(invRef);
+
+    if (!invSnap.exists()) {
+      console.warn('[cancelSale] Inventario no encontrado:', invId);
+      continue;
+    }
+
+    const invData = invSnap.data();
+    const fallbackCost = Number(it.unitCost || 0);
+
+    // Normalizar (por si no tiene batches)
+    const normalized = FIFO.normalizeInventory(
+      { stock: invData.stock || 0, batches: invData.batches },
+      fallbackCost
+    );
+
+    // 🆕 Reintegrar los lotes consumidos en la venta original
+    const consumed = Array.isArray(it.consumedBatches) ? it.consumedBatches : [];
+
+    let batchesFinal;
+    if (consumed.length) {
+      // Tenemos el detalle FIFO → reintegrar cada lote
+      batchesFinal = FIFO.reintegrateBatches(normalized.batches, consumed);
+    } else {
+      // Fallback: venta vieja sin consumedBatches → crear un lote nuevo
+      // con el costo unitario que tenía la venta
+      const fallbackBatch = FIFO.createBatch(
+        Number(it.qty || 0),
+        fallbackCost,
+        'devolucion',
+        {
+          sourceId: s.id,
+          sourceRef: `Anulación venta #${s.id.slice(-6)}`,
+          createdBy: currentUser.email
+        }
+      );
+      batchesFinal = [...normalized.batches, fallbackBatch];
+    }
+
+    const newStock = FIFO.sumBatchesQty(batchesFinal);
+
+    // Guardar inventario con batches reintegrados
+    await updateDoc(invRef, {
+      stock: newStock,
+      batches: batchesFinal,
+      updatedAt: serverTimestamp()
+    });
+
+    // Registrar movimiento de reversión
+    movimientosReversion.push({
+      storeId: s.storeId,
+      productId: it.productId,
+      variantId: it.variantId,
+      sku: it.sku,
+      productName: it.name,
+      type: 'devolucion',
+      qtyBefore: Number(invData.stock || 0),
+      qtyAfter: newStock,
+      delta: Number(it.qty || 0),
+      consumedBatches: consumed,
+      fallbackUsed: consumed.length === 0,
+      reason: `Anulación venta #${s.id.slice(-6)}: ${reason.trim()}`,
+      saleId: s.id,
+      userId: currentUser.uid,
+      userEmail: currentUser.email,
+      createdAt: serverTimestamp()
+    });
+  }
+
+  // ============================================================
+  // 2. Registrar los movimientos de reversión
+  // ============================================================
+  for (const mov of movimientosReversion) {
+    await addDoc(collection(db, 'inventoryMovements'), mov);
+  }
+
+  // ============================================================
+  // 3. Marcar la venta como anulada
+  // ============================================================
+  await updateDoc(doc(db, 'sales', id), {
     status: 'anulada',
     cancelReason: reason.trim(),
     cancelledAt: serverTimestamp(),
-    cancelledBy: currentUser.email
+    cancelledBy: currentUser.email,
+    cancelledByName: currentUserData.name || currentUser.email
   });
 
-  // Devolver stock a inventario
-  for (const it of (s.items||[])) {
-    const invId = `${s.storeId}_${it.variantId || ''}`;
-    const invRef = doc(db,'inventory', invId);
-    const invSnap = await getDoc(invRef);
-    if (invSnap.exists()) {
-      await updateDoc(invRef, { stock: Number(invSnap.data().stock||0) + Number(it.qty||0) });
-    }
-  }
-
+  // ============================================================
+  // 4. Auditoría
+  // ============================================================
   await audit({
     action: 'cancel',
     collection: 'sales',
     docId: id,
     before: { status: s.status },
     after: { status: 'anulada', cancelReason: reason },
-    note: `Venta anulada: ${reason}`
+    note: `Venta anulada: ${reason} · ${movimientosReversion.length} item(s) reintegrados a lotes`
   });
 
-  window.SmartecCache.invalidate('sales'); 
+  window.SmartecCache.invalidate('sales');
   window.SmartecCache.invalidate('inventory');
+  window.SmartecCache.invalidate(`inventory_${s.storeId}`);
+
   closeSaleModal();
   await loadAll();
 };
@@ -7997,12 +8133,14 @@ window.viewInventory = (productId) => {
   const body = $('inv-body');
   body.innerHTML = '';
 
+  const FIFO = window.SmartecFIFO;
+
   // Por cada tienda
   stores.forEach(st => {
     const storeBlock = document.createElement('div');
     storeBlock.className = 'border rounded-lg mb-4 overflow-hidden';
-    
-        // Total real de esta tienda para este producto (con fallback por variantId)
+
+    // Total real de esta tienda para este producto
     const storeTotal = (p.variants || []).reduce((sum, vr) => {
       const invId = `${st.storeId}_${vr.variantId}`;
       let inv = inventory.find(i => i.id === invId);
@@ -8025,11 +8163,11 @@ window.viewInventory = (productId) => {
 
     const variantsContainer = storeBlock.querySelector(`[data-store="${st.storeId}"]`);
 
-        // Por cada variante
+    // Por cada variante
     (p.variants||[]).forEach(vr => {
       const invId = `${st.storeId}_${vr.variantId}`;
 
-      // Búsqueda robusta: por id, por _docId, por storeId+variantId, por storeId+sku
+      // Búsqueda robusta del inventario
       let inv = inventory.find(i => i.id === invId);
       if (!inv) inv = inventory.find(i => i._docId === invId);
       if (!inv) inv = inventory.find(i => i.storeId === st.storeId && i.variantId === vr.variantId);
@@ -8038,54 +8176,122 @@ window.viewInventory = (productId) => {
       const stock = inv ? Number(inv.stock||0) : 0;
       const minStock = inv ? Number(inv.minStock||5) : 5;
 
-            const row = document.createElement('div');
-      row.className = 'flex items-center justify-between gap-3 py-3 border-b last:border-0';
+      // 🆕 Normalizar para obtener lotes
+      const fallbackCost = Number(p.cost || 0);
+      const normalized = inv
+        ? FIFO.normalizeInventory({ stock: inv.stock, batches: inv.batches }, fallbackCost)
+        : { batches: [], stock: 0 };
+
+      const batches = normalized.batches;
+
+      // 🆕 Ordenar lotes FIFO (más viejo primero)
+      const sortedBatches = batches.slice().sort((a, b) => {
+        const ca = String(a.createdAt || a.entryDate || '');
+        const cb = String(b.createdAt || b.entryDate || '');
+        return ca.localeCompare(cb);
+      });
+
+      // 🆕 Valor total del inventario de esta variante
+      const totalValue = batches.reduce((s, b) => s + (Number(b.qty || 0) * Number(b.cost || 0)), 0);
+      const avgCost = FIFO.avgCostFromBatches(batches);
+
+      // 🆕 Render de lotes
+      let batchesHtml = '';
+      if (sortedBatches.length > 0) {
+        batchesHtml = `
+          <div class="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
+            <div class="flex justify-between items-center mb-1.5">
+              <p class="text-[10px] text-blue-700 font-bold uppercase">📦 ${sortedBatches.length} lote${sortedBatches.length !== 1 ? 's' : ''} activo${sortedBatches.length !== 1 ? 's' : ''}</p>
+              <p class="text-[10px] text-blue-700">Costo prom: <b>${fmt(avgCost)}</b></p>
+            </div>
+            <div class="space-y-1">
+              ${sortedBatches.map((b, i) => {
+                const order = i + 1;
+                const qtyOrig = Number(b.qtyOriginal || b.qty || 0);
+                const qtyNow = Number(b.qty || 0);
+                const consumed = qtyOrig - qtyNow;
+                const badge = order === 1 ? '🥇' : order === 2 ? '🥈' : order === 3 ? '🥉' : `${order}.`;
+                const sourceLabel = {
+                  compra: '🛒 Compra',
+                  ajuste: '⚙️ Ajuste',
+                  traslado: '🔄 Traslado',
+                  devolucion: '↩️ Devolución',
+                  migracion: '🌱 Migración'
+                }[b.source] || b.source || '—';
+
+                return `
+                  <div class="bg-white rounded-md p-2 text-[10px]">
+                    <div class="flex justify-between items-center mb-0.5">
+                      <span class="font-semibold text-blue-800">${badge} Lote #${order}</span>
+                      <span class="font-mono font-bold text-blue-900">${qtyNow} und</span>
+                    </div>
+                    <div class="flex justify-between text-blue-700">
+                      <span>💵 Costo: <b>${fmt(b.cost)}</b></span>
+                      <span class="font-mono">= ${fmt(qtyNow * b.cost)}</span>
+                    </div>
+                    <div class="flex justify-between text-blue-600 mt-0.5">
+                      <span>${sourceLabel}</span>
+                      <span>${b.entryDate || '—'}</span>
+                    </div>
+                    ${consumed > 0 ? `<div class="text-[9px] text-blue-500 italic">Consumido: ${consumed} de ${qtyOrig} (${qtyOrig > 0 ? ((consumed/qtyOrig)*100).toFixed(0) : 0}%)</div>` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <div class="border-t border-blue-200 mt-1.5 pt-1.5 flex justify-between text-[10px] text-blue-900 font-bold">
+              <span>Valor total (FIFO)</span>
+              <span>${fmt(totalValue)}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      const row = document.createElement('div');
+      row.className = 'py-3 border-b last:border-0';
       row.innerHTML = `
-        <div class="flex items-center gap-2 min-w-0 flex-1">
-          ${vr.color ? `<span class="w-5 h-5 rounded-full border flex-shrink-0" style="background:${vr.color}"></span>` : ''}
-          <div class="min-w-0 flex-1">
-            <p class="text-xs font-medium text-sd truncate">
-              ${displayColorName(vr)} ${vr.size?'· '+vr.size:''}
-              ${!displayColorName(vr) && !vr.size ? '<span class="text-gray-400">Estándar</span>' : ''}
-            </p>
-            <p class="text-[10px] text-gray-400 font-mono truncate">${vr.sku}</p>
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            ${vr.color ? `<span class="w-5 h-5 rounded-full border flex-shrink-0" style="background:${vr.color}"></span>` : ''}
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-medium text-sd truncate">
+                ${displayColorName(vr)} ${vr.size?'· '+vr.size:''}
+                ${!displayColorName(vr) && !vr.size ? '<span class="text-gray-400">Estándar</span>' : ''}
+              </p>
+              <p class="text-[10px] text-gray-400 font-mono truncate">${vr.sku}</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="text-right min-w-[80px]">
+              <p class="text-[9px] text-gray-400 uppercase font-semibold leading-none">Stock actual</p>
+              <p class="text-xl font-bold ${stock === 0 ? 'text-red-500' : (stock <= minStock ? 'text-orange-500' : 'text-green-600')} leading-tight">
+                ${stock}
+              </p>
+            </div>
+            <div class="w-px h-8 bg-gray-200"></div>
+            <div class="flex items-center gap-1">
+              <button type="button" onclick="adjustInvInput(this, -1)" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">−</button>
+              <input 
+                type="number" 
+                min="0"
+                value="0"
+                data-inv-id="${invId}"
+                data-store-id="${st.storeId}"
+                data-variant-id="${vr.variantId}"
+                data-product-id="${p.id}"
+                data-product-name="${p.name}"
+                data-sku="${vr.sku}"
+                data-color="${vr.color||''}"
+                data-color-name="${vr.colorName||''}"
+                data-size="${vr.size||''}"
+                class="inv-input w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sl"
+                placeholder="0"
+              >
+              <button type="button" onclick="adjustInvInput(this, 1)" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">+</button>
+            </div>
           </div>
         </div>
-
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <!-- Stock actual (solo lectura, destacado) -->
-          <div class="text-right min-w-[80px]">
-            <p class="text-[9px] text-gray-400 uppercase font-semibold leading-none">Stock actual</p>
-            <p class="text-xl font-bold ${stock === 0 ? 'text-red-500' : (stock <= minStock ? 'text-orange-500' : 'text-green-600')} leading-tight">
-              ${stock}
-            </p>
-          </div>
-
-          <!-- Separador visual -->
-          <div class="w-px h-8 bg-gray-200"></div>
-
-          <!-- Controles de edición -->
-          <div class="flex items-center gap-1">
-            <button type="button" onclick="adjustInvInput(this, -1)" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">−</button>
-            <input 
-              type="number" 
-              min="0"
-              value="0"
-              data-inv-id="${invId}"
-              data-store-id="${st.storeId}"
-              data-variant-id="${vr.variantId}"
-              data-product-id="${p.id}"
-              data-product-name="${p.name}"
-              data-sku="${vr.sku}"
-              data-color="${vr.color||''}"
-              data-color-name="${vr.colorName||''}"
-              data-size="${vr.size||''}"
-              class="inv-input w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sl"
-              placeholder="0"
-            >
-            <button type="button" onclick="adjustInvInput(this, 1)" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">+</button>
-          </div>
-        </div>
+        ${batchesHtml}
       `;
       variantsContainer.appendChild(row);
     });
@@ -8130,6 +8336,7 @@ window.saveInventory = async () => {
       stock: newStock,
       minStock: inv?.minStock || 5,
       serials: inv?.serials || [],
+      batches: inv?.batches || [],   // 🆕 preservar lotes
       updatedAt: serverTimestamp()
     };
 
@@ -8327,14 +8534,29 @@ function renderInventoryKPIs() {
   else if (currentUserData.role === 'admin') invFiltered = invFiltered.filter(i => i.storeId === currentUserData.storeId);
 
   let invCost = 0, invPrice = 0, units = 0, alerts = 0;
+  const FIFO = window.SmartecFIFO;
+
   invFiltered.forEach(i => {
     const p = products.find(x => x.id === i.productId);
     if (!p) return;
-    const cost = Number(p.cost || 0);
+
+    // 🆕 Normalizar inventario para asegurar que tenga batches
+    const fallbackCost = Number(p.cost || 0);
+    const normalized = FIFO.normalizeInventory(
+      { stock: i.stock, batches: i.batches },
+      fallbackCost
+    );
+
+    // 🆕 Valor de inventario FIFO: sum(qty × cost) por cada lote
+    const batchValue = normalized.batches.reduce((sum, b) => {
+      return sum + (Number(b.qty || 0) * Number(b.cost || 0));
+    }, 0);
+    invCost += batchValue;
+
+    // Precio de venta (no cambia)
     const price = (p.onSale && p.salePrice) ? Number(p.salePrice) : Number(p.price || 0);
     const st = Number(i.stock || 0);
     const min = Number(i.minStock || settings.minStock || 5);
-    invCost += cost * st;
     invPrice += price * st;
     units += st;
     if (st <= min) alerts++;
@@ -8418,6 +8640,16 @@ window.openMovementForm = (type) => {
         </label>
         <input id="mov-qty" type="number" min="0" value="" class="w-full px-3 py-2 border rounded-lg mt-1 text-lg font-semibold">
       </div>
+
+      ${type === 'entrada' ? `
+      <div>
+        <label class="text-xs font-semibold text-sd">💵 Costo unitario de esta entrada</label>
+        <input id="mov-cost" type="number" min="0" value="" placeholder="Se usará el costo actual del producto si se deja vacío"
+          class="w-full px-3 py-2 border rounded-lg mt-1 text-lg font-semibold">
+        <p class="text-[10px] text-gray-400 mt-1" id="mov-cost-hint">💡 Este costo se guardará en un nuevo lote (FIFO).</p>
+      </div>
+      ` : ''}
+
       <div>
         <label class="text-xs font-semibold text-sd">Motivo / notas</label>
         <textarea id="mov-reason" rows="2" placeholder="${type==='entrada'?'Ej: Compra a proveedor Samsung':'Ej: Producto dañado en bodega'}" class="w-full px-3 py-2 border rounded-lg mt-1 text-sm"></textarea>
@@ -8515,45 +8747,128 @@ window.saveMovement = async () => {
   let stockAfter = stockBefore;
   let type2 = type; // por si ajustamos entrada/salida a ajuste
   let destStoreId = null;
+  let batches = [];              // 🆕 Lotes del inventario
+  let consumedDetail = null;     // 🆕 Para salida/traslado/ajuste negativo
+  let newBatchDetail = null;     // 🆕 Para entrada/ajuste positivo
+
+  // 🆕 Normalizar inventario (asegurar que tenga batches[])
+  const FIFO = window.SmartecFIFO;
+  const fallbackCost = Number(product?.cost || 0);
+  const normalized = FIFO.normalizeInventory(
+    inv ? { stock: stockBefore, batches: inv.batches } : { stock: 0, batches: [] },
+    fallbackCost
+  );
+  batches = normalized.batches;
 
   if (type === 'entrada') {
-    stockAfter = stockBefore + qtyRaw;
+    // 🆕 Crear lote con el costo indicado (o el costo del producto)
+    const rawCost = $('mov-cost')?.value;
+    const entryCost = (rawCost !== '' && rawCost !== null && !isNaN(Number(rawCost)))
+      ? Number(rawCost)
+      : fallbackCost;
+
+    const newBatch = FIFO.createBatch(qtyRaw, entryCost, 'compra', {
+      sourceId: null,
+      sourceRef: reason.substring(0, 50),
+      createdBy: currentUser.email
+    });
+    batches.push(newBatch);
+    newBatchDetail = newBatch;
+
+    stockAfter = FIFO.sumBatchesQty(batches);
+
   } else if (type === 'salida') {
-    if (qtyRaw > stockBefore) {
-      if (!confirm(`⚠️ Vas a sacar ${qtyRaw} und pero solo hay ${stockBefore}. ¿Continuar?`)) return;
+    // 🆕 Consumir FIFO
+    const consumeResult = FIFO.consumeFIFO(batches, qtyRaw);
+
+    if (!consumeResult.ok) {
+      if (!confirm(`⚠️ Stock insuficiente en lotes. Faltan ${consumeResult.missing} und. ¿Continuar de todas formas?`)) return;
     }
-    stockAfter = Math.max(0, stockBefore - qtyRaw);
+
+    batches = consumeResult.newBatches;
+    consumedDetail = consumeResult.consumed;
+    stockAfter = FIFO.sumBatchesQty(batches);
+
   } else if (type === 'ajuste') {
-    stockAfter = qtyRaw;
+    // 🆕 Ajuste: comparar stock actual vs stock real
+    if (qtyRaw > stockBefore) {
+      // Ajuste positivo → crear lote nuevo con el costo del producto
+      const addedQty = qtyRaw - stockBefore;
+      const newBatch = FIFO.createBatch(addedQty, fallbackCost, 'ajuste', {
+        sourceId: null,
+        sourceRef: `Ajuste: ${reason.substring(0, 40)}`,
+        createdBy: currentUser.email
+      });
+      batches.push(newBatch);
+      newBatchDetail = newBatch;
+    } else if (qtyRaw < stockBefore) {
+      // Ajuste negativo → consumir FIFO
+      const toRemove = stockBefore - qtyRaw;
+      const consumeResult = FIFO.consumeFIFO(batches, toRemove);
+      batches = consumeResult.newBatches;
+      consumedDetail = consumeResult.consumed;
+    }
+    // Si son iguales, no hace nada
+    stockAfter = FIFO.sumBatchesQty(batches);
+
   } else if (type === 'traslado') {
-  destStoreId = $('mov-store-dest').value;
-  if (!destStoreId) return alert('Selecciona la tienda destino');
-  if (destStoreId === storeId) return alert('La tienda destino debe ser diferente a la origen');
-  if (qtyRaw > stockBefore) return alert(`No hay suficiente stock. Disponible en origen: ${stockBefore}`);
+    destStoreId = $('mov-store-dest').value;
+    if (!destStoreId) return alert('Selecciona la tienda destino');
+    if (destStoreId === storeId) return alert('La tienda destino debe ser diferente a la origen');
+    if (qtyRaw > stockBefore) return alert(`No hay suficiente stock. Disponible en origen: ${stockBefore}`);
 
-  // Ver stock actual en destino
-  const destInvIdPreview = `${destStoreId}_${vid}`;
-  const destInvPreview = inventory.find(i => i.id === destInvIdPreview);
-  const destStockBefore = destInvPreview ? Number(destInvPreview.stock||0) : 0;
-  const originStore = stores.find(s => s.storeId === storeId);
-  const destStore = stores.find(s => s.storeId === destStoreId);
+    // Ver stock actual en destino
+    const destInvIdPreview = `${destStoreId}_${vid}`;
+    const destInvPreview = inventory.find(i => i.id === destInvIdPreview);
+    const destStockBefore = destInvPreview ? Number(destInvPreview.stock||0) : 0;
+    const originStore = stores.find(s => s.storeId === storeId);
+    const destStore = stores.find(s => s.storeId === destStoreId);
 
-  const confirmMsg =
-    `Confirmar traslado:\n\n` +
-    `📦 Producto: ${product.name}\n` +
-    `🎨 Variante: ${[variant.colorName, variant.size].filter(Boolean).join(' · ') || 'Estándar'}\n\n` +
-    `Origen — ${originStore?.name}:\n` +
-    `   ${stockBefore} → ${stockBefore - qtyRaw} (−${qtyRaw})\n\n` +
-    `Destino — ${destStore?.name}:\n` +
-    `   ${destStockBefore} → ${destStockBefore + qtyRaw} (+${qtyRaw})\n\n` +
-    `¿Confirmar traslado de ${qtyRaw} unidad(es)?`;
+    const confirmMsg =
+      `Confirmar traslado:\n\n` +
+      `📦 Producto: ${product.name}\n` +
+      `🎨 Variante: ${[variant.colorName, variant.size].filter(Boolean).join(' · ') || 'Estándar'}\n\n` +
+      `Origen — ${originStore?.name}:\n` +
+      `   ${stockBefore} → ${stockBefore - qtyRaw} (−${qtyRaw})\n\n` +
+      `Destino — ${destStore?.name}:\n` +
+      `   ${destStockBefore} → ${destStockBefore + qtyRaw} (+${qtyRaw})\n\n` +
+      `¿Confirmar traslado de ${qtyRaw} unidad(es)?`;
 
-  if (!confirm(confirmMsg)) return;
+    if (!confirm(confirmMsg)) return;
 
-  stockAfter = stockBefore - qtyRaw;
-}
+    // 🆕 Consumir FIFO en el origen
+    const consumeResult = FIFO.consumeFIFO(batches, qtyRaw);
 
+    if (!consumeResult.ok) {
+      if (!confirm(
+        `⚠️ Stock insuficiente en lotes del origen.\n` +
+        `Faltan: ${consumeResult.missing} unidades.\n\n` +
+        `¿Continuar de todas formas?`
+      )) return;
+    }
+
+    // Actualizar batches del origen (sin los consumidos)
+    batches = consumeResult.newBatches;
+    consumedDetail = consumeResult.consumed;
+    stockAfter = FIFO.sumBatchesQty(batches);
+
+    // 🆕 Preparar los lotes que se enviarán a la tienda destino
+    // (los mismos que se consumieron del origen, con sus costos originales)
+    window.__transferBatches = consumeResult.consumed.map(c => ({
+      id: FIFO.newBatchId(),
+      qty: c.qty,
+      qtyOriginal: c.qty,
+      cost: c.cost,
+      entryDate: new Date().toISOString().split('T')[0],
+      source: 'traslado',
+      sourceId: null,
+      sourceRef: `Traslado desde ${originStore?.name || storeId}`,
+      createdBy: currentUser.email,
+      createdAt: new Date().toISOString()
+    }));
+  }
   // Guardar inventario origen (o único)
+
   const baseInvData = {
     storeId,
     productId: pid,
@@ -8568,20 +8883,39 @@ window.saveMovement = async () => {
     updatedAt: serverTimestamp()
   };
 
-  await setDoc(doc(db,'inventory',invId), { ...baseInvData, stock: stockAfter }, { merge: true });
+  // 🆕 Guardar con los lotes FIFO
+  await setDoc(doc(db,'inventory',invId), {
+    ...baseInvData,
+    stock: stockAfter,
+    batches: batches
+  }, { merge: true });
 
   // Si es traslado, actualizar tienda destino
   if (type === 'traslado') {
     const destInvId = `${destStoreId}_${vid}`;
     const destSnap = await getDoc(doc(db,'inventory',destInvId));
-    const destBefore = destSnap.exists() ? Number(destSnap.data().stock||0) : 0;
-    const destAfter = destBefore + qtyRaw;
+
+    // 🆕 Normalizar inventario destino (por si no tiene batches)
+    const destData = destSnap.exists() ? destSnap.data() : { stock: 0, batches: [] };
+    const destNormalized = FIFO.normalizeInventory(
+      { stock: destData.stock || 0, batches: destData.batches },
+      fallbackCost
+    );
+
+    // 🆕 Agregar los lotes trasladados
+    const transferBatches = window.__transferBatches || [];
+    const destBatchesFinal = [...destNormalized.batches, ...transferBatches];
+    const destAfter = FIFO.sumBatchesQty(destBatchesFinal);
 
     await setDoc(doc(db,'inventory',destInvId), {
       ...baseInvData,
       storeId: destStoreId,
-      stock: destAfter
+      stock: destAfter,
+      batches: destBatchesFinal   // 🆕 persistir lotes
     }, { merge: true });
+
+    // Limpiar el temporal
+    window.__transferBatches = null;
 
     // Movimiento: salida origen
     await addDoc(collection(db,'inventoryMovements'), {
@@ -12346,6 +12680,7 @@ document.addEventListener('keydown', (e) => {
     if (!$('form-modal').classList.contains('hidden')) return closeForm();
     if (!$('sale-modal').classList.contains('hidden')) return closeSaleModal();
     if (!$('audit-modal').classList.contains('hidden')) return closeAuditModal();
+    if (!$('withdrawal-detail-modal')?.classList.contains('hidden')) return closeWithdrawalDetail();
   }
 });
 
@@ -12437,6 +12772,8 @@ let transfersBadgeUnsubscribe = null;
 let devicesBadgeUnsubscribe = null;
 let attemptsBadgeUnsubscribe = null;
 
+// 🆕 Cargar retiros de caja al iniciar (para el badge del sidebar)
+loadCashWithdrawalsAll().catch(e => console.warn('[Admin/Retiros] Carga inicial falló:', e));
 /* ============================================================
    BADGE DE SOLICITUDES PENDIENTES — OPTIMIZADO
    🚨 Listeners en tiempo real DESACTIVADOS por costo.
@@ -12460,15 +12797,19 @@ function startTransfersBadgeListener() {
 
 async function updateTransfersBadgeOnce() {
   try {
-    const [tSnap, dSnap, aSnap] = await Promise.all([
+    const [tSnap, dSnap, aSnap, wSnap] = await Promise.all([
       getDocs(query(collection(db,'transferRequests'), where('status','==','pendiente'), limit(50))),
       getDocs(query(collection(db,'deviceRequests'),   where('status','==','pendiente'), limit(50))),
-      getDocs(query(collection(db,'deviceAttempts'),   where('status','!=','resuelto'), limit(50)))
+      getDocs(query(collection(db,'deviceAttempts'),   where('status','!=','resuelto'), limit(50))),
+      getDocs(query(collection(db,'cashWithdrawals'),  where('status','==','pending_approval'), limit(50)))
     ]);
 
     transferRequestsAll = tSnap.docs.map(d => ({id:d.id, ...d.data()}));
     deviceRequestsAll    = dSnap.docs.map(d => ({id:d.id, ...d.data()}));
     deviceAttemptsAll    = aSnap.docs.map(d => ({id:d.id, ...d.data()}));
+
+    // 🆕 Actualizar badge de retiros con los pendientes
+    updateWithdrawalsBadgeFromCount(wSnap.docs.length);
 
     updateTransfersBadge();
 
@@ -15148,3 +15489,825 @@ window.loadMoreInventory = loadMoreInventory;
 window.loadMoreCashRegisters = loadMoreCashRegisters;
 window.loadMoreShifts = loadMoreShifts;
 window.loadMoreAudit = loadMoreAudit;
+
+/* 🆕 Exponer funciones de retiros al window (para consola y otros módulos) */
+window.loadCashWithdrawalsAll = loadCashWithdrawalsAll;
+window.renderWithdrawals = renderWithdrawals;
+window.renderWithdrawalsContent = renderWithdrawalsContent;
+window.updateWithdrawalsBadge = updateWithdrawalsBadge;
+window.updateWithdrawalsBadgeFromCount = updateWithdrawalsBadgeFromCount;
+window.createWithdrawalJournalEntry = createWithdrawalJournalEntry;
+window.getStaleInTransitWithdrawals = getStaleInTransitWithdrawals;
+window.renderStaleTransitAlert = renderStaleTransitAlert;
+/* ============================================================
+   🆕 RETIROS DE CAJA — Módulo completo del superadmin
+============================================================ */
+
+// Cargar TODOS los retiros (todas las tiendas)
+async function loadCashWithdrawalsAll() {
+  try {
+    const C = window.SmartecCache;
+    cashWithdrawalsAll = await C.wrap('cashWithdrawals_all', async () => {
+      const q = query(
+        collection(db, 'cashWithdrawals'),
+        orderBy('requestedAt', 'desc'),
+        limit(500)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    });
+    updateWithdrawalsBadge();
+  } catch (e) {
+    console.warn('[Admin/Retiros] Error cargando:', e);
+    cashWithdrawalsAll = [];
+  }
+}
+
+// Actualizar badge del sidebar
+function updateWithdrawalsBadge() {
+  const badge = document.getElementById('withdrawals-badge');
+  if (!badge) return;
+  const pendingCount = (cashWithdrawalsAll || [])
+    .filter(w => w.status === 'pending_approval').length;
+  if (pendingCount > 0) {
+    badge.innerText = pendingCount > 99 ? '99+' : pendingCount;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+// Helper: actualizar badge sin recargar todo
+function updateWithdrawalsBadgeFromCount(count) {
+  const badge = document.getElementById('withdrawals-badge');
+  if (!badge) return;
+  if (count > 0) {
+    badge.innerText = count > 99 ? '99+' : count;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+/* ============================================================
+   🆕 ALERTA DE RETIROS EN TRÁNSITO PROLONGADO
+   Retiros con status 'in_transit' hace más de X días sin confirmar.
+============================================================ */
+const IN_TRANSIT_ALERT_DAYS = 3;   // ← ajusta aquí el límite de días
+
+function getStaleInTransitWithdrawals() {
+  const now = Date.now();
+  const limitMs = IN_TRANSIT_ALERT_DAYS * 24 * 60 * 60 * 1000;
+
+  return (cashWithdrawalsAll || []).filter(w => {
+    if (w.status !== 'in_transit') return false;
+    if (!w.reviewedAt?.seconds) return false;
+    const elapsed = now - (w.reviewedAt.seconds * 1000);
+    return elapsed > limitMs;
+  });
+}
+
+function daysInTransit(w) {
+  if (!w.reviewedAt?.seconds) return 0;
+  return Math.floor((Date.now() - w.reviewedAt.seconds * 1000) / (24 * 60 * 60 * 1000));
+}
+
+// Render principal del tab
+function renderWithdrawals() {
+  if (!$('adwd-tbody')) return;
+
+  // Poblar selector de tiendas (una sola vez)
+  const storeSel = $('wd-store-filter');
+  if (storeSel && !storeSel.dataset.loaded) {
+    storeSel.dataset.loaded = '1';
+    storeSel.innerHTML = '<option value="all">Todas las tiendas</option>' +
+      stores.map(s => `<option value="${s.storeId}">${escapeHtml(s.name)}</option>`).join('');
+    storeSel.onchange = renderWithdrawalsContent;
+  }
+
+  // Listeners de filtros (una sola vez)
+  const statusSel = $('wd-admin-status-filter');
+  if (statusSel && !statusSel.dataset.listeners) {
+    statusSel.dataset.listeners = '1';
+    statusSel.onchange = renderWithdrawalsContent;
+  }
+  const destSel = $('adwd-destination-filter');
+  if (destSel && !destSel.dataset.listeners) {
+    destSel.dataset.listeners = '1';
+    destSel.onchange = renderWithdrawalsContent;
+  }
+  const searchInput = $('adwd-search');
+  if (searchInput && !searchInput.dataset.listeners) {
+    searchInput.dataset.listeners = '1';
+    let t = null;
+    searchInput.oninput = () => {
+      clearTimeout(t);
+      t = setTimeout(renderWithdrawalsContent, 250);
+    };
+  }
+  ['adwd-date-from', 'adwd-date-to'].forEach(id => {
+    const el = $(id);
+    if (el && !el.dataset.listeners) {
+      el.dataset.listeners = '1';
+      el.onchange = renderWithdrawalsContent;
+    }
+  });
+
+  // 🆕 Siempre invalidar cache y recargar al abrir el tab
+  // (así siempre mostramos datos frescos)
+  window.SmartecCache?.invalidate('cashWithdrawals_all');
+  loadCashWithdrawalsAll().then(() => renderWithdrawalsContent());
+}
+/* ============================================================
+   🆕 BANNER: alerta de retiros en tránsito prolongado
+============================================================ */
+function renderStaleTransitAlert() {
+  const container = $('withdrawals-stale-alert');
+  if (!container) return;
+
+  // Verificar si el usuario silenció la alerta hoy
+  if (isStaleAlertMutedToday()) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const stale = getStaleInTransitWithdrawals();
+
+  if (!stale.length) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const totalAmount = stale.reduce((s, w) => s + Number(w.amount || 0), 0);
+  const count = stale.length;
+
+  container.classList.remove('hidden');
+  container.innerHTML = `
+    <div class="bg-red-50 border-l-4 border-red-500 rounded-2xl p-4 mb-4 shadow-apple">
+      <div class="flex items-start gap-3 flex-wrap">
+        <div class="text-3xl">⚠️</div>
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-red-700 text-sm">
+            ${count} retiro${count !== 1 ? 's' : ''} en tránsito por más de ${IN_TRANSIT_ALERT_DAYS} días
+          </p>
+          <p class="text-xs text-red-600 mt-1">
+            Total pendiente de confirmar: <b>${fmt(totalAmount)}</b>
+          </p>
+          <div class="mt-2 space-y-1">
+            ${stale.slice(0, 5).map(w => `
+              <div class="text-[11px] text-red-700 bg-white/60 rounded-lg px-2 py-1 flex justify-between items-center gap-2">
+                <span class="truncate">
+                  <b>${escapeHtml(w.storeName || w.storeId)}</b> · ${fmt(w.amount)}
+                </span>
+                <span class="whitespace-nowrap font-semibold">
+                  ${daysInTransit(w)} días
+                </span>
+              </div>
+            `).join('')}
+            ${stale.length > 5 ? `<p class="text-[10px] text-red-500 italic">... y ${stale.length - 5} más</p>` : ''}
+          </div>
+        </div>
+        <div class="flex gap-2 shrink-0 flex-wrap">
+          <button onclick="filterByStaleTransit()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-full text-xs font-semibold">
+            🔍 Ver todos
+          </button>
+          <button onclick="dismissStaleAlert()" class="text-red-500 hover:text-red-700 text-xs px-2" title="Ocultar por hoy">
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Filtrar la tabla por los retiros en tránsito prolongado
+window.filterByStaleTransit = () => {
+  const sel = $('wd-admin-status-filter');
+  if (sel) sel.value = 'in_transit';
+  renderWithdrawalsContent();
+};
+
+// Silenciar la alerta por hoy
+window.dismissStaleAlert = () => {
+  const today = new Date().toISOString().split('T')[0];
+  sessionStorage.setItem(`wd_stale_alert_muted_${today}`, '1');
+  const container = $('withdrawals-stale-alert');
+  if (container) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+  }
+};
+
+// Verificar si el usuario silenció la alerta hoy
+function isStaleAlertMutedToday() {
+  const today = new Date().toISOString().split('T')[0];
+  return sessionStorage.getItem(`wd_stale_alert_muted_${today}`) === '1';
+}
+
+// Render KPIs + tabla con filtros
+function renderWithdrawalsContent() {
+  if (!$('adwd-tbody')) return;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // 🆕 Renderizar alerta de retiros en tránsito prolongado
+  renderStaleTransitAlert();
+
+  // Filtros
+  const storeF = $('wd-store-filter')?.value || 'all';
+  const statusF = $('wd-admin-status-filter')?.value || 'pending_approval';
+  const destF = $('adwd-destination-filter')?.value || 'all';
+  const searchF = ($('adwd-search')?.value || '').toLowerCase().trim();
+  const fromInput = $('adwd-date-from')?.value;
+  const toInput = $('adwd-date-to')?.value;
+
+  const fromDate = fromInput ? new Date(fromInput + 'T00:00:00') : null;
+  const toDate = toInput ? new Date(toInput + 'T23:59:59') : null;
+
+  // Lista base
+  let list = (cashWithdrawalsAll || []).slice();
+
+  // KPIs (sobre TODO el mes actual, sin filtros)
+  const monthList = list.filter(w =>
+    w.requestedAt?.seconds && new Date(w.requestedAt.seconds * 1000) >= monthStart
+  );
+
+  const sumByStatus = (statuses) => monthList
+    .filter(w => statuses.includes(w.status))
+    .reduce((s, w) => s + Number(w.amount || 0), 0);
+  const countByStatus = (statuses) => monthList
+    .filter(w => statuses.includes(w.status)).length;
+
+  const setTxt = (id, v) => { const el = $(id); if (el) el.innerText = v; };
+  setTxt('adwd-kpi-pending', fmt(sumByStatus(['pending_approval'])));
+  setTxt('adwd-kpi-pending-count', countByStatus(['pending_approval']) + ' retiros');
+  setTxt('adwd-kpi-transit', fmt(sumByStatus(['in_transit'])));
+  setTxt('adwd-kpi-transit-count', countByStatus(['in_transit']) + ' en camino');
+  setTxt('adwd-kpi-received', fmt(sumByStatus(['received'])));
+  setTxt('adwd-kpi-received-count', countByStatus(['received']) + ' confirmados');
+  setTxt('adwd-kpi-total', fmt(sumByStatus(['pending_approval', 'in_transit', 'received'])));
+  setTxt('adwd-kpi-total-count', countByStatus(['pending_approval', 'in_transit', 'received']) + ' retiros');
+
+  // Aplicar filtros
+  if (storeF !== 'all') list = list.filter(w => w.storeId === storeF);
+  if (statusF !== 'all') list = list.filter(w => w.status === statusF);
+  if (destF !== 'all') list = list.filter(w => w.destination === destF);
+  if (fromDate) list = list.filter(w => w.requestedAt?.seconds && new Date(w.requestedAt.seconds * 1000) >= fromDate);
+  if (toDate) list = list.filter(w => w.requestedAt?.seconds && new Date(w.requestedAt.seconds * 1000) <= toDate);
+  if (searchF) {
+    list = list.filter(w =>
+      (w.reason || '').toLowerCase().includes(searchF) ||
+      (w.requestedByName || '').toLowerCase().includes(searchF) ||
+      (w.requestedByEmail || '').toLowerCase().includes(searchF) ||
+      (w.receiptNumber || '').toLowerCase().includes(searchF) ||
+      (w.storeName || '').toLowerCase().includes(searchF)
+    );
+  }
+
+  list.sort((a, b) => (b.requestedAt?.seconds || 0) - (a.requestedAt?.seconds || 0));
+
+  // Render tabla
+  const tbody = $('adwd-tbody');
+  const empty = $('adwd-empty');
+
+  if (!list.length) {
+    tbody.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+
+  const destLabels = {
+    banco: '🏦 Banco',
+    caja_fuerte: '🔐 Caja fuerte',
+    superadmin: '👑 Superadmin',
+    otra_tienda: '🏪 Otra tienda',
+    admin_autorizado: '🧑 Persona autorizada'
+  };
+
+  const statusMap = {
+    pending_approval: { label: '⏳ Pendiente', cls: 'bg-yellow-100 text-yellow-700' },
+    in_transit: { label: '🚚 En tránsito', cls: 'bg-blue-100 text-blue-700' },
+    received: { label: '✅ Recibido', cls: 'bg-green-100 text-green-700' },
+    rejected: { label: '❌ Rechazado', cls: 'bg-red-100 text-red-700' }
+  };
+
+  tbody.innerHTML = list.slice(0, 200).map(w => {
+    const date = w.requestedAt?.seconds
+      ? new Date(w.requestedAt.seconds * 1000).toLocaleString('es-CO', {
+          day: '2-digit', month: '2-digit', year: '2-digit',
+          hour: '2-digit', minute: '2-digit'
+        })
+      : '-';
+    const status = statusMap[w.status] || { label: w.status, cls: 'bg-gray-100 text-gray-700' };
+    const dest = destLabels[w.destination] || w.destination || '-';
+    const destDetail = w.destinationDetail || w.destinationStoreName || w.destinationPerson || '';
+
+    return `<tr class="border-b hover:bg-gray-50 ${w.status === 'pending_approval' ? 'bg-yellow-50/40' : ''}">
+      <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${date}</td>
+      <td class="p-3 text-xs">${escapeHtml(w.storeName) || w.storeId || '-'}</td>
+      <td class="p-3 text-right text-xs font-bold text-sd">${fmt(w.amount)}</td>
+      <td class="p-3 text-xs">${dest}${destDetail ? `<br><span class="text-[10px] text-gray-400">${escapeHtml(destDetail)}</span>` : ''}</td>
+      <td class="p-3 text-xs max-w-xs truncate">${escapeHtml(w.reason) || '-'}</td>
+      <td class="p-3 text-xs">${escapeHtml(w.requestedByName) || w.requestedByEmail || '-'}</td>
+      <td class="p-3 text-center"><span class="text-[10px] px-2 py-0.5 rounded-full ${status.cls} font-semibold whitespace-nowrap">${status.label}</span></td>
+      <td class="p-3 text-right whitespace-nowrap">
+        <button onclick='viewWithdrawalAdmin("${w.id}")' class="text-sl hover:underline text-xs font-semibold">
+          ${w.status === 'pending_approval' ? '🔍 Revisar' : 'Ver'}
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// Ver detalle + acciones (modal elegante)
+window.viewWithdrawalAdmin = function (id) {
+  const w = (cashWithdrawalsAll || []).find(x => x.id === id);
+  if (!w) return;
+
+  const modal = document.getElementById('withdrawal-detail-modal');
+  const subtitle = document.getElementById('wd-detail-subtitle');
+  const body = document.getElementById('wd-detail-body');
+  if (!modal || !body) return;
+
+  // Guardar id actual en el modal
+  modal.dataset.withdrawalId = id;
+
+  subtitle.innerText = `#${id.slice(0, 8)} · ${w.storeName || w.storeId}`;
+
+  // Config de estados
+  const statusMeta = {
+    pending_approval: { label: '⏳ Pendiente de aprobación', cls: 'bg-yellow-100 text-yellow-700', icon: '⏳' },
+    in_transit:       { label: '🚚 En tránsito',             cls: 'bg-blue-100 text-blue-700',   icon: '🚚' },
+    received:         { label: '✅ Recibido',                 cls: 'bg-green-100 text-green-700', icon: '✅' },
+    rejected:         { label: '❌ Rechazado',                cls: 'bg-red-100 text-red-700',     icon: '❌' }
+  };
+  const status = statusMeta[w.status] || { label: w.status, cls: 'bg-gray-100 text-gray-700', icon: '●' };
+
+  // Destino
+  const destLabels = {
+    banco: '🏦 Banco',
+    caja_fuerte: '🔐 Caja fuerte',
+    superadmin: '👑 Superadmin',
+    otra_tienda: '🏪 Otra tienda',
+    admin_autorizado: '🧑 Persona autorizada'
+  };
+  const destLabel = destLabels[w.destination] || w.destination || '—';
+  const destDetail = w.destinationDetail || w.destinationStoreName || w.destinationPerson || '';
+
+  // Formato fecha
+  const fecha = w.requestedAt?.seconds
+    ? new Date(w.requestedAt.seconds * 1000).toLocaleString('es-CO', {
+        day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      })
+    : '—';
+
+  // Bloque de acciones según estado
+  let actionsHtml = '';
+
+  if (w.status === 'pending_approval') {
+    actionsHtml = `
+      <div class="border-t border-black/5 pt-5 mt-5">
+        <p class="text-xs font-bold text-[#1D1D1F] uppercase mb-3">Acciones del superadmin</p>
+
+        <label class="text-xs font-semibold text-[#1D1D1F] block mb-1">Nota (opcional)</label>
+        <textarea id="wd-action-notes" rows="2" placeholder="Observaciones para esta decisión..."
+          class="w-full px-3 py-2 rounded-xl text-sm mb-4"></textarea>
+
+        <div class="grid grid-cols-2 gap-3">
+          <button onclick="confirmApproveWithdrawal()" class="bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-sm transition inline-flex items-center justify-center gap-2">
+            ✅ Aprobar retiro
+          </button>
+          <button onclick="confirmRejectWithdrawal()" class="bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-bold text-sm transition inline-flex items-center justify-center gap-2">
+            ❌ Rechazar
+          </button>
+        </div>
+
+        <p class="text-[10px] text-[#6E6E73] mt-3 text-center">
+          Al aprobar, el efectivo se descuenta de la caja de la tienda y queda en tránsito.
+        </p>
+      </div>
+    `;
+  } else if (w.status === 'in_transit') {
+    actionsHtml = `
+      <div class="border-t border-black/5 pt-5 mt-5">
+        <p class="text-xs font-bold text-[#1D1D1F] uppercase mb-3">Confirmar recepción</p>
+
+        <label class="text-xs font-semibold text-[#1D1D1F] block mb-1">Nota de recepción (opcional)</label>
+        <textarea id="wd-action-notes" rows="2" placeholder="Ej: Recibido en banco, comprobante N°..."
+          class="w-full px-3 py-2 rounded-xl text-sm mb-4"></textarea>
+
+        <button onclick="confirmReceiveWithdrawal()" class="w-full bg-[#0071E3] hover:bg-[#0077ED] text-white py-3 rounded-xl font-bold text-sm transition inline-flex items-center justify-center gap-2">
+          📦 Marcar como recibido
+        </button>
+
+        <button onclick="confirmRejectWithdrawal()" class="w-full mt-2 text-red-500 hover:text-red-700 py-2 text-xs font-medium">
+          ❌ Rechazar de todas formas
+        </button>
+      </div>
+    `;
+  } else {
+    // received o rejected → solo info
+    actionsHtml = `
+      <div class="border-t border-black/5 pt-5 mt-5">
+        <p class="text-xs text-[#6E6E73] text-center">
+          Este retiro está cerrado. No hay acciones disponibles.
+        </p>
+      </div>
+    `;
+  }
+
+  // Comprobante / notas
+  const notesHtml = [];
+  if (w.receiptNumber) notesHtml.push(`<div class="flex justify-between text-xs"><span class="text-[#6E6E73]">🧾 Comprobante:</span><b class="text-[#1D1D1F] font-mono">${escapeHtml(w.receiptNumber)}</b></div>`);
+  if (w.reviewNotes) notesHtml.push(`<div class="mt-2 pt-2 border-t border-black/5 text-xs"><p class="text-[#6E6E73] mb-1">Nota del superadmin:</p><p class="text-[#1D1D1F] italic">"${escapeHtml(w.reviewNotes)}"</p><p class="text-[10px] text-[#6E6E73] mt-1">— ${escapeHtml(w.reviewedByName || '')}</p></div>`);
+  if (w.receivedNotes) notesHtml.push(`<div class="mt-2 pt-2 border-t border-black/5 text-xs"><p class="text-[#6E6E73] mb-1">Nota de recepción:</p><p class="text-[#1D1D1F] italic">"${escapeHtml(w.receivedNotes)}"</p><p class="text-[10px] text-[#6E6E73] mt-1">— ${escapeHtml(w.receivedByName || '')}</p></div>`);
+
+  body.innerHTML = `
+    <!-- Estado destacado -->
+    <div class="text-center mb-5">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full ${status.cls} font-semibold text-sm">
+        <span>${status.icon}</span>
+        <span>${status.label}</span>
+      </div>
+    </div>
+
+    <!-- Monto grande -->
+    <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-5 mb-5 border border-white/60 text-center">
+      <p class="text-[10px] text-[#6E6E73] uppercase font-semibold">Monto del retiro</p>
+      <p class="text-3xl font-extrabold text-[#1D1D1F] mt-1 tracking-tight">${fmt(w.amount)}</p>
+    </div>
+
+    <!-- Info detallada -->
+    <div class="bg-white/40 rounded-2xl p-4 space-y-2 mb-5 border border-white/60">
+      <div class="flex justify-between text-xs">
+        <span class="text-[#6E6E73]">🏪 Tienda:</span>
+        <b class="text-[#1D1D1F]">${escapeHtml(w.storeName) || w.storeId || '—'}</b>
+      </div>
+      <div class="flex justify-between text-xs">
+        <span class="text-[#6E6E73]">🎯 Destino:</span>
+        <b class="text-[#1D1D1F]">${destLabel}</b>
+      </div>
+      ${destDetail ? `
+      <div class="flex justify-between text-xs">
+        <span class="text-[#6E6E73]">📍 Detalle:</span>
+        <b class="text-[#1D1D1F]">${escapeHtml(destDetail)}</b>
+      </div>
+      ` : ''}
+      <div class="flex justify-between text-xs">
+        <span class="text-[#6E6E73]">📝 Motivo:</span>
+        <b class="text-[#1D1D1F] text-right ml-2">${escapeHtml(w.reason) || '—'}</b>
+      </div>
+      <div class="flex justify-between text-xs">
+        <span class="text-[#6E6E73]">👤 Solicitó:</span>
+        <b class="text-[#1D1D1F]">${escapeHtml(w.requestedByName) || w.requestedByEmail || '—'}</b>
+      </div>
+      <div class="flex justify-between text-xs">
+        <span class="text-[#6E6E73]">📅 Fecha:</span>
+        <b class="text-[#1D1D1F]">${fecha}</b>
+      </div>
+      <div class="flex justify-between text-xs">
+        <span class="text-[#6E6E73]">⏰ Tipo:</span>
+        <b class="text-[#1D1D1F]">${w.isPartial ? '🌤️ Parcial (durante el día)' : '🌇 Al cierre del día'}</b>
+      </div>
+    </div>
+
+    ${notesHtml.length ? `
+    <div class="bg-white/40 rounded-2xl p-4 mb-5 border border-white/60">
+      <p class="text-[10px] text-[#6E6E73] uppercase font-semibold mb-2">Información adicional</p>
+      ${notesHtml.join('')}
+    </div>
+    ` : ''}
+
+    ${actionsHtml}
+  `;
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+};
+
+window.closeWithdrawalDetail = function () {
+  const modal = document.getElementById('withdrawal-detail-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  delete modal.dataset.withdrawalId;
+};
+
+// Wrappers que leen el id del modal y llaman a las funciones originales
+window.confirmApproveWithdrawal = function () {
+  const modal = document.getElementById('withdrawal-detail-modal');
+  const id = modal?.dataset.withdrawalId;
+  if (!id) return;
+  const notes = (document.getElementById('wd-action-notes')?.value || '').trim();
+  approveWithdrawal(id, notes);
+};
+
+window.confirmRejectWithdrawal = function () {
+  const modal = document.getElementById('withdrawal-detail-modal');
+  const id = modal?.dataset.withdrawalId;
+  if (!id) return;
+  const notes = (document.getElementById('wd-action-notes')?.value || '').trim();
+  if (!notes) return alert('⚠️ Debes escribir el motivo del rechazo.');
+  rejectWithdrawal(id, notes);
+};
+
+window.confirmReceiveWithdrawal = function () {
+  const modal = document.getElementById('withdrawal-detail-modal');
+  const id = modal?.dataset.withdrawalId;
+  if (!id) return;
+  const notes = (document.getElementById('wd-action-notes')?.value || '').trim();
+  receiveWithdrawal(id, notes);
+};
+
+// Aprobar retiro (pending → in_transit)
+window.approveWithdrawal = async function (id, notes = '') {
+  const w = (cashWithdrawalsAll || []).find(x => x.id === id);
+  if (!w) return;
+  if (w.status !== 'pending_approval') return alert('Este retiro ya no está pendiente.');
+
+  try {
+    await updateDoc(doc(db, 'cashWithdrawals', id), {
+      status: 'in_transit',
+      reviewedAt: serverTimestamp(),
+      reviewedBy: currentUser.uid,
+      reviewedByName: currentUserData.name || currentUser.email,
+      reviewNotes: notes || 'Aprobado por superadmin',
+      notifiedToAdmin: false  // 🆕 El admin de tienda verá el banner
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'cashWithdrawals',
+      docId: id,
+      before: { status: 'pending_approval' },
+      after: { status: 'in_transit' },
+      note: `Retiro aprobado: ${fmt(w.amount)} · ${w.storeName || w.storeId}`
+    });
+
+    // 🆕 Generar asiento contable automático
+    try {
+      const entryId = await createWithdrawalJournalEntry({ ...w, status: 'in_transit', reviewedAt: { seconds: Math.floor(Date.now() / 1000) } });
+      if (entryId) {
+        // Guardar referencia del comprobante en el retiro
+        await updateDoc(doc(db, 'cashWithdrawals', id), {
+          journalEntryId: entryId
+        });
+        console.log('[Contab] Comprobante vinculado al retiro:', entryId);
+      }
+    } catch (e) {
+      console.warn('[Contab] No se pudo generar el asiento (el retiro sí quedó aprobado):', e);
+    }
+
+    window.SmartecCache.invalidate('cashWithdrawals_all');
+    window.SmartecCache.invalidate(`cashWithdrawals_${w.storeId}`);
+    window.SmartecCache.invalidate('expenses_all'); // Por si se refresca contabilidad
+    await loadCashWithdrawalsAll();
+    renderWithdrawalsContent();
+    closeWithdrawalDetail();
+    alert(`✅ Retiro aprobado.\n\nEl efectivo sale de la tienda ${w.storeName} y queda en tránsito.\n\n📒 Se generó el asiento contable automáticamente.`);
+  } catch (e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  }
+};
+
+// Marcar como recibido (in_transit → received)
+window.receiveWithdrawal = async function (id, notes = '') {
+  const w = (cashWithdrawalsAll || []).find(x => x.id === id);
+  if (!w) return;
+  if (w.status !== 'in_transit') return alert('Solo se pueden marcar como recibidos los retiros en tránsito.');
+
+  try {
+    await updateDoc(doc(db, 'cashWithdrawals', id), {
+      status: 'received',
+      receivedAt: serverTimestamp(),
+      receivedBy: currentUser.uid,
+      receivedByName: currentUserData.name || currentUser.email,
+      receivedNotes: notes || 'Recibido confirmado',
+      notifiedToAdmin: false  // 🆕
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'cashWithdrawals',
+      docId: id,
+      before: { status: 'in_transit' },
+      after: { status: 'received' },
+      note: `Retiro recibido: ${fmt(w.amount)} · ${w.storeName || w.storeId}`
+    });
+
+    window.SmartecCache.invalidate('cashWithdrawals_all');
+    window.SmartecCache.invalidate(`cashWithdrawals_${w.storeId}`);
+    await loadCashWithdrawalsAll();
+    renderWithdrawalsContent();
+    closeWithdrawalDetail();
+    alert('✅ Retiro marcado como recibido.');
+  } catch (e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  }
+};
+
+// Rechazar retiro
+window.rejectWithdrawal = async function (id, reason = '') {
+  const w = (cashWithdrawalsAll || []).find(x => x.id === id);
+  if (!w) return;
+  if (w.status !== 'pending_approval' && w.status !== 'in_transit') {
+    return alert('Este retiro ya no se puede rechazar.');
+  }
+  if (!reason || !reason.trim()) return alert('Debes escribir el motivo del rechazo.');
+
+  try {
+    await updateDoc(doc(db, 'cashWithdrawals', id), {
+      status: 'rejected',
+      reviewedAt: serverTimestamp(),
+      reviewedBy: currentUser.uid,
+      reviewedByName: currentUserData.name || currentUser.email,
+      reviewNotes: reason.trim(),
+      notifiedToAdmin: false  // 🆕
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'cashWithdrawals',
+      docId: id,
+      before: { status: w.status },
+      after: { status: 'rejected', reviewNotes: reason.trim() },
+      note: `Retiro rechazado: ${fmt(w.amount)} · ${w.storeName || w.storeId} · ${reason.trim()}`
+    });
+
+    window.SmartecCache.invalidate('cashWithdrawals_all');
+    window.SmartecCache.invalidate(`cashWithdrawals_${w.storeId}`);
+    await loadCashWithdrawalsAll();
+    renderWithdrawalsContent();
+    closeWithdrawalDetail();
+    alert('❌ Retiro rechazado.');
+  } catch (e) {
+    console.error(e);
+    alert('Error: ' + e.message);
+  }
+};
+/* ============================================================
+   🆕 ASIENTO CONTABLE AUTOMÁTICO AL APROBAR RETIRO
+============================================================ */
+async function createWithdrawalJournalEntry(withdrawal) {
+  try {
+    // Verificar si ya se generó un comprobante para este retiro (evitar duplicados)
+    const existingQuery = query(
+      collection(db, 'comprobantes'),
+      where('sourceType', '==', 'cashWithdrawal'),
+      where('sourceId', '==', withdrawal.id),
+      limit(1)
+    );
+    const existingSnap = await getDocs(existingQuery);
+    if (!existingSnap.empty) {
+      console.log('[Contab] Comprobante ya existe para este retiro. Saltando.');
+      return existingSnap.docs[0].id;
+    }
+
+    // Mapeo de cuenta débito según destino
+    const accountMap = {
+      banco:            { code: '1110',    name: 'Bancos' },
+      caja_fuerte:      { code: '110510',  name: 'Caja fuerte' },
+      superadmin:       { code: '1120',    name: 'Cuentas por cobrar a socios' },
+      otra_tienda:      { code: '1120',    name: 'Cuentas por cobrar internas' },
+      admin_autorizado: { code: '1120',    name: 'Cuentas por cobrar a empleados' }
+    };
+
+    const debitAccount = accountMap[withdrawal.destination] || { code: '1110', name: 'Bancos' };
+    const creditAccount = { code: '110505', name: 'Caja general' };
+
+    const amount = Number(withdrawal.amount || 0);
+    const fecha = withdrawal.reviewedAt?.seconds
+      ? new Date(withdrawal.reviewedAt.seconds * 1000)
+      : new Date();
+    const dateStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`;
+
+    // Generar número de comprobante secuencial
+    const year = fecha.getFullYear();
+    const counterId = `withdrawal_${year}`;
+    const counterRef = doc(db, 'counters', counterId);
+    let nextNumber = 1;
+
+    try {
+      const counterSnap = await getDoc(counterRef);
+      if (counterSnap.exists()) {
+        nextNumber = (Number(counterSnap.data().lastNumber) || 0) + 1;
+        await updateDoc(counterRef, { lastNumber: nextNumber });
+      } else {
+        await setDoc(counterRef, {
+          prefix: 'RET-' + year + '-',
+          lastNumber: 1,
+          type: 'withdrawal',
+          year
+        });
+      }
+    } catch (e) {
+      console.warn('[Contab] Error incrementando counter, uso timestamp:', e);
+      nextNumber = Date.now();
+    }
+
+    const number = `RET-${year}-${String(nextNumber).padStart(4, '0')}`;
+    const concept = `Retiro de caja — ${withdrawal.destinationDetail || withdrawal.destinationStoreName || withdrawal.destinationPerson || withdrawal.destination}`;
+
+    const entry = {
+      type: 'diario',
+      number,
+      date: dateStr,
+      concept,
+      storeId: withdrawal.storeId,
+      storeName: withdrawal.storeName || '',
+      status: 'activo',
+      lines: [
+        {
+          account: debitAccount.code,
+          accountName: debitAccount.name,
+          debit: amount,
+          credit: 0
+        },
+        {
+          account: creditAccount.code,
+          accountName: creditAccount.name,
+          debit: 0,
+          credit: amount
+        }
+      ],
+      totalDebit: amount,
+      totalCredit: amount,
+      sourceType: 'cashWithdrawal',
+      sourceId: withdrawal.id,
+      createdAt: serverTimestamp(),
+      createdBy: currentUser.uid,
+      createdByName: currentUserData.name || currentUser.email
+    };
+
+    const ref = await addDoc(collection(db, 'comprobantes'), entry);
+
+    console.log('[Contab] Comprobante generado:', number, '—', concept);
+
+    // Auditar
+    await audit({
+      action: 'create',
+      collection: 'comprobantes',
+      docId: ref.id,
+      after: entry,
+      note: `Asiento contable automático por retiro: ${number} · ${fmt(amount)}`
+    });
+
+    return ref.id;
+
+  } catch (e) {
+    console.error('[Contab] Error creando asiento:', e);
+    // No bloquear el flujo de retiro si falla el asiento
+    return null;
+  }
+}
+// Rango rápido
+window.setAdWdRange = function (preset) {
+  const fromInput = $('adwd-date-from');
+  const toInput = $('adwd-date-to');
+  if (!fromInput || !toInput) return;
+
+  const now = new Date();
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  let from, to;
+  switch (preset) {
+    case 'today': from = to = now; break;
+    case 'week': {
+      const d = new Date(now);
+      const dow = d.getDay();
+      const diff = dow === 0 ? 6 : dow - 1;
+      d.setDate(d.getDate() - diff);
+      from = d; to = now;
+      break;
+    }
+    case 'month': from = new Date(now.getFullYear(), now.getMonth(), 1); to = now; break;
+    case 'lastmonth':
+      from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      to = new Date(now.getFullYear(), now.getMonth(), 0);
+      break;
+    case 'year': from = new Date(now.getFullYear(), 0, 1); to = now; break;
+  }
+  fromInput.value = ymd(from);
+  toInput.value = ymd(to);
+  renderWithdrawalsContent();
+};
+
+window.clearAdWdFilters = function () {
+  const setVal = (id, val) => { const el = $(id); if (el) el.value = val; };
+  setVal('adwd-date-from', '');
+  setVal('adwd-date-to', '');
+  setVal('wd-store-filter', 'all');
+  setVal('wd-admin-status-filter', 'all');
+  setVal('adwd-destination-filter', 'all');
+  setVal('adwd-search', '');
+  renderWithdrawalsContent();
+};
+
+// Cargar retiros al iniciar (para el badge del sidebar)
+loadCashWithdrawalsAll().catch(e => console.warn('[Admin/Retiros] Carga inicial falló:', e));

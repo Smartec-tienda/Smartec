@@ -9,6 +9,7 @@
 <script src="lib/firebase-config.js"></script>
 <script src="lib/common.js"></script>
 <script src="lib/cache.js"></script>
+<script src="lib/fifo.js"></script>
 <script src="components/header-app.js"></script>
 <script src="components/favicon.js"></script>
 <script src="security/fingerprint.js"></script>
@@ -394,6 +395,12 @@
           <span class="sidebar-icon">📤</span>
           <span class="sidebar-label">Solicitudes</span>
           <span id="transfers-badge" class="hidden ml-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shrink-0">0</span>
+        </button>
+
+        <button class="sidebar-item tab-btn" data-tab="withdrawals" title="Retiros">
+          <span class="sidebar-icon">🏦</span>
+          <span class="sidebar-label">Retiros</span>
+          <span id="withdrawals-badge" class="hidden ml-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shrink-0">0</span>
         </button>
 
         <!-- SECCIÓN: Catálogo -->
@@ -2074,6 +2081,113 @@
       <p id="transfers-empty" class="hidden text-center py-8 text-gray-400">Sin solicitudes con esos filtros.</p>
     </section>
 
+    <!-- ============ RETIROS DE CAJA ============ -->
+    <section id="tab-withdrawals" class="tab-content hidden">
+            <!-- 🆕 Alerta de retiros en tránsito prolongado -->
+      <div id="withdrawals-stale-alert" class="hidden"></div>
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight">Retiros de caja</h2>
+          <p class="text-xs text-[#6E6E73]">Aprobación y control de retiros de efectivo · Todas las tiendas</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <select id="wd-store-filter" class="px-3 py-2 rounded-xl text-sm">
+            <option value="all">Todas las tiendas</option>
+          </select>
+          <select id="wd-admin-status-filter" class="px-3 py-2 rounded-xl text-sm">
+            <option value="pending_approval" selected>⏳ Solo pendientes</option>
+            <option value="all">Todos</option>
+            <option value="in_transit">🚚 En tránsito</option>
+            <option value="received">✅ Recibidos</option>
+            <option value="rejected">❌ Rechazados</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60">
+          <p class="text-xs text-[#6E6E73] font-medium">⏳ Pendientes de aprobación</p>
+          <p id="adwd-kpi-pending" class="text-2xl font-bold text-[#FF9F0A] mt-1 tracking-tight">$0</p>
+          <p id="adwd-kpi-pending-count" class="text-[10px] text-[#6E6E73] mt-1">0 retiros</p>
+        </div>
+        <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60">
+          <p class="text-xs text-[#6E6E73] font-medium">🚚 En tránsito</p>
+          <p id="adwd-kpi-transit" class="text-2xl font-bold text-[#0071E3] mt-1 tracking-tight">$0</p>
+          <p id="adwd-kpi-transit-count" class="text-[10px] text-[#6E6E73] mt-1">0 en camino</p>
+        </div>
+        <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60">
+          <p class="text-xs text-[#6E6E73] font-medium">✅ Recibidos</p>
+          <p id="adwd-kpi-received" class="text-2xl font-bold text-[#30D158] mt-1 tracking-tight">$0</p>
+          <p id="adwd-kpi-received-count" class="text-[10px] text-[#6E6E73] mt-1">0 confirmados</p>
+        </div>
+        <div class="glass-strong rounded-2xl shadow-apple p-5 border border-white/60">
+          <p class="text-xs text-[#6E6E73] font-medium">📊 Total gestionado (mes)</p>
+          <p id="adwd-kpi-total" class="text-2xl font-bold text-[#1D1D1F] mt-1 tracking-tight">$0</p>
+          <p id="adwd-kpi-total-count" class="text-[10px] text-[#6E6E73] mt-1">0 retiros</p>
+        </div>
+      </div>
+
+      <!-- Filtros de fecha -->
+      <div class="glass-strong rounded-2xl shadow-apple-lg p-4 mb-4 border border-white/60">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <label class="text-[10px] font-semibold text-[#1D1D1F]">📅 Desde</label>
+            <input id="adwd-date-from" type="date" class="w-full px-2 py-1.5 rounded-xl text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-[#1D1D1F]">📅 Hasta</label>
+            <input id="adwd-date-to" type="date" class="w-full px-2 py-1.5 rounded-xl text-xs mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-[#1D1D1F]">Destino</label>
+            <select id="adwd-destination-filter" class="w-full px-2 py-1.5 rounded-xl text-xs mt-1">
+              <option value="all">Todos</option>
+              <option value="banco">🏦 Banco</option>
+              <option value="caja_fuerte">🔐 Caja fuerte</option>
+              <option value="superadmin">👑 Superadmin</option>
+              <option value="otra_tienda">🏪 Otra tienda</option>
+              <option value="admin_autorizado">🧑 Persona autorizada</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-[#1D1D1F]">Buscar</label>
+            <input id="adwd-search" type="text" placeholder="Motivo, comprobante, admin..." class="w-full px-2 py-1.5 rounded-xl text-xs mt-1">
+          </div>
+        </div>
+        <div class="flex justify-between items-center mt-3 pt-3 border-t border-black/5 flex-wrap gap-2">
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="setAdWdRange('today')" class="text-xs btn-glass px-3.5 py-1.5 rounded-full font-medium">Hoy</button>
+            <button onclick="setAdWdRange('week')" class="text-xs btn-glass px-3.5 py-1.5 rounded-full font-medium">Esta semana</button>
+            <button onclick="setAdWdRange('month')" class="text-xs btn-glass px-3.5 py-1.5 rounded-full font-medium">Este mes</button>
+            <button onclick="setAdWdRange('lastmonth')" class="text-xs btn-glass px-3.5 py-1.5 rounded-full font-medium">Mes pasado</button>
+            <button onclick="setAdWdRange('year')" class="text-xs btn-glass px-3.5 py-1.5 rounded-full font-medium">Este año</button>
+          </div>
+          <button onclick="clearAdWdFilters()" class="text-xs text-[#0A2A4A] hover:underline font-semibold">Limpiar filtros</button>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="glass-strong rounded-2xl shadow-apple-lg overflow-x-auto scrollbar-thin border border-white/60">
+        <table class="w-full text-sm min-w-[1200px]">
+          <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Fecha</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Tienda</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Monto</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Destino</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Motivo</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Solicitó</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Estado</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="adwd-tbody"></tbody>
+        </table>
+      </div>
+      <p id="adwd-empty" class="hidden text-center py-8 text-[#6E6E73]">Sin retiros con esos filtros.</p>
+    </section>
+
     <!-- ============ AUDITORÍA ============ -->
     <section id="tab-audit" class="tab-content hidden">
       <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
@@ -2703,6 +2817,20 @@
     </p>
   </div>
 </div>
+
+<!-- ============ MODAL DETALLE RETIRO DE CAJA ============ -->
+<div id="withdrawal-detail-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto" onclick="closeWithdrawalDetail()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-2xl w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeWithdrawalDetail()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-[#1D1D1F] mb-1 pr-10 tracking-tight">Detalle del retiro</h3>
+    <p id="wd-detail-subtitle" class="text-xs text-[#6E6E73] mb-5"></p>
+    <div id="wd-detail-body"></div>
+  </div>
+</div>
+
 
 <!-- ============ MODAL DETALLE PROVEEDOR ============ -->
 <div id="acc-supplier-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">

@@ -12,6 +12,7 @@
   <script src="lib/firebase-config.js"></script>
   <script src="lib/common.js"></script>
   <script src="lib/cache.js"></script>
+  <script src="lib/fifo.js"></script>
   <script src="components/header-app.js"></script>
   <script src="components/favicon.js"></script>
   <script src="security/fingerprint.js"></script>
@@ -19,8 +20,14 @@
   <script src="components/kiosk.js"></script>
   <script src="components/shifts.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- Librerías pesadas: se cargan bajo demanda -->
+<script>
+  window.__SMARTEC_LAZY_LIBS = {
+    jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    autotable: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
+    exceljs: 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
+  };
+</script>
   <script src="components/pdf-generator.js"></script>
   <style>
   :root{
@@ -874,7 +881,60 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
   const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
   const escapeHtml = window.Smartec.escapeHtml;   // 🆕
 
-  
+  /* ============================================================
+   🆕 CARGA DIFERIDA DE LIBRERÍAS PESADAS (jsPDF, AutoTable)
+   Se cargan SOLO cuando se llama a loadLazyLibs().
+============================================================ */
+const _lazyLoaded = { jspdf: false, autotable: false, exceljs: false };
+const _lazyPromises = { jspdf: null, exceljs: null };
+
+function _injectScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('No se pudo cargar: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function loadLazyLibs(needed) {
+  const urls = window.__SMARTEC_LAZY_LIBS || {};
+  const tasks = [];
+  const wantJsPDF = needed === 'jspdf' || needed === 'both';
+  const wantExcel = needed === 'exceljs' || needed === 'both';
+
+  if (wantJsPDF && !_lazyLoaded.jspdf) {
+    if (!_lazyPromises.jspdf) {
+      _lazyPromises.jspdf = (async () => {
+        if (!window.jspdf) await _injectScript(urls.jspdf);
+        if (!window.jspdf?.jsPDF?.API?.autoTable) await _injectScript(urls.autotable);
+        _lazyLoaded.jspdf = true;
+        _lazyLoaded.autotable = true;
+        console.log('[LazyLibs] jsPDF + AutoTable listos');
+      })();
+    }
+    tasks.push(_lazyPromises.jspdf);
+  }
+
+  if (wantExcel && !_lazyLoaded.exceljs) {
+    if (!_lazyPromises.exceljs) {
+      _lazyPromises.exceljs = (async () => {
+        if (!window.ExcelJS) await _injectScript(urls.exceljs);
+        _lazyLoaded.exceljs = true;
+        console.log('[LazyLibs] ExcelJS listo');
+      })();
+    }
+    tasks.push(_lazyPromises.exceljs);
+  }
+
+  await Promise.all(tasks);
+}
+
+// Exponer global
+window.loadLazyLibs = loadLazyLibs;
+
   /* ============ SPLASH SCREEN ============ */
   /**
    * Quita el splash screen (una sola vez, aunque se llame varias veces).
@@ -1881,6 +1941,63 @@ function initPosPayments() {
     return inv ? Number(inv.stock||0) : 0;
   }
 
+    /**
+   * 🆕 Devuelve el costo FIFO promedio actual de una variante en la tienda.
+   * Se usa para calcular la utilidad en el momento de la venta.
+   * NO se muestra al vendedor, solo es un dato interno.
+   */
+  function getCurrentAvgCostFIFO(variantId) {
+    if (!currentStore) return 0;
+    const storeId = currentStore.storeId;
+    const invId = `${storeId}_${variantId}`;
+    let inv = inventory.find(i => i.id === invId);
+    if (!inv) inv = inventory.find(i => i.storeId === storeId && i.variantId === variantId);
+
+    const product = products.find(p => (p.variants||[]).some(v => v.variantId === variantId));
+    const fallbackCost = Number(product?.cost || 0);
+
+    if (!inv) {
+      // Sin registro de inventario → usar el costo del producto
+      return fallbackCost;
+    }
+
+    // Normalizar: si no tiene batches, se crea uno de respaldo con el stock + costo del producto
+    const normalized = window.SmartecFIFO.normalizeInventory(
+      { stock: inv.stock, batches: inv.batches },
+      fallbackCost
+    );
+
+    return window.SmartecFIFO.avgCostFromBatches(normalized.batches);
+  }
+
+    /**
+   * 🆕 Devuelve el costo FIFO promedio actual de una variante en la tienda.
+   * Se usa para calcular la utilidad en el momento de la venta.
+   */
+  function getCurrentAvgCostFIFO(variantId) {
+    if (!currentStore) return 0;
+    const storeId = currentStore.storeId;
+    const invId = `${storeId}_${variantId}`;
+    let inv = inventory.find(i => i.id === invId);
+    if (!inv) inv = inventory.find(i => i.storeId === storeId && i.variantId === variantId);
+
+    if (!inv) {
+      // Fallback: usar el costo del producto
+      const product = products.find(p => (p.variants||[]).some(v => v.variantId === variantId));
+      return Number(product?.cost || 0);
+    }
+
+    // Normalizar: si no tiene batches, usar stock + product.cost
+    const product = products.find(p => (p.variants||[]).some(v => v.variantId === variantId));
+    const fallbackCost = Number(product?.cost || 0);
+    const normalized = window.SmartecFIFO.normalizeInventory(
+      { stock: inv.stock, batches: inv.batches },
+      fallbackCost
+    );
+
+    return window.SmartecFIFO.avgCostFromBatches(normalized.batches);
+  }
+
   function getTotalStockForProduct(productId) {
     const p = products.find(x => x.id === productId);
     if (!p) return 0;
@@ -2620,7 +2737,8 @@ function initPosPayments() {
     const p = pickerProduct;
     const v = pickerVariant;
     const unitPrice = computeUnitPrice(p, v, saleMode, selectedWholesale);
-    const unitCost = Number(p.cost || 0);
+       // 🆕 Costo FIFO actual
+    const unitCost = getCurrentAvgCostFIFO(v.variantId);
 
     // Si ya está en carrito con misma variante → sumar
     const existing = cart.find(it => it.variantId === v.variantId);
@@ -3291,8 +3409,9 @@ function initPosPayments() {
         sku: it.sku,
         qty: it.qty,
         unitPrice: it.unitPrice,
-        originalPrice: it.originalPrice ?? it.unitPrice,   // 🆕 precio de entrada
+        originalPrice: it.originalPrice ?? it.unitPrice,
         unitCost: it.unitCost,
+        consumedBatches: it.consumedBatches || [],   // 🆕 detalle FIFO del consumo
         color: it.color,
         colorName: it.colorName,
         size: it.size,
@@ -3418,7 +3537,8 @@ function initPosPayments() {
               throw new Error(`Inventario no encontrado para ${it.name}. Contacta al administrador.`);
             }
 
-            const stockActual = Number(invSnap.data().stock || 0);
+            const invData = invSnap.data();
+            const stockActual = Number(invData.stock || 0);
 
             // ✅ VALIDACIÓN CRÍTICA: si no hay suficiente stock, abortar
             if (stockActual < it.qty) {
@@ -3430,20 +3550,51 @@ function initPosPayments() {
               );
             }
 
+            // 🆕 Normalizar inventario (crear lote de respaldo si falta)
+            const product = products.find(p => p.id === it.productId);
+            const fallbackCost = Number(product?.cost || 0);
+            const normalized = window.SmartecFIFO.normalizeInventory(
+              { stock: stockActual, batches: invData.batches },
+              fallbackCost
+            );
+
+            // 🆕 Consumir FIFO
+            const consumeResult = window.SmartecFIFO.consumeFIFO(
+              normalized.batches,
+              it.qty
+            );
+
+            if (!consumeResult.ok) {
+              throw new Error(
+                `⚠️ Stock insuficiente en lotes para "${it.name}":\n` +
+                `Faltan: ${consumeResult.missing} unidades.\n\n` +
+                `Contacta al administrador para revisar el inventario.`
+              );
+            }
+
             invDocs.push({
               ref: invRef,
               stockBefore: stockActual,
-              stockAfter: stockActual - it.qty,
+              stockAfter: window.SmartecFIFO.sumBatchesQty(consumeResult.newBatches),
+              batchesAfter: consumeResult.newBatches,
+              consumedBatches: consumeResult.consumed,
+              avgCost: consumeResult.avgCost,
               item: it
             });
           }
 
-          // PASO 2: ESCRIBIR los nuevos stocks (solo si todas las lecturas pasaron)
+          // PASO 2: ESCRIBIR los nuevos stocks + batches
           for (const d of invDocs) {
             transaction.update(d.ref, {
               stock: d.stockAfter,
+              batches: d.batchesAfter,
               updatedAt: serverTimestamp()
             });
+
+            // 🆕 Guardar el consumo real en el item (para la venta)
+            d.item.consumedBatches = d.consumedBatches;
+            d.item.unitCost = d.avgCost;   // costo FIFO real (reemplaza el estimado)
+
             movimientosParaRegistrar.push({
               storeId: currentStore.storeId,
               productId: d.item.productId,
@@ -3454,6 +3605,8 @@ function initPosPayments() {
               qtyBefore: d.stockBefore,
               qtyAfter: d.stockAfter,
               delta: -d.item.qty,
+              consumedBatches: d.consumedBatches,
+              avgCost: d.avgCost,
               reason: `Venta #${saleRef.id.slice(-6)}`,
               saleId: saleRef.id,
               userId: currentUser.uid,
@@ -3550,6 +3703,13 @@ function initPosPayments() {
         sellerName: currentUserData.name || currentUser.email,
         createdAt: new Date()
       };
+
+            // 🆕 Cargar jsPDF bajo demanda si aún no está (para generar los PDFs)
+      if (!window.jspdf) {
+        try { await loadLazyLibs('jspdf'); }
+        catch (e) { console.warn('[PDF] No se pudo cargar jsPDF:', e); }
+      }
+
       // ============================================================
       // 🆕 GENERAR Y SUBIR PDFs (remisión, tirilla, media carta)
       // Se hace en background, no bloquea la venta.
@@ -3899,7 +4059,7 @@ function initPosPayments() {
 
     // 🆕 Opción 2: SIEMPRE agregar directo al carrito (o sumar 1 si ya está)
     const unitPrice = computeUnitPrice(foundProduct, foundVariant, saleMode, selectedWholesale);
-    const unitCost = Number(foundProduct.cost || 0);
+    const unitCost = getCurrentAvgCostFIFO(foundVariant.variantId);
 
     const existing = cart.find(it => it.variantId === foundVariant.variantId);
     if (existing) {

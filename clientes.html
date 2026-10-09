@@ -13,11 +13,16 @@
 <script src="security/fingerprint.js"></script>
 <script src="security/device-guard.js"></script>
 <script src="components/kiosk.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- Librerías pesadas: se cargan bajo demanda desde clientes.html -->
+<script>
+  window.__SMARTEC_LAZY_LIBS = {
+    jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    autotable: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
+    exceljs: 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
+  };
+</script>
 <script src="components/pdf-generator.js"></script>
 <link rel="stylesheet" href="assets/theme.css">
-<script src="lib/firebase-config.js"></script>
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
   .bg-sd{background:#0A2A4A}.bg-sl{background:#4A7A9A}
@@ -248,6 +253,60 @@ let users = [];
 const $ = id => document.getElementById(id);
 const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
 const escapeHtml = window.Smartec.escapeHtml;   // 🆕
+
+/* ============================================================
+   🆕 CARGA DIFERIDA DE LIBRERÍAS PESADAS (jsPDF, AutoTable)
+   Se cargan SOLO cuando se llama a loadLazyLibs().
+============================================================ */
+const _lazyLoaded = { jspdf: false, autotable: false, exceljs: false };
+const _lazyPromises = { jspdf: null, exceljs: null };
+
+function _injectScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('No se pudo cargar: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function loadLazyLibs(needed) {
+  const urls = window.__SMARTEC_LAZY_LIBS || {};
+  const tasks = [];
+  const wantJsPDF = needed === 'jspdf' || needed === 'both';
+  const wantExcel = needed === 'exceljs' || needed === 'both';
+
+  if (wantJsPDF && !_lazyLoaded.jspdf) {
+    if (!_lazyPromises.jspdf) {
+      _lazyPromises.jspdf = (async () => {
+        if (!window.jspdf) await _injectScript(urls.jspdf);
+        if (!window.jspdf?.jsPDF?.API?.autoTable) await _injectScript(urls.autotable);
+        _lazyLoaded.jspdf = true;
+        _lazyLoaded.autotable = true;
+        console.log('[LazyLibs] jsPDF + AutoTable listos');
+      })();
+    }
+    tasks.push(_lazyPromises.jspdf);
+  }
+
+  if (wantExcel && !_lazyLoaded.exceljs) {
+    if (!_lazyPromises.exceljs) {
+      _lazyPromises.exceljs = (async () => {
+        if (!window.ExcelJS) await _injectScript(urls.exceljs);
+        _lazyLoaded.exceljs = true;
+        console.log('[LazyLibs] ExcelJS listo');
+      })();
+    }
+    tasks.push(_lazyPromises.exceljs);
+  }
+
+  await Promise.all(tasks);
+}
+
+window.loadLazyLibs = loadLazyLibs;
+
 /* ============================================================
    🆕 RENDER DEL HEADER-APP
 ============================================================ */
@@ -1084,6 +1143,12 @@ window.showSaleDocuments = (saleId) => {
 window.regenerateDocuments = async (saleId) => {
   const sale = sales.find(x => x.id === saleId);
   if (!sale) return alert('Venta no encontrada.');
+
+    // 🆕 Cargar jsPDF bajo demanda si aún no está
+  if (!window.jspdf) {
+    try { await loadLazyLibs('jspdf'); }
+    catch (e) { alert('⚠️ No se pudo cargar la librería de PDF.\n\n' + e.message); return; }
+  }
 
   if (!window.SmartecPdf || typeof window.SmartecPdf.generateAndUploadAll !== 'function') {
     return alert('⚠️ El generador de PDFs no está cargado. Recarga la página.');
