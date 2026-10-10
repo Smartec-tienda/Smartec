@@ -597,7 +597,8 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, doc, getDoc, query, where
+  getFirestore, collection, getDocs, doc, getDoc, query, where,
+  addDoc, updateDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import {
   getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
