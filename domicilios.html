@@ -925,6 +925,82 @@ async function closeCarteraFromSale({ saleId, paidAmount, paidAt, paymentBreakdo
   }
 }
 
+/* ============================================================
+   🆕 MARCAR MARGEN AL MAYORISTA COMO "PAGABLE"
+   Cuando se cobra una venta que tenía margen al mayorista,
+   el estado pasa de 'pending' a 'payable'.
+============================================================ */
+async function markMargenAsPayable({ saleId, paidAmount, paidAt, notes }) {
+  if (!saleId) return null;
+
+  try {
+    // 1. Buscar el registro de margen vinculado a esta venta
+    const q = query(
+      collection(db, 'margenesMayorista'),
+      where('saleId', '==', saleId)
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      // No hay margen para esta venta → no aplica
+      console.log('[Margen Mayorista] No hay margen para esta venta (no aplica)');
+      return null;
+    }
+
+    const margenDoc = snap.docs[0];
+    const margenData = { id: margenDoc.id, ...margenDoc.data() };
+
+    // 2. Idempotencia: si ya está payable o paid, no hacer nada
+    if (margenData.status === 'payable' || margenData.status === 'paid') {
+      console.log('[Margen Mayorista] Ya estaba en estado', margenData.status, '— saltando');
+      return margenDoc.id;
+    }
+
+    // 3. Actualizar a 'payable'
+    await updateDoc(doc(db, 'margenesMayorista', margenDoc.id), {
+      status: 'payable',
+      becamePayableAt: serverTimestamp(),
+      becamePayableBy: currentUser?.email || null,
+      becamePayableByName: currentUserData?.name || currentUser?.email || null,
+      collectedAmount: Number(paidAmount || 0),
+      collectedAt: paidAt || new Date().toISOString().split('T')[0],
+      collectedNotes: notes || 'Cobro confirmado al cliente final',
+      updatedAt: serverTimestamp()
+    });
+
+    console.log('[Margen Mayorista] Actualizado a payable:', margenDoc.id, '·', fmt(margenData.marginTotal));
+
+    // 4. Actualizar la venta con flag
+    try {
+      await updateDoc(doc(db, 'sales', saleId), {
+        margenPayable: true,
+        margenPayableAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } catch (linkErr) {
+      console.warn('[Margen Mayorista] No se pudo actualizar flag en la venta:', linkErr);
+    }
+
+    // 5. Auditoría
+    await audit({
+      action: 'update',
+      collection: 'margenesMayorista',
+      docId: margenDoc.id,
+      before: { status: margenData.status },
+      after: { status: 'payable', collectedAmount: paidAmount },
+      note: `Margen ahora pagable: ${margenData.wholesalerCompanyName} · ${fmt(margenData.marginTotal)}`
+    });
+
+    return margenDoc.id;
+
+  } catch (e) {
+    console.error('[Margen Mayorista] Error marcando como payable:', e);
+    return null;
+  }
+}
+
+window.markMargenAsPayable = markMargenAsPayable;
+
 window.closeCarteraFromSale = closeCarteraFromSale;
 
 /* ============ GUARDAR COBRO ============ */
@@ -1056,7 +1132,17 @@ window.submitConfirmPayment = async () => {
     } catch (carteraErr) {
       console.warn('[Cartera] Error actualizando registro (cobro sí confirmado):', carteraErr);
     }
-
+    // 🆕 ACTUALIZAR MARGEN AL MAYORISTA (si aplica)
+    try {
+      await markMargenAsPayable({
+        saleId: saleId,
+        paidAmount: totalToCharge,
+        paidAt: new Date().toISOString().split('T')[0],
+        notes: notes || 'Cobro confirmado desde domicilios'
+      });
+    } catch (margenErr) {
+      console.warn('[Margen Mayorista] Error actualizando margen (cobro sí confirmado):', margenErr);
+    }
     window.SmartecCache.invalidate('pendingSales');
     window.SmartecCache.invalidate('sales');
     window.SmartecCache.invalidate('cartera_all');
