@@ -709,7 +709,7 @@ let selectedVariant = null;
 let qty = 1;
 
 const $ = id => document.getElementById(id);
-const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const fmt = n => '$ ' + Math.round(Number(n||0)).toLocaleString('es-CO');
 const escapeHtml = window.Smartec.escapeHtml;
 
 const COLOR_NAMES = {

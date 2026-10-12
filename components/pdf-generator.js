@@ -19,7 +19,41 @@
 (function () {
   'use strict';
 
-  const { jsPDF } = window.jspdf || {};
+  /**
+   * 🆕 Obtiene jsPDF de forma robusta.
+   * - Si ya está cargado → lo devuelve directo
+   * - Si no está cargado → intenta cargarlo bajo demanda
+   * - Si no puede → lanza error descriptivo
+   *
+   * IMPORTANTE: no hacemos `const { jsPDF } = window.jspdf` al inicio
+   * porque pdf-generator.js se carga ANTES que jsPDF (que es lazy).
+   */
+  async function _getJsPDF() {
+    // 1. Si ya está disponible → devolverlo
+    if (window.jspdf && window.jspdf.jsPDF) {
+      return window.jspdf.jsPDF;
+    }
+
+    // 2. Intentar cargarlo bajo demanda
+    if (typeof window.loadLazyLibs === 'function') {
+      try {
+        await window.loadLazyLibs('jspdf');
+      } catch (e) {
+        console.warn('[PDF] No se pudo cargar jsPDF bajo demanda:', e);
+      }
+    }
+
+    // 3. Verificar de nuevo
+    if (window.jspdf && window.jspdf.jsPDF) {
+      return window.jspdf.jsPDF;
+    }
+
+    // 4. Fallar con mensaje claro
+    throw new Error(
+      'jsPDF no está disponible. ' +
+      'Verifica que loadLazyLibs("jspdf") se haya llamado antes de generar PDFs.'
+    );
+  }
 
   /* ============================================================
      HELPERS
@@ -79,6 +113,7 @@
      1. PDF REMISIÓN (Carta 216×279mm)
   ============================================================ */
   async function generateRemisionPDF(sale, settings) {
+    const jsPDF = await _getJsPDF();
     const doc = new jsPDF('p', 'mm', 'letter');
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
@@ -401,6 +436,7 @@
      2. PDF TIRILLA (58mm de ancho × alto variable)
   ============================================================ */
   async function generateTirillaPDF(sale, settings) {
+    const jsPDF = await _getJsPDF();
     const c = getCompanyInfo(sale, settings);
     const docNumber = sale.documentNumber || 'SIN-NÚMERO';
 
@@ -674,6 +710,7 @@
      3. PDF MEDIA CARTA (140×216mm)
   ============================================================ */
   async function generateMediaCartaPDF(sale, settings) {
+    const jsPDF = await _getJsPDF();
     const doc = new jsPDF('p', 'mm', [140, 216]);
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();

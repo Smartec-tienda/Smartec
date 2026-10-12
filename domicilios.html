@@ -178,7 +178,7 @@ const auth = getAuth(app);
 
 /* ============ HELPERS ============ */
 const $ = id => document.getElementById(id);
-const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const fmt = n => '$ ' + Math.round(Number(n||0)).toLocaleString('es-CO');
 const escapeHtml = (window.Smartec?.escapeHtml) || (s => s);
 /* ============================================================
    🆕 RENDER DEL HEADER-APP
@@ -190,7 +190,15 @@ function renderHeaderApp() {
   if (!currentUser || !currentUserData) return;
 
   const settingsData = window.__domSettings || {};
-  const isSuper = currentUserData.role === 'superadmin';
+  const role = currentUserData.role;
+  const isDomiciliario = role === 'domiciliario';
+
+  // 🆕 Links extra según el rol
+  const extraLinks = [];
+  if (!isDomiciliario) {
+    // Solo admin y superadmin ven el link al Panel Admin
+    extraLinks.push({ href: 'admin.html', label: '← Panel Admin' });
+  }
 
   window.SmartecHeaderApp.render({
     settings: settingsData,
@@ -198,7 +206,7 @@ function renderHeaderApp() {
       uid: currentUser.uid,
       email: currentUser.email,
       name: currentUserData.name || currentUser.email,
-      role: currentUserData.role,
+      role: role,
       storeId: currentUserData.storeId || null
     },
     stores: [],
@@ -211,11 +219,9 @@ function renderHeaderApp() {
     showHomeLink: true,
     showRefreshButton: true,
     showLogoutButton: true,
-    showStoreSelector: false,        // No hay selector de tienda: la tabla tiene su propio filtro
+    showStoreSelector: false,
     storeSelectorIncludeAll: false,
-    extraLinks: [
-      { href: 'admin.html', label: '← Panel Admin' }
-    ],
+    extraLinks: extraLinks,
     onRefresh: () => { if (window.forceRefreshCache) window.forceRefreshCache(); },
     onLogout: async () => {
       await audit({ action: 'logout', collection: 'system', note: 'Cierre de sesión desde domicilios' });
@@ -224,7 +230,6 @@ function renderHeaderApp() {
     }
   });
 }
-
 /* ============ ESTADO ============ */
 let currentUser = null;
 let currentUserData = null;
@@ -265,12 +270,19 @@ onAuthStateChanged(auth, async user => {
     currentUserData = null;
   }
 
-  // Solo admin y superadmin
-  if (!currentUserData || !['superadmin','admin'].includes(currentUserData.role)) {
-    alert('⛔ Esta página es solo para administradores.');
+  // 🆕 Permitir admin, superadmin y vendedores
+  if (!currentUserData || !['superadmin','admin','domiciliario'].includes(currentUserData.role)) {
+    alert('⛔ No tienes permisos para acceder a Domicilios.');
     await signOut(auth);
     window.location.href = 'home.html';
     return;
+  }
+
+  console.log('[Domicilios] Rol detectado:', currentUserData.role);
+
+  // 🆕 Vendedor: filtrar pendientes solo de su tienda
+  if (currentUserData.role === 'vendedor' && currentUserData.storeId) {
+    console.log('[Domicilios] Vendedor detectado → filtrando por su tienda:', currentUserData.storeId);
   }
 
   // Mostrar panel
@@ -331,8 +343,8 @@ async function loadAll() {
       pendingSales: allPendingSales.length
     });
 
-    // Filtrar por tienda si el admin no es superadmin
-    if (currentUserData.role === 'admin' && currentUserData.storeId) {
+    // 🆕 Filtrar por tienda si NO es superadmin (aplica a admin y vendedor)
+    if (currentUserData.role !== 'superadmin' && currentUserData.storeId) {
       allPendingSales = allPendingSales.filter(s => s.storeId === currentUserData.storeId);
     }
 
@@ -359,10 +371,24 @@ function populateFilters() {
   if (storeSel) {
     const opts = stores.map(s => `<option value="${s.storeId}">${escapeHtml(s.name)}</option>`).join('');
     storeSel.innerHTML = '<option value="all">Todas las tiendas</option>' + opts;
+
+    // Admin de tienda: fijar su tienda y bloquear el selector
     if (currentUserData.role === 'admin' && currentUserData.storeId) {
       storeSel.value = currentUserData.storeId;
       storeSel.disabled = true;
     }
+
+    // 🆕 Domiciliario: puede filtrar por cualquier tienda (no bloqueado)
+    // No hacer nada especial → dejarlo libre.
+  }
+    // 🆕 Filtrar por tienda:
+    //   - superadmin → ve todo
+    //   - domiciliario → ve todo (multi-tienda)
+    //   - admin → solo su tienda
+    if (currentUserData.role === 'admin' && currentUserData.storeId) {
+      allPendingSales = allPendingSales.filter(s => s.storeId === currentUserData.storeId);
+    }
+    // Domiciliario: sin filtro (ve todas las tiendas)
   }
 
   // Sellers (de las ventas pendientes)
@@ -398,7 +424,6 @@ function populateFilters() {
       timer = setTimeout(applyFilters, 250);
     });
   }
-}
 
 function applyFilters() {
   const storeF = $('filter-store')?.value || 'all';

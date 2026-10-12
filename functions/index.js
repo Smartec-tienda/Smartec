@@ -55,6 +55,17 @@ exports.createUserAdmin = onCall({ cors: true, region: 'us-central1' }, async (r
     throw new HttpsError("invalid-argument", "El nombre es obligatorio.");
   }
 
+    // 🆕 Validar el rol contra lista blanca
+  const validRoles = ['superadmin', 'admin', 'vendedor', 'domiciliario'];
+  const role = data.role || 'vendedor';
+  if (!validRoles.includes(role)) {
+    throw new HttpsError(
+      "invalid-argument",
+      `Rol no válido: "${role}". Debe ser uno de: ${validRoles.join(', ')}.`
+    );
+  }
+
+  
   try {
     // 4. Crear usuario en Firebase Auth
     const userRecord = await admin.auth().createUser({

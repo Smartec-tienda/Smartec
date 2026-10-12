@@ -292,7 +292,7 @@ let myStoreGoal = null;
 
 /* ============ HELPERS ============ */
 const $ = id => document.getElementById(id);
-const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const fmt = n => '$ ' + Math.round(Number(n||0)).toLocaleString('es-CO');
 /* ============================================================
    🆕 RENDER DEL HEADER-APP
    Se llama desde onAuthStateChanged y desde el onchange del

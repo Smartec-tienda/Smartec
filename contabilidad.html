@@ -1043,6 +1043,14 @@
           <p class="text-xs text-[#6E6E73]">Trabajadores con contrato vigente</p>
         </div>
         <div class="flex gap-2 flex-wrap">
+          <select id="nom-emp-filter-role" class="px-4 py-2 rounded-full text-sm glass-soft border border-white/60">
+            <option value="all">Todos los roles</option>
+            <option value="solo-empleado">🌟 Solo empleado</option>
+            <option value="vendedor">💼 Vendedor</option>
+            <option value="domiciliario">🚚 Domiciliario</option>
+            <option value="admin">🏢 Admin</option>
+            <option value="superadmin">👑 Superadmin</option>
+          </select>
           <input id="nom-emp-search" type="text" placeholder="Buscar empleado..." class="px-4 py-2 rounded-full text-sm glass-soft border border-white/60 min-w-[200px]">
           <button onclick="openNomEmpForm()" class="btn-apple px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-2">
             + Nuevo empleado

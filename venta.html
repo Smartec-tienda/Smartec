@@ -894,7 +894,7 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
 
   /* ============ HELPERS ============ */
   const $ = id => document.getElementById(id);
-  const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+  const fmt = n => '$ ' + Math.round(Number(n||0)).toLocaleString('es-CO');
   const escapeHtml = window.Smartec.escapeHtml;   // 🆕
 
   /* ============================================================
@@ -3245,11 +3245,26 @@ window.updateTotals = updateTotals;
       // Ganancia bruta del negocio (sin descuento del pool)
       const profit = total - surchargeAmount - totalCost;
 
-      // ============ CÁLCULO DE COMISIONES ============
-      // Pool: depende del modo de tienda ('goal' = solo excedente, 'always' = todo)
-      // Bonus personal: siempre sobre el excedente de la meta personal
+      
+      // ============================================================
+      // 🆕 CÁLCULO DE COMISIONES (con soporte para utilidad bruta)
+      // ============================================================
+      // (commissionBase ya está declarada arriba, no la redeclaramos)
+
       const poolRate = Number(currentStore.commissionRate || 0);
       const commissionMode = currentStore.commissionMode || 'always';
+      const commissionBasis = currentStore.commissionBasis || 'sale';
+
+      // 🆕 Calcular AMBAS bases posibles
+      const commissionBaseSale = subtotal - discount;
+      const commissionBaseProfit = subtotal - discount - totalCost;
+
+      // 🆕 Seleccionar la base según la configuración de la tienda
+      let commissionBaseCalc = commissionBasis === 'profit'
+        ? commissionBaseProfit
+        : commissionBaseSale;
+
+      let commissionBaseForPool = Math.max(0, commissionBaseCalc);
 
       // ========== META DE TIENDA (con herencia) ==========
       const currentMonthStr = getCurrentMonthString();
@@ -3258,6 +3273,7 @@ window.updateTotals = updateTotals;
       const storeGoalSource = storeGoalInfo.source;
 
       // ========== ACUMULADO DEL VENDEDOR (mes actual, antes de esta venta) ==========
+      // 🆕 Se recalcula usando la misma base (sale o profit) para ser consistente
       const nowDate = new Date();
       const monthStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
 
@@ -3267,48 +3283,56 @@ window.updateTotals = updateTotals;
         s.createdAt?.seconds &&
         new Date(s.createdAt.seconds * 1000) >= monthStart
       );
-      const accumulatedBefore = sellerSalesBefore.reduce((sum, s) =>
-        sum + Number(s.commissionBase || s.total || 0), 0);
-      const accumulatedAfter = accumulatedBefore + commissionBase;
+
+      // 🆕 Recalcular el acumulado del vendedor según la base elegida
+      const accumulatedBefore = sellerSalesBefore.reduce((sum, s) => {
+        if (commissionBasis === 'profit') {
+          const profit = Number(s.profit || 0);
+          return sum + Math.max(0, profit);
+        }
+        return sum + Number(s.commissionBase || 0);
+      }, 0);
+
+      const accumulatedAfter = accumulatedBefore + commissionBaseForPool;
 
       // ========== ACUMULADO DE LA TIENDA (mes actual, antes de esta venta) ==========
+      // 🆕 Se recalcula usando la misma base (sale o profit) para ser consistente
       const storeSalesBefore = sales.filter(s =>
         s.storeId === currentStore.storeId &&
         s.status !== 'anulada' &&
         s.createdAt?.seconds &&
         new Date(s.createdAt.seconds * 1000) >= monthStart
       );
-      const storeAccumulatedBefore = storeSalesBefore.reduce((sum, s) =>
-        sum + Number(s.commissionBase || s.total || 0), 0);
-      const storeAccumulatedAfter = storeAccumulatedBefore + commissionBase;
+
+      const storeAccumulatedBefore = storeSalesBefore.reduce((sum, s) => {
+        if (commissionBasis === 'profit') {
+          const profit = Number(s.profit || 0);
+          return sum + Math.max(0, profit);
+        }
+        return sum + Number(s.commissionBase || 0);
+      }, 0);
+
+      const storeAccumulatedAfter = storeAccumulatedBefore + commissionBaseForPool;
 
       // ========== CÁLCULO DEL POOL ==========
-      let poolPortion = 0;   // cuánto del commissionBase cuenta para pool
+      let poolPortion = 0;
       let poolAmount = 0;
 
       if (commissionMode === 'always') {
-        // Modo simple: pool sobre todo
-        poolPortion = commissionBase;
+        poolPortion = commissionBaseForPool;
         poolAmount = poolPortion * poolRate;
       } else {
-        // Modo meta: pool solo sobre el excedente de la meta de tienda
         if (storeGoalAmount === 0) {
-          // Truco comercial: meta 0 → todo cuenta como excedente
-          poolPortion = commissionBase;
+          poolPortion = commissionBaseForPool;
         } else if (storeAccumulatedBefore >= storeGoalAmount) {
-          // Ya superó la meta antes de esta venta → todo es excedente
-          poolPortion = commissionBase;
+          poolPortion = commissionBaseForPool;
         } else if (storeAccumulatedAfter <= storeGoalAmount) {
-          // Aún no llega a la meta → nada de pool
           poolPortion = 0;
         } else {
-          // Cruza la meta → solo la parte que la supera
           poolPortion = storeAccumulatedAfter - storeGoalAmount;
         }
         poolAmount = poolPortion * poolRate;
       }
-
-      // Redondeo consistente
       poolAmount = Math.round(poolAmount);
 
       // ========== BONUS PERSONAL (excedente de la meta personal) ==========
@@ -3317,9 +3341,10 @@ window.updateTotals = updateTotals;
 
       let bonusPortion = 0;
       let bonusAmount = 0;
+
       if (goalAmount > 0 && bonusRate > 0) {
         if (accumulatedBefore >= goalAmount) {
-          bonusPortion = commissionBase;
+          bonusPortion = commissionBaseForPool;
         } else if (accumulatedAfter > goalAmount) {
           bonusPortion = accumulatedAfter - goalAmount;
         }
@@ -3330,15 +3355,19 @@ window.updateTotals = updateTotals;
       const sellerCommissionAmount = poolAmount + bonusAmount;
       const storeCommissionAmount = 0;
 
-            // 🧪 TEST temporal — verificar cálculo de comisiones
+      // 🧪 TEST temporal — verificar cálculo de comisiones
       console.log('🧪 CÁLCULO DE COMISIONES', {
         commissionMode,
+        commissionBasis,
+        poolRate,
         storeGoalAmount,
         storeGoalSource,
+        commissionBaseSale,
+        commissionBaseProfit,
+        commissionBaseCalc,
+        commissionBaseForPool,
         storeAccumulatedBefore,
         storeAccumulatedAfter,
-        commissionBase,
-        poolRate,
         poolPortion,
         poolAmount,
         goalAmount,

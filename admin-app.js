@@ -46,7 +46,7 @@ const functions = getFunctions(app, firebaseConfig.functionsRegion || 'us-centra
 let currentUser = null;
 let currentUserData = null;
 let stores = [], users = [], products = [], inventory = [],
-    sales = [], auditLogs = [], settings = {},
+    sales = [], settings = {},
     storeGoals = [], cashRegisters = [], expensesAll = [];
 let currentProductImages = [];
 let shiftsAll = [];  // 🕒 todos los turnos (entradas/salidas)
@@ -62,6 +62,12 @@ let transferRequestsAll = [];   // 🆕 solicitudes de traslado (tiempo real)
 let deviceRequestsAll = [];     // 🆕 solicitudes de dispositivo (tiempo real)
 let deviceAttemptsAll = [];     // 🆕 intentos de acceso bloqueados (tiempo real)
 let cashWithdrawalsAll = [];    // 🆕 retiros de caja (superadmin)
+
+/* 🆕 Auditoría — declarada explícitamente (antes faltaba) */
+let auditLogs = [];
+
+/* 🆕 Cartera — para alertas del dashboard */
+let cartera = [];
 /* 🆕 PUC — cache local para el select de cuentas contables en canales de pago */
 let _pucAccountsCache = null;        // Se llena la primera vez que se abre el form de canal
 let _pucLoadingPromise = null;       // Evita cargas duplicadas en paralelo
@@ -71,7 +77,7 @@ let _loadedCreditCards = false;      // Flag de carga
 /* ============================================================
    HELPERS
 ============================================================ */
-const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const fmt = n => '$ ' + Math.round(Number(n||0)).toLocaleString('es-CO');
 const escapeHtml = window.Smartec.escapeHtml;   // 🆕
 
 /* ============ SPLASH SCREEN ============ */
@@ -603,6 +609,12 @@ async function loadAll() {
       return s.docs.map(d => ({id:d.id,...d.data()}));
     }).then(v => { users = v; _loaded.users = true; }),
 
+    // 🆕 Cartera (para alertas del dashboard)
+    C.wrap('cartera_all', async () => {
+      const s = await getDocs(collection(db,'cartera'));
+      return s.docs.map(d => ({id:d.id,...d.data()}));
+    }).then(v => { cartera = v; }),
+
     C.wrap('settings', async () => {
       const s = await getDoc(doc(db,'settings','general'));
       return s.exists() ? s.data() : {};
@@ -857,7 +869,46 @@ async function loadMoreShifts() {
 }
 
 async function loadMoreAudit() {
-  if (!_hasMore.auditLogs || !_cursor.auditLogs) return;
+  // 🆕 Auto-recuperación: si el cursor se perdió pero ya hay filas en la tabla,
+  //    reconstruimos el cursor desde el último registro cargado en memoria.
+  if (!_cursor.auditLogs && auditLogs && auditLogs.length > 0) {
+    console.warn('[loadMoreAudit] Cursor perdido. Reconstruyendo desde el último registro en memoria...');
+    // No podemos reconstruir el cursor exacto sin el DocumentSnapshot,
+    // pero al menos reinicializamos desde el último registro en memoria.
+    // Esto se logra recargando la primera página y concatenando.
+    try {
+      const s = await getDocs(query(
+        collection(db,'auditLog'),
+        orderBy('timestamp','desc'),
+        limit(auditLogs.length + PAGE_SIZE.auditLogs)
+      ));
+      const allDocs = s.docs;
+      auditLogs = allDocs.map(d => ({id:d.id,...d.data()}));
+      _cursor.auditLogs = allDocs[allDocs.length - 1] || null;
+      _hasMore.auditLogs = allDocs.length >= (auditLogs.length);
+      if (typeof window.renderAudit === 'function') window.renderAudit();
+      updateLoadMoreButton('auditLogs', _hasMore.auditLogs);
+      console.log(`[loadMoreAudit] ✅ Recuperado. Total en memoria: ${auditLogs.length}`);
+      return;
+    } catch (e) {
+      console.error('[loadMoreAudit] Error en auto-recuperación:', e);
+      return;
+    }
+  }
+
+  // 🔍 Debug: mostrar el estado antes de salir
+  console.log('[loadMoreAudit] Estado antes de cargar:', {
+    hasMore: _hasMore.auditLogs,
+    cursor: _cursor.auditLogs ? 'SET' : 'null',
+    inMemory: auditLogs?.length
+  });
+
+  // Salir temprano solo si de verdad ya no hay más Y tenemos datos en memoria
+  if (_hasMore.auditLogs === false && auditLogs && auditLogs.length > 0) {
+    console.log('[loadMoreAudit] Ya no hay más registros por cargar');
+    return;
+  }
+
   try {
     const s = await getDocs(query(
       collection(db,'auditLog'),
@@ -871,6 +922,7 @@ async function loadMoreAudit() {
     _hasMore.auditLogs = s.docs.length === PAGE_SIZE.auditLogs;
     if (typeof window.renderAudit === 'function') window.renderAudit();
     updateLoadMoreButton('auditLogs', _hasMore.auditLogs);
+    console.log(`[loadMoreAudit] ✅ Cargados ${newDocs.length} nuevos. Total: ${auditLogs.length}`);
   } catch(e) {
     console.error('loadMoreAudit:', e);
   }
@@ -1142,12 +1194,22 @@ function pctChange(curr, prev) {
 }
 
 /* ============ Render principal ============ */
+/* ============================================================
+   🆕 DASHBOARD REDISEÑADO (SUPERADMIN)
+   Estructura:
+     Fila 1: KPIs principales (Ventas, Utilidad, Cobrado, Por cobrar)
+     Fila 2: Gráficos (Evolución, Cobros vs Pagos)
+     Fila 3: Estado de Resultados mini
+     Fila 4: Posición Financiera mini
+     Fila 5: Alertas + Metas
+     Fila 6: Rankings (Tiendas, Vendedores, Productos)
+     Fila 7: Actividad reciente
+============================================================ */
 function renderDashboard() {
-  // Sincronizar filtros
+  // 1. Sincronizar filtros desde los selectores
   const periodSel = $('dash-period');
   const storeSel = $('dash-store-filter');
   const sellerSel = $('dash-seller-filter');
-
   if (periodSel) window.dashFilters.period = periodSel.value;
   if (storeSel) window.dashFilters.storeId = storeSel.value;
   if (sellerSel) window.dashFilters.sellerUid = sellerSel.value;
@@ -1159,14 +1221,44 @@ function renderDashboard() {
     }
   }
 
-  // Poblar selects (una sola vez)
+  // 2. Poblar filtros (una sola vez)
   populateDashFilters();
 
-  const { list: salesPeriod, range } = getDashSalesFiltered();
+  // 3. Obtener rango de fechas
+  const range = getDashDateRange();
+  const { list: salesPeriod } = getDashSalesFiltered();
   const salesPrev = getPrevSalesFiltered();
-  const kpi = computeDashKPIs(salesPeriod);
-  const kpiPrev = computeDashKPIs(salesPrev);
 
+  // 4. KPIs principales
+  renderNewKPIs(salesPeriod, salesPrev, range);
+
+  // 5. Gráficos
+  renderNewChartEvolution(salesPeriod);
+  renderNewChartCashflow(salesPeriod);
+
+  // 6. Estado de resultados
+  renderNewPyL(salesPeriod);
+
+  // 7. Posición financiera
+  renderNewBalanceMini();
+
+  // 8. Alertas + Metas
+  renderNewAlerts(salesPeriod);
+  renderNewMetas(salesPeriod);
+
+  // 9. Rankings
+  renderNewTopStores(salesPeriod);
+  renderNewTopSellers(salesPeriod);
+  renderNewTopProducts(salesPeriod);
+
+  // 10. Actividad reciente
+  renderNewRecentActivity();
+}
+
+/* ============================================================
+   🆕 KPIs PRINCIPALES (Fila 1)
+============================================================ */
+function renderNewKPIs(salesPeriod, salesPrev, range) {
   // Info del rango
   const rangeInfo = $('dash-range-info');
   if (rangeInfo) {
@@ -1174,133 +1266,2099 @@ function renderDashboard() {
     rangeInfo.innerText = `📅 Mostrando: ${range.label} · ${range.from ? fmtD(range.from) + ' → ' + fmtD(range.to) : 'todos los datos'} · ${salesPeriod.length} ventas`;
   }
 
-  // ============================================================
-  // KPIs
-  // ============================================================
-  const setTxt = (id, v) => { const el = $(id); if (el) el.innerText = v; };
+  // Calcular KPIs del período y anterior
+  const kpi = computeNewKPIs(salesPeriod);
+  const kpiPrev = computeNewKPIs(salesPrev);
+
+  // Helper para tendencias
   const setTrend = (id, curr, prev) => {
     const el = $(id);
     if (!el) return;
-    const t = pctChange(curr, prev);
-    el.innerText = `${t.arrow} ${Math.abs(t.pct).toFixed(1)}%`;
-    el.className = `text-[10px] font-bold ${t.cls}`;
+    if (prev === 0 && curr === 0) { el.innerText = '0%'; el.className = 'text-[10px] font-bold text-gray-400'; return; }
+    if (prev === 0) { el.innerText = '+100%'; el.className = 'text-[10px] font-bold text-green-600'; return; }
+    const pct = ((curr - prev) / prev) * 100;
+    const arrow = pct > 0 ? '↗' : pct < 0 ? '↘' : '→';
+    el.innerText = `${arrow} ${Math.abs(pct).toFixed(1)}%`;
+    el.className = `text-[10px] font-bold ${pct > 0 ? 'text-green-600' : pct < 0 ? 'text-red-600' : 'text-gray-400'}`;
   };
 
-  setTxt('dash-kpi-sales', fmt(kpi.sales));
-  setTxt('dash-kpi-sales-prev', `vs período anterior: ${fmt(kpiPrev.sales)}`);
-  setTrend('dash-kpi-sales-trend', kpi.sales, kpiPrev.sales);
+  // Ventas netas
+  const ventasEl = $('kpi-ventas');
+  if (ventasEl) ventasEl.innerText = fmt(kpi.sales);
+  const ventasSub = $('kpi-ventas-sub');
+  if (ventasSub) ventasSub.innerText = `vs anterior: ${fmt(kpiPrev.sales)}`;
+  setTrend('kpi-ventas-trend', kpi.sales, kpiPrev.sales);
 
-  setTxt('dash-kpi-count', kpi.count);
-  setTxt('dash-kpi-count-prev', `vs período anterior: ${kpiPrev.count}`);
-  setTrend('dash-kpi-count-trend', kpi.count, kpiPrev.count);
+  // Utilidad neta
+  const utilidadEl = $('kpi-utilidad');
+  if (utilidadEl) utilidadEl.innerText = fmt(kpi.netProfit);
+  const utilidadSub = $('kpi-utilidad-sub');
+  if (utilidadSub) utilidadSub.innerText = `Margen ${kpi.netMargin.toFixed(1)}%`;
+  setTrend('kpi-utilidad-trend', kpi.netProfit, kpiPrev.netProfit);
 
-  setTxt('dash-kpi-ticket', fmt(kpi.ticket));
-  setTxt('dash-kpi-ticket-prev', `vs período anterior: ${fmt(kpiPrev.ticket)}`);
-  setTrend('dash-kpi-ticket-trend', kpi.ticket, kpiPrev.ticket);
+  // Color dinámico en la utilidad
+  if (utilidadEl) utilidadEl.className = kpi.netProfit >= 0
+    ? 'text-2xl font-bold text-green-600'
+    : 'text-2xl font-bold text-red-600';
 
-  setTxt('dash-kpi-units-sold', kpi.units.toLocaleString('es-CO'));
-  setTxt('dash-kpi-units-prev', `vs período anterior: ${kpiPrev.units}`);
-  setTrend('dash-kpi-units-trend', kpi.units, kpiPrev.units);
-
-  setTxt('dash-kpi-profit', fmt(kpi.profit));
-  setTxt('dash-kpi-profit-margin', `Margen ${kpi.sales > 0 ? ((kpi.profit/kpi.sales)*100).toFixed(1) : 0}%`);
-  setTrend('dash-kpi-profit-trend', kpi.profit, kpiPrev.profit);
-
-  setTxt('dash-kpi-commission', fmt(kpi.commission));
-  setTxt('dash-kpi-pool', fmt(kpi.pool));
-  setTxt('dash-kpi-bonus', fmt(kpi.bonus));
-
-  setTxt('dash-kpi-collected', fmt(kpi.collected));
-  setTxt('dash-kpi-collected-pct', `${kpi.sales > 0 ? ((kpi.collected/kpi.sales)*100).toFixed(1) : 0}% del total`);
-
-  setTxt('dash-kpi-pending', fmt(kpi.pending));
-  setTxt('dash-kpi-pending-pct', kpi.pendingCount > 0
-    ? `${kpi.sales > 0 ? ((kpi.pending/kpi.sales)*100).toFixed(1) : 0}% · ${kpi.pendingCount} venta${kpi.pendingCount !== 1 ? 's' : ''}`
-    : 'Sin pendientes');
-
-  // ============================================================
-  // Inventario KPIs
-  // ============================================================
-  let invFiltered = inventory.slice();
-  if (window.dashFilters.storeId !== 'all' && window.dashFilters.storeId !== 'active') {
-    invFiltered = invFiltered.filter(i => i.storeId === window.dashFilters.storeId);
-  } else if (window.dashFilters.storeId === 'active') {
-    const activeIds = stores.filter(s => s.active).map(s => s.storeId);
-    invFiltered = invFiltered.filter(i => activeIds.includes(i.storeId));
+  // Cobrado
+  const cobradoEl = $('kpi-cobrado');
+  if (cobradoEl) cobradoEl.innerText = fmt(kpi.collected);
+  const cobradoSub = $('kpi-cobrado-sub');
+  if (cobradoSub) {
+    const pct = kpi.sales > 0 ? (kpi.collected / kpi.sales) * 100 : 0;
+    cobradoSub.innerText = `${pct.toFixed(1)}% del total facturado`;
   }
 
-  let invCost = 0, invPrice = 0, unitsStock = 0;
-  const FIFO = window.SmartecFIFO;
-  invFiltered.forEach(i => {
-    const p = products.find(x => x.id === i.productId);
-    if (!p) return;
+  // Por cobrar
+  const porCobrarEl = $('kpi-porcobrar');
+  if (porCobrarEl) porCobrarEl.innerText = fmt(kpi.pending);
+  const porCobrarSub = $('kpi-porcobrar-sub');
+  if (porCobrarSub) {
+    porCobrarSub.innerText = kpi.pendingCount > 0
+      ? `${kpi.pendingCount} venta${kpi.pendingCount !== 1 ? 's' : ''} pendiente${kpi.pendingCount !== 1 ? 's' : ''}`
+      : 'Sin pendientes';
+  }
+}
 
-    // 🆕 Costo FIFO desde los lotes
+/* ============================================================
+   🆕 CÁLCULO DE KPIs COMPLETOS (incluye contabilidad)
+============================================================ */
+function computeNewKPIs(salesList) {
+  let sales = 0, cost = 0, count = 0, units = 0;
+  let collected = 0, pending = 0, pendingCount = 0;
+  let commission = 0;
+  let financialCommissions = 0;
+
+  salesList.forEach(s => {
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    sales += base;
+    count++;
+
+    const sCost = Number(s.totalCost) > 0
+      ? Number(s.totalCost)
+      : (s.items || []).reduce((sum, it) => sum + Number(it.unitCost || 0) * Number(it.qty || 0), 0);
+    cost += sCost;
+
+    units += (s.items || []).reduce((y, i) => y + Number(i.qty || 0), 0);
+
+    // Cobrado vs pendiente
+    const ps = s.paymentStatus || 'completed';
+    if (ps === 'pending') { pending += base; pendingCount++; }
+    else { collected += base; }
+
+    // Comisiones
+    commission += Number(s.poolAmount || s.commissionAmount || 0) + Number(s.bonusAmount || 0);
+
+    // Comisiones financieras (crédito)
+    financialCommissions += Number(s.creditCommissionAmount || 0);
+  });
+
+  // Gastos operativos del período (de expensesAll)
+  const expenses = (expensesAll || []).filter(e => e.status !== 'anulado' && e.type === 'gasto');
+  const operatingExpenses = expenses.reduce((s, e) => s + Number(e.total || 0), 0);
+
+  // Nómina del período (de nominaPeriodos)
+  const nomina = (window.nominaPeriodos || []).filter(p => p.status !== 'anulado');
+  const payroll = nomina.reduce((s, p) => s + Number(p.totalAportesEmpleador || 0) + Number(p.totalNeto || 0), 0);
+
+  const grossProfit = sales - cost;
+  const netProfit = grossProfit - operatingExpenses - payroll - financialCommissions;
+  const netMargin = sales > 0 ? (netProfit / sales) * 100 : 0;
+
+  return {
+    sales, cost, grossProfit, netProfit, netMargin,
+    count, units, commission, financialCommissions,
+    collected, pending, pendingCount,
+    operatingExpenses, payroll
+  };
+}
+
+/* ============================================================
+   🆕 GRÁFICO: EVOLUCIÓN VENTAS VS UTILIDAD (línea doble)
+============================================================ */
+let _dashEvolutionChart = null;
+function renderNewChartEvolution(salesList) {
+  const canvas = $('dash-chart-evolution');
+  const emptyMsg = $('dash-chart-evolution-empty');
+  if (!canvas || canvas.offsetParent === null) return;
+
+  // Destruir gráfico previo
+  if (_dashEvolutionChart) { _dashEvolutionChart.destroy(); _dashEvolutionChart = null; }
+
+  // Últimos 30 días
+  const now = new Date();
+  const days = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i); d.setHours(0,0,0,0);
+    days.push(d);
+  }
+
+  const salesByDay = days.map(() => 0);
+  const profitByDay = days.map(() => 0);
+
+  salesList.forEach(s => {
+    if (!s.createdAt?.seconds) return;
+    const sd = new Date(s.createdAt.seconds * 1000);
+    const idx = days.findIndex(d => {
+      const next = new Date(d); next.setDate(next.getDate() + 1);
+      return sd >= d && sd < next;
+    });
+    if (idx === -1) return;
+
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    salesByDay[idx] += base;
+
+    const sCost = Number(s.totalCost) > 0
+      ? Number(s.totalCost)
+      : (s.items || []).reduce((sum, it) => sum + Number(it.unitCost || 0) * Number(it.qty || 0), 0);
+    profitByDay[idx] += (base - sCost);
+  });
+
+  const labels = days.map(d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`);
+
+  // Si todo es 0, mostrar mensaje
+  if (salesByDay.every(v => v === 0)) {
+    if (emptyMsg) emptyMsg.classList.remove('hidden');
+    return;
+  }
+  if (emptyMsg) emptyMsg.classList.add('hidden');
+
+  _dashEvolutionChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Ventas netas',
+          data: salesByDay,
+          borderColor: '#4A7A9A',
+          backgroundColor: 'rgba(74,122,154,0.10)',
+          tension: 0.35,
+          fill: true,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2
+        },
+        {
+          label: 'Utilidad bruta',
+          data: profitByDay,
+          borderColor: '#30D158',
+          backgroundColor: 'rgba(48,209,88,0.08)',
+          tension: 0.35,
+          fill: true,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 }, padding: 12, boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: $${Number(ctx.parsed.y).toLocaleString('es-CO')}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: (v) => '$' + (v/1000).toFixed(0) + 'k' }
+        },
+        x: { ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 15 } }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   🆕 GRÁFICO: COBROS VS PAGOS (barras apiladas)
+============================================================ */
+let _dashCashflowChart = null;
+function renderNewChartCashflow(salesList) {
+  const canvas = $('dash-chart-cashflow');
+  const emptyMsg = $('dash-chart-cashflow-empty');
+  if (!canvas || canvas.offsetParent === null) return;
+
+  if (_dashCashflowChart) { _dashCashflowChart.destroy(); _dashCashflowChart = null; }
+
+  // Agrupar cobros por método
+  const byMethod = {
+    efectivo: 0,
+    transferencia: 0,
+    tarjeta: 0,
+    credito: 0,
+    contraentrega: 0
+  };
+
+  salesList.forEach(s => {
+    const base = (s.commissionBase !== undefined)
+      ? Number(s.commissionBase)
+      : (Number(s.subtotal || 0) - Number(s.discount || 0));
+    const m = s.paymentMethod || 'efectivo';
+    if (byMethod[m] !== undefined) byMethod[m] += base;
+  });
+
+  // Pagos (gastos del período)
+  const expensesPeriod = (expensesAll || []).filter(e => e.status !== 'anulado');
+  const totalPagos = expensesPeriod.reduce((s, e) => s + Number(e.total || 0), 0);
+
+  const totalCobros = Object.values(byMethod).reduce((s, v) => s + v, 0);
+  if (totalCobros === 0 && totalPagos === 0) {
+    if (emptyMsg) emptyMsg.classList.remove('hidden');
+    return;
+  }
+  if (emptyMsg) emptyMsg.classList.add('hidden');
+
+  // Colores
+  const palette = {
+    efectivo: '#22c55e',
+    transferencia: '#3b82f6',
+    tarjeta: '#a855f7',
+    credito: '#f59e0b',
+    contraentrega: '#ef4444'
+  };
+  const labels = {
+    efectivo: '💵 Efectivo',
+    transferencia: '🔄 Transf.',
+    tarjeta: '💳 Tarjeta',
+    credito: '🛍️ Crédito',
+    contraentrega: '📦 C. entrega'
+  };
+
+  const keys = Object.keys(byMethod).filter(k => byMethod[k] > 0);
+
+  _dashCashflowChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: [...keys.map(k => labels[k]), '📤 Pagos'],
+      datasets: [{
+        label: 'Monto',
+        data: [...keys.map(k => byMethod[k]), totalPagos],
+        backgroundColor: [...keys.map(k => palette[k]), '#64748b'],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => '$' + Number(ctx.parsed.y).toLocaleString('es-CO')
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: (v) => '$' + (v/1000).toFixed(0) + 'k' }
+        }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   🆕 ESTADO DE RESULTADOS MINI (Fila 3)
+============================================================ */
+function renderNewPyL(salesList) {
+  const el = $('dash-pyl');
+  if (!el) return;
+
+  const kpi = computeNewKPIs(salesList);
+
+  const row = (label, value, opts = {}) => {
+    const { bold = false, color = 'text-sd', sign = '' } = opts;
+    return `
+      <div class="flex justify-between items-center py-1.5 ${bold ? 'font-bold border-t pt-2 mt-1' : ''}">
+        <span class="${bold ? 'text-sd' : 'text-gray-600'} text-sm">${label}</span>
+        <span class="font-mono ${color} ${bold ? 'text-base' : 'text-sm'}">${sign}${fmt(value)}</span>
+      </div>
+    `;
+  };
+
+  el.innerHTML = `
+    ${row('Ingresos por ventas', kpi.sales, { color: 'text-sl' })}
+    ${row('(−) Costo de mercancía', -kpi.cost, { color: 'text-orange-600' })}
+    ${row('= Utilidad bruta', kpi.grossProfit, { bold: true, color: 'text-green-600' })}
+    ${row('(−) Gastos operativos', -kpi.operatingExpenses, { color: 'text-red-600' })}
+    ${row('(−) Nómina', -kpi.payroll, { color: 'text-red-600' })}
+    ${row('(−) Comisiones financieras', -kpi.financialCommissions, { color: 'text-red-600' })}
+    <div class="flex justify-between items-center py-2.5 mt-2 bg-gradient-to-r from-purple-50 to-blue-50 -mx-5 px-5 rounded-b-xl border-t">
+      <span class="font-bold text-sd">= UTILIDAD NETA</span>
+      <div class="text-right">
+        <p class="font-mono font-bold ${kpi.netProfit >= 0 ? 'text-purple-700' : 'text-red-600'} text-lg">${fmt(kpi.netProfit)}</p>
+        <p class="text-[10px] text-gray-500">Margen ${kpi.netMargin.toFixed(1)}%</p>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   🆕 POSICIÓN FINANCIERA MINI (Fila 4)
+============================================================ */
+function renderNewBalanceMini() {
+  const el = $('dash-balance-mini');
+  if (!el) return;
+
+  // Nota: la posición financiera completa está en contabilidad.html.
+  // Aquí mostramos una referencia usando los datos en memoria.
+  // Si no hay datos de movimientos cargados, mostramos un placeholder.
+
+  el.innerHTML = `
+    <div class="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-3">
+      <p class="text-[10px] text-blue-700 uppercase font-semibold">Activo</p>
+      <p class="text-lg font-bold text-blue-700 mt-1 font-mono">$ —</p>
+      <p class="text-[10px] text-gray-500 mt-0.5">Ver en Contabilidad</p>
+    </div>
+    <div class="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-3">
+      <p class="text-[10px] text-orange-700 uppercase font-semibold">Pasivo</p>
+      <p class="text-lg font-bold text-orange-700 mt-1 font-mono">$ —</p>
+      <p class="text-[10px] text-gray-500 mt-0.5">Ver en Contabilidad</p>
+    </div>
+    <div class="bg-purple-50 border-l-4 border-purple-500 rounded-lg p-3">
+      <p class="text-[10px] text-purple-700 uppercase font-semibold">Patrimonio</p>
+      <p class="text-lg font-bold text-purple-700 mt-1 font-mono">$ —</p>
+      <p class="text-[10px] text-gray-500 mt-0.5">Ver en Contabilidad</p>
+    </div>
+    <div class="bg-gray-50 border-l-4 border-gray-400 rounded-lg p-3">
+      <p class="text-[10px] text-gray-600 uppercase font-semibold">Estado</p>
+      <p class="text-lg font-bold text-gray-500 mt-1">—</p>
+      <p class="text-[10px] text-gray-500 mt-0.5">Ver en Contabilidad</p>
+    </div>
+  `;
+}
+
+/* ============================================================
+   🆕 REPORTE: ESTADO DE RESULTADOS DEL PERÍODO
+============================================================ */
+function renderPyl() {
+  const el = $('rep-pyl');
+  if (!el) return;
+
+  // 1. Obtener las ventas filtradas
+  const filtered = getFilteredSales();
+
+  // 2. Calcular KPIs de ventas
+  let sales = 0, cost = 0;
+  filtered.forEach(s => {
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    sales += base;
+
+    const sCost = Number(s.totalCost) > 0
+      ? Number(s.totalCost)
+      : (s.items || []).reduce((sum, it) => sum + Number(it.unitCost || 0) * Number(it.qty || 0), 0);
+    cost += sCost;
+  });
+
+  // 3. Comisiones financieras
+  const financialCommissions = filtered.reduce(
+    (sum, s) => sum + Number(s.creditCommissionAmount || 0), 0
+  );
+
+  // 4. Gastos del período (según filtros)
+  const expensesPeriod = getFilteredReportExpenses();
+  const operatingExpenses = expensesPeriod
+    .filter(e => e.status !== 'anulado' && e.type === 'gasto')
+    .reduce((s, e) => s + Number(e.total || 0), 0);
+
+  const directCosts = expensesPeriod
+    .filter(e => e.status !== 'anulado' && e.type === 'costo')
+    .reduce((s, e) => s + Number(e.total || 0), 0);
+
+  // 5. Nómina del período
+  const payrollPeriod = getFilteredReportPayroll();
+  const payrollCost = payrollPeriod.reduce(
+    (s, p) => s + Number(p.totalNeto || 0) + Number(p.totalAportesEmpleador || 0), 0
+  );
+
+  // 6. Cascada
+  const totalCostos = cost + directCosts;
+  const grossProfit = sales - totalCostos;
+  const netProfit = grossProfit - operatingExpenses - payrollCost - financialCommissions;
+  const grossMargin = sales > 0 ? (grossProfit / sales) * 100 : 0;
+  const netMargin = sales > 0 ? (netProfit / sales) * 100 : 0;
+
+  // 7. Render
+  const row = (label, value, opts = {}) => {
+    const { bold = false, color = 'text-sd', isLast = false } = opts;
+    return `
+      <div class="flex justify-between items-center py-2 ${bold ? 'font-bold' : ''} ${!isLast ? 'border-b border-gray-100' : ''}">
+        <span class="${bold ? 'text-sd' : 'text-gray-700'} text-sm">${label}</span>
+        <span class="font-mono ${color} ${bold ? 'text-base' : 'text-sm'}">${value >= 0 ? '' : '-'}${fmt(Math.abs(value))}</span>
+      </div>
+    `;
+  };
+
+  el.innerHTML = `
+    <div class="bg-white rounded-lg p-4">
+      ${row('Ingresos por ventas', sales, { color: 'text-sl' })}
+      ${row('(−) Costo de mercancía', -totalCostos, { color: 'text-orange-600' })}
+      <div class="flex justify-between items-center py-2.5 my-1 px-3 bg-green-50 rounded-lg border border-green-200">
+        <span class="font-bold text-green-800 text-sm">= UTILIDAD BRUTA</span>
+        <div class="text-right">
+          <span class="font-mono font-bold text-green-700 text-base">${fmt(grossProfit)}</span>
+          <span class="text-[10px] text-green-600 ml-2">${grossMargin.toFixed(1)}%</span>
+        </div>
+      </div>
+      ${row('(−) Gastos operativos', -operatingExpenses, { color: 'text-red-600' })}
+      ${row('(−) Nómina del período', -payrollCost, { color: 'text-red-600' })}
+      ${row('(−) Comisiones financieras', -financialCommissions, { color: 'text-red-600' })}
+      <div class="flex justify-between items-center py-3 mt-2 px-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border-2 border-purple-200">
+        <span class="font-bold text-purple-800 text-sm">= UTILIDAD NETA</span>
+        <div class="text-right">
+          <span class="font-mono font-bold ${netProfit >= 0 ? 'text-purple-700' : 'text-red-600'} text-lg">${fmt(netProfit)}</span>
+          <span class="text-[10px] ${netProfit >= 0 ? 'text-purple-600' : 'text-red-500'} ml-2">Margen ${netMargin.toFixed(1)}%</span>
+        </div>
+      </div>
+      <p class="text-[10px] text-gray-400 mt-3 text-center">
+        ${filtered.length} ventas · ${expensesPeriod.length} movimientos · ${payrollPeriod.length} liquidaciones de nómina
+      </p>
+    </div>
+  `;
+}
+
+/* ============================================================
+   🆕 REPORTE: FLUJO DE CAJA REAL
+   Muestra:
+     - Cobros efectivos (por método de pago confirmado)
+     - Pagos realizados (gastos pagados + nómina pagada)
+     - Flujo neto
+============================================================ */
+function renderCashflow() {
+  const el = $('rep-cashflow');
+  if (!el) return;
+
+  const filtered = getFilteredSales();
+
+  // ============ COBROS ============
+  // Solo contamos las ventas efectivamente cobradas (no pending)
+  const cobros = {
+    efectivo: 0,
+    transferencia: 0,
+    tarjeta: 0,
+    credito: 0,
+    contraentrega: 0
+  };
+
+  let totalCobros = 0;
+  filtered.forEach(s => {
+    const ps = s.paymentStatus || 'completed';
+    if (ps === 'pending') return; // No cobrado
+
+    const base = (s.commissionBase !== undefined)
+      ? Number(s.commissionBase)
+      : (Number(s.subtotal || 0) - Number(s.discount || 0));
+
+    // Si tiene paymentBreakdown, desglosamos por cada pago
+    if (Array.isArray(s.paymentBreakdown) && s.paymentBreakdown.length) {
+      s.paymentBreakdown.forEach(p => {
+        const m = p.method || 'efectivo';
+        if (cobros[m] !== undefined) cobros[m] += Number(p.amount || 0);
+      });
+      totalCobros += base;
+      return;
+    }
+
+    // Compatibilidad: usar paymentMethod
+    const m = s.paymentMethod || 'efectivo';
+    if (cobros[m] !== undefined) cobros[m] += base;
+    totalCobros += base;
+  });
+
+  // ============ PAGOS ============
+  const expensesPeriod = getFilteredReportExpenses();
+
+  // Gastos pagados en el período (con paidAt dentro del rango)
+  const pagosGastos = expensesPeriod
+    .filter(e => e.status !== 'anulado' && e.paidAt)
+    .filter(e => {
+      if (!reportFilters.dateFrom && !reportFilters.dateTo) return true;
+      if (reportFilters.dateFrom && e.paidAt < reportFilters.dateFrom) return false;
+      if (reportFilters.dateTo && e.paidAt > reportFilters.dateTo) return false;
+      return true;
+    })
+    .reduce((s, e) => s + Number(e.total || 0), 0);
+
+  // Nómina pagada en el período
+  const payrollPeriod = getFilteredReportPayroll();
+  const pagosNomina = payrollPeriod.reduce(
+    (s, p) => s + Number(p.totalNeto || 0), 0
+  );
+
+  const totalPagos = pagosGastos + pagosNomina;
+  const flujoNeto = totalCobros - totalPagos;
+
+  // ============ RENDER ============
+  const card = (title, value, opts = {}) => {
+    const { color = 'text-sd', sub = '', icon = '', variant = 'default' } = opts;
+    const bg = variant === 'green' ? 'bg-green-50 border-green-200'
+             : variant === 'red' ? 'bg-red-50 border-red-200'
+             : variant === 'blue' ? 'bg-blue-50 border-blue-200'
+             : 'bg-white border-gray-200';
+    return `
+      <div class="${bg} border rounded-xl p-4">
+        <p class="text-[10px] uppercase font-semibold text-gray-500 mb-1">${icon} ${title}</p>
+        <p class="text-2xl font-bold ${color} font-mono">${fmt(value)}</p>
+        ${sub ? `<p class="text-[10px] text-gray-500 mt-1">${sub}</p>` : ''}
+      </div>
+    `;
+  };
+
+  el.innerHTML = `
+    ${card('Cobros efectivos', totalCobros, {
+      icon: '💵',
+      color: 'text-emerald-600',
+      variant: 'green',
+      sub: `${filtered.filter(s => (s.paymentStatus || 'completed') !== 'pending').length} ventas cobradas`
+    })}
+    ${card('Pagos realizados', totalPagos, {
+      icon: '📤',
+      color: 'text-red-600',
+      variant: 'red',
+      sub: `${fmt(pagosGastos)} gastos · ${fmt(pagosNomina)} nómina`
+    })}
+    ${card('Flujo neto', flujoNeto, {
+      icon: flujoNeto >= 0 ? '📈' : '📉',
+      color: flujoNeto >= 0 ? 'text-green-700' : 'text-red-700',
+      variant: 'blue',
+      sub: flujoNeto >= 0 ? 'Entradas > Salidas' : 'Salidas > Entradas'
+    })}
+  `;
+
+  // ============ DESGLOSE DE COBROS POR MÉTODO ============
+  // Lo agregamos como una sección extra debajo
+  const metodosHtml = Object.entries(cobros)
+    .filter(([_, v]) => v > 0)
+    .map(([k, v]) => {
+      const pct = totalCobros > 0 ? (v / totalCobros) * 100 : 0;
+      const labels = {
+        efectivo: '💵 Efectivo',
+        transferencia: '🔄 Transferencia',
+        tarjeta: '💳 Tarjeta',
+        credito: '🛍️ Crédito',
+        contraentrega: '📦 Contra entrega'
+      };
+      return `
+        <div class="flex justify-between items-center text-xs py-1.5 border-b border-gray-100 last:border-0">
+          <span class="text-gray-600">${labels[k] || k}</span>
+          <div class="text-right">
+            <span class="font-mono font-semibold text-sd">${fmt(v)}</span>
+            <span class="text-[10px] text-gray-400 ml-2">${pct.toFixed(1)}%</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  el.innerHTML += `
+    <div class="col-span-full bg-white rounded-xl border border-gray-200 p-4 mt-2">
+      <p class="text-[10px] uppercase font-semibold text-gray-500 mb-2">Desglose de cobros por método</p>
+      <div>${metodosHtml || '<p class="text-xs text-gray-400 text-center py-2">Sin cobros registrados</p>'}</div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   🆕 REPORTE: GASTOS Y COSTOS DEL PERÍODO
+   Desglose por categoría, proveedor y tienda
+============================================================ */
+function renderExpensesReport() {
+  const elCat = $('rep-expenses-category');
+  const elSup = $('rep-expenses-supplier');
+  const elStore = $('rep-expenses-store');
+  if (!elCat || !elSup || !elStore) return;
+
+  // 1. Gastos filtrados por el rango
+  const list = getFilteredReportExpenses().filter(e => e.status !== 'anulado');
+
+  if (!list.length) {
+    const emptyHtml = '<p class="text-xs text-gray-400 text-center py-4">Sin datos en el período</p>';
+    elCat.innerHTML = emptyHtml;
+    elSup.innerHTML = emptyHtml;
+    elStore.innerHTML = emptyHtml;
+    return;
+  }
+
+  // 2. Totales generales
+  const totalMov = list.reduce((s, e) => s + Number(e.total || 0), 0);
+  const totalCostos = list.filter(e => e.type === 'costo').reduce((s, e) => s + Number(e.total || 0), 0);
+  const totalGastos = list.filter(e => e.type === 'gasto').reduce((s, e) => s + Number(e.total || 0), 0);
+
+  // 3. Agrupar por categoría
+  const byCat = {};
+  list.forEach(e => {
+    const k = e.category || 'otros';
+    if (!byCat[k]) byCat[k] = { total: 0, count: 0, tipo: e.type || 'gasto' };
+    byCat[k].total += Number(e.total || 0);
+    byCat[k].count += 1;
+  });
+
+  const catNames = {
+    arriendo: 'Arriendo', servicios: 'Servicios públicos', nomina: 'Nómina',
+    papeleria: 'Papelería', transporte: 'Transporte', publicidad: 'Publicidad',
+    mantenimiento: 'Mantenimiento', impuestos: 'Impuestos',
+    mercancia: 'Compra de mercancía', otros: 'Otros'
+  };
+
+  const catColors = {
+    arriendo: 'bg-purple-100 text-purple-700', servicios: 'bg-cyan-100 text-cyan-700',
+    nomina: 'bg-blue-100 text-blue-700', papeleria: 'bg-pink-100 text-pink-700',
+    transporte: 'bg-amber-100 text-amber-700', publicidad: 'bg-fuchsia-100 text-fuchsia-700',
+    mantenimiento: 'bg-slate-100 text-slate-700', impuestos: 'bg-red-100 text-red-700',
+    mercancia: 'bg-orange-100 text-orange-700', otros: 'bg-gray-100 text-gray-700'
+  };
+
+  const catList = Object.entries(byCat).sort((a, b) => b[1].total - a[1].total);
+  elCat.innerHTML = catList.map(([slug, v]) => {
+    const pct = totalMov > 0 ? (v.total / totalMov) * 100 : 0;
+    const max = catList[0][1].total || 1;
+    const barPct = (v.total / max) * 100;
+    return `
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] px-2 py-0.5 rounded ${catColors[slug] || catColors.otros} font-semibold">
+              ${escapeHtml(catNames[slug] || slug)}
+            </span>
+            <span class="text-[10px] text-gray-400">${v.count} mov.</span>
+          </div>
+          <div class="text-right">
+            <span class="font-mono font-bold text-sd text-xs">${fmt(v.total)}</span>
+            <span class="text-[10px] text-gray-400 ml-2">${pct.toFixed(1)}%</span>
+          </div>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5">
+          <div class="h-1.5 rounded-full bg-gradient-to-r from-orange-400 to-red-500" style="width:${barPct}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // 4. Agrupar por proveedor
+  const bySup = {};
+  list.forEach(e => {
+    const k = e.supplierName || e.provider || 'Sin proveedor';
+    if (!bySup[k]) bySup[k] = { total: 0, count: 0, nit: e.supplierNit || e.providerNit || '' };
+    bySup[k].total += Number(e.total || 0);
+    bySup[k].count += 1;
+  });
+
+  const supList = Object.entries(bySup).sort((a, b) => b[1].total - a[1].total).slice(0, 10);
+  elSup.innerHTML = supList.map(([name, v], i) => {
+    const pct = totalMov > 0 ? (v.total / totalMov) * 100 : 0;
+    const max = supList[0][1].total || 1;
+    const barPct = (v.total / max) * 100;
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+    return `
+      <div>
+        <div class="flex justify-between items-baseline mb-1">
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-semibold text-sd truncate">${medal} ${escapeHtml(name)}</p>
+            <p class="text-[10px] text-gray-400">
+              ${v.count} factura${v.count !== 1 ? 's' : ''}${v.nit ? ' · NIT: ' + escapeHtml(v.nit) : ''}
+            </p>
+          </div>
+          <div class="text-right ml-2">
+            <span class="font-mono font-bold text-sd text-xs">${fmt(v.total)}</span>
+            <span class="text-[10px] text-gray-400 ml-1">${pct.toFixed(1)}%</span>
+          </div>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5">
+          <div class="h-1.5 rounded-full bg-gradient-to-r from-sl to-blue-400" style="width:${barPct}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('') || '<p class="text-xs text-gray-400 text-center py-4">Sin datos</p>';
+
+  // 5. Agrupar por tienda
+  const byStore = {};
+  list.forEach(e => {
+    const k = e.storeId || 'general';
+    if (!byStore[k]) byStore[k] = { total: 0, count: 0, gasto: 0, costo: 0 };
+    byStore[k].total += Number(e.total || 0);
+    byStore[k].count += 1;
+    if (e.type === 'costo') byStore[k].costo += Number(e.total || 0);
+    else byStore[k].gasto += Number(e.total || 0);
+  });
+
+  const storeList = Object.entries(byStore).sort((a, b) => b[1].total - a[1].total);
+  elStore.innerHTML = storeList.map(([sid, v]) => {
+    const st = stores.find(s => s.storeId === sid);
+    const name = sid === 'general' ? 'General (sin tienda)' : (st?.name || sid);
+    const pct = totalMov > 0 ? (v.total / totalMov) * 100 : 0;
+    return `
+      <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-semibold text-sd">${escapeHtml(name)}</p>
+          <p class="text-[10px] text-gray-400">
+            ${v.count} mov. · Costos: ${fmt(v.costo)} · Gastos: ${fmt(v.gasto)}
+          </p>
+        </div>
+        <div class="text-right ml-2">
+          <span class="font-mono font-bold text-sd text-sm">${fmt(v.total)}</span>
+          <p class="text-[10px] text-gray-400">${pct.toFixed(1)}% del total</p>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   🆕 REPORTE: NÓMINA DEL PERÍODO
+   Liquidaciones, devengos, deducciones, aportes y provisiones
+============================================================ */
+function renderPayrollReport() {
+  const kpisEl = $('rep-payroll-kpis');
+  const detailEl = $('rep-payroll-detail');
+  if (!kpisEl || !detailEl) return;
+
+  // 1. Nómina filtrada por el rango
+  const payroll = getFilteredReportPayroll();
+
+  if (!payroll.length) {
+    kpisEl.innerHTML = '';
+    detailEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Sin liquidaciones de nómina en el período</p>';
+    return;
+  }
+
+  // 2. Totales
+  const totalDevengos = payroll.reduce((s, p) => s + Number(p.totalDevengos || 0), 0);
+  const totalDeducciones = payroll.reduce((s, p) => s + Number(p.totalDeducciones || 0), 0);
+  const totalNeto = payroll.reduce((s, p) => s + Number(p.totalNeto || 0), 0);
+  const totalAportes = payroll.reduce((s, p) => s + Number(p.totalAportesEmpleador || 0), 0);
+  const totalProvisiones = payroll.reduce((s, p) => s + Number(p.totalProvisiones || 0), 0);
+  const totalEmpleados = payroll.reduce((s, p) => s + (p.items || []).length, 0);
+
+  // 3. KPIs
+  const card = (label, value, color, sub) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <p class="text-[10px] uppercase font-semibold text-gray-500 mb-1">${label}</p>
+      <p class="text-xl font-bold ${color} font-mono">${fmt(value)}</p>
+      ${sub ? `<p class="text-[10px] text-gray-400 mt-1">${sub}</p>` : ''}
+    </div>
+  `;
+
+  kpisEl.innerHTML = `
+    ${card('Devengos', totalDevengos, 'text-sd', `${totalEmpleados} liquidaciones`)}
+    ${card('Deducciones', totalDeducciones, 'text-red-600', 'Salud + Pensión empleado')}
+    ${card('Neto pagado', totalNeto, 'text-green-600', 'Lo que recibieron los empleados')}
+    ${card('Aportes empleador', totalAportes, 'text-orange-600', 'SS + parafiscales')}
+  `;
+
+  // 4. Detalle por período
+  const periodRows = payroll.map(p => {
+    const items = (p.items || []).length;
+    return `
+      <tr class="border-b hover:bg-gray-50">
+        <td class="p-3 text-xs font-semibold text-sd">${escapeHtml(p.periodLabel) || '—'}</td>
+        <td class="p-3 text-xs text-center">${p.periodType === 'quincenal' ? '📅 Quincenal' : '📆 Mensual'}</td>
+        <td class="p-3 text-center text-xs">${items}</td>
+        <td class="p-3 text-right text-xs font-mono">${fmt(p.totalDevengos)}</td>
+        <td class="p-3 text-right text-xs font-mono text-red-600">${fmt(p.totalDeducciones)}</td>
+        <td class="p-3 text-right text-xs font-mono font-bold text-green-700">${fmt(p.totalNeto)}</td>
+        <td class="p-3 text-right text-xs font-mono text-orange-600">${fmt(p.totalAportesEmpleador)}</td>
+        <td class="p-3 text-center">
+          <span class="text-[10px] px-2 py-0.5 rounded ${p.status === 'anulado' ? 'bg-gray-200 text-gray-600' : 'bg-green-100 text-green-700'} font-semibold">
+            ${p.status === 'anulado' ? '⚪ Anulado' : '✓ Activo'}
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // 5. Totales del pie
+  const totalRow = `
+    <tr class="bg-gray-100 font-bold border-t-2 border-gray-300">
+      <td class="p-3 text-xs uppercase text-sd" colspan="3">Totales</td>
+      <td class="p-3 text-right text-xs font-mono text-sd">${fmt(totalDevengos)}</td>
+      <td class="p-3 text-right text-xs font-mono text-red-700">${fmt(totalDeducciones)}</td>
+      <td class="p-3 text-right text-xs font-mono text-green-700">${fmt(totalNeto)}</td>
+      <td class="p-3 text-right text-xs font-mono text-orange-700">${fmt(totalAportes)}</td>
+      <td class="p-3"></td>
+    </tr>
+  `;
+
+  detailEl.innerHTML = `
+    <table class="w-full text-sm min-w-[900px]">
+      <thead class="bg-gray-50 text-sd">
+        <tr>
+          <th class="p-3 text-left text-[10px] uppercase font-bold">Período</th>
+          <th class="p-3 text-center text-[10px] uppercase font-bold">Tipo</th>
+          <th class="p-3 text-center text-[10px] uppercase font-bold">Empleados</th>
+          <th class="p-3 text-right text-[10px] uppercase font-bold">Devengos</th>
+          <th class="p-3 text-right text-[10px] uppercase font-bold">Deducciones</th>
+          <th class="p-3 text-right text-[10px] uppercase font-bold">Neto</th>
+          <th class="p-3 text-right text-[10px] uppercase font-bold">Aportes</th>
+          <th class="p-3 text-center text-[10px] uppercase font-bold">Estado</th>
+        </tr>
+      </thead>
+      <tbody>${periodRows}</tbody>
+      <tfoot>${totalRow}</tfoot>
+    </table>
+    <p class="text-[10px] text-gray-400 mt-3 text-center">
+      Provisiones acumuladas del período: <b class="text-sd">${fmt(totalProvisiones)}</b>
+      (cesantías + intereses + prima + vacaciones)
+    </p>
+  `;
+}
+
+/* ============================================================
+   🆕 REPORTE: CUENTAS POR PAGAR (CxP)
+   Obligaciones pendientes con proveedores, agrupadas por estado
+============================================================ */
+function renderPayablesReport() {
+  const kpisEl = $('rep-payables-kpis');
+  const detailEl = $('rep-payables-detail');
+  if (!kpisEl || !detailEl) return;
+
+  // 1. Gastos con pago pendiente (CxP) en el rango
+  const today = new Date().toISOString().split('T')[0];
+
+  const allExpenses = getFilteredReportExpenses();
+  const payables = allExpenses.filter(e => {
+    if (e.status === 'anulado') return false;
+    if (e.paidAt) return false;                    // ya pagado
+    return true;
+  });
+
+  if (!payables.length) {
+    kpisEl.innerHTML = '';
+    detailEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Sin cuentas por pagar pendientes en el período</p>';
+    return;
+  }
+
+  // 2. Clasificar por estado
+  const vencidas = payables.filter(e => e.dueDate && e.dueDate < today);
+  const porVencer7 = payables.filter(e => {
+    if (!e.dueDate || e.dueDate < today) return false;
+    const diff = daysBetween(today, e.dueDate);
+    return diff >= 0 && diff <= 7;
+  });
+  const porVencer30 = payables.filter(e => {
+    if (!e.dueDate || e.dueDate < today) return false;
+    const diff = daysBetween(today, e.dueDate);
+    return diff > 7 && diff <= 30;
+  });
+  const sinFecha = payables.filter(e => !e.dueDate);
+
+  const sum = (arr) => arr.reduce((s, e) => s + Number(e.total || 0), 0);
+  const totalCxP = sum(payables);
+  const totalVencido = sum(vencidas);
+  const total7 = sum(porVencer7);
+  const total30 = sum(porVencer30);
+  const totalSinFecha = sum(sinFecha);
+
+  // 3. KPIs
+  const card = (label, value, color, sub) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <p class="text-[10px] uppercase font-semibold text-gray-500 mb-1">${label}</p>
+      <p class="text-xl font-bold ${color} font-mono">${fmt(value)}</p>
+      ${sub ? `<p class="text-[10px] text-gray-400 mt-1">${sub}</p>` : ''}
+    </div>
+  `;
+
+  kpisEl.innerHTML = `
+    ${card('Total CxP', totalCxP, 'text-sd', `${payables.length} factura${payables.length !== 1 ? 's' : ''} pendiente${payables.length !== 1 ? 's' : ''}`)}
+    ${card('Vencidas', totalVencido, 'text-red-600', `${vencidas.length} factura${vencidas.length !== 1 ? 's' : ''}`)}
+    ${card('Vencen en 7 días', total7, 'text-amber-600', `${porVencer7.length} factura${porVencer7.length !== 1 ? 's' : ''}`)}
+    ${card('Vencen en 30 días', total30, 'text-blue-600', `${porVencer30.length} factura${porVencer30.length !== 1 ? 's' : ''}`)}
+  `;
+
+  // 4. Agrupar por proveedor
+  const bySupplier = {};
+  payables.forEach(e => {
+    const k = e.supplierName || e.provider || 'Sin proveedor';
+    if (!bySupplier[k]) {
+      bySupplier[k] = {
+        total: 0, vencido: 0, count: 0,
+        nit: e.supplierNit || e.providerNit || '',
+        porVencer: 0
+      };
+    }
+    const t = Number(e.total || 0);
+    bySupplier[k].total += t;
+    bySupplier[k].count += 1;
+    if (e.dueDate && e.dueDate < today) bySupplier[k].vencido += t;
+    else bySupplier[k].porVencer += t;
+  });
+
+  const supplierList = Object.entries(bySupplier).sort((a, b) => b[1].total - a[1].total).slice(0, 15);
+
+  const supplierRows = supplierList.map(([name, v], i) => {
+    const pct = totalCxP > 0 ? (v.total / totalCxP) * 100 : 0;
+    const hasOverdue = v.vencido > 0;
+    return `
+      <tr class="border-b hover:bg-gray-50 ${hasOverdue ? 'bg-red-50/30' : ''}">
+        <td class="p-3 text-xs font-semibold text-sd">${i + 1}. ${escapeHtml(name)}</td>
+        <td class="p-3 text-xs font-mono text-gray-500">${escapeHtml(v.nit) || '—'}</td>
+        <td class="p-3 text-center text-xs">${v.count}</td>
+        <td class="p-3 text-right text-xs font-mono font-bold text-sd">${fmt(v.total)}</td>
+        <td class="p-3 text-right text-xs font-mono ${v.vencido > 0 ? 'text-red-600 font-semibold' : 'text-gray-300'}">
+          ${v.vencido > 0 ? fmt(v.vencido) : '—'}
+        </td>
+        <td class="p-3 text-right text-xs font-mono text-amber-600">${v.porVencer > 0 ? fmt(v.porVencer) : '—'}</td>
+        <td class="p-3 text-right text-xs font-mono text-gray-400">${pct.toFixed(1)}%</td>
+      </tr>
+    `;
+  }).join('');
+
+  // 5. Detalle próximo a vencer (top 10 urgentes)
+  const urgentes = payables
+    .filter(e => e.dueDate)
+    .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''))
+    .slice(0, 10);
+
+  const urgentesRows = urgentes.map(e => {
+    const diff = daysBetween(today, e.dueDate);
+    const isOverdue = diff < 0;
+    const daysLabel = isOverdue
+      ? `Hace ${Math.abs(diff)} día${Math.abs(diff) !== 1 ? 's' : ''}`
+      : diff === 0 ? 'Hoy'
+      : `En ${diff} día${diff !== 1 ? 's' : ''}`;
+    const daysClass = isOverdue ? 'text-red-600 font-bold' : diff <= 3 ? 'text-amber-600 font-semibold' : 'text-gray-500';
+
+    return `
+      <tr class="border-b hover:bg-gray-50 ${isOverdue ? 'bg-red-50/40' : ''}">
+        <td class="p-3 text-xs">${escapeHtml(e.invoiceNumber) || '—'}</td>
+        <td class="p-3 text-xs truncate max-w-[200px]">${escapeHtml(e.concept || e.supplierName || '—')}</td>
+        <td class="p-3 text-xs">${escapeHtml(e.supplierName || e.provider || '—')}</td>
+        <td class="p-3 text-center text-xs whitespace-nowrap">${e.dueDate}</td>
+        <td class="p-3 text-center text-xs ${daysClass} whitespace-nowrap">${daysLabel}</td>
+        <td class="p-3 text-right text-xs font-mono font-bold text-sd">${fmt(e.total)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  detailEl.innerHTML = `
+    <div class="mb-6">
+      <p class="text-xs font-bold text-sd uppercase mb-2">📊 Por proveedor (top 15)</p>
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[800px]">
+          <thead class="bg-gray-50 text-sd">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase font-bold">Proveedor</th>
+              <th class="p-3 text-left text-[10px] uppercase font-bold">NIT</th>
+              <th class="p-3 text-center text-[10px] uppercase font-bold">Facturas</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">Total</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">Vencido</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">Por vencer</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">% Total</th>
+            </tr>
+          </thead>
+          <tbody>${supplierRows}</tbody>
+          <tfoot class="bg-gray-100 border-t-2 border-gray-300">
+            <tr>
+              <td colspan="3" class="p-3 text-right text-xs uppercase font-bold text-sd">Totales</td>
+              <td class="p-3 text-right text-xs font-mono font-bold text-sd">${fmt(totalCxP)}</td>
+              <td class="p-3 text-right text-xs font-mono font-bold text-red-700">${fmt(totalVencido)}</td>
+              <td class="p-3 text-right text-xs font-mono font-bold text-amber-700">${fmt(totalCxP - totalVencido)}</td>
+              <td class="p-3"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    ${urgentes.length ? `
+      <div>
+        <p class="text-xs font-bold text-sd uppercase mb-2">⏰ Próximas a vencer (top 10)</p>
+        <div class="overflow-x-auto scrollbar-thin">
+          <table class="w-full text-sm min-w-[700px]">
+            <thead class="bg-gray-50 text-sd">
+              <tr>
+                <th class="p-3 text-left text-[10px] uppercase font-bold">Factura</th>
+                <th class="p-3 text-left text-[10px] uppercase font-bold">Concepto</th>
+                <th class="p-3 text-left text-[10px] uppercase font-bold">Proveedor</th>
+                <th class="p-3 text-center text-[10px] uppercase font-bold">Vence</th>
+                <th class="p-3 text-center text-[10px] uppercase font-bold">Días</th>
+                <th class="p-3 text-right text-[10px] uppercase font-bold">Monto</th>
+              </tr>
+            </thead>
+            <tbody>${urgentesRows}</tbody>
+          </table>
+        </div>
+      </div>
+    ` : ''}
+  `;
+}
+
+/* ============================================================
+   🆕 REPORTE: CARTERA POR ANTIGÜEDAD
+   Clasificación de la cartera por rangos de vencimiento
+============================================================ */
+function renderCarteraAgingReport() {
+  const el = $('rep-cartera-aging');
+  if (!el) return;
+
+  // 1. Cartera pendiente (no pagada)
+  const today = new Date().toISOString().split('T')[0];
+
+  // NOTA: la colección 'cartera' viene del POS cuando paymentStatus === 'pending'
+  // Contiene: { clientName, invoiceNumber, amount, dueDate, payments[], date, storeId, ... }
+  const carteraPendiente = (cartera || []).filter(c => {
+    if (!c.dueDate) return false;
+    const monto = Number(c.amount || 0);
+    const abonos = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+    return (monto - abonos) > 0;
+  });
+
+  if (!carteraPendiente.length) {
+    el.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Sin cartera pendiente</p>';
+    return;
+  }
+
+  // 2. Calcular días vencidos y rango para cada una
+  const enriquecida = carteraPendiente.map(c => {
+    const monto = Number(c.amount || 0);
+    const abonos = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+    const saldo = monto - abonos;
+    const diff = daysBetween(c.dueDate, today); // > 0 = vencida
+    const diasVencidos = diff > 0 ? diff : 0;
+    return { ...c, saldo, diasVencidos };
+  });
+
+  // 3. Agrupar por rango
+  const rangos = [
+    { slug: '0-30',      from: 0,    to: 30,     label: '0-30 días',        color: 'gray',   pct: 0 },
+    { slug: '31-90',     from: 31,   to: 90,     label: '31-90 días',       color: 'yellow', pct: 0.05 },
+    { slug: '91-180',    from: 91,   to: 180,    label: '91-180 días',      color: 'orange', pct: 0.10 },
+    { slug: '181-360',   from: 181,  to: 360,    label: '181-360 días',     color: 'red',    pct: 0.15 },
+    { slug: '361-720',   from: 361,  to: 720,    label: '361-720 días',     color: 'red',    pct: 0.25 },
+    { slug: '721-1080',  from: 721,  to: 1080,   label: '721-1080 días',    color: 'red',    pct: 0.50 },
+    { slug: '1080+',     from: 1081, to: 99999,  label: 'Más de 1080 días', color: 'red',    pct: 1.00 }
+  ];
+
+  const buckets = {};
+  rangos.forEach(r => buckets[r.slug] = { saldo: 0, count: 0, prov: 0 });
+  const noVencidas = { saldo: 0, count: 0 };
+
+  enriquecida.forEach(c => {
+    if (c.diasVencidos === 0) {
+      noVencidas.saldo += c.saldo;
+      noVencidas.count += 1;
+      return;
+    }
+    const r = rangos.find(x => c.diasVencidos >= x.from && c.diasVencidos <= x.to);
+    if (r) {
+      buckets[r.slug].saldo += c.saldo;
+      buckets[r.slug].count += 1;
+      buckets[r.slug].prov += c.saldo * r.pct;
+    }
+  });
+
+  // 4. Totales
+  const totalCartera = enriquecida.reduce((s, c) => s + c.saldo, 0);
+  const totalVencido = enriquecida.filter(c => c.diasVencidos > 0).reduce((s, c) => s + c.saldo, 0);
+  const totalProvision = rangos.reduce((s, r) => s + buckets[r.slug].prov, 0);
+
+  // 5. Render: tarjetas de resumen
+  const colorBgMap = {
+    gray:   'bg-gray-50 border-gray-300 text-gray-700',
+    yellow: 'bg-yellow-50 border-yellow-300 text-yellow-700',
+    orange: 'bg-orange-50 border-orange-300 text-orange-700',
+    red:    'bg-red-50 border-red-300 text-red-700'
+  };
+
+  const summaryCards = rangos.map(r => {
+    const b = buckets[r.slug];
+    const pct = totalCartera > 0 ? (b.saldo / totalCartera) * 100 : 0;
+    const cls = colorBgMap[r.color];
+    return `
+      <div class="${cls} border rounded-lg p-3">
+        <p class="text-[10px] uppercase font-semibold">${r.label}</p>
+        <p class="text-lg font-bold font-mono mt-1">${fmt(b.saldo)}</p>
+        <p class="text-[10px] opacity-70 mt-0.5">${b.count} factura${b.count !== 1 ? 's' : ''} · ${pct.toFixed(1)}%</p>
+        ${b.prov > 0 ? `<p class="text-[10px] mt-1 font-semibold">Provisión: ${fmt(b.prov)}</p>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // 6. Tabla detallada (top 20 por saldo)
+  const detalleOrdenado = enriquecida.sort((a, b) => b.saldo - a.saldo).slice(0, 20);
+
+  const detalleRows = detalleOrdenado.map(c => {
+    const r = c.diasVencidos === 0 ? null
+            : rangos.find(x => c.diasVencidos >= x.from && c.diasVencidos <= x.to);
+    const rangoLabel = c.diasVencidos === 0 ? 'Por vencer' : (r?.label || '—');
+    const rangoCls = c.diasVencidos === 0 ? 'bg-gray-100 text-gray-600'
+                   : c.diasVencidos <= 30 ? 'bg-yellow-100 text-yellow-700'
+                   : c.diasVencidos <= 180 ? 'bg-orange-100 text-orange-700'
+                   : 'bg-red-100 text-red-700';
+
+    return `
+      <tr class="border-b hover:bg-gray-50 ${c.diasVencidos > 0 ? 'bg-red-50/20' : ''}">
+        <td class="p-3 text-xs text-gray-600 whitespace-nowrap">${c.date || '—'}</td>
+        <td class="p-3 text-xs font-mono">${escapeHtml(c.invoiceNumber) || '—'}</td>
+        <td class="p-3 text-xs font-semibold text-sd">${escapeHtml(c.clientName) || '—'}</td>
+        <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${c.dueDate || '—'}</td>
+        <td class="p-3 text-right text-xs font-mono">${fmt(c.saldo)}</td>
+        <td class="p-3 text-center text-xs ${c.diasVencidos > 0 ? 'text-red-600 font-bold' : 'text-gray-400'}">
+          ${c.diasVencidos > 0 ? c.diasVencidos : '—'}
+        </td>
+        <td class="p-3 text-center">
+          <span class="text-[10px] px-2 py-0.5 rounded ${rangoCls} font-semibold whitespace-nowrap">${rangoLabel}</span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  el.innerHTML = `
+    <!-- KPIs generales -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div class="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-3">
+        <p class="text-[10px] uppercase font-semibold text-blue-700">Cartera total</p>
+        <p class="text-xl font-bold text-blue-700 font-mono mt-1">${fmt(totalCartera)}</p>
+        <p class="text-[10px] text-gray-500 mt-0.5">${enriquecida.length} facturas pendientes</p>
+      </div>
+      <div class="bg-red-50 border-l-4 border-red-500 rounded-lg p-3">
+        <p class="text-[10px] uppercase font-semibold text-red-700">Cartera vencida</p>
+        <p class="text-xl font-bold text-red-700 font-mono mt-1">${fmt(totalVencido)}</p>
+        <p class="text-[10px] text-gray-500 mt-0.5">${totalCartera > 0 ? ((totalVencido / totalCartera) * 100).toFixed(1) : 0}% del total</p>
+      </div>
+      <div class="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-3">
+        <p class="text-[10px] uppercase font-semibold text-orange-700">Provisión estimada</p>
+        <p class="text-xl font-bold text-orange-700 font-mono mt-1">${fmt(totalProvision)}</p>
+        <p class="text-[10px] text-gray-500 mt-0.5">Según fiscal Colombia</p>
+      </div>
+    </div>
+
+    <!-- Tarjetas por rango -->
+    <p class="text-xs font-bold text-sd uppercase mb-2">Distribución por rangos</p>
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+      ${summaryCards}
+    </div>
+
+    <!-- Tabla detallada -->
+    <p class="text-xs font-bold text-sd uppercase mb-2">Top 20 por saldo</p>
+    <div class="overflow-x-auto scrollbar-thin">
+      <table class="w-full text-sm min-w-[900px]">
+        <thead class="bg-gray-50 text-sd">
+          <tr>
+            <th class="p-3 text-left text-[10px] uppercase font-bold">Fecha</th>
+            <th class="p-3 text-left text-[10px] uppercase font-bold">Factura</th>
+            <th class="p-3 text-left text-[10px] uppercase font-bold">Cliente</th>
+            <th class="p-3 text-left text-[10px] uppercase font-bold">Vence</th>
+            <th class="p-3 text-right text-[10px] uppercase font-bold">Saldo</th>
+            <th class="p-3 text-center text-[10px] uppercase font-bold">Días</th>
+            <th class="p-3 text-center text-[10px] uppercase font-bold">Rango</th>
+          </tr>
+        </thead>
+        <tbody>${detalleRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ============================================================
+   🆕 REPORTE: INVENTARIO VALORIZADO
+   Por tienda: unidades, costo, valor venta y rotación
+============================================================ */
+function renderInventoryReport() {
+  const kpisEl = $('rep-inventory-kpis');
+  const detailEl = $('rep-inventory-detail');
+  if (!kpisEl || !detailEl) return;
+
+  // 1. Filtrar inventario por tienda si hay filtro activo
+  let invFiltered = (inventory || []).slice();
+  if (reportFilters.storeId && reportFilters.storeId !== 'all') {
+    if (reportFilters.storeId === 'active') {
+      const activeIds = stores.filter(s => s.active).map(s => s.storeId);
+      invFiltered = invFiltered.filter(i => activeIds.includes(i.storeId));
+    } else {
+      invFiltered = invFiltered.filter(i => i.storeId === reportFilters.storeId);
+    }
+  }
+
+  if (!invFiltered.length) {
+    kpisEl.innerHTML = '';
+    detailEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Sin inventario disponible</p>';
+    return;
+  }
+
+  // 2. Enriquecer cada item con costos y precios
+  const enriquecido = invFiltered.map(i => {
+    const p = products.find(x => x.id === i.productId);
+    if (!p) return null;
+
+    const stock = Number(i.stock || 0);
+
+    // Valoración FIFO desde lotes
+    const FIFO = window.SmartecFIFO;
     const fallbackCost = Number(p.cost || 0);
     const normalized = FIFO.normalizeInventory(
-      { stock: i.stock, batches: i.batches },
+      { stock, batches: i.batches },
       fallbackCost
     );
-    const batchValue = normalized.batches.reduce((sum, b) => {
+    const valorCosto = normalized.batches.reduce((sum, b) => {
       return sum + (Number(b.qty || 0) * Number(b.cost || 0));
     }, 0);
-    invCost += batchValue;
+    const avgCost = FIFO.avgCostFromBatches(normalized.batches);
 
-    const price = (p.onSale && p.salePrice) ? Number(p.salePrice) : Number(p.price || 0);
-    const st = Number(i.stock || 0);
-    invPrice += price * st;
-    unitsStock += st;
+    const precioVenta = (p.onSale && p.salePrice) ? Number(p.salePrice) : Number(p.price || 0);
+    const valorVenta = precioVenta * stock;
+
+    return {
+      ...i,
+      productName: p.name || i.productName || '—',
+      sku: i.sku || p.sku || '—',
+      categoryName: p.categoryName || '—',
+      stock,
+      valorCosto,
+      valorVenta,
+      avgCost,
+      precioVenta,
+      margen: valorVenta - valorCosto
+    };
+  }).filter(Boolean);
+
+  if (!enriquecido.length) {
+    kpisEl.innerHTML = '';
+    detailEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Sin datos de productos</p>';
+    return;
+  }
+
+  // 3. Totales generales
+  const totalUnidades = enriquecido.reduce((s, i) => s + i.stock, 0);
+  const totalCosto = enriquecido.reduce((s, i) => s + i.valorCosto, 0);
+  const totalVenta = enriquecido.reduce((s, i) => s + i.valorVenta, 0);
+  const totalMargen = totalVenta - totalCosto;
+  const margenPct = totalVenta > 0 ? (totalMargen / totalVenta) * 100 : 0;
+
+  // 4. KPIs
+  const card = (label, value, color, sub) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <p class="text-[10px] uppercase font-semibold text-gray-500 mb-1">${label}</p>
+      <p class="text-xl font-bold ${color} font-mono">${fmt(value)}</p>
+      ${sub ? `<p class="text-[10px] text-gray-400 mt-1">${sub}</p>` : ''}
+    </div>
+  `;
+
+  kpisEl.innerHTML = `
+    ${card('Valor en costo', totalCosto, 'text-sd', `${totalUnidades.toLocaleString('es-CO')} unidades`)}
+    ${card('Valor en venta', totalVenta, 'text-sl', `${enriquecido.length} SKUs`)}
+    ${card('Margen potencial', totalMargen, 'text-green-600', `${margenPct.toFixed(1)}% margen`)}
+    ${card('Stock bajo', enriquecido.filter(i => i.stock > 0 && i.stock <= 5).length, 'text-orange-600', 'Productos con ≤5 unidades')}
+  `;
+
+  // 5. Agrupar por tienda
+  const byStore = {};
+  enriquecido.forEach(i => {
+    const k = i.storeId || 'general';
+    if (!byStore[k]) byStore[k] = { unidades: 0, costo: 0, venta: 0, margen: 0, skus: 0, lowStock: 0 };
+    byStore[k].unidades += i.stock;
+    byStore[k].costo += i.valorCosto;
+    byStore[k].venta += i.valorVenta;
+    byStore[k].margen += i.margen;
+    byStore[k].skus += 1;
+    if (i.stock > 0 && i.stock <= 5) byStore[k].lowStock += 1;
   });
-  setTxt('kpi-inv-cost', fmt(invCost));
-  setTxt('kpi-inv-price', fmt(invPrice));
-  setTxt('kpi-margin', fmt(invPrice - invCost));
-  setTxt('kpi-units', unitsStock.toLocaleString('es-CO'));
+
+  const storeList = Object.entries(byStore).sort((a, b) => b[1].costo - a[1].costo);
+  const storeRows = storeList.map(([sid, v]) => {
+    const st = stores.find(s => s.storeId === sid);
+    const name = sid === 'general' ? 'General' : (st?.name || sid);
+    const marginPct = v.venta > 0 ? (v.margen / v.venta) * 100 : 0;
+    return `
+      <tr class="border-b hover:bg-gray-50">
+        <td class="p-3 text-xs font-semibold text-sd">${escapeHtml(name)}</td>
+        <td class="p-3 text-center text-xs">${v.skus}</td>
+        <td class="p-3 text-center text-xs font-semibold">${v.unidades.toLocaleString('es-CO')}</td>
+        <td class="p-3 text-right text-xs font-mono">${fmt(v.costo)}</td>
+        <td class="p-3 text-right text-xs font-mono">${fmt(v.venta)}</td>
+        <td class="p-3 text-right text-xs font-mono font-bold text-green-700">${fmt(v.margen)}</td>
+        <td class="p-3 text-right text-xs font-mono text-gray-500">${marginPct.toFixed(1)}%</td>
+        <td class="p-3 text-center text-xs ${v.lowStock > 0 ? 'text-orange-600 font-bold' : 'text-gray-300'}">
+          ${v.lowStock > 0 ? v.lowStock : '—'}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const storeTotalRow = `
+    <tr class="bg-gray-100 font-bold border-t-2 border-gray-300">
+      <td class="p-3 text-xs uppercase text-sd">TOTAL</td>
+      <td class="p-3 text-center text-xs">${enriquecido.length}</td>
+      <td class="p-3 text-center text-xs">${totalUnidades.toLocaleString('es-CO')}</td>
+      <td class="p-3 text-right text-xs font-mono text-sd">${fmt(totalCosto)}</td>
+      <td class="p-3 text-right text-xs font-mono text-sd">${fmt(totalVenta)}</td>
+      <td class="p-3 text-right text-xs font-mono text-green-700">${fmt(totalMargen)}</td>
+      <td class="p-3 text-right text-xs font-mono text-gray-700">${margenPct.toFixed(1)}%</td>
+      <td class="p-3"></td>
+    </tr>
+  `;
+
+  // 6. Top 20 productos por valor en costo
+  const topProductos = enriquecido.sort((a, b) => b.valorCosto - a.valorCosto).slice(0, 20);
+  const prodRows = topProductos.map((i, idx) => {
+    const st = stores.find(s => s.storeId === i.storeId);
+    const stockColor = i.stock === 0 ? 'text-red-600 font-bold'
+                    : i.stock <= 5 ? 'text-orange-600 font-bold'
+                    : 'text-sd';
+    return `
+      <tr class="border-b hover:bg-gray-50">
+        <td class="p-3 text-xs text-gray-400 font-mono">${idx + 1}</td>
+        <td class="p-3 text-xs font-semibold text-sd truncate max-w-[220px]">${escapeHtml(i.productName)}</td>
+        <td class="p-3 text-xs font-mono text-gray-500">${escapeHtml(i.sku)}</td>
+        <td class="p-3 text-xs">${escapeHtml(st?.name || i.storeId)}</td>
+        <td class="p-3 text-center text-xs ${stockColor}">${i.stock}</td>
+        <td class="p-3 text-right text-xs font-mono text-gray-500">${fmt(i.avgCost)}</td>
+        <td class="p-3 text-right text-xs font-mono">${fmt(i.valorCosto)}</td>
+        <td class="p-3 text-right text-xs font-mono">${fmt(i.valorVenta)}</td>
+        <td class="p-3 text-right text-xs font-mono font-bold text-green-700">${fmt(i.margen)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  detailEl.innerHTML = `
+    <div class="mb-6">
+      <p class="text-xs font-bold text-sd uppercase mb-2">📊 Por tienda</p>
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[900px]">
+          <thead class="bg-gray-50 text-sd">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase font-bold">Tienda</th>
+              <th class="p-3 text-center text-[10px] uppercase font-bold">SKUs</th>
+              <th class="p-3 text-center text-[10px] uppercase font-bold">Unidades</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">Valor costo</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">Valor venta</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">Margen</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">% Margen</th>
+              <th class="p-3 text-center text-[10px] uppercase font-bold">Stock bajo</th>
+            </tr>
+          </thead>
+          <tbody>${storeRows}</tbody>
+          <tfoot>${storeTotalRow}</tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <p class="text-xs font-bold text-sd uppercase mb-2">📦 Top 20 productos por valor en costo</p>
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[900px]">
+          <thead class="bg-gray-50 text-sd">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase font-bold">#</th>
+              <th class="p-3 text-left text-[10px] uppercase font-bold">Producto</th>
+              <th class="p-3 text-left text-[10px] uppercase font-bold">SKU</th>
+              <th class="p-3 text-left text-[10px] uppercase font-bold">Tienda</th>
+              <th class="p-3 text-center text-[10px] uppercase font-bold">Stock</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">Costo prom.</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">Valor costo</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">Valor venta</th>
+              <th class="p-3 text-right text-[10px] uppercase font-bold">Margen</th>
+            </tr>
+          </thead>
+          <tbody>${prodRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   🆕 REPORTE: CUMPLIMIENTO DE METAS
+   Por tienda y por vendedor: meta vs realidad, % cumplimiento, comisiones
+============================================================ */
+function renderGoalsReport() {
+  const tiendasEl = $('rep-goals-tiendas');
+  const vendedoresEl = $('rep-goals-vendedores');
+  if (!tiendasEl || !vendedoresEl) return;
+
+  // 1. Determinar el mes del rango de fechas
+  const now = new Date();
+  const monthStr = (reportFilters.dateFrom)
+    ? reportFilters.dateFrom.slice(0, 7)  // YYYY-MM
+    : `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  // 2. Obtener metas del mes
+  const metasDelMes = (storeGoals || []).filter(g => g.month === monthStr);
 
   // ============================================================
-  // Stock bajo
+  // SECCIÓN A: METAS POR TIENDA
   // ============================================================
-  const low = invFiltered.filter(i => Number(i.stock||0) <= Number(i.minStock||settings.minStock||5));
-  const ul = $('low-stock-list');
-  if (ul) {
-    ul.innerHTML = low.length ? low.slice(0, 30).map(i => {
-      const store = stores.find(s => s.storeId === i.storeId);
-      const color = i.colorName ? ' · ' + i.colorName : '';
-      const size = i.size ? ' · ' + i.size : '';
-      return `<li class="flex justify-between border-b border-gray-100 pb-1 last:border-0">
-        <div class="min-w-0 flex-1">
-          <p class="truncate text-xs font-medium text-sd">${escapeHtml(i.productName)}</p>
-          <p class="text-[10px] text-gray-400">${escapeHtml(store?.name||i.storeId)} · ${escapeHtml(i.sku)}${color}${size}</p>
+  if (!metasDelMes.length) {
+    tiendasEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-3">Sin metas de tienda configuradas para este período</p>';
+  } else {
+    // Calcular ventas del mes por tienda (según filtros)
+    const ventasPorTienda = {};
+    const salesFiltradas = getFilteredSales();
+
+    salesFiltradas.forEach(s => {
+      if (s.status === 'anulada') return;
+      if (!s.createdAt?.seconds) return;
+      const d = new Date(s.createdAt.seconds * 1000);
+      const mes = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      if (mes !== monthStr) return;
+
+      const base = (s.commissionBase !== undefined)
+        ? Number(s.commissionBase)
+        : (Number(s.subtotal || 0) - Number(s.discount || 0));
+      ventasPorTienda[s.storeId] = (ventasPorTienda[s.storeId] || 0) + base;
+    });
+
+    tiendasEl.innerHTML = metasDelMes.map(g => {
+      const store = stores.find(s => s.storeId === g.storeId);
+      const storeName = store?.name || g.storeId;
+      const ventas = ventasPorTienda[g.storeId] || 0;
+      const meta = Number(g.goalAmount || 0);
+      const bonusRate = Number(g.bonusRate || 0);
+      const pct = meta > 0 ? Math.min(100, (ventas / meta) * 100) : 0;
+      const achieved = meta > 0 && ventas >= meta;
+      const faltan = Math.max(0, meta - ventas);
+      const excedente = Math.max(0, ventas - meta);
+      const bonus = achieved ? excedente * bonusRate : 0;
+
+      return `
+        <div class="bg-white rounded-xl border ${achieved ? 'border-green-300' : 'border-gray-200'} p-4">
+          <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
+            <div>
+              <p class="font-bold text-sd text-sm">${escapeHtml(storeName)}</p>
+              <p class="text-[10px] text-gray-400">🎯 Meta: ${fmt(meta)} · Bonus: ${(bonusRate * 100).toFixed(2)}%</p>
+            </div>
+            <span class="text-[10px] px-2.5 py-1 rounded-full font-bold ${achieved ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">
+              ${achieved ? '✅ CUMPLIDA' : '⏳ EN CURSO'}
+            </span>
+          </div>
+
+          <div class="w-full bg-gray-100 rounded-full h-3 mb-2">
+            <div class="h-3 rounded-full ${achieved ? 'bg-green-500' : 'bg-gradient-to-r from-sl to-blue-400'}"
+                 style="width:${pct}%"></div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 mt-3 text-xs">
+            <div>
+              <p class="text-[10px] text-gray-400">Real</p>
+              <p class="font-mono font-bold text-sd">${fmt(ventas)}</p>
+            </div>
+            <div>
+              <p class="text-[10px] text-gray-400">Cumplimiento</p>
+              <p class="font-mono font-bold ${achieved ? 'text-green-600' : 'text-sl'}">${pct.toFixed(1)}%</p>
+            </div>
+            <div>
+              <p class="text-[10px] text-gray-400">${achieved ? 'Excedente' : 'Faltan'}</p>
+              <p class="font-mono font-bold ${achieved ? 'text-green-600' : 'text-amber-600'}">
+                ${fmt(achieved ? excedente : faltan)}
+              </p>
+            </div>
+          </div>
+
+          ${achieved && bonus > 0 ? `
+            <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+              <span class="text-[10px] text-gray-500 uppercase font-semibold">💰 Bonus admin generado</span>
+              <span class="font-mono font-bold text-green-600">${fmt(bonus)}</span>
+            </div>
+          ` : ''}
         </div>
-        <span class="${Number(i.stock)===0?'text-red-600 font-bold':'text-orange-500 font-bold'} text-xs whitespace-nowrap ml-2">${i.stock} und</span>
-      </li>`;
-    }).join('') : '<li class="text-gray-400 text-xs text-center py-4">🎉 Sin alertas de stock</li>';
+      `;
+    }).join('');
   }
 
   // ============================================================
-  // Top tiendas
+  // SECCIÓN B: METAS POR VENDEDOR
   // ============================================================
-  renderDashTopStores(salesPeriod);
-  renderDashTopSellers(salesPeriod);
+  const vendedores = users.filter(u =>
+    ['vendedor', 'admin'].includes(u.role) &&
+    Number(u.goalAmount || 0) > 0
+  );
 
-  // ============================================================
-  // Gráficos
-  // ============================================================
-  renderDashCharts(salesPeriod);
+  if (!vendedores.length) {
+    vendedoresEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-3">Sin metas personales configuradas</p>';
+    return;
+  }
 
-  // ============================================================
-  // Alertas inteligentes
-  // ============================================================
-  renderDashAlerts(invFiltered, salesPeriod);
+  // Calcular ventas del mes por vendedor
+  const ventasPorVendedor = {};
+  const salesFiltradas = getFilteredSales();
 
-  // ============================================================
-  // Actividad reciente
-  // ============================================================
-  renderDashRecentActivity();
+  salesFiltradas.forEach(s => {
+    if (s.status === 'anulada') return;
+    if (!s.createdAt?.seconds) return;
+    const d = new Date(s.createdAt.seconds * 1000);
+    const mes = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (mes !== monthStr) return;
 
-  // ============================================================
-  // Desempeño por tienda (versión compacta)
-  // ============================================================
-  renderDashStorePerformance(salesPeriod);
+    const base = (s.commissionBase !== undefined)
+      ? Number(s.commissionBase)
+      : (Number(s.subtotal || 0) - Number(s.discount || 0));
+    const key = s.sellerUid || s.sellerEmail || 'unknown';
+    ventasPorVendedor[key] = (ventasPorVendedor[key] || 0) + base;
+  });
+
+  // Ordenar por % de cumplimiento descendente
+  const vendList = vendedores.map(u => {
+    const ventas = ventasPorVendedor[u.id] || 0;
+    const meta = Number(u.goalAmount || 0);
+    const bonusRate = Number(u.bonusRate || 0);
+    const pct = meta > 0 ? Math.min(100, (ventas / meta) * 100) : 0;
+    const achieved = meta > 0 && ventas >= meta;
+    const excedente = Math.max(0, ventas - meta);
+    const faltan = Math.max(0, meta - ventas);
+    const bonus = achieved ? excedente * bonusRate : 0;
+    return { u, ventas, meta, bonusRate, pct, achieved, excedente, faltan, bonus };
+  }).sort((a, b) => b.pct - a.pct);
+
+  vendedoresEl.innerHTML = `
+    <p class="text-xs font-bold text-sd uppercase mb-3 mt-6">👤 Metas por vendedor</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      ${vendList.map(v => {
+        const roleLabel = v.u.role === 'admin' ? '🏢 Admin' : '💼 Vendedor';
+        const store = stores.find(s => s.storeId === v.u.storeId);
+        return `
+          <div class="bg-white rounded-xl border ${v.achieved ? 'border-green-300' : 'border-gray-200'} p-4">
+            <div class="flex justify-between items-start mb-2 flex-wrap gap-2">
+              <div class="min-w-0 flex-1">
+                <p class="font-bold text-sd text-sm truncate">${escapeHtml(v.u.name || v.u.email)}</p>
+                <p class="text-[10px] text-gray-400">${roleLabel} · ${escapeHtml(store?.name || v.u.storeId || 'Sin tienda')}</p>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap ${v.achieved ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">
+                ${v.pct.toFixed(0)}%
+              </span>
+            </div>
+
+            <div class="w-full bg-gray-100 rounded-full h-2 mb-2">
+              <div class="h-2 rounded-full ${v.achieved ? 'bg-green-500' : 'bg-gradient-to-r from-purple-400 to-purple-600'}"
+                   style="width:${v.pct}%"></div>
+            </div>
+
+            <div class="flex justify-between text-[10px] text-gray-500">
+              <span>${fmt(v.ventas)} / ${fmt(v.meta)}</span>
+              <span class="${v.achieved ? 'text-green-600 font-bold' : 'text-amber-600'}">
+                ${v.achieved ? `+${fmt(v.excedente)} excedente` : `Faltan ${fmt(v.faltan)}`}
+              </span>
+            </div>
+
+            ${v.achieved && v.bonus > 0 ? `
+              <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+                <span class="text-[10px] text-gray-500">💰 Bonus: ${(v.bonusRate * 100).toFixed(2)}%</span>
+                <span class="font-mono font-bold text-green-600 text-xs">${fmt(v.bonus)}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+/* ============================================================
+   🆕 HELPERS DE FILTRADO PARA REPORTES NUEVOS
+============================================================ */
+
+/**
+ * Devuelve los gastos filtrados por el rango de fechas del reporte.
+ * Usa las mismas fechas que las ventas (reportFilters.dateFrom / dateTo).
+ */
+function getFilteredReportExpenses() {
+  if (!window.expensesAll) return [];
+  let list = window.expensesAll.slice();
+
+  const from = reportFilters.dateFrom;
+  const to = reportFilters.dateTo;
+
+  if (from) list = list.filter(e => e.date >= from);
+  if (to) list = list.filter(e => e.date <= to);
+
+  return list;
+}
+
+/**
+ * Devuelve las liquidaciones de nómina filtradas por el rango de fechas.
+ */
+function getFilteredReportPayroll() {
+  if (!window.nominaPeriodos) return [];
+  // La nómina no tiene fecha exacta, tiene periodYear/periodMonth
+  // Filtramos por los meses que caen dentro del rango
+  const from = reportFilters.dateFrom;
+  const to = reportFilters.dateTo;
+
+  if (!from && !to) return window.nominaPeriodos.filter(p => p.status !== 'anulado');
+
+  return window.nominaPeriodos.filter(p => {
+    if (p.status === 'anulado') return false;
+    // Construir la fecha del período (último día del mes)
+    const y = Number(p.periodYear || 0);
+    const m = Number(p.periodMonth || 0);
+    if (!y || !m) return true;
+    const periodDate = `${y}-${String(m).padStart(2, '0')}-01`;
+    if (from && periodDate < from) return false;
+    if (to && periodDate > to) return false;
+    return true;
+  });
+}
+
+/* ============================================================
+   🆕 ALERTAS INTELIGENTES (Fila 5)
+============================================================ */
+function renderNewAlerts(salesList) {
+  const listEl = $('dash-alerts-list');
+  const emptyEl = $('dash-alerts-empty');
+  const countEl = $('dash-alerts-count');
+  if (!listEl) return;
+
+  const alerts = [];
+
+  // 1. Cartera vencida
+  const carteraVencida = (cartera || []).filter(c => {
+    if (!c.dueDate) return false;
+    const today = new Date().toISOString().split('T')[0];
+    if (c.dueDate >= today) return false;
+    const monto = Number(c.amount || 0);
+    const abonos = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+    return (monto - abonos) > 0;
+  });
+  if (carteraVencida.length > 0) {
+    const totalVencido = carteraVencida.reduce((s, c) => {
+      const monto = Number(c.amount || 0);
+      const abonos = (c.payments || []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      return s + (monto - abonos);
+    }, 0);
+    alerts.push({
+      icon: '💳', color: 'red',
+      title: `${carteraVencida.length} cuenta${carteraVencida.length !== 1 ? 's' : ''} por cobrar vencida${carteraVencida.length !== 1 ? 's' : ''}`,
+      detail: `Total: ${fmt(totalVencido)} · requiere gestión de cobro`,
+      tab: 'reports'
+    });
+  }
+
+  // 2. Turnos abiertos > 12h
+  const longShifts = (shiftsAll || []).filter(s => {
+    if (s.status !== 'open' || !s.startedAt?.seconds) return false;
+    const hours = (Date.now() - s.startedAt.seconds * 1000) / 3600000;
+    return hours > 12;
+  });
+  if (longShifts.length > 0) {
+    alerts.push({
+      icon: '⏰', color: 'red',
+      title: `${longShifts.length} turno${longShifts.length !== 1 ? 's' : ''} abierto${longShifts.length !== 1 ? 's' : ''} > 12h`,
+      detail: longShifts.slice(0, 3).map(s => s.userName || s.userEmail).join(', ') + (longShifts.length > 3 ? `… +${longShifts.length - 3}` : ''),
+      tab: 'shifts'
+    });
+  }
+
+  // 3. Stock bajo / agotado
+  const invFiltered = inventory.slice();
+  const lowStock = invFiltered.filter(i => {
+    const stock = Number(i.stock || 0);
+    const min = Number(i.minStock || settings.minStock || 5);
+    return stock <= min;
+  });
+  if (lowStock.length > 0) {
+    const zeroStock = lowStock.filter(i => Number(i.stock || 0) === 0);
+    if (zeroStock.length > 0) {
+      alerts.push({
+        icon: '🔴', color: 'red',
+        title: `${zeroStock.length} producto${zeroStock.length !== 1 ? 's' : ''} agotado${zeroStock.length !== 1 ? 's' : ''}`,
+        detail: zeroStock.slice(0, 3).map(i => i.productName).join(', ') + (zeroStock.length > 3 ? `… +${zeroStock.length - 3}` : ''),
+        tab: 'inventory'
+      });
+    }
+    const lowOnly = lowStock.filter(i => Number(i.stock || 0) > 0);
+    if (lowOnly.length > 0) {
+      alerts.push({
+        icon: '🟠', color: 'orange',
+        title: `${lowOnly.length} producto${lowOnly.length !== 1 ? 's' : ''} con stock bajo`,
+        detail: lowOnly.slice(0, 3).map(i => i.productName).join(', ') + (lowOnly.length > 3 ? `… +${lowOnly.length - 3}` : ''),
+        tab: 'inventory'
+      });
+    }
+  }
+
+  // 4. Solicitudes pendientes
+  const pendingT = (transferRequestsAll || []).filter(r => r.status === 'pendiente').length;
+  const pendingD = (deviceRequestsAll || []).filter(r => r.status === 'pendiente').length;
+  const pendingA = (deviceAttemptsAll || []).filter(r => r.status !== 'resuelto').length;
+  const totalSolicitudes = pendingT + pendingD + pendingA;
+  if (totalSolicitudes > 0) {
+    alerts.push({
+      icon: '📤', color: 'purple',
+      title: `${totalSolicitudes} solicitud${totalSolicitudes !== 1 ? 'es' : ''} pendiente${totalSolicitudes !== 1 ? 'es' : ''}`,
+      detail: `${pendingT} traslados · ${pendingD} dispositivos · ${pendingA} intentos`,
+      tab: 'transfers'
+    });
+  }
+
+  // 5. Retiros en tránsito prolongado
+  const staleWithdrawals = (cashWithdrawalsAll || []).filter(w => {
+    if (w.status !== 'in_transit') return false;
+    if (!w.reviewedAt?.seconds) return false;
+    const days = (Date.now() - w.reviewedAt.seconds * 1000) / (24 * 60 * 60 * 1000);
+    return days > 3;
+  });
+  if (staleWithdrawals.length > 0) {
+    alerts.push({
+      icon: '🏦', color: 'red',
+      title: `${staleWithdrawals.length} retiro${staleWithdrawals.length !== 1 ? 's' : ''} en tránsito > 3 días`,
+      detail: `Total: ${fmt(staleWithdrawals.reduce((s, w) => s + Number(w.amount || 0), 0))}`,
+      tab: 'withdrawals'
+    });
+  }
+
+  // 6. Cobros pendientes del período
+  const pendingSales = salesList.filter(s => (s.paymentStatus || 'completed') === 'pending');
+  if (pendingSales.length > 0) {
+    const totalPending = pendingSales.reduce((sum, s) => {
+      const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+      return sum + base;
+    }, 0);
+    alerts.push({
+      icon: '⏳', color: 'amber',
+      title: `${pendingSales.length} cobro${pendingSales.length !== 1 ? 's' : ''} pendiente${pendingSales.length !== 1 ? 's' : ''} · ${fmt(totalPending)}`,
+      detail: 'Ventas contra entrega o crédito sin confirmar',
+      tab: 'reports'
+    });
+  }
+
+  // Render
+  if (countEl) {
+    if (alerts.length > 0) {
+      countEl.classList.remove('hidden');
+      countEl.innerText = alerts.length;
+    } else {
+      countEl.classList.add('hidden');
+    }
+  }
+
+  if (!alerts.length) {
+    listEl.innerHTML = '';
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    return;
+  }
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  const colorMap = {
+    red:    { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    icon: 'bg-red-100' },
+    orange: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', icon: 'bg-orange-100' },
+    amber:  { bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  icon: 'bg-amber-100' },
+    purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', icon: 'bg-purple-100' },
+    gray:   { bg: 'bg-gray-50',   border: 'border-gray-200',   text: 'text-gray-700',   icon: 'bg-gray-100' }
+  };
+
+  listEl.innerHTML = alerts.map(a => {
+    const c = colorMap[a.color] || colorMap.gray;
+    return `
+      <div class="border ${c.border} ${c.bg} rounded-lg p-3 flex items-start gap-3 cursor-pointer hover:shadow transition"
+           onclick="document.querySelector('[data-tab=${a.tab}]')?.click()">
+        <div class="w-9 h-9 rounded-full ${c.icon} flex items-center justify-center shrink-0 text-lg">${a.icon}</div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-bold ${c.text}">${escapeHtml(a.title)}</p>
+          <p class="text-[10px] text-gray-500 mt-0.5 truncate">${escapeHtml(a.detail)}</p>
+        </div>
+        <span class="text-gray-300 text-xs shrink-0">→</span>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   🆕 METAS DEL MES (Fila 5)
+============================================================ */
+function renderNewMetas(salesList) {
+  const listEl = $('dash-metas-list');
+  const emptyEl = $('dash-metas-empty');
+  const monthEl = $('dash-metas-month');
+  if (!listEl) return;
+
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  if (monthEl) {
+    const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    monthEl.innerText = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+  }
+
+  // Filtrar metas del mes actual
+  const metasDelMes = (storeGoals || []).filter(g => g.month === currentMonth);
+
+  if (!metasDelMes.length) {
+    listEl.innerHTML = '';
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    return;
+  }
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  // Calcular ventas del mes por tienda
+  const storeSalesMonth = {};
+  (sales || []).forEach(s => {
+    if (s.status === 'anulada') return;
+    if (!s.createdAt?.seconds) return;
+    const d = new Date(s.createdAt.seconds * 1000);
+    if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return;
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+    storeSalesMonth[s.storeId] = (storeSalesMonth[s.storeId] || 0) + base;
+  });
+
+  listEl.innerHTML = metasDelMes.map(g => {
+    const store = stores.find(s => s.storeId === g.storeId);
+    const storeName = store?.name || g.storeId;
+    const ventas = storeSalesMonth[g.storeId] || 0;
+    const meta = Number(g.goalAmount || 0);
+    const pct = meta > 0 ? Math.min(100, (ventas / meta) * 100) : 0;
+    const achieved = meta > 0 && ventas >= meta;
+    const faltan = Math.max(0, meta - ventas);
+
+    return `
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <p class="text-xs font-semibold text-sd truncate">${escapeHtml(storeName)}</p>
+          <span class="text-[10px] font-bold ${achieved ? 'text-green-600' : 'text-gray-500'}">${pct.toFixed(0)}%</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-2 mb-1">
+          <div class="h-2 rounded-full ${achieved ? 'bg-green-500' : 'bg-sl'}" style="width:${pct}%"></div>
+        </div>
+        <div class="flex justify-between text-[10px] text-gray-500">
+          <span>${fmt(ventas)}</span>
+          <span>de ${fmt(meta)}</span>
+        </div>
+        <p class="text-[10px] ${achieved ? 'text-green-600 font-bold' : 'text-gray-400'} mt-0.5">
+          ${achieved ? '✅ Meta cumplida' : `Faltan ${fmt(faltan)}`}
+        </p>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   🆕 TOP TIENDAS (Fila 6)
+============================================================ */
+function renderNewTopStores(salesList) {
+  const el = $('dash-top-stores');
+  const emptyEl = $('dash-top-stores-empty');
+  if (!el) return;
+
+  const byStore = {};
+  salesList.forEach(s => {
+    const k = s.storeId;
+    if (!byStore[k]) byStore[k] = { sales: 0, count: 0, profit: 0 };
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    byStore[k].sales += base;
+    byStore[k].count += 1;
+    const sCost = Number(s.totalCost) > 0
+      ? Number(s.totalCost)
+      : (s.items || []).reduce((sum, it) => sum + Number(it.unitCost || 0) * Number(it.qty || 0), 0);
+    byStore[k].profit += (base - sCost);
+  });
+
+  const list = Object.entries(byStore)
+    .map(([sid, v]) => ({ storeId: sid, ...v, name: stores.find(s => s.storeId === sid)?.name || sid }))
+    .sort((a, b) => b.sales - a.sales)
+    .slice(0, 8);
+
+  if (!list.length) {
+    el.innerHTML = '';
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    return;
+  }
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  const max = list[0].sales || 1;
+  el.innerHTML = list.map((v, i) => {
+    const pct = (v.sales / max) * 100;
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+    return `
+      <div>
+        <div class="flex justify-between items-baseline mb-1">
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-semibold text-sd truncate">${medal} ${escapeHtml(v.name)}</p>
+            <p class="text-[10px] text-gray-400">${v.count} venta${v.count !== 1 ? 's' : ''} · ${fmt(v.profit)} utilidad</p>
+          </div>
+          <p class="text-xs font-bold text-sl ml-2 whitespace-nowrap">${fmt(v.sales)}</p>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5">
+          <div class="h-1.5 rounded-full bg-gradient-to-r from-sl to-blue-400" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   🆕 TOP VENDEDORES (Fila 6)
+============================================================ */
+function renderNewTopSellers(salesList) {
+  const el = $('dash-top-sellers');
+  const emptyEl = $('dash-top-sellers-empty');
+  if (!el) return;
+
+  const bySeller = {};
+  salesList.forEach(s => {
+    const k = s.sellerUid || s.sellerEmail || 'unknown';
+    if (!bySeller[k]) bySeller[k] = { name: s.sellerName || s.sellerEmail || '—', sales: 0, count: 0, commission: 0 };
+    const sub = Number(s.subtotal || 0);
+    const disc = Number(s.discount || 0);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (sub - disc);
+    bySeller[k].sales += base;
+    bySeller[k].count += 1;
+    bySeller[k].commission += Number(s.poolAmount || s.commissionAmount || 0) + Number(s.bonusAmount || 0);
+  });
+
+  const list = Object.values(bySeller).sort((a, b) => b.sales - a.sales).slice(0, 8);
+
+  if (!list.length) {
+    el.innerHTML = '';
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    return;
+  }
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  const max = list[0].sales || 1;
+  el.innerHTML = list.map((v, i) => {
+    const pct = (v.sales / max) * 100;
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+    return `
+      <div>
+        <div class="flex justify-between items-baseline mb-1">
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-semibold text-sd truncate">${medal} ${escapeHtml(v.name)}</p>
+            <p class="text-[10px] text-gray-400">${v.count} venta${v.count !== 1 ? 's' : ''} · ${fmt(v.commission)} comisión</p>
+          </div>
+          <p class="text-xs font-bold text-sl ml-2 whitespace-nowrap">${fmt(v.sales)}</p>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5">
+          <div class="h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-purple-600" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   🆕 TOP PRODUCTOS (Fila 6)
+============================================================ */
+function renderNewTopProducts(salesList) {
+  const el = $('dash-top-products');
+  const emptyEl = $('dash-top-products-empty');
+  if (!el) return;
+
+  const byProduct = {};
+  salesList.forEach(s => {
+    (s.items || []).forEach(it => {
+      const key = it.productId || it.sku || it.name;
+      if (!byProduct[key]) byProduct[key] = { name: it.name, sku: it.sku, units: 0, sales: 0 };
+      byProduct[key].units += Number(it.qty || 0);
+      byProduct[key].sales += Number(it.qty || 0) * Number(it.unitPrice || 0);
+    });
+  });
+
+  const list = Object.values(byProduct).sort((a, b) => b.sales - a.sales).slice(0, 8);
+
+  if (!list.length) {
+    el.innerHTML = '';
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    return;
+  }
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  const max = list[0].sales || 1;
+  el.innerHTML = list.map((p, i) => `
+    <div>
+      <div class="flex justify-between items-baseline mb-1">
+        <p class="text-xs font-semibold text-sd truncate flex-1 min-w-0">${i+1}. ${escapeHtml(p.name)}</p>
+        <p class="text-xs font-bold text-sl ml-2 whitespace-nowrap">${fmt(p.sales)}</p>
+      </div>
+      <div class="w-full bg-gray-100 rounded-full h-1.5">
+        <div class="h-1.5 rounded-full bg-gradient-to-r from-green-400 to-green-600" style="width:${(p.sales/max)*100}%"></div>
+      </div>
+      <p class="text-[10px] text-gray-400 mt-0.5">${p.units} unidades · SKU: ${escapeHtml(p.sku) || '-'}</p>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   🆕 ACTIVIDAD RECIENTE (Fila 7)
+============================================================ */
+function renderNewRecentActivity() {
+  const el = $('dash-recent-activity');
+  if (!el) return;
+
+  // Combinar últimas ventas y eventos de auditoría
+  const recentSales = (sales || [])
+    .filter(s => s.createdAt?.seconds)
+    .sort((a, b) => (b.createdAt.seconds || 0) - (a.createdAt.seconds || 0))
+    .slice(0, 10);
+
+  const recentAudit = (auditLogs || [])
+    .filter(a => a.timestamp?.seconds && a.action !== 'login' && a.action !== 'logout')
+    .sort((a, b) => (b.timestamp.seconds || 0) - (a.timestamp.seconds || 0))
+    .slice(0, 5);
+
+  const combined = [];
+
+  recentSales.forEach(s => {
+    const store = stores.find(x => x.storeId === s.storeId);
+    const base = (s.commissionBase !== undefined) ? Number(s.commissionBase) : (Number(s.subtotal||0) - Number(s.discount||0));
+    combined.push({
+      when: s.createdAt.seconds,
+      icon: s.status === 'anulada' ? '❌' : '💰',
+      color: s.status === 'anulada' ? 'red' : 'green',
+      title: `${s.customer?.name || 'Cliente'} compró ${fmt(base)}`,
+      detail: `${store?.name || s.storeId} · ${s.sellerName || s.sellerEmail || '—'}`,
+      onClick: `viewSale('${s.id}')`
+    });
+  });
+
+  recentAudit.forEach(a => {
+    const icon = { create:'🆕', update:'✏️', delete:'🗑', sale:'💰', cancel:'📉', seed:'🌱', cleanup:'🧹' }[a.action] || '📋';
+    combined.push({
+      when: a.timestamp.seconds,
+      icon,
+      color: a.action === 'delete' ? 'red' : a.action === 'cancel' ? 'orange' : 'blue',
+      title: a.note || a.changeSummary || `${a.action} en ${a.collection}`,
+      detail: `${a.userName || a.userEmail || '—'} · ${fmtDate(a.timestamp)}`,
+      onClick: `viewAudit('${a.id}')`
+    });
+  });
+
+  combined.sort((a, b) => b.when - a.when);
+
+  if (!combined.length) {
+    el.innerHTML = '<p class="text-center text-gray-400 text-xs py-6">Sin actividad reciente</p>';
+    return;
+  }
+
+  const colorMap = {
+    green:  'bg-green-100 text-green-700',
+    red:    'bg-red-100 text-red-700',
+    orange: 'bg-orange-100 text-orange-700',
+    blue:   'bg-blue-100 text-blue-700'
+  };
+
+  el.innerHTML = combined.slice(0, 15).map(a => {
+    const cls = colorMap[a.color] || colorMap.blue;
+    const timeAgo = (() => {
+      const diff = Math.floor((Date.now() - a.when * 1000) / 1000);
+      if (diff < 60) return `${diff}s`;
+      if (diff < 3600) return `${Math.floor(diff/60)}min`;
+      if (diff < 86400) return `${Math.floor(diff/3600)}h`;
+      return `${Math.floor(diff/86400)}d`;
+    })();
+    return `
+      <div class="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-50 rounded px-1"
+           onclick='${a.onClick}'>
+        <div class="w-7 h-7 rounded-full ${cls} flex items-center justify-center shrink-0 text-xs">
+          ${a.icon}
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-sd truncate">${escapeHtml(a.title)}</p>
+          <p class="text-[10px] text-gray-400 truncate">${escapeHtml(a.detail)}</p>
+        </div>
+        <span class="text-[10px] text-gray-400 whitespace-nowrap shrink-0">${timeAgo}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 /* ============ Poblar filtros ============ */
@@ -1989,6 +4047,9 @@ function renderStores() {
             ${(s.commissionMode || 'always') === 'goal'
               ? ' <span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-semibold">🎯 Por meta</span>'
               : ' <span class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full font-semibold">💰 Siempre</span>'}
+            ${(s.commissionBasis || 'sale') === 'profit'
+              ? ' <span class="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">📈 Utilidad</span>'
+              : ' <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">💰 Venta</span>'}
           </p>
           <p>🛡️ Margen arqueo: <b>${fmt(s.arqueoMargin||0)}</b></p>
           <p>🌇 Hora de cierre: <b>${s.closeHour || '20:00'}</b>
@@ -2072,6 +4133,24 @@ window.openStoreForm = (s = null) => {
         <b>Pool por meta:</b> el vendedor solo gana pool cuando la tienda supera su meta mensual. Si la meta es 0, el pool aplica sobre todo.
         <br>
         <b>Pool siempre:</b> el vendedor gana pool desde la primera venta del mes, sin importar la meta.
+      </p>
+    </div>
+
+    <!-- 🆕 Base de cálculo del pool -->
+    <div class="mb-3">
+      <label class="text-xs font-semibold">Base de cálculo del pool</label>
+      <select id="f-commissionBasis" class="w-full px-3 py-2 border rounded mt-1">
+        <option value="sale" ${((v.commissionBasis || 'sale') === 'sale') ? 'selected' : ''}>
+          💰 Sobre venta neta (subtotal − descuento)
+        </option>
+        <option value="profit" ${((v.commissionBasis || 'sale') === 'profit') ? 'selected' : ''}>
+          📈 Sobre utilidad bruta (venta neta − costo)
+        </option>
+      </select>
+      <p class="text-[10px] text-gray-400 mt-1">
+        <b>Venta neta:</b> el pool se calcula sobre lo facturado al cliente.
+        <br>
+        <b>Utilidad bruta:</b> el pool se calcula solo sobre la ganancia real de la venta. Recomendado cuando los márgenes son variables.
       </p>
     </div>
 
@@ -2179,6 +4258,7 @@ window.saveStore = async (existingId) => {
     phone: $('f-phone').value.trim(),
     email: $('f-email').value.trim(),
     commissionMode: $('f-commissionMode').value || 'always',
+    commissionBasis: $('f-commissionBasis')?.value || 'sale',
     commissionRate: (Number($('f-commission').value) || 0) / 100,
     arqueoMargin: Number($('f-arqueoMargin').value) || 0,
     goalAmount: Number($('f-goalAmount').value) || 0,
@@ -2629,6 +4709,7 @@ function openSellerFormFromEmployee(employeeData) {
         <select id="f-role" class="w-full px-3 py-2 border rounded">
           <option value="vendedor" ${employeeData.role === 'vendedor' ? 'selected' : ''}>Vendedor</option>
           <option value="admin" ${employeeData.role === 'admin' ? 'selected' : ''}>Admin de tienda</option>
+          <option value="domiciliario" ${employeeData.role === 'domiciliario' ? 'selected' : ''}>🚚 Domiciliario</option>
           <option value="superadmin" ${employeeData.role === 'superadmin' ? 'selected' : ''}>Superadmin</option>
         </select>
       </div>
@@ -2830,8 +4911,10 @@ function renderSellers() {
       <td class="p-3 text-gray-500 text-xs">${escapeHtml(u.email) || '-'}</td>
       <td class="p-3"><span class="text-xs px-2 py-1 rounded ${
         u.role==='superadmin'?'bg-purple-100 text-purple-700':
-        u.role==='admin'?'bg-blue-100 text-blue-700':'bg-gray-100 text-gray-700'
-      }">${u.role||'-'}</span></td>
+        u.role==='admin'?'bg-blue-100 text-blue-700':
+        u.role==='domiciliario'?'bg-teal-100 text-teal-700':
+        'bg-gray-100 text-gray-700'
+      }">${u.role==='domiciliario' ? '🚚 Domiciliario' : (u.role||'-')}</span></td>
       <td class="p-3">${escapeHtml(store?.name) || (u.role==='superadmin'?'Todas':'—')}</td>
       <td class="p-3 text-center">
         ${(() => {
@@ -2878,6 +4961,76 @@ function renderSellers() {
   }).join('') : '<tr><td colspan="7" class="p-6 text-center text-gray-400">Sin usuarios</td></tr>';
 }
 
+/* ============================================================
+   🆕 Cambio de rol en el formulario de usuario
+   Ajusta el hint y el label de tienda según el rol seleccionado
+============================================================ */
+window.onSellerRoleChange = () => {
+  const role = $('f-role')?.value || 'vendedor';
+  const hintEl = $('f-role-hint');
+  const storeLabel = $('f-store-wrap')?.querySelector('label');
+  const storeHint = $('f-store-wrap')?.querySelector('p');
+
+  if (!hintEl) return;
+
+  if (role === 'domiciliario') {
+    hintEl.innerHTML = '🚚 Solo accede a Domicilios. Ve todas las tiendas.';
+    hintEl.className = 'text-[10px] text-blue-600 mt-1 font-semibold';
+    if (storeLabel) storeLabel.innerText = 'Tienda base (opcional)';
+    if (storeHint) storeHint.innerText = 'Si eliges una tienda, el domiciliario la verá por defecto.';
+  } else if (role === 'superadmin') {
+    hintEl.innerHTML = '👑 Acceso total al sistema.';
+    hintEl.className = 'text-[10px] text-purple-600 mt-1 font-semibold';
+    if (storeLabel) storeLabel.innerText = 'Tienda';
+    if (storeHint) storeHint.innerText = 'El superadmin no necesita tienda asignada.';
+  } else if (role === 'admin') {
+    hintEl.innerHTML = '🏢 Admin de tienda: POS + contabilidad + reportes.';
+    hintEl.className = 'text-[10px] text-gray-500 mt-1';
+    if (storeLabel) storeLabel.innerText = 'Tienda';
+    if (storeHint) storeHint.innerText = 'El admin solo ve su tienda asignada.';
+  } else {
+    hintEl.innerHTML = '💼 Vendedor: POS + ventas propias.';
+    hintEl.className = 'text-[10px] text-gray-500 mt-1';
+    if (storeLabel) storeLabel.innerText = 'Tienda';
+    if (storeHint) storeHint.innerText = 'El vendedor solo ve su tienda asignada.';
+  }
+};
+
+/* ============================================================
+   🆕 Cambio de rol en el formulario de usuario
+   Ajusta el hint y el label según el rol seleccionado
+============================================================ */
+window.onSellerRoleChange = () => {
+  const role = $('f-role')?.value || 'vendedor';
+  const hintEl = $('f-role-hint');
+  const storeLabel = $('f-store-wrap')?.querySelector('label');
+  const storeHint = $('f-store-wrap')?.querySelector('p');
+
+  if (!hintEl) return;
+
+  if (role === 'domiciliario') {
+    hintEl.innerHTML = '🚚 Solo accede a Domicilios. Ve todas las tiendas.';
+    hintEl.className = 'text-[10px] text-blue-600 mt-1 font-semibold';
+    if (storeLabel) storeLabel.innerText = 'Tienda base (opcional)';
+    if (storeHint) storeHint.innerText = 'Si eliges una tienda, será la vista por defecto.';
+  } else if (role === 'superadmin') {
+    hintEl.innerHTML = '👑 Acceso total al sistema.';
+    hintEl.className = 'text-[10px] text-purple-600 mt-1 font-semibold';
+    if (storeLabel) storeLabel.innerText = 'Tienda';
+    if (storeHint) storeHint.innerText = 'El superadmin no necesita tienda asignada.';
+  } else if (role === 'admin') {
+    hintEl.innerHTML = '🏢 Admin de tienda: POS + contabilidad + reportes.';
+    hintEl.className = 'text-[10px] text-gray-500 mt-1';
+    if (storeLabel) storeLabel.innerText = 'Tienda';
+    if (storeHint) storeHint.innerText = 'El admin solo ve su tienda asignada.';
+  } else {
+    hintEl.innerHTML = '💼 Vendedor: POS + ventas propias.';
+    hintEl.className = 'text-[10px] text-gray-500 mt-1';
+    if (storeLabel) storeLabel.innerText = 'Tienda';
+    if (storeHint) storeHint.innerText = 'El vendedor solo ve su tienda asignada.';
+  }
+};
+
 window.openSellerForm = (u = null) => {
   $('form-title').innerText = u ? 'Editar usuario' : 'Nuevo usuario';
   const v = u || { name:'', email:'', role:'vendedor', storeId:'', commissionRate:0, active:true };
@@ -2898,18 +5051,21 @@ window.openSellerForm = (u = null) => {
     <div class="grid grid-cols-2 gap-3 mb-3">
       <div>
         <label class="text-xs font-semibold">Rol</label>
-        <select id="f-role" class="w-full px-3 py-2 border rounded">
+        <select id="f-role" class="w-full px-3 py-2 border rounded" onchange="onSellerRoleChange()">
           <option value="vendedor" ${v.role==='vendedor'?'selected':''}>Vendedor</option>
           <option value="admin" ${v.role==='admin'?'selected':''}>Admin de tienda</option>
+          <option value="domiciliario" ${v.role==='domiciliario'?'selected':''}>🚚 Domiciliario</option>
           <option value="superadmin" ${v.role==='superadmin'?'selected':''}>Superadmin</option>
         </select>
+        <p id="f-role-hint" class="text-[10px] text-gray-400 mt-1"></p>
       </div>
-      <div>
+      <div id="f-store-wrap">
         <label class="text-xs font-semibold">Tienda</label>
         <select id="f-storeId" class="w-full px-3 py-2 border rounded">
           <option value="">— Ninguna —</option>
           ${stores.map(s => `<option value="${s.storeId}" ${v.storeId===s.storeId?'selected':''}>${s.name}</option>`).join('')}
         </select>
+        <p class="text-[10px] text-gray-400 mt-1">El domiciliario ve todas las tiendas si dejas vacío.</p>
       </div>
     </div>
         <div class="grid grid-cols-3 gap-3 mb-3">
@@ -2994,7 +5150,12 @@ window.openSellerForm = (u = null) => {
   if (u && u.role !== 'superadmin') {
     renderSellerDevices(u);
   }
+
+  // 🆕 Aplicar el hint según el rol inicial
+  onSellerRoleChange();
 };
+
+window.onSellerRoleChange = onSellerRoleChange;
 
 /* ============================================================
    🆕 DISPOSITIVOS AUTORIZADOS — Render en el modal de edición
@@ -4126,6 +6287,7 @@ function renderSales() {
   const statusF = $('sales-payment-status-filter')?.value || 'all';
   const paidFrom = $('sales-paid-date-from')?.value || '';
   const paidTo = $('sales-paid-date-to')?.value || '';
+  const searchF = ($('sales-search')?.value || '').toLowerCase().trim();
 
   const tb = $('sales-tbody');
   let list = sales.slice();
@@ -4136,6 +6298,22 @@ function renderSales() {
     list = list.filter(s => {
       const ps = s.paymentStatus || 'completed';
       return ps === statusF;
+    });
+  }
+
+  // 🆕 Filtro de búsqueda libre (documento, cliente, NIT, teléfono)
+  if (searchF) {
+    list = list.filter(s => {
+      const haystack = [
+        s.documentNumber || '',
+        s.customer?.name || '',
+        s.customer?.nit || '',
+        s.customer?.phone || '',
+        s.customer?.email || '',
+        s.wholesaleCustomer?.companyName || '',
+        s.wholesaleCustomer?.nit || ''
+      ].join(' ').toLowerCase();
+      return haystack.includes(searchF);
     });
   }
 
@@ -4160,6 +6338,13 @@ function renderSales() {
 
   list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
 
+  // 🆕 Actualizar contador "Mostrando X ventas"
+  const countEl = document.getElementById('sales-count-info');
+  if (countEl) {
+    const total = list.length;
+    countEl.innerHTML = `Mostrando <b>${total}</b> venta${total !== 1 ? 's' : ''}`;
+  }
+
   tb.innerHTML = list.length ? list.slice(0,200).map(s => {
     const store = stores.find(x => x.storeId === s.storeId);
     const itemsCount = (s.items||[]).reduce((sum,i) => sum + (i.qty||0), 0);
@@ -4176,6 +6361,9 @@ function renderSales() {
     const paidAtClass = s.paidAt?.seconds ? 'text-green-600' : 'text-amber-600';
 
     return `<tr class="border-b hover:bg-gray-50 ${s.paymentStatus==='pending'?'bg-amber-50/40':''}">
+      <td class="p-3 text-xs font-mono font-semibold text-sd whitespace-nowrap">
+        ${escapeHtml(s.documentNumber) || '<span class="text-gray-300">—</span>'}
+      </td>
       <td class="p-3 text-xs text-gray-500">
         ${fmtDate(s.createdAt)}
         ${paidAtLabel ? `<br><span class="${paidAtClass} text-[10px] font-semibold">${paidAtLabel}</span>` : ''}
@@ -5092,7 +7280,8 @@ function renderAudit() {
     return;
   }
 
-  tb.innerHTML = list.slice(0, 500).map(a => {
+  // 🆕 Mostrar TODOS los registros en memoria (sin slice)
+  tb.innerHTML = list.map(a => {
     const summary = a.changeSummary || a.note || '—';
     const userLabel = a.userName || a.userEmail || '—';
     return `<tr class="border-b hover:bg-gray-50 cursor-pointer" onclick='viewAudit("${a.id}")'>
@@ -5111,11 +7300,6 @@ function renderAudit() {
       </td>
     </tr>`;
   }).join('');
-
-  // Si hay más de 500, avisar
-  if (list.length > 500) {
-    tb.innerHTML += `<tr><td colspan="8" class="p-3 text-center text-xs text-amber-600">Mostrando primeros 500 de ${list.length}. Refina los filtros para ver más específico.</td></tr>`;
-  }
 }
 
 // ============================================================
@@ -9470,6 +11654,22 @@ function populateStoreSelects() {
 
   const psf = $('sales-payment-status-filter');
   if (psf) psf.onchange = renderSales;
+  // 🆕 Listener del buscador de ventas
+  const salesSearch = $('sales-search');
+  if (salesSearch && !salesSearch.dataset.listener) {
+    salesSearch.dataset.listener = '1';
+    let _searchTimer = null;
+    salesSearch.addEventListener('input', () => {
+      clearTimeout(_searchTimer);
+      _searchTimer = setTimeout(() => renderSales(), 250);
+    });
+    salesSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        salesSearch.value = '';
+        renderSales();
+      }
+    });
+  }
 }
 /* ============================================================
    INVENTARIO POR PRODUCTO (modal Ver/Editar)
@@ -10706,20 +12906,97 @@ let reportFilters = {
 
 /* Lista completa de reportes con sus valores por defecto */
 const REPORT_DEFAULTS = {
+  // Análisis de ventas
   comparison: true,
   byStore: true,
   topSellers: true,
   topProducts: true,
+  byCategory: true,
+  topCustomers: true,
+  detail: true,
+  // Pagos y cobros
   byMethod: true,
   pending: true,
   reconciliation: true,
-  byCategory: true,
-  chartSales: true,
-  chartTopSellers: true,
-  topCustomers: true,
+  carteraAging: true,
+  // Financiero
+  pyl: true,
+  cashflow: true,
   profitability: true,
   taxes: true,
-  detail: true
+  // Gastos y nómina
+  expenses: true,
+  payroll: true,
+  payables: true,
+  // Inventario
+  inventory: true,
+  // Metas
+  goals: true,
+  // Gráficos
+  chartSales: true,
+  chartTopSellers: true
+};
+
+/* ============================================================
+   🆕 PERFILES RÁPIDOS DE REPORTES
+   Cada perfil define qué bloques se muestran / ocultan
+============================================================ */
+const REPORT_PRESETS = {
+  todo: {
+    label: '🌐 Ver todo',
+    enable: Object.keys(REPORT_DEFAULTS) // todos
+  },
+  ventas: {
+    label: '📊 Solo ventas',
+    enable: [
+      'comparison', 'byStore', 'topSellers', 'topProducts', 'byCategory',
+      'topCustomers', 'detail', 'chartSales', 'chartTopSellers'
+    ]
+  },
+  financiero: {
+    label: '🏦 Solo financiero',
+    enable: [
+      'pyl', 'cashflow', 'profitability', 'taxes',
+      'carteraAging', 'payables'
+    ]
+  },
+  operativo: {
+    label: '📦 Operativo',
+    enable: [
+      'byMethod', 'pending', 'reconciliation', 'inventory', 'goals', 'detail'
+    ]
+  },
+  contable: {
+    label: '📚 Contable',
+    enable: [
+      'pyl', 'payroll', 'payables', 'carteraAging', 'expenses'
+    ]
+  }
+};
+
+/* ============================================================
+   🆕 APLICAR PERFIL RÁPIDO
+============================================================ */
+window.applyReportPreset = (presetKey) => {
+  const preset = REPORT_PRESETS[presetKey];
+  if (!preset) return;
+
+  const allSlugs = Object.keys(REPORT_DEFAULTS);
+  allSlugs.forEach(slug => {
+    reportVisibility[slug] = preset.enable.includes(slug);
+  });
+
+  // Aplicar a los checkboxes
+  document.querySelectorAll('.report-toggle').forEach(cb => {
+    const key = cb.dataset.report;
+    cb.checked = reportVisibility[key] !== false;
+  });
+
+  // Guardar y aplicar
+  saveReportVisibility();
+  applyReportVisibility();
+
+  console.log(`[Reports] Perfil aplicado: ${preset.label}`);
 };
 
 /* Se carga desde localStorage o se usan los defaults */
@@ -11227,6 +13504,29 @@ function renderReports() {
   renderReportProfitability(filtered);
   renderReportTaxes(filtered);
 
+  // 🆕 Bloque: Estado de Resultados completo
+  if (typeof renderPyl === 'function') renderPyl();
+
+  // 🆕 Bloque: Flujo de caja real
+  if (typeof renderCashflow === 'function') renderCashflow();
+
+  // 🆕 Bloque: Gastos y costos del período
+  if (typeof renderExpensesReport === 'function') renderExpensesReport();
+
+  // 🆕 Bloque: Nómina del período
+  if (typeof renderPayrollReport === 'function') renderPayrollReport();
+
+  // 🆕 Bloque: Cuentas por pagar (CxP)
+  if (typeof renderPayablesReport === 'function') renderPayablesReport();
+
+  // 🆕 Bloque: Cartera por antigüedad
+  if (typeof renderCarteraAgingReport === 'function') renderCarteraAgingReport();
+
+  // 🆕 Bloque: Inventario valorizado
+  if (typeof renderInventoryReport === 'function') renderInventoryReport();
+
+  // 🆕 Bloque: Cumplimiento de metas
+  if (typeof renderGoalsReport === 'function') renderGoalsReport();
   // Gráficos
   renderCharts(filtered);
 }
@@ -13464,6 +15764,7 @@ window.exportReportsExcel = async () => {
   URL.revokeObjectURL(url);
 };
 
+
 /* ============ EXPORTAR PDF (respeta la selección del personalizador) ============ */
 window.exportReportsPDF = async () => {
   // 🆕 Cargar jsPDF bajo demanda si aún no está
@@ -15262,6 +17563,11 @@ function renderShifts() {
             <p class="text-lg font-bold ${exceeded ? 'text-red-600' : 'text-green-600'}">${formatShiftDuration(elapsed)}</p>
             <p class="text-[10px] text-gray-400">en curso</p>
           </div>
+          <button onclick="promptAdminCloseShift('${s.id}', '${escapeHtml(s.userName || s.userEmail).replace(/'/g, "\\\\'")}', '${formatShiftDuration(elapsed)}')"
+                  class="shrink-0 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition"
+                  title="Cerrar este turno (solo superadmin)">
+            🔒 Cerrar turno
+          </button>
         </div>
       `;
     }).join('');
@@ -16843,6 +19149,167 @@ window.loadMoreInventory = loadMoreInventory;
 window.loadMoreCashRegisters = loadMoreCashRegisters;
 window.loadMoreShifts = loadMoreShifts;
 window.loadMoreAudit = loadMoreAudit;
+
+/* ============================================================
+   🆕 EXPONER FUNCIONES DE RENDER
+   (necesario porque loadMoreAudit, loadMoreSales, etc.
+    llaman a estas funciones desde el scope del window)
+============================================================ */
+window.renderAudit = renderAudit;
+window.renderSales = renderSales;
+
+/* ============================================================
+   🆕 LISTENER DEL BUSCADOR DE VENTAS
+   Se engancha al final para asegurar que el DOM ya está listo
+   y que el módulo admin-app.js ya está cargado.
+============================================================ */
+(function attachSalesSearchListener() {
+  function bind() {
+    const input = document.getElementById('sales-search');
+    if (!input) {
+      // El input aún no existe → intentar de nuevo en 200ms
+      setTimeout(bind, 200);
+      return;
+    }
+    if (input.dataset.listener === '1') return;
+
+    input.dataset.listener = '1';
+
+    let timer = null;
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        console.log('[Sales Search] Buscando:', input.value);
+        renderSales();
+      }, 250);
+    });
+
+    // Limpiar con Escape
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        input.value = '';
+        renderSales();
+      }
+    });
+
+    console.log('[Admin] ✅ Listener del buscador de ventas enganchado');
+  }
+
+  // Intentar enganchar cuando el DOM esté listo
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  } else {
+    bind();
+  }
+})();
+
+/* ============================================================
+   🆕 CIERRE ADMINISTRATIVO DE TURNOS (superadmin)
+============================================================ */
+window.promptAdminCloseShift = function(shiftId, userName, durationLabel) {
+  // Verificar permiso
+  if (currentUserData?.role !== 'superadmin') {
+    alert('⛔ Solo el superadmin puede cerrar turnos de otros usuarios.');
+    return;
+  }
+
+  // Confirmar con el usuario
+  const ok = confirm(
+    `🔒 Cerrar turno de ${userName}?\n\n` +
+    `Duración hasta ahora: ${durationLabel}\n\n` +
+    `Se registrará en la auditoría del sistema con tu usuario como responsable.`
+  );
+  if (!ok) return;
+
+  // Pedir motivo (obligatorio)
+  const reason = prompt(
+    `Motivo del cierre administrativo (obligatorio):\n\n` +
+    `Ejemplos:\n` +
+    `- El vendedor olvidó marcar salida\n` +
+    `- Cambio de turno no registrado\n` +
+    `- Corrección de error del sistema`
+  );
+  if (!reason || !reason.trim()) {
+    alert('⚠️ Debes escribir el motivo del cierre administrativo.');
+    return;
+  }
+
+  // Pedir notas opcionales
+  const notes = prompt('Notas adicionales (opcional):', '') || '';
+
+  // Ejecutar el cierre
+  (async () => {
+    try {
+      const result = await window.SmartecShift.adminCloseShift(shiftId, reason.trim(), notes.trim());
+
+      // Feedback
+      alert(
+        `✅ Turno cerrado correctamente\n\n` +
+        `Usuario: ${result.userName}\n` +
+        `Duración: ${formatShiftDurationFromMinutes(result.durationMinutes)}\n` +
+        `Motivo: ${reason.trim()}`
+      );
+
+      // Refrescar la vista de turnos
+      // Refrescar la vista de turnos
+      // 🆕 Invalidar cache ANTES de recargar, para evitar datos viejos
+      try {
+        window.SmartecCache.invalidate('shifts_page_1');
+
+        const s = await getDocs(query(
+          collection(db,'shifts'),
+          orderBy('startedAt','desc'),
+          limit(PAGE_SIZE.shifts)
+        ));
+        shiftsAll = s.docs.map(d => ({id:d.id,...d.data()}));
+
+        console.log(`[Admin] Turnos recargados: ${shiftsAll.length} (abiertos: ${shiftsAll.filter(x => x.status === 'open').length})`);
+      } catch (e) {
+        console.warn('[Admin] No se pudo recargar turnos:', e);
+      }
+      renderShifts();
+    } catch (e) {
+      console.error('[Admin] Error cerrando turno:', e);
+      alert('❌ Error al cerrar turno:\n\n' + (e.message || 'Error desconocido'));
+    }
+  })();
+};
+
+/* ============================================================
+   🆕 INICIALIZAR MÓDULO DE TURNOS (SmartecShift)
+   Necesario porque admin.html usa SmartecShift.adminCloseShift()
+   para el cierre administrativo de turnos.
+============================================================ */
+if (window.SmartecShift && typeof window.SmartecShift.init === 'function') {
+  window.SmartecShift.init({
+    db,
+    auth,
+    collection,
+    getDocs,
+    query,
+    where,
+    addDoc,
+    updateDoc,
+    serverTimestamp,
+    doc,
+    $,
+    audit,   // usa la función audit() que ya está definida en admin-app.js
+    // Getters (leen el estado actual del módulo)
+    getCurrentUser: () => currentUser,
+    getCurrentUserData: () => currentUserData,
+    getCurrentStore: () => {
+      // En admin no hay tienda activa, pero devolvemos algo para no romper
+      return {
+        storeId: currentUserData?.storeId || 'admin',
+        name: currentUserData?.storeId || 'Panel Admin',
+        shiftEnabled: true
+      };
+    }
+  });
+  console.log('[Admin] ✅ SmartecShift inicializado');
+} else {
+  console.warn('[Admin] ⚠️ SmartecShift no está disponible. Verifica que shifts.js esté cargado en admin.html');
+}
 
 /* 🆕 Exponer funciones de retiros al window (para consola y otros módulos) */
 window.loadCashWithdrawalsAll = loadCashWithdrawalsAll;

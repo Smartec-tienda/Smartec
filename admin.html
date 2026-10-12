@@ -26,6 +26,7 @@
     exceljs: 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
   };
 </script> 
+<script src="components/shifts.js"></script>
 <script src="components/pdf-generator.js"></script>
 <style>
   :root{--sd:#0A2A4A;--sl:#4A7A9A}
@@ -466,13 +467,12 @@
     <!-- ============ CONTENIDO PRINCIPAL ============ -->
     <main class="flex-1 min-w-0 p-4 md:p-6 overflow-x-hidden">
 
-    <!-- ============ DASHBOARD SÚPER ============ -->
+       <!-- ============ DASHBOARD ============ -->
     <section id="tab-dashboard" class="tab-content">
 
-      <!-- ========== BARRA DE FILTROS + ACCIONES ========== -->
+      <!-- ========== FILTROS ========== -->
       <div class="bg-white rounded-xl shadow p-4 mb-6">
         <div class="flex flex-wrap items-end justify-between gap-3">
-          <!-- Filtros -->
           <div class="flex flex-wrap gap-3 flex-1 min-w-0">
             <div>
               <label class="text-[10px] font-semibold text-sd block mb-1">📅 Período</label>
@@ -487,23 +487,19 @@
                 <option value="custom">Personalizado…</option>
               </select>
             </div>
-
             <div>
               <label class="text-[10px] font-semibold text-sd block mb-1">🏪 Tienda</label>
               <select id="dash-store-filter" class="px-3 py-2 border rounded-lg text-sm min-w-[160px]">
                 <option value="all">Todas las tiendas</option>
-                <option value="active">Solo tiendas activas</option>
+                <option value="active">Solo activas</option>
               </select>
             </div>
-
             <div>
               <label class="text-[10px] font-semibold text-sd block mb-1">👤 Vendedor</label>
               <select id="dash-seller-filter" class="px-3 py-2 border rounded-lg text-sm min-w-[160px]">
                 <option value="all">Todos los vendedores</option>
               </select>
             </div>
-
-            <!-- Rango personalizado (oculto por defecto) -->
             <div id="dash-custom-range" class="hidden flex gap-2">
               <div>
                 <label class="text-[10px] font-semibold text-sd block mb-1">Desde</label>
@@ -515,235 +511,136 @@
               </div>
             </div>
           </div>
-
-          <!-- Acciones rápidas -->
-          <div class="grid grid-cols-2 gap-2 w-full sm:flex sm:flex-wrap sm:w-auto">
-            <a href="venta.html" target="_blank" class="bg-sd hover:bg-sl text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5">
-              🛒 Nueva venta
-            </a>
-            <button onclick="openProductForm()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5">
-              📦 Producto
-            </button>
-            <button onclick="document.querySelector('[data-tab=reports]').click()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5">
-              📊 Reportes
-            </button>
-            <button onclick="renderDashboard()" class="bg-gray-100 hover:bg-gray-200 text-sd text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1.5">
-              🔄 Refrescar
-            </button>
+          <div class="flex gap-2">
+            <a href="venta.html" target="_blank" class="bg-sd hover:bg-sl text-white text-xs font-semibold px-3 py-2 rounded-lg transition">🛒 Nueva venta</a>
+            <button onclick="renderDashboard()" class="bg-gray-100 hover:bg-gray-200 text-sd text-xs font-semibold px-3 py-2 rounded-lg transition">🔄 Refrescar</button>
           </div>
         </div>
-
-        <!-- Info del rango activo -->
         <p id="dash-range-info" class="text-[10px] text-gray-400 mt-3 pt-3 border-t"></p>
       </div>
 
-      <!-- ========== KPIs DEL PERÍODO ========== -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-
-        <!-- KPI 1: Ventas netas -->
+      <!-- ========== FILA 1: KPIs PRINCIPALES ========== -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="bg-gradient-to-br from-white to-blue-50/30 p-5 rounded-xl shadow border-l-4 border-sl">
           <div class="flex items-start justify-between mb-2">
             <p class="text-xs text-gray-500 font-medium">💰 Ventas netas</p>
-            <span id="dash-kpi-sales-trend" class="text-[10px] font-bold"></span>
+            <span id="kpi-ventas-trend" class="text-[10px] font-bold"></span>
           </div>
-          <p id="dash-kpi-sales" class="text-2xl font-bold text-sl">$0</p>
-          <p id="dash-kpi-sales-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: $0</p>
+          <p id="kpi-ventas" class="text-2xl font-bold text-sl">$0</p>
+          <p id="kpi-ventas-sub" class="text-[10px] text-gray-400 mt-1">vs período anterior: $0</p>
         </div>
-
-        <!-- KPI 2: Transacciones -->
-        <div class="bg-gradient-to-br from-white to-purple-50/30 p-5 rounded-xl shadow border-l-4 border-purple-500">
-          <div class="flex items-start justify-between mb-2">
-            <p class="text-xs text-gray-500 font-medium">🧾 Transacciones</p>
-            <span id="dash-kpi-count-trend" class="text-[10px] font-bold"></span>
-          </div>
-          <p id="dash-kpi-count" class="text-2xl font-bold text-purple-600">0</p>
-          <p id="dash-kpi-count-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: 0</p>
-        </div>
-
-        <!-- KPI 3: Ticket promedio -->
-        <div class="bg-gradient-to-br from-white to-cyan-50/30 p-5 rounded-xl shadow border-l-4 border-cyan-500">
-          <div class="flex items-start justify-between mb-2">
-            <p class="text-xs text-gray-500 font-medium">🎯 Ticket promedio</p>
-            <span id="dash-kpi-ticket-trend" class="text-[10px] font-bold"></span>
-          </div>
-          <p id="dash-kpi-ticket" class="text-2xl font-bold text-cyan-600">$0</p>
-          <p id="dash-kpi-ticket-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: $0</p>
-        </div>
-
-        <!-- KPI 4: Unidades -->
-        <div class="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-xl shadow border-l-4 border-emerald-500">
-          <div class="flex items-start justify-between mb-2">
-            <p class="text-xs text-gray-500 font-medium">📦 Unidades vendidas</p>
-            <span id="dash-kpi-units-trend" class="text-[10px] font-bold"></span>
-          </div>
-          <p id="dash-kpi-units-sold" class="text-2xl font-bold text-emerald-600">0</p>
-          <p id="dash-kpi-units-prev" class="text-[10px] text-gray-400 mt-1">vs período anterior: 0</p>
-        </div>
-
-        <!-- KPI 5: Utilidad bruta -->
         <div class="bg-gradient-to-br from-white to-green-50/30 p-5 rounded-xl shadow border-l-4 border-green-500">
           <div class="flex items-start justify-between mb-2">
-            <p class="text-xs text-gray-500 font-medium">📈 Utilidad bruta</p>
-            <span id="dash-kpi-profit-trend" class="text-[10px] font-bold"></span>
+            <p class="text-xs text-gray-500 font-medium">📈 Utilidad neta</p>
+            <span id="kpi-utilidad-trend" class="text-[10px] font-bold"></span>
           </div>
-          <p id="dash-kpi-profit" class="text-2xl font-bold text-green-600">$0</p>
-          <p id="dash-kpi-profit-margin" class="text-[10px] text-gray-400 mt-1">Margen 0%</p>
+          <p id="kpi-utilidad" class="text-2xl font-bold text-green-600">$0</p>
+          <p id="kpi-utilidad-sub" class="text-[10px] text-gray-400 mt-1">Margen 0%</p>
         </div>
-
-        <!-- KPI 6: Comisiones -->
-        <div class="bg-gradient-to-br from-white to-orange-50/30 p-5 rounded-xl shadow border-l-4 border-orange-500">
+        <div class="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-xl shadow border-l-4 border-emerald-500">
           <div class="flex items-start justify-between mb-2">
-            <p class="text-xs text-gray-500 font-medium">💵 Comisiones</p>
+            <p class="text-xs text-gray-500 font-medium">💵 Cobrado</p>
           </div>
-          <p id="dash-kpi-commission" class="text-2xl font-bold text-orange-500">$0</p>
-          <p class="text-[10px] text-gray-400 mt-1">
-            Pool: <b id="dash-kpi-pool" class="text-sl">$0</b> · Bonus: <b id="dash-kpi-bonus" class="text-green-600">$0</b>
-          </p>
+          <p id="kpi-cobrado" class="text-2xl font-bold text-emerald-600">$0</p>
+          <p id="kpi-cobrado-sub" class="text-[10px] text-gray-400 mt-1">0% del total</p>
         </div>
-
-        <!-- KPI 7: Cobrado -->
-        <div class="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-xl shadow border-l-4 border-emerald-600">
-          <div class="flex items-start justify-between mb-2">
-            <p class="text-xs text-gray-500 font-medium">✅ Cobrado</p>
-          </div>
-          <p id="dash-kpi-collected" class="text-2xl font-bold text-emerald-700">$0</p>
-          <p id="dash-kpi-collected-pct" class="text-[10px] text-gray-400 mt-1">0% del total</p>
-        </div>
-
-        <!-- KPI 8: Pendiente de cobro -->
         <div class="bg-gradient-to-br from-white to-amber-50/30 p-5 rounded-xl shadow border-l-4 border-amber-500">
           <div class="flex items-start justify-between mb-2">
-            <p class="text-xs text-gray-500 font-medium">⏳ Pendiente</p>
+            <p class="text-xs text-gray-500 font-medium">⏳ Por cobrar</p>
           </div>
-          <p id="dash-kpi-pending" class="text-2xl font-bold text-amber-600">$0</p>
-          <p id="dash-kpi-pending-pct" class="text-[10px] text-gray-400 mt-1">0% del total</p>
+          <p id="kpi-porcobrar" class="text-2xl font-bold text-amber-600">$0</p>
+          <p id="kpi-porcobrar-sub" class="text-[10px] text-gray-400 mt-1">0 facturas</p>
         </div>
       </div>
 
-      <!-- ========== GRÁFICOS ========== -->
+      <!-- ========== FILA 2: GRÁFICOS PRINCIPALES ========== -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-
-        <!-- Gráfico: Ventas últimos 30 días -->
         <div class="bg-white p-5 rounded-xl shadow lg:col-span-2">
           <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
             <div>
-              <h3 class="font-bold text-sd flex items-center gap-2">📈 Ventas últimos 30 días</h3>
-              <p class="text-[10px] text-gray-400 mt-0.5">Evolución diaria de la venta neta</p>
+              <h3 class="font-bold text-sd">📊 Evolución ventas vs utilidad</h3>
+              <p class="text-[10px] text-gray-400 mt-0.5">Últimos 30 días · línea doble</p>
             </div>
-            <span class="text-[10px] bg-sl/10 text-sl px-2 py-1 rounded-full font-semibold">Últimos 30 días</span>
+            <span class="text-[10px] bg-sl/10 text-sl px-2 py-1 rounded-full font-semibold">30 días</span>
           </div>
           <div class="h-64 relative">
-            <canvas id="dash-chart-sales"></canvas>
-            <p id="dash-chart-sales-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">
-              📭 Sin ventas en el período
-            </p>
+            <canvas id="dash-chart-evolution"></canvas>
+            <p id="dash-chart-evolution-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">📭 Sin datos</p>
           </div>
         </div>
-
-        <!-- Gráfico: Por método de pago -->
         <div class="bg-white p-5 rounded-xl shadow">
-          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">💳 Por método de pago</h3>
+          <h3 class="font-bold text-sd mb-4">💳 Cobros vs Pagos</h3>
           <div class="h-64 relative">
-            <canvas id="dash-chart-methods"></canvas>
-            <p id="dash-chart-methods-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">
-              📭 Sin datos
-            </p>
+            <canvas id="dash-chart-cashflow"></canvas>
+            <p id="dash-chart-cashflow-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">📭 Sin datos</p>
           </div>
         </div>
       </div>
 
-      <!-- ========== TOP TIENDAS Y VENDEDORES ========== -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-
-        <!-- Top tiendas -->
-        <div class="bg-white p-5 rounded-xl shadow">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-sd flex items-center gap-2">🏪 Top tiendas</h3>
-            <span id="dash-top-stores-count" class="text-[10px] text-gray-400"></span>
-          </div>
-          <div id="dash-top-stores" class="space-y-3">
-            <!-- Dinámico -->
-          </div>
-          <p id="dash-top-stores-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin datos en el período</p>
+      <!-- ========== FILA 3: ESTADO DE RESULTADOS MINI ========== -->
+      <div class="bg-white p-5 rounded-xl shadow mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-sd flex items-center gap-2">💰 Estado de Resultados del período</h3>
+          <button onclick="document.querySelector('[data-tab=reports]')?.click()" class="text-xs text-sl hover:underline">Ver detalle →</button>
         </div>
-
-        <!-- Top vendedores -->
-        <div class="bg-white p-5 rounded-xl shadow">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-sd flex items-center gap-2">👤 Top vendedores</h3>
-            <span id="dash-top-sellers-count" class="text-[10px] text-gray-400"></span>
-          </div>
-          <div id="dash-top-sellers" class="space-y-3">
-            <!-- Dinámico -->
-          </div>
-          <p id="dash-top-sellers-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin datos en el período</p>
-        </div>
+        <div id="dash-pyl" class="space-y-2 text-sm"></div>
       </div>
 
-      <!-- ========== ALERTAS + ACTIVIDAD ========== -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <!-- ========== FILA 4: POSICIÓN FINANCIERA MINI ========== -->
+      <div class="bg-white p-5 rounded-xl shadow mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-sd flex items-center gap-2">🏦 Posición Financiera (hoy)</h3>
+          <a href="contabilidad.html" target="_blank" class="text-xs text-sl hover:underline">Ver completo →</a>
+        </div>
+        <div id="dash-balance-mini" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+      </div>
 
-        <!-- Alertas inteligentes -->
+      <!-- ========== FILA 5: ALERTAS + METAS ========== -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div class="bg-white p-5 rounded-xl shadow">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-sd flex items-center gap-2">⚠️ Alertas inteligentes</h3>
+            <h3 class="font-bold text-sd flex items-center gap-2">⚠️ Alertas</h3>
             <span id="dash-alerts-count" class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold hidden">0</span>
           </div>
-          <div id="dash-alerts-list" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
-            <!-- Dinámico -->
-          </div>
-          <p id="dash-alerts-empty" class="hidden text-center py-6 text-gray-400 text-sm">
-            🎉 Todo en orden, sin alertas
-          </p>
+          <div id="dash-alerts-list" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin"></div>
+          <p id="dash-alerts-empty" class="hidden text-center py-6 text-gray-400 text-sm">🎉 Todo en orden</p>
         </div>
-
-        <!-- Actividad reciente -->
         <div class="bg-white p-5 rounded-xl shadow">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-sd flex items-center gap-2">🕒 Actividad reciente</h3>
-            <button onclick="document.querySelector('[data-tab=audit]').click()" class="text-[10px] text-sl hover:underline">Ver toda →</button>
+            <h3 class="font-bold text-sd flex items-center gap-2">🎯 Metas del mes</h3>
+            <p id="dash-metas-month" class="text-[10px] text-gray-400"></p>
           </div>
-          <div id="dash-recent-activity" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
-            <!-- Dinámico -->
-          </div>
+          <div id="dash-metas-list" class="space-y-3 max-h-96 overflow-y-auto scrollbar-thin"></div>
+          <p id="dash-metas-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin metas configuradas</p>
         </div>
       </div>
 
-      <!-- ========== INVENTARIO: KPIs + STOCK BAJO + RENDIMIENTO ========== -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sd">
-          <p class="text-xs text-gray-500">Valor inventario (costo)</p>
-          <p id="kpi-inv-cost" class="text-xl font-bold text-sd mt-1">$0</p>
+      <!-- ========== FILA 6: RANKINGS ========== -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white p-5 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">🏪 Top tiendas</h3>
+          <div id="dash-top-stores" class="space-y-3"></div>
+          <p id="dash-top-stores-empty" class="hidden text-center py-4 text-gray-400 text-sm">Sin datos</p>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sl">
-          <p class="text-xs text-gray-500">Valor inventario (venta)</p>
-          <p id="kpi-inv-price" class="text-xl font-bold text-sl mt-1">$0</p>
+        <div class="bg-white p-5 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">👤 Top vendedores</h3>
+          <div id="dash-top-sellers" class="space-y-3"></div>
+          <p id="dash-top-sellers-empty" class="hidden text-center py-4 text-gray-400 text-sm">Sin datos</p>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-green-500">
-          <p class="text-xs text-gray-500">Ganancia potencial</p>
-          <p id="kpi-margin" class="text-xl font-bold text-green-600 mt-1">$0</p>
-        </div>
-        <div class="bg-white p-5 rounded-xl shadow border-l-4 border-sd">
-          <p class="text-xs text-gray-500">Unidades en stock</p>
-          <p id="kpi-units" class="text-xl font-bold text-sd mt-1">0</p>
+        <div class="bg-white p-5 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">📦 Top productos</h3>
+          <div id="dash-top-products" class="space-y-3"></div>
+          <p id="dash-top-products-empty" class="hidden text-center py-4 text-gray-400 text-sm">Sin datos</p>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <!-- Stock bajo -->
-        <div class="bg-white p-5 rounded-xl shadow">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-sd flex items-center gap-2">🔔 Alertas de stock bajo</h3>
-            <button onclick="document.querySelector('[data-tab=inventory]').click()" class="text-[10px] text-sl hover:underline">Ver inventario →</button>
-          </div>
-          <ul id="low-stock-list" class="space-y-2 text-sm max-h-64 overflow-y-auto scrollbar-thin"></ul>
+      <!-- ========== FILA 7: ACTIVIDAD RECIENTE ========== -->
+      <div class="bg-white p-5 rounded-xl shadow mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-sd flex items-center gap-2">🕒 Actividad reciente</h3>
+          <button onclick="document.querySelector('[data-tab=audit]')?.click()" class="text-[10px] text-sl hover:underline">Ver toda →</button>
         </div>
-
-        <!-- Desempeño por tienda (resumen) -->
-        <div class="bg-white p-5 rounded-xl shadow">
-          <h3 class="font-bold text-sd mb-4 flex items-center gap-2">🏪 Desempeño por tienda</h3>
-          <div id="store-performance" class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin"></div>
-        </div>
+        <div id="dash-recent-activity" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin"></div>
       </div>
 
     </section>
@@ -838,16 +735,19 @@
             </thead>
           <tbody id="products-tbody"></tbody>
         </table>
-        <div class="p-3 border-t bg-gray-50 text-center">
-          <button id="load-more-products"
-            onclick="window.loadMoreProducts()"
-            class="bg-sd text-white px-5 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
-            ⬇️ Cargar más (100 más)
-          </button>
-          <p id="load-more-end-products" class="hidden text-xs text-gray-400 mt-2">
-            ✅ No hay más productos para mostrar
-          </p>
-        </div>
+          <div class="p-3 border-t bg-gray-50 text-center">
+            <p id="sales-count-info" class="text-xs text-gray-500 mb-2">
+              Mostrando <b>0</b> ventas
+            </p>
+            <button id="load-more-sales"
+              onclick="window.loadMoreSales()"
+              class="bg-sd text-white px-5 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
+              ⬇️ Cargar más (100 más)
+            </button>
+            <p id="load-more-end-sales" class="hidden text-xs text-gray-400 mt-2">
+              ✅ No hay más ventas para mostrar
+            </p>
+          </div>
       </div>
     </section>
 <!-- ============ INVENTARIO ============ -->
@@ -952,7 +852,13 @@
       <!-- Título + filtros principales -->
       <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
         <h2 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight">Ventas</h2>
-        <div class="flex gap-2 flex-wrap">
+        <div class="flex gap-2 flex-wrap items-center">
+          <input
+            id="sales-search"
+            type="text"
+            placeholder="🔍 Buscar por documento, cliente o NIT..."
+            class="px-3 py-2 rounded-xl text-sm min-w-[260px]"
+          >
           <select id="sales-store-filter" class="px-3 py-2 rounded-xl text-sm">
             <option value="all">Todas las tiendas</option>
           </select>
@@ -1007,6 +913,7 @@
           <table class="w-full text-sm min-w-[1100px]">
             <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
               <tr>
+                <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Documento</th>
                 <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Fecha / Pago</th>
                 <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Cliente</th>
                 <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Tienda</th>
@@ -1058,118 +965,152 @@
   </div>
 
   <!-- Panel para personalizar reportes (oculto por defecto) -->
-  <div id="report-customizer" class="hidden bg-sd/5 border-2 border-dashed border-sl/30 rounded-xl p-5 mb-6">
-    <div class="flex justify-between items-center mb-4">
-      <div>
-        <h3 class="font-bold text-sd">📋 Personalizar reportes</h3>
-        <p class="text-xs text-gray-500 mt-0.5">Selecciona qué bloques quieres ver. Los cambios se aplican al instante y se guardan automáticamente.</p>
-      </div>
-      <button onclick="toggleReportCustomizer()" class="text-gray-500 hover:text-sd p-1">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
+<div id="report-customizer" class="hidden bg-sd/5 border-2 border-dashed border-sl/30 rounded-xl p-5 mb-6">
+  <div class="flex justify-between items-center mb-4">
+    <div>
+      <h3 class="font-bold text-sd">📋 Personalizar reportes</h3>
+      <p class="text-xs text-gray-500 mt-0.5">Selecciona qué bloques quieres ver. Los cambios se aplican al instante y se guardan automáticamente en este navegador.</p>
     </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-      <!-- Análisis general -->
-      <div class="bg-white rounded-lg p-4 shadow-sm">
-        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📊 Análisis general</p>
-        <div class="space-y-1.5">
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="comparison"> Comparativa con período anterior
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="byStore"> Comparativa por tienda
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="topSellers"> Ranking de vendedores
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="topProducts"> Top productos
-          </label>
-        </div>
-      </div>
-
-      <!-- Pagos y cobros -->
-      <div class="bg-white rounded-lg p-4 shadow-sm">
-        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">💳 Pagos y cobros</p>
-        <div class="space-y-1.5">
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="byMethod"> Desglose por método y canal
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="pending"> Cobros pendientes
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="reconciliation"> Conciliación bancaria
-          </label>
-        </div>
-      </div>
-
-      <!-- Categorías -->
-      <div class="bg-white rounded-lg p-4 shadow-sm">
-        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📂 Categorías</p>
-        <div class="space-y-1.5">
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="byCategory"> Ventas por categoría
-          </label>
-        </div>
-      </div>
-
-      <!-- Gráficos -->
-      <div class="bg-white rounded-lg p-4 shadow-sm">
-        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📈 Gráficos</p>
-        <div class="space-y-1.5">
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartSales"> Tendencia temporal
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartTopSellers"> Top vendedores (gráfico)
-          </label>
-        </div>
-      </div>
-
-      <!-- Clientes -->
-      <div class="bg-white rounded-lg p-4 shadow-sm">
-        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">👥 Clientes</p>
-        <div class="space-y-1.5">
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="topCustomers"> Top clientes
-          </label>
-        </div>
-      </div>
-
-      <!-- Impuestos y rentabilidad -->
-      <div class="bg-white rounded-lg p-4 shadow-sm">
-        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">💰 Rentabilidad</p>
-        <div class="space-y-1.5">
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="profitability"> Ingresos, costos, utilidad
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="taxes"> Impuestos, recargos, envíos
-          </label>
-        </div>
-      </div>
-
-      <!-- Detalle -->
-      <div class="bg-white rounded-lg p-4 shadow-sm md:col-span-2 lg:col-span-3">
-        <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📋 Detalle</p>
-        <div class="space-y-1.5">
-          <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
-            <input type="checkbox" class="report-toggle w-4 h-4" data-report="detail"> Detalle de ventas (tabla completa)
-          </label>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="flex gap-2 mt-4 pt-4 border-t border-sl/20">
-      <button onclick="selectAllReports(true)" class="text-xs bg-sl text-white px-3 py-1.5 rounded-lg hover:bg-sd">✅ Ver todos</button>
-      <button onclick="selectAllReports(false)" class="text-xs bg-gray-200 text-sd px-3 py-1.5 rounded-lg hover:bg-gray-300">⬜ Ocultar todos</button>
-      <button onclick="resetReportsDefault()" class="text-xs text-sl hover:underline ml-auto">🔄 Restaurar por defecto</button>
-    </div>
+    <button onclick="toggleReportCustomizer()" class="text-gray-500 hover:text-sd p-1">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
   </div>
+
+  <!-- Atajos rápidos por perfil -->
+  <div class="flex flex-wrap gap-2 mb-4 pb-4 border-b border-sl/20">
+    <span class="text-[10px] font-semibold text-gray-500 uppercase self-center mr-2">Perfiles rápidos:</span>
+    <button onclick="applyReportPreset('todo')" class="text-[10px] bg-white border border-gray-200 hover:border-sl px-3 py-1.5 rounded-full font-semibold text-sd">🌐 Ver todo</button>
+    <button onclick="applyReportPreset('ventas')" class="text-[10px] bg-white border border-gray-200 hover:border-sl px-3 py-1.5 rounded-full font-semibold text-sd">📊 Solo ventas</button>
+    <button onclick="applyReportPreset('financiero')" class="text-[10px] bg-white border border-gray-200 hover:border-sl px-3 py-1.5 rounded-full font-semibold text-sd">🏦 Solo financiero</button>
+    <button onclick="applyReportPreset('operativo')" class="text-[10px] bg-white border border-gray-200 hover:border-sl px-3 py-1.5 rounded-full font-semibold text-sd">📦 Operativo</button>
+    <button onclick="applyReportPreset('contable')" class="text-[10px] bg-white border border-gray-200 hover:border-sl px-3 py-1.5 rounded-full font-semibold text-sd">📚 Contable</button>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+    <!-- ========== Categoría: Análisis de ventas ========== -->
+    <div class="bg-white rounded-lg p-4 shadow-sm">
+      <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📊 Análisis de ventas</p>
+      <div class="space-y-1.5">
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="comparison"> Comparativa con período anterior
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="byStore"> Comparativa por tienda
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="topSellers"> Ranking de vendedores
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="topProducts"> Top productos
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="byCategory"> Ventas por categoría
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="topCustomers"> Top clientes
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="detail"> Detalle de ventas (tabla)
+        </label>
+      </div>
+    </div>
+
+    <!-- ========== Categoría: Pagos y cobros ========== -->
+    <div class="bg-white rounded-lg p-4 shadow-sm">
+      <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">💳 Pagos y cobros</p>
+      <div class="space-y-1.5">
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="byMethod"> Desglose por método y canal
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="pending"> Cobros pendientes
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="reconciliation"> Conciliación por cuenta
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="carteraAging"> Cartera por antigüedad
+        </label>
+      </div>
+    </div>
+
+    <!-- ========== Categoría: Financiero ========== -->
+    <div class="bg-white rounded-lg p-4 shadow-sm">
+      <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">🏦 Financiero</p>
+      <div class="space-y-1.5">
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="pyl"> Estado de Resultados
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="cashflow"> Flujo de caja real
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="profitability"> Ingresos, costos, utilidad
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="taxes"> Impuestos, recargos, envíos
+        </label>
+      </div>
+    </div>
+
+    <!-- ========== Categoría: Gastos y nómina ========== -->
+    <div class="bg-white rounded-lg p-4 shadow-sm">
+      <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">💰 Gastos y nómina</p>
+      <div class="space-y-1.5">
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="expenses"> Gastos y costos del período
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="payroll"> Nómina del período
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="payables"> Cuentas por pagar (CxP)
+        </label>
+      </div>
+    </div>
+
+    <!-- ========== Categoría: Inventario ========== -->
+    <div class="bg-white rounded-lg p-4 shadow-sm">
+      <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📦 Inventario</p>
+      <div class="space-y-1.5">
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="inventory"> Inventario valorizado
+        </label>
+      </div>
+    </div>
+
+    <!-- ========== Categoría: Metas ========== -->
+    <div class="bg-white rounded-lg p-4 shadow-sm">
+      <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">🎯 Metas</p>
+      <div class="space-y-1.5">
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="goals"> Cumplimiento de metas
+        </label>
+      </div>
+    </div>
+
+    <!-- ========== Categoría: Gráficos ========== -->
+    <div class="bg-white rounded-lg p-4 shadow-sm">
+      <p class="text-xs font-bold text-sd uppercase mb-2 flex items-center gap-1">📈 Gráficos</p>
+      <div class="space-y-1.5">
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartSales"> Tendencia temporal
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-sl text-xs">
+          <input type="checkbox" class="report-toggle w-4 h-4" data-report="chartTopSellers"> Top vendedores (gráfico)
+        </label>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="flex gap-2 mt-4 pt-4 border-t border-sl/20">
+    <button onclick="selectAllReports(true)" class="text-xs bg-sl text-white px-3 py-1.5 rounded-lg hover:bg-sd">✅ Ver todos</button>
+    <button onclick="selectAllReports(false)" class="text-xs bg-gray-200 text-sd px-3 py-1.5 rounded-lg hover:bg-gray-300">⬜ Ocultar todos</button>
+    <button onclick="resetReportsDefault()" class="text-xs text-sl hover:underline ml-auto">🔄 Restaurar por defecto</button>
+  </div>
+</div>
 
   <!-- Filtros -->
   <div class="bg-white rounded-xl shadow p-4 mb-6">
@@ -1507,6 +1448,111 @@
     <p id="rep-customers-empty" class="hidden text-center py-6 text-gray-400 text-sm">Sin clientes en el período</p>
   </div>
 
+  <!-- ============================================================ -->
+  <!-- 🆕 BLOQUE: ESTADO DE RESULTADOS DEL PERÍODO                    -->
+  <!-- ============================================================ -->
+  <div id="report-block-pyl" class="report-block bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow p-5 mb-6">
+    <div class="mb-4">
+      <h3 class="font-bold text-green-800 flex items-center gap-2">🏦 Estado de Resultados del período</h3>
+      <p class="text-[10px] text-gray-500 mt-0.5">Cascada contable: ingresos → utilidad neta</p>
+    </div>
+    <div id="rep-pyl" class="space-y-1 text-sm max-w-3xl mx-auto"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 🆕 BLOQUE: FLUJO DE CAJA REAL                                  -->
+  <!-- ============================================================ -->
+  <div id="report-block-cashflow" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="mb-4">
+      <h3 class="font-bold text-sd flex items-center gap-2">💵 Flujo de caja real</h3>
+      <p class="text-[10px] text-gray-400 mt-0.5">Cobros efectivos vs pagos realizados</p>
+    </div>
+    <div id="rep-cashflow" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 🆕 BLOQUE: GASTOS Y COSTOS DEL PERÍODO                         -->
+  <!-- ============================================================ -->
+  <div id="report-block-expenses" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="mb-4">
+      <h3 class="font-bold text-sd flex items-center gap-2">📊 Gastos y costos del período</h3>
+      <p class="text-[10px] text-gray-400 mt-0.5">Desglose por categoría, proveedor y tienda</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div>
+        <p class="text-xs font-bold text-sd uppercase mb-2">Por categoría</p>
+        <div id="rep-expenses-category" class="space-y-2"></div>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-sd uppercase mb-2">Por proveedor</p>
+        <div id="rep-expenses-supplier" class="space-y-2"></div>
+      </div>
+    </div>
+    <div class="mt-4 pt-4 border-t">
+      <p class="text-xs font-bold text-sd uppercase mb-2">Por tienda</p>
+      <div id="rep-expenses-store" class="space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 🆕 BLOQUE: NÓMINA DEL PERÍODO                                  -->
+  <!-- ============================================================ -->
+  <div id="report-block-payroll" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="mb-4">
+      <h3 class="font-bold text-sd flex items-center gap-2">💰 Nómina del período</h3>
+      <p class="text-[10px] text-gray-400 mt-0.5">Liquidaciones, devengos, deducciones y aportes</p>
+    </div>
+    <div id="rep-payroll-kpis" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+    <div id="rep-payroll-detail" class="overflow-x-auto scrollbar-thin"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 🆕 BLOQUE: CUENTAS POR PAGAR (CxP)                             -->
+  <!-- ============================================================ -->
+  <div id="report-block-payables" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="mb-4">
+      <h3 class="font-bold text-sd flex items-center gap-2">📈 Cuentas por pagar (CxP)</h3>
+      <p class="text-[10px] text-gray-400 mt-0.5">Obligaciones pendientes con proveedores</p>
+    </div>
+    <div id="rep-payables-kpis" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+    <div id="rep-payables-detail" class="overflow-x-auto scrollbar-thin"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 🆕 BLOQUE: CARTERA POR ANTIGÜEDAD                              -->
+  <!-- ============================================================ -->
+  <div id="report-block-carteraAging" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="mb-4">
+      <h3 class="font-bold text-sd flex items-center gap-2">💳 Cartera por antigüedad</h3>
+      <p class="text-[10px] text-gray-400 mt-0.5">Clasificación de la cartera por rangos de vencimiento</p>
+    </div>
+    <div id="rep-cartera-aging" class="space-y-3"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 🆕 BLOQUE: INVENTARIO VALORIZADO                               -->
+  <!-- ============================================================ -->
+  <div id="report-block-inventory" class="report-block bg-white p-5 rounded-xl shadow mb-6">
+    <div class="mb-4">
+      <h3 class="font-bold text-sd flex items-center gap-2">📦 Inventario valorizado</h3>
+      <p class="text-[10px] text-gray-400 mt-0.5">Por tienda: unidades, costo, valor venta y rotación</p>
+    </div>
+    <div id="rep-inventory-kpis" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+    <div id="rep-inventory-detail" class="overflow-x-auto scrollbar-thin"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 🆕 BLOQUE: CUMPLIMIENTO DE METAS                               -->
+  <!-- ============================================================ -->
+  <div id="report-block-goals" class="report-block bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-xl shadow p-5 mb-6">
+    <div class="mb-4">
+      <h3 class="font-bold text-blue-800 flex items-center gap-2">🎯 Cumplimiento de metas</h3>
+      <p class="text-[10px] text-gray-500 mt-0.5">Meta vs realidad · comisiones generadas</p>
+    </div>
+    <div id="rep-goals-tiendas" class="space-y-3 mb-6"></div>
+    <div id="rep-goals-vendedores" class="space-y-3"></div>
+  </div>
+  
   <!-- ========== Detalle de ventas ========== -->
   <div id="report-block-detail" class="report-block bg-white rounded-xl shadow overflow-hidden">
     <div class="p-5 border-b flex justify-between items-center">
@@ -2142,16 +2188,14 @@
           </thead>
           <tbody id="audit-tbody"></tbody>
         </table>
-        <div class="p-3 border-t bg-gray-50 text-center">
-          <button id="load-more-auditLogs"
-            onclick="window.loadMoreAudit()"
-            class="bg-sd text-white px-5 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
-            ⬇️ Cargar más (100 más)
-          </button>
-          <p id="load-more-end-auditLogs" class="hidden text-xs text-gray-400 mt-2">
-            ✅ No hay más eventos para mostrar
-          </p>
-        </div>
+          <div class="p-3 border-t bg-gray-50 text-center">
+            <button id="load-more-auditLogs" onclick="window.loadMoreAudit()" class="bg-sd text-white px-5 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
+              ⬇️ Cargar más (100 más)
+            </button>
+            <p id="load-more-end-auditLogs" class="hidden text-xs text-gray-400 mt-2">
+              ✅ No hay más eventos para mostrar
+            </p>
+          </div>
       </div>
     </section>
 

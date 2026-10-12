@@ -478,6 +478,102 @@ window.SmartecShift = (() => {
     toggleShift({ forced: true });
   }
 
+    /* ============================================================
+     🆕 CIERRE ADMINISTRATIVO DE TURNO (SOLO SUPERADMIN)
+     Permite al superadmin cerrar el turno abierto de cualquier
+     usuario sin necesidad de que ese usuario esté presente.
+     Se distingue del cierre normal por:
+       - adminClosed: true
+       - adminCloseReason, adminCloseNotes
+       - Registro en auditoría con severidad alta
+     ============================================================ */
+  async function adminCloseShift(shiftId, reason, notes) {
+    _require();
+
+    const user = _u();
+    const ud = _ud();
+
+    // 1. Validar permisos
+    if (!user || ud?.role !== 'superadmin') {
+      throw new Error('Solo el superadmin puede cerrar turnos de otros usuarios.');
+    }
+
+    if (!reason || !reason.trim()) {
+      throw new Error('El motivo del cierre administrativo es obligatorio.');
+    }
+
+    // 2. Leer el turno
+    const shiftRef = _ctx.doc(_ctx.db, 'shifts', shiftId);
+    const shiftSnap = await _ctx.getDocs
+      ? await (async () => {
+          // Fallback: usar getDoc si está disponible
+          const { getDoc } = await import(
+            'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'
+          );
+          return await getDoc(shiftRef);
+        })()
+      : null;
+
+    if (!shiftSnap || !shiftSnap.exists()) {
+      throw new Error('El turno no existe.');
+    }
+
+    const shift = shiftSnap.data();
+
+    if (shift.status !== 'open') {
+      throw new Error('Este turno ya está cerrado.');
+    }
+
+    // 3. Calcular duración
+    const startMs = (shift.startedAt?.seconds || 0) * 1000;
+    const nowMs = Date.now();
+    const durationMinutes = startMs ? Math.round((nowMs - startMs) / 60000) : 0;
+
+    // 4. Actualizar el turno
+    await _ctx.updateDoc(shiftRef, {
+      status: 'closed',
+      endedAt: _ctx.serverTimestamp(),
+      endedByAdmin: user.uid,
+      endedByAdminEmail: user.email,
+      endedByAdminName: ud.name || user.email,
+      adminClosed: true,
+      adminCloseReason: reason.trim(),
+      adminCloseNotes: (notes || '').trim(),
+      adminClosedAt: _ctx.serverTimestamp(),
+      durationMinutes,
+      endedNotes: `[CIERRE ADMINISTRATIVO] ${reason.trim()}`
+    });
+
+    // 5. Auditoría
+    try {
+      await _ctx.audit({
+        action: 'update',
+        collection: 'shifts',
+        docId: shiftId,
+        before: { status: 'open', userId: shift.userId, userEmail: shift.userEmail },
+        after: {
+          status: 'closed',
+          adminClosed: true,
+          adminCloseReason: reason.trim(),
+          durationMinutes
+        },
+        note: `🔒 Cierre administrativo: ${shift.userName || shift.userEmail} · ${durationMinutes} min · Motivo: ${reason.trim()}`
+      });
+    } catch (e) {
+      console.warn('[Shift] No se pudo auditar el cierre administrativo:', e);
+    }
+
+    console.log(`[Shift] ✅ Turno ${shiftId} cerrado por admin (${durationMinutes} min)`);
+
+    return {
+      success: true,
+      shiftId,
+      durationMinutes,
+      userId: shift.userId,
+      userName: shift.userName || shift.userEmail
+    };
+  }
+
   /* ============================================================
      GETTERS PÚBLICOS
   ============================================================ */
@@ -496,6 +592,7 @@ window.SmartecShift = (() => {
     confirmOpenShift,
     confirmCloseShift,
     forceLogoutFromShift,
+    adminCloseShift,              // 🆕 Cierre administrativo (superadmin)
     // Carga
     loadTodayShift,
     updateShiftButton,

@@ -30,7 +30,24 @@
     const settings = opts.settings || {};
     const user = opts.user || {};
     const stores = opts.stores || [];
-    const currentStore = opts.currentStore || null;
+    let currentStore = opts.currentStore || null;
+
+    // 🆕 Si el rol es domiciliario, forzar opciones seguras
+    //    (sin importar lo que pase quien llama)
+    if (user.role === 'domiciliario') {
+      opts.showShiftButton = false;
+      opts.showStoreSelector = false;
+      opts.extraLinks = [];
+      opts.showHomeLink = false;
+      // Título por defecto si no viene
+      if (!opts.titleText) {
+        opts.titleText = '📦 Domicilios';
+      }
+      // Asegurar que el current store no se muestre
+      if (currentStore && currentStore.storeId === 'all') {
+        currentStore = null; // no mostrar "Todas las tiendas"
+      }
+    }
 
     const logoUrl = settings.logoUrl || null;
     const logoHtml = logoUrl
@@ -39,9 +56,13 @@
       : `<span id="header-app-logo-text" class="text-base sm:text-lg lg:text-xl font-extrabold logo-mark">SMARTEC</span>`;
 
     // Info del vendedor
-    const sellerInfoHtml = opts.showSellerInfo && user.email
+    // Para domiciliario mostramos nombre; para otros, el email
+    const sellerLabel = user.role === 'domiciliario'
+      ? (user.name || user.email)
+      : user.email;
+    const sellerInfoHtml = opts.showSellerInfo && sellerLabel
       ? `<span id="header-app-seller-info" class="hidden lg:inline text-xs text-[#6E6E73] font-medium">
-           👤 ${escapeHtml(user.email)}
+           👤 ${escapeHtml(sellerLabel)}
          </span>`
       : '';
     // Título contextual (ej: "Mis Ventas · Tienda X")
@@ -52,7 +73,12 @@
       : '';
 
     // Rol del usuario
-    const roleLabels = { superadmin: 'Superadmin', admin: 'Admin de tienda', vendedor: 'Vendedor' };
+    const roleLabels = {
+      superadmin: 'Superadmin',
+      admin: 'Admin de tienda',
+      vendedor: 'Vendedor',
+      domiciliario: '🚚 Domiciliario'
+    };
     const roleHtml = opts.showRole && user.role
       ? `<p id="header-app-role" class="text-[10px] text-[#6E6E73]">
            ${escapeHtml(roleLabels[user.role] || user.role)}

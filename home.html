@@ -582,7 +582,8 @@ const $ = id => document.getElementById(id);
 const ROLE_LABELS = {
   superadmin: 'Superadmin',
   admin: 'Administrador de tienda',
-  vendedor: 'Vendedor'
+  vendedor: 'Vendedor',
+  domiciliario: 'Domiciliario'
 };
 
 let settingsGlobal = {};   // 🆕 cache de settings para leer logoUrl
@@ -692,7 +693,7 @@ const MODULES = [
     title: 'Domicilios',
     desc: 'Cobros pendientes y ventas contraentrega',
     href: 'domicilios.html',
-    roles: ['superadmin','admin'],
+    roles: ['superadmin','admin','domiciliario'],
     soon: false
   },
   
@@ -1721,10 +1722,17 @@ onAuthStateChanged(auth, async user => {
   }
 
   // Validar perfil y rol
-  const validRoles = ['superadmin','admin','vendedor'];
+  const validRoles = ['superadmin','admin','vendedor','domiciliario'];
   if (!userData || !validRoles.includes(userData.role)) {
     await signOut(auth);
     window.location.href = 'index.html';
+    return;
+  }
+
+  // 🆕 Domiciliario → redirigir SIEMPRE a domicilios.html
+  if (userData.role === 'domiciliario') {
+    console.log('[HOME] Domiciliario detectado → redirigiendo a domicilios.html');
+    window.location.href = 'domicilios.html';
     return;
   }
   

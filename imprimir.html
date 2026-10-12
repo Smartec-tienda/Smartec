@@ -519,7 +519,7 @@ const auth = getAuth(app);
 
 /* ============ HELPERS ============ */
 const $ = id => document.getElementById(id);
-const fmt = n => '$' + Math.round(Number(n||0)).toLocaleString('es-CO');
+const fmt = n => '$ ' + Math.round(Number(n||0)).toLocaleString('es-CO');
 const fmtDate = ts => {
   if (!ts) return '-';
   const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
