@@ -469,6 +469,8 @@
     <button data-format="remision" class="active" onclick="switchFormat('remision')">📄 Remisión</button>
     <button data-format="tirilla" onclick="switchFormat('tirilla')">🧾 Tirilla</button>
     <button data-format="mediacarta" onclick="switchFormat('mediacarta')">📋 Media carta</button>
+    <!-- 🆕 4to botón: solo visible en modo remisión-cliente -->
+    <button id="switch-remision-cliente" data-format="remision-cliente" class="hidden" onclick="switchFormat('remision-cliente')">📋 Remisión cliente</button>
   </div>
 
   <div class="actions">
@@ -537,13 +539,15 @@ const fmtTime = ts => {
 const FORMAT_LABELS = {
   remision: 'Remisión',
   tirilla: 'Comprobante de venta',
-  mediacarta: 'Documento comercial'
+  mediacarta: 'Documento comercial',
+  'remision-cliente': 'Remisión al cliente final'
 };
 
 /* ============ INIT ============ */
 async function init() {
   const params = new URLSearchParams(window.location.search);
   const saleId = params.get('id');
+  const typeParam = params.get('type');       // 🆕 'remision-cliente' | undefined
   const format = params.get('format') || 'remision';
 
   if (!saleId) {
@@ -631,10 +635,37 @@ async function init() {
     const setSnap = await getDoc(doc(db, 'settings', 'general'));
     const settings = setSnap.exists() ? setSnap.data() : {};
 
+    // ============================================================
+    // 🆕 3b. Si el tipo es 'remision-cliente', cargar la remisión vinculada
+    // ============================================================
+    let remision = null;
+    if (typeParam === 'remision-cliente') {
+      // Buscar en la colección 'remisiones' por saleId
+      const remQuery = query(
+        collection(db, 'remisiones'),
+        where('saleId', '==', sale.id)
+      );
+      const remSnap = await getDocs(remQuery);
+
+      if (remSnap.empty) {
+        return showError(
+          'Esta venta no tiene una remisión al cliente final generada.\n\n' +
+          'Ve a Contabilidad → Cotizaciones y genera la remisión primero.'
+        );
+      }
+
+      const first = remSnap.docs[0];
+      remision = { id: first.id, ...first.data() };
+      console.log('📋 Remisión cargada:', remision.documentNumber);
+    }
+
     // Guardar en window para acceso global (render functions + switch)
     window.__sale = sale;
     window.__settings = settings;
-    window.__currentFormat = format;
+    window.__remision = remision;                                // 🆕 null si no aplica
+    window.__currentFormat = typeParam === 'remision-cliente'
+      ? 'remision-cliente'
+      : format;
 
     // ============================================================
     // 4. Renderizar el documento con el formato inicial
@@ -661,14 +692,45 @@ function renderCurrentFormat() {
   // Actualizar título
   $('toolbar-title').innerHTML = `Smartec · ${FORMAT_LABELS[format] || 'Documento'}`;
 
-  // Actualizar botones del switch
-  document.querySelectorAll('.format-switch button').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.format === format);
+  // 🆕 Manejar visibilidad de botones según el formato
+  const isRemisionCliente = format === 'remision-cliente';
+
+  // Botones normales (remision, tirilla, mediacarta)
+  document.querySelectorAll('.format-switch button:not(#switch-remision-cliente)').forEach(btn => {
+    if (isRemisionCliente) {
+      btn.classList.add('hidden');
+    } else {
+      btn.classList.remove('hidden');
+      btn.classList.toggle('active', btn.dataset.format === format);
+    }
   });
+
+  // Botón de remisión-cliente
+  const rcBtn = document.getElementById('switch-remision-cliente');
+  if (rcBtn) {
+    if (isRemisionCliente) {
+      rcBtn.classList.remove('hidden');
+      rcBtn.classList.add('active');
+    } else {
+      rcBtn.classList.add('hidden');
+      rcBtn.classList.remove('active');
+    }
+  }
 
   // Render según formato
   let html = '';
-  if (format === 'tirilla') {
+  if (format === 'remision-cliente') {
+    // 🆕 Formato de remisión al cliente final
+    if (!window.__remision) {
+      $('doc-container').innerHTML = `
+        <div class="text-center py-20">
+          <p class="text-red-500 font-bold mb-2">⚠️ No hay remisión al cliente final cargada</p>
+        </div>
+      `;
+      return;
+    }
+    html = renderRemisionClienteFinal(window.__remision, settings);
+  } else if (format === 'tirilla') {
     html = renderTirilla(sale, settings);
   } else if (format === 'mediacarta') {
     html = renderMediaCarta(sale, settings);
@@ -683,8 +745,19 @@ function renderCurrentFormat() {
    🆕 CAMBIAR DE FORMATO SIN RECARGAR
 ============================================================ */
 window.switchFormat = (newFormat) => {
-  if (!['remision', 'tirilla', 'mediacarta'].includes(newFormat)) return;
+  // Si estamos en remisión-cliente, no permitir cambiar a otros formatos
+  if (window.__currentFormat === 'remision-cliente' && newFormat !== 'remision-cliente') {
+    return;
+  }
+
+  // Si intenta entrar a remisión-cliente sin haber cargado una remisión, bloquear
+  if (newFormat === 'remision-cliente' && !window.__remision) {
+    return;
+  }
+
+  if (!['remision', 'tirilla', 'mediacarta', 'remision-cliente'].includes(newFormat)) return;
   if (newFormat === window.__currentFormat) return;
+
   window.__currentFormat = newFormat;
   renderCurrentFormat();
 };
@@ -693,6 +766,11 @@ window.switchFormat = (newFormat) => {
    Usa window.__sale y window.__currentFormat (ya cargados en init).
 ============================================================ */
 window.sendWhatsAppFromPreview = () => {
+  // 🆕 Si estamos en modo remisión-cliente, usar los datos de la remisión
+  if (window.__currentFormat === 'remision-cliente') {
+    return sendWhatsAppRemisionCliente();
+  }
+
   const s = window.__sale;
   if (!s) {
     alert('No hay una venta cargada para enviar.');
@@ -701,7 +779,7 @@ window.sendWhatsAppFromPreview = () => {
 
   const formatLabel = FORMAT_LABELS[window.__currentFormat] || 'Comprobante';
 
-  // Construir mensaje (mismo contenido que antes en venta.html)
+  // Construir mensaje
   let msg = `*${s.storeName ? s.storeName.toUpperCase() : 'SMARTEC'}*\n`;
   msg += `Vendedor: ${s.sellerName || s.sellerEmail || ''}\n`;
   msg += `${formatLabel} #${s.documentNumber || s.id.slice(-6).toUpperCase()}\n`;
@@ -734,10 +812,9 @@ window.sendWhatsAppFromPreview = () => {
   msg += `*GARANTÍA:* Todos los productos cuentan con garantía mínima de 12 meses o la superior que otorgue la marca. Nuestro equipo te acompañará en cualquier solicitud de garantía.\n\n`;
   msg += `¡Gracias por tu compra! 🛒`;
 
-  // Detectar número del cliente
   const rawPhone = (s.customer?.phone || '').replace(/\D/g, '');
   let waNum = rawPhone;
-  if (rawPhone.length === 10) waNum = '57' + rawPhone; // Colombia por defecto
+  if (rawPhone.length === 10) waNum = '57' + rawPhone;
 
   const url = waNum
     ? `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`
@@ -745,6 +822,55 @@ window.sendWhatsAppFromPreview = () => {
 
   window.open(url, '_blank');
 };
+
+/**
+ * 🆕 WhatsApp para remisión al cliente final.
+ * Envía al teléfono del comprador final (no al mayorista).
+ */
+function sendWhatsAppRemisionCliente() {
+  const r = window.__remision;
+  if (!r) {
+    alert('No hay una remisión cargada para enviar.');
+    return;
+  }
+
+  const fc = r.finalCustomer || {};
+
+  // Construir mensaje
+  let msg = `*REMISIÓN #${r.documentNumber || ''}*\n`;
+  msg += `Fecha: ${r.date || ''}\n\n`;
+
+  msg += `*Cliente:* ${fc.name || ''}\n`;
+  if (fc.nit) msg += `NIT: ${fc.nit}\n`;
+  if (fc.phone) msg += `Tel: ${fc.phone}\n`;
+  if (fc.address) msg += `Dir: ${fc.address}${fc.city ? ', ' + fc.city : ''}\n`;
+
+  msg += `\n*Productos:*\n`;
+  (r.items || []).forEach(it => {
+    const variantParts = [it.colorName, it.size].filter(Boolean).join(' · ');
+    msg += `• ${it.qty}× ${it.name}`;
+    if (variantParts) msg += ` (${variantParts})`;
+    msg += ` - ${fmt(it.subtotal)}\n`;
+  });
+
+  msg += `\n*TOTAL: ${fmt(r.totalSugerido)}*\n`;
+
+  if (fc.notes) msg += `\n*Notas:* ${fc.notes}\n`;
+  if (r.notes) msg += `\n*Observaciones:* ${r.notes}\n`;
+
+  msg += `\nGracias por tu preferencia. 🙌`;
+
+  // Detectar teléfono del cliente final
+  const rawPhone = (fc.phone || '').replace(/\D/g, '');
+  let waNum = rawPhone;
+  if (rawPhone.length === 10) waNum = '57' + rawPhone;
+
+  const url = waNum
+    ? `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`
+    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
+  window.open(url, '_blank');
+}
 function showError(msg) {
   $('loading').classList.add('hidden');
   $('error-container').classList.remove('hidden');
@@ -769,6 +895,177 @@ function getCompanyInfo(sale, settings) {
   return { razonSocial, nit, regimen, address, phone, email, storeName, storeAddress, storePhone };
 }
 
+/* ============ RENDER REMISIÓN AL CLIENTE FINAL ============ */
+/* ============ RENDER REMISIÓN AL CLIENTE FINAL ============ */
+function renderRemisionClienteFinal(remision, settings) {
+  const c = getCompanyInfo({}, settings);
+  const docNumber = remision.documentNumber || 'SIN-NÚMERO';
+  const logoUrl = settings.logoUrl || null;
+  const fc = remision.finalCustomer || {};
+  const ws = remision.wholesaler || {};
+
+  // Logo: imagen si existe, texto si no
+  const logoHtml = logoUrl
+    ? `<img src="${logoUrl}" alt="Smartec" style="max-height:56px; max-width:220px; object-fit:contain;">`
+    : `<h1 style="font-size:28px; font-weight:800; letter-spacing:-0.03em; margin:0; color:#0071E3;">SMART<span style="color:#1D1D1F;">EC</span></h1>`;
+
+  // Fecha formateada
+  const dateStr = remision.date
+    ? new Date(remision.date + 'T12:00:00').toLocaleDateString('es-CO', { year:'numeric', month:'2-digit', day:'2-digit' })
+    : '—';
+
+  // Garantía dinámica
+  const warranties = (remision.items || [])
+    .map(it => Number(it.warrantyMonths ?? 12))
+    .filter(n => !isNaN(n) && n > 0);
+
+  let garantiaTexto = 'Todos los productos cuentan con garantía mínima de 12 meses o la superior otorgada por el fabricante.';
+  if (warranties.length) {
+    const unique = [...new Set(warranties)];
+    if (unique.length === 1) {
+      const meses = unique[0];
+      garantiaTexto = meses === 1
+        ? 'Este producto cuenta con garantía de 1 mes por defectos de fábrica.'
+        : `Este producto cuenta con garantía de ${meses} meses por defectos de fábrica.`;
+    }
+  }
+  garantiaTexto += ' No cubre daños por mal uso, golpes, líquidos o manipulación indebida.';
+
+  return `
+    <div class="doc">
+      <!-- Banner distintivo -->
+      <div style="background:#0A2A4A; color:white; padding:6px 12px; border-radius:6px; margin-bottom:16px; text-align:center; font-size:11px; font-weight:700; letter-spacing:1.5px;">
+        REMISIÓN AL CLIENTE FINAL · NO VÁLIDA COMO FACTURA
+      </div>
+
+      <!-- Header -->
+      <div class="doc-header">
+        <div class="brand">
+          ${logoHtml}
+          <div class="sub" style="margin-top:8px;">${c.razonSocial}</div>
+          <div class="company-info">
+            NIT: <b>${c.nit}</b>${c.regimen ? ' · ' + c.regimen : ''}<br>
+            ${c.address ? c.address + '<br>' : ''}
+            ${c.phone ? 'Tel: ' + c.phone + '<br>' : ''}
+            ${c.email ? 'Email: ' + c.email : ''}
+          </div>
+        </div>
+        <div class="doc-type">
+          <div class="t">REMISIÓN</div>
+          <div class="num">No. <b>${docNumber}</b></div>
+          <div class="date">${dateStr}</div>
+          ${remision.storeName ? `<div class="store">Sede: <b>${remision.storeName}</b></div>` : ''}
+        </div>
+      </div>
+
+      <!-- Emitido por (mayorista) -->
+      ${ws.companyName ? `
+        <div class="section">
+          <div class="section-title">Emitido por</div>
+          <div class="section-body">
+            <b>${ws.companyName}</b>
+            ${ws.documentNumber ? `<br>Ref. venta: ${ws.documentNumber}` : ''}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Datos del cliente final -->
+      <div class="section">
+        <div class="section-title">Datos del cliente final</div>
+        <div class="section-body">
+          <b>${fc.name || '-'}</b><br>
+          ${fc.nit ? 'NIT/Cédula: ' + fc.nit + '<br>' : ''}
+          ${fc.phone ? 'Teléfono: ' + fc.phone + '<br>' : ''}
+          ${fc.address ? 'Dirección: ' + fc.address + (fc.city ? ', ' + fc.city : '') : ''}
+        </div>
+      </div>
+
+      <!-- Productos -->
+      <div class="section">
+        <div class="section-title">Productos</div>
+        <table class="items">
+          <thead>
+            <tr>
+              <th style="width:70px;">SKU</th>
+              <th>Producto</th>
+              <th style="width:110px;">Variante</th>
+              <th class="c" style="width:50px;">Cant.</th>
+              <th class="r" style="width:90px;">V. Unit.</th>
+              <th class="r" style="width:100px;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(remision.items || []).map(it => {
+              const variantParts = [];
+              if (it.colorName) variantParts.push(it.colorName);
+              if (it.size) variantParts.push(it.size);
+              const variant = variantParts.join(' · ') || '—';
+              return `<tr>
+                <td>${it.sku || '-'}</td>
+                <td>${it.name || '-'}</td>
+                <td>${variant}</td>
+                <td class="c">${it.qty || 0}</td>
+                <td class="r">${fmt(it.suggestedRetailPrice)}</td>
+                <td class="r">${fmt(it.subtotal)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Total -->
+      <div class="totals">
+        <table>
+          <tr class="total-row">
+            <td>TOTAL</td>
+            <td class="r">${fmt(remision.totalSugerido || 0)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Notas del cliente final -->
+      ${fc.notes ? `
+        <div class="section">
+          <div class="section-title">Notas para el cliente</div>
+          <div class="section-body">${fc.notes}</div>
+        </div>
+      ` : ''}
+
+      <!-- Notas generales de la remisión -->
+      ${remision.notes ? `
+        <div class="section">
+          <div class="section-title">Observaciones</div>
+          <div class="section-body">${remision.notes}</div>
+        </div>
+      ` : ''}
+
+      <!-- Garantía -->
+      <div class="garantia">
+        <b>GARANTÍA:</b> ${garantiaTexto}
+      </div>
+
+      <!-- Firmas -->
+      <div class="firmas">
+        <div class="firma">
+          <div class="linea"></div>
+          <div class="label">Recibido por (cliente final)</div>
+          <div class="nombre">${fc.name || ''}</div>
+        </div>
+        <div class="firma">
+          <div class="linea"></div>
+          <div class="label">Entregado por</div>
+          <div class="nombre">${ws.companyName || ''}</div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        Este documento NO es una factura electrónica de venta. Es un comprobante de entrega de mercancía.<br>
+        Smartec · ${c.nit}
+      </div>
+    </div>
+  `;
+}
 /* ============ RENDER REMISIÓN ============ */
 function renderRemision(sale, settings) {
   const c = getCompanyInfo(sale, settings);

@@ -503,6 +503,47 @@
       <div id="may-pick-sizes" class="flex flex-wrap gap-2"></div>
     </div>
 
+        <!-- 🆕 Precio sugerido al cliente final -->
+    <div class="mb-5 border border-[#0A2A4A]/20 bg-[#0A2A4A]/5 rounded-2xl p-4">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs font-bold text-[#0A2A4A]">💡 Precio sugerido al cliente final</p>
+        <span class="text-[9px] bg-[#0A2A4A]/15 text-[#0A2A4A] px-2 py-0.5 rounded-full font-bold">OPCIONAL</span>
+      </div>
+
+      <p class="text-[10px] text-[#6E6E73] mb-3 leading-relaxed">
+        Si vas a revender este producto, indica a qué precio lo venderás a tu cliente.
+        Puedes ajustarlo libremente.
+      </p>
+
+      <div class="relative">
+        <input
+          id="may-pick-suggested"
+          type="text"
+          inputmode="numeric"
+          placeholder="Ej: 150000"
+          class="w-full px-3 py-2.5 rounded-xl text-sm font-mono text-right pr-10"
+          oninput="onSuggestedInputChange()">
+        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[#6E6E73] text-xs font-semibold">COP</span>
+      </div>
+
+      <!-- Hint de margen -->
+      <div id="may-pick-suggested-hint" class="mt-2 text-[10px] text-[#6E6E73]">
+        💡 Sugerencia: <b id="may-pick-suggested-auto">—</b> (+30% sobre tu costo)
+      </div>
+
+      <!-- Margen en vivo -->
+      <div id="may-pick-margin" class="hidden mt-2 pt-2 border-t border-[#0A2A4A]/15 text-[10px]">
+        <div class="flex justify-between items-center">
+          <span class="text-[#6E6E73]">Tu ganancia:</span>
+          <span id="may-pick-margin-value" class="font-bold text-[#30D158]">+$0 (+0%)</span>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <p id="may-pick-suggested-error" class="hidden text-[10px] text-red-500 mt-2"></p>
+    </div>
+
+
     <!-- Cantidad -->
     <div class="mb-5">
       <p class="text-xs font-semibold mb-2 text-[#1D1D1F]">Cantidad:</p>
@@ -566,6 +607,69 @@
       id="may-quote-date"
       type="date"
       class="w-full px-3 py-2.5 rounded-xl text-sm mb-4">
+
+          <!-- 🆕 Colapsable: Datos del comprador final -->
+    <div class="border border-[#0A2A4A]/20 rounded-2xl mb-4 overflow-hidden">
+      <button type="button" onclick="toggleFinalCustomer()"
+        class="w-full flex items-center justify-between px-4 py-3 bg-[#0A2A4A]/5 hover:bg-[#0A2A4A]/10 transition">
+        <div class="flex items-center gap-2 min-w-0">
+          <svg id="may-fc-chevron" class="w-4 h-4 text-[#0A2A4A] transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+          <span class="text-xs font-bold text-[#0A2A4A]">👤 Datos del comprador final</span>
+          <span class="text-[9px] bg-[#0A2A4A]/15 text-[#0A2A4A] px-2 py-0.5 rounded-full font-bold">OPCIONAL</span>
+        </div>
+        <span id="may-fc-badge" class="hidden text-[9px] bg-[#30D158] text-white px-2 py-0.5 rounded-full font-bold shrink-0">
+          ✓ Datos ingresados
+        </span>
+      </button>
+
+      <!-- Cuerpo del colapsable -->
+      <div id="may-fc-body" class="hidden px-4 py-3 bg-white">
+        <p class="text-[10px] text-[#6E6E73] mb-3 leading-relaxed">
+          Si vas a entregar el pedido a un cliente final, ingresa sus datos. Los usaremos para generar la remisión al momento de la venta.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="md:col-span-2">
+            <label class="text-[10px] font-semibold text-[#1D1D1F] block mb-1">Nombre / Razón social</label>
+            <input id="may-fc-name" type="text" placeholder="Ej: Distribuidora El Sol"
+              class="w-full px-3 py-2 rounded-xl text-sm" oninput="checkFinalCustomerBadge()">
+          </div>
+
+          <div>
+            <label class="text-[10px] font-semibold text-[#1D1D1F] block mb-1">NIT / Cédula</label>
+            <input id="may-fc-nit" type="text" placeholder="900123456-7"
+              class="w-full px-3 py-2 rounded-xl text-sm font-mono" oninput="checkFinalCustomerBadge()">
+          </div>
+
+          <div>
+            <label class="text-[10px] font-semibold text-[#1D1D1F] block mb-1">Teléfono</label>
+            <input id="may-fc-phone" type="text" placeholder="3001234567"
+              class="w-full px-3 py-2 rounded-xl text-sm" oninput="checkFinalCustomerBadge()">
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="text-[10px] font-semibold text-[#1D1D1F] block mb-1">Dirección</label>
+            <input id="may-fc-address" type="text" placeholder="Calle 45 #12-34"
+              class="w-full px-3 py-2 rounded-xl text-sm" oninput="checkFinalCustomerBadge()">
+          </div>
+
+          <div>
+            <label class="text-[10px] font-semibold text-[#1D1D1F] block mb-1">Ciudad</label>
+            <input id="may-fc-city" type="text" placeholder="Bogotá"
+              class="w-full px-3 py-2 rounded-xl text-sm" oninput="checkFinalCustomerBadge()">
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="text-[10px] font-semibold text-[#1D1D1F] block mb-1">Notas para el cliente final</label>
+            <textarea id="may-fc-notes" rows="2" placeholder="Ej: entregar en horario de oficina"
+              class="w-full px-3 py-2 rounded-xl text-sm" oninput="checkFinalCustomerBadge()"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <!-- Notas -->
     <label class="text-xs font-semibold text-[#1D1D1F] block mb-1">
@@ -1421,6 +1525,9 @@ window.openMayPicker = (productId) => {
   // Cantidad
   $('may-pick-qty').innerText = '1';
 
+  // 🆕 Inicializar el campo de precio sugerido
+  initSuggestedPriceField(p);
+
   // Mostrar modal
   const modal = $('may-picker-modal');
   modal.classList.remove('hidden');
@@ -1436,6 +1543,112 @@ window.closeMayPicker = () => {
   mayPickerVariant = null;
   mayPickerQtyVal = 1;
 };
+
+
+/* ============================================================
+   🆕 PRECIO SUGERIDO EN EL PICKER
+   Inicializa el campo con valor precargado o sugerencia +30%.
+============================================================ */
+function initSuggestedPriceField(p) {
+  const input = $('may-pick-suggested');
+  const hintAuto = $('may-pick-suggested-auto');
+  const hintWrap = $('may-pick-suggested-hint');
+  const marginWrap = $('may-pick-margin');
+  const errEl = $('may-pick-suggested-error');
+
+  if (!input) return;
+
+  // Precio wholesale base
+  const wholesale = computeWholesalePrice(p);
+  const autoSuggested = Math.round(wholesale * 1.3);
+
+  // Actualizar hint "Sugerencia: $X"
+  if (hintAuto) hintAuto.innerText = fmt(autoSuggested);
+
+  // Buscar si el item ya está en el carrito con esta variante
+  const existing = cart.find(it => it.productId === p.id && it.variantId === mayPickerVariant?.variantId);
+
+  // 🔴 Si ya está en el carrito con precio sugerido → precargar
+  if (existing && Number(existing.suggestedRetailPrice || 0) > 0) {
+    input.value = formatNumberWithDots(Number(existing.suggestedRetailPrice));
+  } else {
+    // Empezar en blanco (no forzamos sugerencia)
+    input.value = '';
+  }
+
+  // Ocultar margen y error hasta que escriban
+  if (marginWrap) marginWrap.classList.add('hidden');
+  if (errEl) { errEl.classList.add('hidden'); errEl.innerText = ''; }
+
+  // Recalcular
+  onSuggestedInputChange();
+}
+
+/**
+ * Se ejecuta cada vez que el usuario escribe en el campo de precio sugerido.
+ * Formatea el número, calcula el margen y valida.
+ */
+window.onSuggestedInputChange = () => {
+  const input = $('may-pick-suggested');
+  const marginWrap = $('may-pick-margin');
+  const marginValueEl = $('may-pick-margin-value');
+  const errEl = $('may-pick-suggested-error');
+
+  if (!input || !mayPickerProduct) return;
+
+  // Limpiar el valor (solo dígitos)
+  const raw = input.value.replace(/[^\d]/g, '');
+  const val = Number(raw) || 0;
+
+  // Formatear visualmente con puntos de miles (sin mover el cursor al final si no hay valor)
+  if (raw) {
+    input.value = formatNumberWithDots(val);
+  } else {
+    input.value = '';
+  }
+
+  const wholesale = computeWholesalePrice(mayPickerProduct);
+
+  // Si está vacío → ocultar margen, sin error
+  if (!val) {
+    if (marginWrap) marginWrap.classList.add('hidden');
+    if (errEl) { errEl.classList.add('hidden'); errEl.innerText = ''; }
+    return;
+  }
+
+  // Calcular margen
+  const margin = val - wholesale;
+  const marginPct = wholesale > 0 ? ((margin / wholesale) * 100).toFixed(1) : '0';
+
+  // Mostrar margen
+  if (marginWrap) {
+    marginWrap.classList.remove('hidden');
+    if (marginValueEl) {
+      const sign = margin >= 0 ? '+' : '';
+      const color = margin >= 0 ? 'text-[#30D158]' : 'text-red-500';
+      marginValueEl.className = `font-bold ${color}`;
+      marginValueEl.innerText = `${sign}${fmt(margin)} (${sign}${marginPct}%)`;
+    }
+  }
+
+  // Validar
+  if (val < wholesale) {
+    if (errEl) {
+      errEl.innerText = `⚠️ Debe ser mayor o igual a tu costo (${fmt(wholesale)}).`;
+      errEl.classList.remove('hidden');
+    }
+  } else {
+    if (errEl) { errEl.classList.add('hidden'); errEl.innerText = ''; }
+  }
+};
+
+/**
+ * Formatea un número con puntos de miles (ej: 150000 → "150.000").
+ */
+function formatNumberWithDots(n) {
+  const num = Number(n) || 0;
+  return num.toLocaleString('es-CO');
+}
 
 /**
  * Renderiza los selectores de color y talla.
@@ -1538,11 +1751,26 @@ window.confirmMayAddToCart = () => {
   const v = mayPickerVariant;
   const unitPrice = computeWholesalePrice(p) + (Number(v.priceDelta) || 0);
 
+  // 🆕 Leer precio sugerido del input
+  const suggestedRaw = ($('may-pick-suggested')?.value || '').replace(/[^\d]/g, '');
+  const suggestedVal = Number(suggestedRaw) || 0;
+
+  // 🆕 Validar si hay valor
+  if (suggestedVal > 0 && suggestedVal < unitPrice) {
+    alert(`⚠️ El precio sugerido no puede ser menor a tu costo mayorista (${fmt(unitPrice)}).`);
+    return;
+  }
+
   // Verificar si ya está en el carrito con la misma variante
   const existing = cart.find(it => it.productId === p.id && it.variantId === v.variantId);
 
   if (existing) {
     existing.qty += mayPickerQtyVal;
+    // 🆕 Si el usuario puso un precio sugerido nuevo, sobrescribir
+    if (suggestedVal > 0) {
+      existing.suggestedRetailPrice = suggestedVal;
+    }
+    // Si el usuario dejó vacío el input → NO borramos el precio sugerido anterior
   } else {
     cart.push({
       productId: p.id,
@@ -1554,6 +1782,8 @@ window.confirmMayAddToCart = () => {
       size: v.size || null,
       qty: mayPickerQtyVal,
       unitPrice: Math.round(unitPrice),
+      // 🆕 Precio sugerido al cliente final (0 = no definido → null)
+      suggestedRetailPrice: suggestedVal > 0 ? suggestedVal : null,
       image: (p.images && p.images[0]) || null
     });
   }
@@ -1565,7 +1795,6 @@ window.confirmMayAddToCart = () => {
   // Feedback visual
   showMayToast(`✅ ${p.name} agregado`);
 };
-
 /**
  * Actualiza el badge del carrito.
  */
@@ -1639,6 +1868,32 @@ function renderMayCart() {
     const img = it.image || 'https://placehold.co/80x80/e5e7eb/9ca3af?text=?';
     const variantParts = [it.colorName, it.size].filter(Boolean).join(' · ');
 
+    // 🆕 Precio sugerido (si existe)
+    const hasSuggested = Number(it.suggestedRetailPrice || 0) > 0;
+    const suggestedLine = hasSuggested
+      ? (() => {
+          const sug = Number(it.suggestedRetailPrice);
+          const margin = sug - it.unitPrice;
+          const marginPct = it.unitPrice > 0 ? ((margin / it.unitPrice) * 100).toFixed(1) : '0';
+          return `
+            <div class="mt-1 flex items-center gap-2 flex-wrap">
+              <span class="text-[10px] text-[#6E6E73]">💡 Sugerido:</span>
+              <button type="button" onclick="editSuggestedPriceFromCart(${idx})"
+                class="text-[10px] font-bold text-[#0A2A4A] bg-[#0A2A4A]/10 px-1.5 py-0.5 rounded hover:bg-[#0A2A4A]/20 transition"
+                title="Clic para editar el precio sugerido">
+                ${fmt(sug)} ✏️
+              </button>
+              <span class="text-[9px] text-[#30D158] font-semibold">+${marginPct}%</span>
+            </div>
+          `;
+        })()
+      : `
+        <button type="button" onclick="editSuggestedPriceFromCart(${idx})"
+          class="mt-1 text-[10px] text-[#0071E3] hover:underline font-semibold">
+          💡 Definir precio al cliente final
+        </button>
+      `;
+
     return `
       <div class="may-cart-item bg-gray-50 rounded-2xl p-3 mb-2 flex gap-3">
         <img src="${img}" alt="${escapeHtml(it.name)}"
@@ -1648,6 +1903,8 @@ function renderMayCart() {
           <p class="text-[10px] text-[#6E6E73] font-mono truncate">${escapeHtml(it.sku) || '—'}</p>
           ${variantParts ? `<p class="text-[10px] text-[#6E6E73] truncate">${escapeHtml(variantParts)}</p>` : ''}
           <p class="text-xs font-bold text-[#0A2A4A] mt-1">${fmt(it.unitPrice)}</p>
+
+          ${suggestedLine}
 
           <div class="flex items-center justify-between mt-2">
             <div class="inline-flex items-center border border-gray-200 rounded-xl bg-white">
@@ -1684,6 +1941,48 @@ window.changeMayCartQty = (idx, delta) => {
   updateMayCartBadge();
 };
 
+/* ============================================================
+   🆕 EDITAR PRECIO SUGERIDO DESDE EL CARRITO
+   Fase 2 · Sub-paso 2.2 — Se implementará el input completo.
+   Por ahora solo un placeholder con prompt() temporal.
+============================================================ */
+window.editSuggestedPriceFromCart = (idx) => {
+  const it = cart[idx];
+  if (!it) return;
+
+  // Placeholder — el picker (Sub-paso 2.2) tendrá el input completo.
+  // Aquí un prompt rápido para poder probar la visualización.
+  const current = Number(it.suggestedRetailPrice || 0);
+  const suggestion = Math.round(it.unitPrice * 1.3); // +30%
+  const initial = current > 0 ? current : suggestion;
+
+  const input = prompt(
+    `Precio sugerido al cliente final para:\n\n` +
+    `${it.name}\n` +
+    `Tu costo (mayorista): ${fmt(it.unitPrice)}\n\n` +
+    `Ingresa el precio (mínimo ${fmt(it.unitPrice)}):`,
+    String(initial)
+  );
+
+  if (input === null) return; // cancelado
+
+  const val = Number(String(input).replace(/[^\d]/g, ''));
+
+  if (!val || val <= 0) {
+    alert('⚠️ Debes ingresar un valor válido.');
+    return;
+  }
+
+  if (val < it.unitPrice) {
+    alert(`⚠️ El precio sugerido no puede ser menor a tu costo mayorista (${fmt(it.unitPrice)}).`);
+    return;
+  }
+
+  it.suggestedRetailPrice = val;
+  renderMayCart();
+};
+
+
 /**
  * Elimina un item del carrito.
  */
@@ -1709,6 +2008,77 @@ window.toggleMayCart = () => {
     panel.classList.add('hidden');
   }
 };
+
+/* ============================================================
+   🆕 COLAPSABLE — DATOS DEL COMPRADOR FINAL
+============================================================ */
+
+/**
+ * Abre/cierra el colapsable de datos del comprador final.
+ */
+window.toggleFinalCustomer = () => {
+  const body = $('may-fc-body');
+  const chevron = $('may-fc-chevron');
+  if (!body) return;
+
+  const isHidden = body.classList.contains('hidden');
+
+  if (isHidden) {
+    body.classList.remove('hidden');
+    if (chevron) chevron.style.transform = 'rotate(90deg)';
+  } else {
+    body.classList.add('hidden');
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+  }
+};
+
+/**
+ * Muestra/oculta el badge "✓ Datos ingresados" si al menos
+ * un campo tiene contenido.
+ */
+window.checkFinalCustomerBadge = () => {
+  const badge = $('may-fc-badge');
+  if (!badge) return;
+
+  const fields = ['may-fc-name', 'may-fc-nit', 'may-fc-phone', 'may-fc-address', 'may-fc-city', 'may-fc-notes'];
+  const hasAny = fields.some(id => ($(id)?.value || '').trim().length > 0);
+
+  if (hasAny) badge.classList.remove('hidden');
+  else badge.classList.add('hidden');
+};
+
+/**
+ * Resetea el colapsable (cerrado + campos vacíos).
+ */
+function resetFinalCustomer() {
+  const body = $('may-fc-body');
+  const chevron = $('may-fc-chevron');
+  const badge = $('may-fc-badge');
+
+  if (body) body.classList.add('hidden');
+  if (chevron) chevron.style.transform = 'rotate(0deg)';
+  if (badge) badge.classList.add('hidden');
+
+  ['may-fc-name', 'may-fc-nit', 'may-fc-phone', 'may-fc-address', 'may-fc-city', 'may-fc-notes']
+    .forEach(id => { const el = $(id); if (el) el.value = ''; });
+}
+
+/**
+ * Devuelve los datos del comprador final (o null si todos vacíos).
+ */
+function getFinalCustomerData() {
+  const name = ($('may-fc-name')?.value || '').trim();
+  const nit = ($('may-fc-nit')?.value || '').trim();
+  const phone = ($('may-fc-phone')?.value || '').trim();
+  const address = ($('may-fc-address')?.value || '').trim();
+  const city = ($('may-fc-city')?.value || '').trim();
+  const notes = ($('may-fc-notes')?.value || '').trim();
+
+  // Si TODOS están vacíos → null
+  if (!name && !nit && !phone && !address && !city && !notes) return null;
+
+  return { name, nit, phone, address, city, notes };
+}
 
 /* ============================================================
    🆕 MODAL DE COTIZACIÓN — Lógica completa
@@ -1760,6 +2130,9 @@ window.openQuoteRequestModal = () => {
   if (dateEl) dateEl.value = '';
   if (notesEl) notesEl.value = '';
 
+  // 🆕 Resetear colapsable del comprador final
+  resetFinalCustomer();
+
   // Mostrar modal
   const modal = $('may-quote-modal');
   modal.classList.remove('hidden');
@@ -1809,13 +2182,20 @@ window.submitQuoteRequest = async () => {
       qty: it.qty,
       unitPrice: it.unitPrice,
       subtotal: it.qty * it.unitPrice,
-      image: it.image || null
+      image: it.image || null,
+      // 🆕 Precio sugerido al cliente final (null si no se definió)
+      suggestedRetailPrice: (Number(it.suggestedRetailPrice || 0) > 0)
+        ? Number(it.suggestedRetailPrice)
+        : null
     }));
 
     const totalQty = items.reduce((s, it) => s + it.qty, 0);
     const totalAmount = items.reduce((s, it) => s + it.subtotal, 0);
 
     // Crear doc de cotización
+    // 🆕 Obtener datos del comprador final (o null si vacío)
+    const finalCustomer = getFinalCustomerData();
+
     const quoteData = {
       // Cliente
       customerId: currentCustomer?.id || null,
@@ -1839,6 +2219,9 @@ window.submitQuoteRequest = async () => {
       // Extras
       deliveryDate,
       notes,
+
+      // 🆕 Datos del comprador final (opcional)
+      finalCustomer: finalCustomer,   // null si todos los campos vacíos
 
       // Estado
       status: 'pendiente',   // 'pendiente' | 'aprobada' | 'rechazada' | 'convertida'
