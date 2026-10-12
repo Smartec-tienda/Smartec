@@ -296,9 +296,21 @@
       No tienes permisos para acceder al portal de mayoristas.
     </p>
 
-    <button onclick="window.location.href='home.html'" class="btn-apple w-full py-3 rounded-xl font-bold">
-      Volver al inicio
-    </button>
+    <!-- Info del usuario en sesión -->
+    <div id="blocked-user-info" class="hidden bg-gray-50 border border-gray-200 rounded-2xl p-3 mb-4 text-left">
+      <p class="text-[10px] text-[#6E6E73] uppercase font-semibold mb-1">Sesión activa</p>
+      <p id="blocked-user-email" class="text-xs font-mono text-[#1D1D1F] truncate">—</p>
+    </div>
+
+    <!-- Acciones -->
+    <div class="space-y-2">
+      <button onclick="blockedChangeUser()" class="btn-apple w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+        🔄 Cambiar de usuario
+      </button>
+      <button onclick="window.location.href='home.html'" class="w-full bg-gray-100 text-[#1D1D1F] py-3 rounded-xl hover:bg-gray-200 font-semibold text-sm">
+        🏠 Ir al inicio
+      </button>
+    </div>
   </div>
 </div>
 
@@ -760,6 +772,27 @@ $('login-btn').onclick = async () => {
   }
 };
 
+/* ============================================================
+   🆕 PANTALLA BLOQUEADA — Cambiar de usuario
+   Cierra la sesión y muestra el login del portal sin salir
+   de mayoristas.html.
+============================================================ */
+window.blockedChangeUser = async () => {
+  try {
+    await signOut(auth);
+    // onAuthStateChanged detectará que no hay user y mostrará el login.
+    // Forzamos limpieza visual por si acaso.
+    const bs = $('blocked-screen');
+    if (bs) { bs.classList.add('hidden'); bs.classList.remove('flex'); }
+    const ls = $('login-screen');
+    if (ls) { ls.classList.remove('hidden'); ls.classList.add('flex'); }
+    const app = $('app-screen');
+    if (app) { app.classList.add('hidden'); app.classList.remove('flex'); }
+  } catch (e) {
+    console.warn('[Blocked] Error al cambiar de usuario:', e);
+  }
+};
+
 /* ============ LOGOUT ============ */
 window.logout = async () => {
   try {
@@ -861,6 +894,14 @@ if (!user) {
     $('blocked-message').innerText = 'Esta cuenta no tiene acceso al portal de mayoristas.';
     $('blocked-screen').classList.remove('hidden');
     $('blocked-screen').classList.add('flex');
+
+        // 🆕 Poblar email del usuario bloqueado
+    const infoWrap = $('blocked-user-info');
+    const emailEl = $('blocked-user-email');
+    if (infoWrap && emailEl && user?.email) {
+      emailEl.innerText = user.email;
+      infoWrap.classList.remove('hidden');
+    }
 
     // 🆕 Ocultar splash a la fuerza
     document.body.classList.remove('app-loading');
