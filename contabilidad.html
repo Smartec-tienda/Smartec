@@ -166,6 +166,27 @@
           <span id="cotizaciones-badge" class="hidden ml-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shrink-0">0</span>
         </button>
 
+        <button class="sidebar-item tab-btn" data-tab="margenes" title="Mayoristas por pagar">
+          <span class="sidebar-icon">💵</span>
+          <span class="sidebar-label">Mayoristas x pagar</span>
+          <span id="margenes-badge" class="hidden ml-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shrink-0">0</span>
+        </button>
+
+        <button class="sidebar-item tab-btn" data-tab="liquidaciones-dom" title="Domiciliarios por pagar">
+          <span class="sidebar-icon">🛵</span>
+          <span class="sidebar-label">Domiciliarios x pagar</span>
+          <span id="liquidaciones-dom-badge" class="hidden ml-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shrink-0">0</span>
+        </button>
+
+        
+        <!-- SECCIÓN: Cierre -->
+        <p class="sidebar-section-title px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6E6E73]">Cierre</p>
+
+        <button class="sidebar-item tab-btn" data-tab="cierre" title="Cierre contable">
+          <span class="sidebar-icon">🔒</span>
+          <span class="sidebar-label">Cierre contable</span>
+        </button>
+
         <!-- SECCIÓN: Cartera -->
         <p class="sidebar-section-title px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6E6E73]">Cartera</p>
 
@@ -733,8 +754,11 @@
       </div>
       <div class="flex gap-2 flex-wrap">
         <input id="conc-search" type="text" placeholder="Buscar..." class="px-4 py-2 rounded-full text-sm glass-soft border border-white/60 min-w-[200px]">
-        <button onclick="openConcForm()" class="btn-apple px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-2">
-          + Nueva conciliación
+        <button onclick="openConcForm()" class="btn-glass px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-2">
+          ✍️ Manual
+        </button>
+        <button onclick="openConcAutoForm()" class="btn-apple px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-2">
+          📤 Subir extracto bancario
         </button>
       </div>
     </div>
@@ -1270,6 +1294,397 @@
     <p id="cot-empty" class="hidden text-center py-8 text-[#6E6E73]">Sin cotizaciones registradas.</p>
   </main>
 
+    <!-- ============================================================
+       TAB: MAYORISTAS POR PAGAR (márgenes pendientes)
+  ============================================================ -->
+  <main id="tab-margenes" class="hidden flex-1 container mx-auto p-4 md:p-6 tab-con-content">
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+      <div>
+        <h2 class="text-2xl font-extrabold text-[#1D1D1F] tracking-tight">Mayoristas por pagar</h2>
+        <p class="text-xs text-[#6E6E73]">Márgenes generados por ventas mayoristas · Pendientes de liquidar</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <input id="mar-search" type="text" placeholder="Buscar empresa, NIT o cliente..." class="px-4 py-2 rounded-full text-sm glass-soft border border-white/60 min-w-[240px]">
+        <button onclick="loadMargenesMayorista()" class="btn-glass px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-2">
+          🔄 Actualizar
+        </button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div id="mar-kpis" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+
+    <!-- Filtros -->
+    <div class="glass-strong rounded-2xl shadow-apple-lg p-4 mb-4 border border-white/60">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Estado</label>
+          <select id="mar-filter-status" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+            <option value="pending" selected>⏳ Pendientes de cobro</option>
+            <option value="payable">💰 Por pagar al mayorista</option>
+            <option value="paid">✅ Ya pagados</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Mayorista</label>
+          <select id="mar-filter-wholesaler" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Desde</label>
+          <input id="mar-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Hasta</label>
+          <input id="mar-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+      </div>
+      <div class="flex justify-between items-center mt-3 pt-3 border-t border-black/5 flex-wrap gap-2">
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="setMarRange('today')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F]">Hoy</button>
+          <button onclick="setMarRange('month')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F]">Este mes</button>
+          <button onclick="setMarRange('lastmonth')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F]">Mes pasado</button>
+          <button onclick="setMarRange('year')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F]">Este año</button>
+        </div>
+        <button onclick="clearMarFilters()" class="text-xs text-[#0A2A4A] hover:underline font-semibold">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="glass-strong rounded-2xl shadow-apple-lg overflow-hidden border border-white/60">
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[1200px]">
+          <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Fecha</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Mayorista</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Cliente final</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Venta origen</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Wholesale</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Cliente final</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Margen</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Estado</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="mar-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <p id="mar-empty" class="hidden text-center py-8 text-[#6E6E73]">Sin márgenes registrados con esos filtros.</p>
+  </main>
+
+  <!-- ============================================================
+       MODAL: PAGAR MARGEN A MAYORISTA
+  ============================================================ -->
+  <div id="mar-pay-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeMarPayModal()"></div>
+    <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+      <button onclick="closeMarPayModal()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <h3 class="text-xl font-bold text-[#1D1D1F] mb-1 pr-10 tracking-tight">💵 Pagar margen al mayorista</h3>
+      <p id="mar-pay-subtitle" class="text-xs text-[#6E6E73] mb-5"></p>
+      <div id="mar-pay-body"></div>
+    </div>
+  </div>
+
+    <!-- ============================================================
+       TAB: CIERRE CONTABLE
+  ============================================================ -->
+  <main id="tab-cierre" class="hidden flex-1 container mx-auto p-4 md:p-6 tab-con-content">
+
+    <!-- Info -->
+    <div class="mb-6">
+      <h2 class="text-2xl font-extrabold text-[#1D1D1F] tracking-tight">🔒 Cierre contable</h2>
+      <p class="text-xs text-[#6E6E73] mt-1">Cierra el período: lleva ingresos, costos y gastos a la cuenta de resultado. Una vez cerrado, el mes queda bloqueado.</p>
+    </div>
+
+    <!-- KPIs rápidos -->
+    <div id="cierre-kpis" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"></div>
+
+    <!-- Ejecutar nuevo cierre -->
+    <div class="glass-strong rounded-2xl shadow-apple-lg p-5 mb-6 border border-white/60">
+      <h3 class="font-bold text-[#1D1D1F] mb-4 tracking-tight">⚙️ Ejecutar cierre</h3>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div>
+          <label class="text-[10px] font-semibold text-[#1D1D1F] block mb-1">Tipo de cierre</label>
+          <select id="cierre-type" class="w-full px-3 py-2 rounded-xl text-sm">
+            <option value="monthly">📅 Mensual</option>
+            <option value="yearly">📆 Anual</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-[#1D1D1F] block mb-1">Año</label>
+          <select id="cierre-year" class="w-full px-3 py-2 rounded-xl text-sm">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+          </select>
+        </div>
+        <div id="cierre-month-wrap">
+          <label class="text-[10px] font-semibold text-[#1D1D1F] block mb-1">Mes</label>
+          <select id="cierre-month" class="w-full px-3 py-2 rounded-xl text-sm">
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="4">Abril</option>
+            <option value="5">Mayo</option>
+            <option value="6">Junio</option>
+            <option value="7">Julio</option>
+            <option value="8">Agosto</option>
+            <option value="9">Septiembre</option>
+            <option value="10">Octubre</option>
+            <option value="11">Noviembre</option>
+            <option value="12">Diciembre</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button onclick="previewCierre()" class="btn-glass w-full py-2 rounded-full text-sm font-semibold">
+            🔍 Vista previa
+          </button>
+        </div>
+      </div>
+
+      <!-- Área de preview -->
+      <div id="cierre-preview" class="hidden bg-gray-50 rounded-2xl p-4 mb-3 border border-gray-200">
+        <!-- Se llena con previewCierre() -->
+      </div>
+
+      <!-- Botón ejecutar (oculto hasta que haya preview) -->
+      <button id="cierre-execute-btn" onclick="confirmExecuteCierre()" class="hidden w-full bg-gradient-to-r from-[#0A2A4A] to-[#4A7A9A] text-white py-3 rounded-xl font-bold text-sm mt-2">
+        🔒 Ejecutar cierre
+      </button>
+    </div>
+
+    <!-- Historial de cierres -->
+    <div class="glass-strong rounded-2xl shadow-apple-lg overflow-hidden border border-white/60">
+      <div class="p-4 border-b border-black/5 flex justify-between items-center flex-wrap gap-2">
+        <div>
+          <h3 class="font-bold text-[#1D1D1F] tracking-tight">📚 Historial de cierres</h3>
+          <p class="text-[10px] text-[#6E6E73] mt-0.5">Cierres mensuales y anuales ejecutados</p>
+        </div>
+        <button onclick="loadHistorialCierres()" class="btn-glass px-4 py-2 rounded-full text-xs font-semibold">
+          🔄 Refrescar
+        </button>
+      </div>
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[1000px]">
+          <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Período</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Tipo</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Ingresos</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Gastos + Costos</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Resultado</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Estado</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Ejecutado</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="cierre-tbody">
+            <tr>
+              <td colspan="8" class="p-6 text-center text-gray-400 text-xs">
+                Presiona "Refrescar" para cargar el historial.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ============================================================
+       MODAL: CONFIRMAR EJECUCIÓN DEL CIERRE
+  ============================================================ -->
+  <div id="cierre-confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeCierreConfirm()"></div>
+    <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+      <button onclick="closeCierreConfirm()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <h3 class="text-xl font-bold text-[#1D1D1F] mb-1 pr-10 tracking-tight">⚠️ Confirmar cierre</h3>
+      <p id="cierre-confirm-subtitle" class="text-xs text-[#6E6E73] mb-5"></p>
+      <div id="cierre-confirm-body"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: DETALLE DE CIERRE
+  ============================================================ -->
+  <div id="cierre-detail-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeCierreDetail()"></div>
+    <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-3xl w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+      <button onclick="closeCierreDetail()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <h3 class="text-xl font-bold text-[#1D1D1F] mb-4 pr-10 tracking-tight">Detalle del cierre</h3>
+      <div id="cierre-detail-body"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: REABRIR PERÍODO
+  ============================================================ -->
+  <div id="cierre-reopen-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeCierreReopen()"></div>
+    <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+      <button onclick="closeCierreReopen()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <h3 class="text-xl font-bold text-[#1D1D1F] mb-1 pr-10 tracking-tight">🔓 Reabrir período</h3>
+      <p id="cierre-reopen-subtitle" class="text-xs text-[#6E6E73] mb-5"></p>
+      <div id="cierre-reopen-body"></div>
+    </div>
+  </div>
+
+
+    <!-- ============================================================
+       TAB: DOMICILIARIOS POR PAGAR (liquidaciones)
+  ============================================================ -->
+  <main id="tab-liquidaciones-dom" class="hidden flex-1 container mx-auto p-4 md:p-6 tab-con-content">
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+      <div>
+        <h2 class="text-2xl font-extrabold text-[#1D1D1F] tracking-tight">Domiciliarios por pagar</h2>
+        <p class="text-xs text-[#6E6E73]">Liquidaciones reportadas · Pendientes de aprobación y pago</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <input id="lid-search" type="text" placeholder="Buscar domiciliario o nota..." class="px-4 py-2 rounded-full text-sm glass-soft border border-white/60 min-w-[240px]">
+        <button onclick="loadLiquidacionesDom()" class="btn-glass px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-2">
+          🔄 Actualizar
+        </button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div id="lid-kpis" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+
+    <!-- Filtros -->
+    <div class="glass-strong rounded-2xl shadow-apple-lg p-4 mb-4 border border-white/60">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Estado</label>
+          <select id="lid-filter-status" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+            <option value="pending" selected>⏳ Pendientes de aprobar</option>
+            <option value="approved">✅ Aprobadas (por pagar)</option>
+            <option value="paid">💵 Ya pagadas</option>
+            <option value="rejected">❌ Rechazadas</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Domiciliario</label>
+          <select id="lid-filter-employee" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+            <option value="all">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Desde</label>
+          <input id="lid-date-from" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-sd">Hasta</label>
+          <input id="lid-date-to" type="date" class="w-full px-2 py-1.5 border rounded-lg text-xs mt-1">
+        </div>
+      </div>
+      <div class="flex justify-between items-center mt-3 pt-3 border-t border-black/5 flex-wrap gap-2">
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="setLidRange('today')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F]">Hoy</button>
+          <button onclick="setLidRange('month')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F]">Este mes</button>
+          <button onclick="setLidRange('lastmonth')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F]">Mes pasado</button>
+          <button onclick="setLidRange('year')" class="text-xs glass-soft hover:bg-white/90 px-3.5 py-1.5 rounded-full font-medium text-[#1D1D1F]">Este año</button>
+        </div>
+        <button onclick="clearLidFilters()" class="text-xs text-[#0A2A4A] hover:underline font-semibold">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="glass-strong rounded-2xl shadow-apple-lg overflow-hidden border border-white/60">
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full text-sm min-w-[1100px]">
+          <thead class="bg-white/50 text-[#1D1D1F] backdrop-blur">
+            <tr>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Reportado</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Domiciliario</th>
+              <th class="p-3 text-left text-[10px] uppercase tracking-wider font-bold">Período</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Entregas</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Reportado</th>
+              <th class="p-3 text-right text-[10px] uppercase tracking-wider font-bold">Aprobado</th>
+              <th class="p-3 text-center text-[10px] uppercase tracking-wider font-bold">Estado</th>
+              <th class="p-3"></th>
+            </tr>
+          </thead>
+          <tbody id="lid-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <p id="lid-empty" class="hidden text-center py-8 text-[#6E6E73]">Sin liquidaciones registradas con esos filtros.</p>
+  </main>
+
+  <!-- ============================================================
+       MODAL: DETALLE DE LIQUIDACIÓN A DOMICILIARIO
+  ============================================================ -->
+  <div id="lid-detail-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeLidDetail()"></div>
+    <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-2xl w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+      <button onclick="closeLidDetail()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <h3 class="text-xl font-bold text-[#1D1D1F] mb-4 pr-10 tracking-tight">Detalle de liquidación</h3>
+      <div id="lid-detail-body"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: APROBAR / RECHAZAR LIQUIDACIÓN
+  ============================================================ -->
+  <div id="lid-review-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeLidReview()"></div>
+    <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+      <button onclick="closeLidReview()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <h3 id="lid-review-title" class="text-xl font-bold text-[#1D1D1F] mb-1 pr-10 tracking-tight">Revisar liquidación</h3>
+      <p id="lid-review-subtitle" class="text-xs text-[#6E6E73] mb-5"></p>
+      <div id="lid-review-body"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: PAGAR LIQUIDACIÓN A DOMICILIARIO
+  ============================================================ -->
+  <div id="lid-pay-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeLidPay()"></div>
+    <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+      <button onclick="closeLidPay()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <h3 class="text-xl font-bold text-[#1D1D1F] mb-1 pr-10 tracking-tight">💵 Pagar liquidación</h3>
+      <p id="lid-pay-subtitle" class="text-xs text-[#6E6E73] mb-5"></p>
+      <div id="lid-pay-body"></div>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       MODAL: DETALLE DE MARGEN
+  ============================================================ -->
+  <div id="mar-detail-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeMarDetail()"></div>
+    <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-3xl w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+      <button onclick="closeMarDetail()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <h3 class="text-xl font-bold text-[#1D1D1F] mb-4 pr-10 tracking-tight">Detalle del margen</h3>
+      <div id="mar-detail-body"></div>
+    </div>
+  </div>
+
+
   <!-- ============ MODAL DETALLE COTIZACIÓN ============ -->
   <div id="cot-detail-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
     <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeCotDetail()"></div>
@@ -1516,6 +1931,36 @@
     <div id="conc-body"></div>
   </div>
 </div>
+
+<!-- ============================================================
+     🆕 MODAL: CONCILIACIÓN AUTOMÁTICA (subir extracto CSV)
+============================================================ -->
+<div id="conc-auto-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeConcAutoForm()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeConcAutoForm()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-[#1D1D1F] mb-1 pr-10 tracking-tight">📤 Subir extracto bancario</h3>
+    <p class="text-xs text-[#6E6E73] mb-5">Soporta Bancolombia y Davivienda (CSV). El cruce es automático.</p>
+    <div id="conc-auto-body"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     🆕 MODAL: RESULTADO DE LA CONCILIACIÓN AUTOMÁTICA
+============================================================ -->
+<div id="conc-auto-result-modal" class="fixed inset-0 z-[80] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto" onclick="closeConcAutoResult()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-5xl w-full max-h-[92vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeConcAutoResult()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-[#1D1D1F] mb-4 pr-10 tracking-tight">📊 Resultado del cruce</h3>
+    <div id="conc-auto-result-body"></div>
+  </div>
+</div>
+
 
 <!-- ============================================================
      MODAL DETALLE CONCILIACIÓN

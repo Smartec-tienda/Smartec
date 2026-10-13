@@ -4245,6 +4245,99 @@ window.editStore = (id) => {
   openStoreForm(s);
 };
 
+/* ============================================================
+   🆕 CONFIGURACIÓN DE DOMICILIOS
+   Guarda y carga la cuenta PUC para gastos de domicilios
+============================================================ */
+
+/**
+ * Guarda la configuración de domicilios en Firestore.
+ */
+window.saveDomiciliosSettings = async () => {
+  const btn = $('save-domicilios-settings');
+  if (btn) { btn.disabled = true; btn.innerText = '⏳ Guardando...'; }
+
+  try {
+    const pucDomicilios = ($('set-pucDomicilios')?.value || '').trim() || '513505';
+    const pucDomiciliosName = ($('set-pucDomiciliosName')?.value || '').trim() || 'Domicilios y mensajería';
+    const pucDomiciliosPayment = ($('set-pucDomiciliosPayment')?.value || '').trim() || '110505';
+
+    // Validar que sean códigos numéricos
+    if (!/^\d+$/.test(pucDomicilios)) {
+      alert('⚠️ La cuenta PUC de gastos debe ser numérica.');
+      return;
+    }
+    if (!/^\d+$/.test(pucDomiciliosPayment)) {
+      alert('⚠️ La cuenta PUC de pago debe ser numérica.');
+      return;
+    }
+
+    await updateDoc(doc(db, 'settings', 'accounting'), {
+      pucDomicilios,
+      pucDomiciliosName,
+      pucDomiciliosPayment,
+      updatedAt: serverTimestamp(),
+      updatedBy: currentUser.email
+    });
+
+    await audit({
+      action: 'update',
+      collection: 'settings',
+      docId: 'accounting',
+      after: { pucDomicilios, pucDomiciliosName, pucDomiciliosPayment },
+      note: `Config domicilios actualizada: gasto ${pucDomicilios} · pago ${pucDomiciliosPayment}`
+    });
+
+    // Refrescar cache
+    window.SmartecCache.invalidate('accounting_settings');
+
+    alert('✅ Configuración de domicilios guardada.');
+  } catch (e) {
+    console.error('[Admin] Error guardando config domicilios:', e);
+    alert('❌ Error: ' + (e.message || 'desconocido'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = '💾 Guardar configuración de domicilios'; }
+  }
+};
+
+/**
+ * Carga la configuración de domicilios al abrir la pestaña de settings.
+ */
+window.loadDomiciliosSettings = async () => {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'accounting'));
+    if (snap.exists()) {
+      const data = snap.data();
+      if ($('set-pucDomicilios')) $('set-pucDomicilios').value = data.pucDomicilios || '513505';
+      if ($('set-pucDomiciliosName')) $('set-pucDomiciliosName').value = data.pucDomiciliosName || 'Domicilios y mensajería';
+      if ($('set-pucDomiciliosPayment')) $('set-pucDomiciliosPayment').value = data.pucDomiciliosPayment || '110505';
+    }
+  } catch (e) {
+    console.warn('[Admin] No se pudo cargar config de domicilios:', e);
+  }
+};
+
+// Enganchar el botón cuando el DOM esté listo
+(function attachDomiciliosSettingsListener() {
+  function bind() {
+    const btn = document.getElementById('save-domicilios-settings');
+    if (!btn || btn.dataset.bound === '1') {
+      // Reintentar hasta que aparezca
+      if (!btn) setTimeout(bind, 300);
+      return;
+    }
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => window.saveDomiciliosSettings());
+    console.log('[Admin] ✅ Listener de configuración de domicilios enganchado');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  } else {
+    bind();
+  }
+})();
+
 window.saveStore = async (existingId) => {
   const storeId = existingId || ($('f-storeId')?.value || '').trim().toLowerCase().replace(/\s+/g, '-');
 
@@ -4659,16 +4752,23 @@ window.createCredentialsForEmployee = async (employeeId) => {
   // Guardar el ID del empleado para vincularlo al crear el user
   window.__pendingEmployeeId = employeeId;
 
-  // Abrir el formulario de usuario con datos pre-rellenados
-  // Construimos un "user" ficticio con los datos del empleado para que
-  // openSellerForm lo trate como "nuevo usuario"
+  // 🆕 Detectar el rol según businessRole del empleado
+  let role;
+  switch (emp.businessRole) {
+    case 'superadmin':   role = 'superadmin'; break;
+    case 'admin':        role = 'admin'; break;
+    case 'domiciliario': role = 'domiciliario'; break;
+    case 'vendedor':     role = 'vendedor'; break;
+    default:             role = 'vendedor'; // 'solo-empleado' u otro → vendedor por defecto
+  }
+
+  console.log(`[Admin] Creando credenciales para ${emp.name} con rol "${role}" (businessRole: ${emp.businessRole})`);
+
   const fakeUserData = {
-    id: null,                     // null → modo creación
+    id: null,
     name: emp.name || '',
     email: emp.email || '',
-    role: emp.businessRole === 'superadmin' ? 'superadmin'
-        : emp.businessRole === 'admin'      ? 'admin'
-        : 'vendedor',
+    role: role,       // 🆕 Rol correcto
     storeId: emp.storeId || '',
     commissionRate: 0,
     goalAmount: 0,
@@ -4683,7 +4783,6 @@ window.createCredentialsForEmployee = async (employeeId) => {
   // Llamar al form existente (pasando null + overrides)
   openSellerFormFromEmployee(fakeUserData);
 };
-
 /* ============================================================
    🆕 Abre el form de usuario con datos del empleado
    Es como openSellerForm pero recibe datos pre-armados
@@ -9723,6 +9822,46 @@ window.submitConfirmPayment = async () => {
       note: auditNote,
     });
 
+        // 🆕 PASO 3E: Si la venta tiene margen mayorista pendiente, pasarlo a "payable"
+    try {
+      const margenQ = query(
+        collection(db, 'margenesMayorista'),
+        where('saleId', '==', saleId)
+      );
+      const margenSnap = await getDocs(margenQ);
+
+      if (!margenSnap.empty) {
+        for (const mDoc of margenSnap.docs) {
+          const mData = mDoc.data();
+          if (mData.status === 'pending') {
+            await updateDoc(doc(db, 'margenesMayorista', mDoc.id), {
+              status: 'payable',
+              cobradoAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+
+            console.log('[Margenes] Margen', mDoc.id, 'pasó a payable');
+
+            await audit({
+              action: 'update',
+              collection: 'margenesMayorista',
+              docId: mDoc.id,
+              before: { status: 'pending' },
+              after: { status: 'payable' },
+              note: `Margen mayorista listo para pagar (venta cobrada): ${mData.wholesalerCompanyName || ''} · ${fmt(mData.marginTotal || 0)}`
+            });
+          }
+        }
+
+        // Invalidar caches relacionadas
+        window.SmartecCache.invalidate('margenesMayorista_all');
+      }
+    } catch (margenErr) {
+      console.warn('[Margenes] Error actualizando margen tras cobro:', margenErr);
+      // No bloqueamos el flujo de cobro
+    }
+
+
     window.SmartecCache.invalidate('sales');
 
     closeConfirmPaymentModal();
@@ -10211,22 +10350,13 @@ function renderSettings() {
   renderCategoriesSummary();
 
   $('set-whatsapp').value = settings.whatsapp || '';
-  $('set-minstock').value = settings.minStock || 5;
-  $('set-taxEnabled').checked = !!settings.taxEnabled;
-  $('set-taxRate').value = (settings.taxRate||0)*100;
-  $('set-dianEnabled').checked = !!settings.dianEnabled;
-  $('set-dianProvider').value = settings.dianProvider || '';
+  // ... etc ...
+  renderLogoPreview();
 
-  // Datos de la empresa
-  $('set-razonSocial').value = settings.companyRazonSocial || '';
-  $('set-nit').value = settings.companyNit || '';
-  $('set-regimen').value = settings.companyRegimen || '';
-  $('set-companyAddress').value = settings.companyAddress || '';
-  $('set-companyPhone').value = settings.companyPhone || '';
-  $('set-companyEmail').value = settings.companyEmail || '';
-  // 🆕 Render logo
-   renderLogoPreview();
-
+  // 🆕 Cargar config de domicilios
+  if (typeof window.loadDomiciliosSettings === 'function') {
+    window.loadDomiciliosSettings();
+  }
 }
 
 /* ============================================================
@@ -13003,6 +13133,183 @@ window.closeArqModal = () => {
   m.classList.add('hidden'); m.classList.remove('flex');
 };
 
+/* ============================================================
+   🆕 ASIENTO CONTABLE DE ARQUEO (versión admin-app.js)
+   Al aprobar un arqueo de cierre con diferencia, genera el asiento:
+     - Faltante → D 519595 / C 110505
+     - Sobrante → D 110505 / C 429505
+   Idempotente: no duplica si ya existe comprobante para ese arqueo.
+============================================================ */
+async function generateComprobanteFromArqueoAdmin(arqueo) {
+  try {
+    if (!arqueo || !arqueo.id) return null;
+
+    // Solo arqueos de cierre
+    if (arqueo.type !== 'cierre') {
+      console.log('[Admin/Arqueo] Solo se contabiliza cierre. Tipo:', arqueo.type);
+      return null;
+    }
+
+    // Calcular diferencia
+    const expected = Number(arqueo.expectedBase || 0);
+    const actual = Number(arqueo.actualAmount || 0);
+    const difference = Number.isFinite(Number(arqueo.difference))
+      ? Number(arqueo.difference)
+      : (actual - expected);
+
+    // Si no hay diferencia, no hay asiento
+    if (Math.abs(Math.round(difference)) < 1) {
+      console.log('[Admin/Arqueo] Diferencia 0 — sin asiento.');
+      return null;
+    }
+
+    // Verificar que el motor contable esté disponible
+    if (!window.SmartecAccounting || !window.SmartecAccounting.buildMovementsFromComprobante) {
+      console.warn('[Admin/Arqueo] accounting-engine no disponible');
+      return null;
+    }
+
+    // Idempotencia
+    const dupQ = query(
+      collection(db, 'comprobantes'),
+      where('sourceType', '==', 'arqueo'),
+      where('sourceId', '==', arqueo.id)
+    );
+    const dupSnap = await getDocs(dupQ);
+    if (!dupSnap.empty) {
+      console.log('[Admin/Arqueo] Comprobante ya existe — saltando');
+      return dupSnap.docs[0].id;
+    }
+
+    // Determinar si es faltante o sobrante
+    const isFaltante = difference < 0;
+    const absDiff = Math.round(Math.abs(difference));
+
+    let items, concept;
+
+    if (isFaltante) {
+      items = [
+        { accountCode: '519595', accountName: 'Otros gastos diversos', type: 'D', amount: absDiff, note: 'Faltante de caja en arqueo' },
+        { accountCode: '110505', accountName: 'Caja general', type: 'C', amount: absDiff, note: 'Ajuste de caja por faltante' }
+      ];
+      concept = `Ajuste de arqueo — FALTANTE de caja`;
+    } else {
+      items = [
+        { accountCode: '110505', accountName: 'Caja general', type: 'D', amount: absDiff, note: 'Ajuste de caja por sobrante' },
+        { accountCode: '429505', accountName: 'Ingresos diversos', type: 'C', amount: absDiff, note: 'Sobrante de caja en arqueo' }
+      ];
+      concept = `Ajuste de arqueo — SOBRANTE de caja`;
+    }
+
+    const fecha = arqueo.date
+      || (arqueo.createdAt?.seconds
+          ? new Date(arqueo.createdAt.seconds * 1000).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0]);
+
+    // Generar número de comprobante
+    let compNumber = null;
+    try {
+      compNumber = await generateNextCompNumberAdmin(arqueo.storeId || 'general');
+    } catch (e) {
+      compNumber = `AJU-${Date.now()}`;
+    }
+
+    const comprobante = {
+      number: compNumber,
+      date: fecha,
+      type: 'ajuste',
+      concept: `${concept} · ${fmt(absDiff)}`,
+      storeId: arqueo.storeId || null,
+      storeName: arqueo.storeName || null,
+      notes: `Generado automáticamente al aprobar arqueo ${arqueo.id.slice(0, 8)}`,
+      items,
+      totalDebit: absDiff,
+      totalCredit: absDiff,
+      status: 'activo',
+      sourceType: 'arqueo',
+      sourceId: arqueo.id,
+      createdAt: serverTimestamp(),
+      createdBy: currentUser?.uid || null,
+      createdByName: currentUserData?.name || currentUser?.email || null,
+      updatedAt: serverTimestamp()
+    };
+
+    const compRef = await addDoc(collection(db, 'comprobantes'), comprobante);
+    console.log('[Admin/Arqueo] Comprobante creado:', compRef.id, '·', compNumber);
+
+    // Proyectar a movimientos
+    try {
+      const pucBase = (window.SmartecPUC && window.SmartecPUC.getBase)
+        ? window.SmartecPUC.getBase()
+        : [];
+      const pucMap = window.SmartecAccounting.buildPucMap(pucBase);
+
+      const movements = window.SmartecAccounting.buildMovementsFromComprobante(
+        { id: compRef.id, ...comprobante },
+        pucMap,
+        {
+          createdBy: currentUser?.uid || null,
+          createdByName: currentUserData?.name || currentUser?.email || null
+        }
+      );
+
+      for (const mv of movements) {
+        if (mv.dateTs && mv.dateTs instanceof Date) {
+          mv.dateTs = Timestamp.fromDate(mv.dateTs);
+        }
+        await addDoc(collection(db, 'movimientos'), mv);
+      }
+      console.log('[Admin/Arqueo] Movimientos creados:', movements.length);
+    } catch (movErr) {
+      console.warn('[Admin/Arqueo] Error proyectando movimientos:', movErr);
+    }
+
+    // Auditoría
+    try {
+      await audit({
+        action: 'create',
+        collection: 'comprobantes',
+        docId: compRef.id,
+        after: { tipo: isFaltante ? 'faltante' : 'sobrante', diferencia: difference },
+        note: `Asiento de arqueo (${isFaltante ? 'faltante' : 'sobrante'}): ${fmt(absDiff)}`
+      });
+    } catch (e) { /* ignore */ }
+
+    return compRef.id;
+  } catch (e) {
+    console.error('[Admin/Arqueo] Error:', e);
+    return null;
+  }
+}
+
+/* Helper: genera el siguiente número de comprobante para una tienda */
+async function generateNextCompNumberAdmin(storeId) {
+  const year = new Date().getFullYear();
+  const prefix = `COMP-${year}-`;
+
+  try {
+    const q = query(
+      collection(db, 'comprobantes'),
+      orderBy('number', 'desc'),
+      limit(20)
+    );
+    const snap = await getDocs(q);
+
+    let maxNum = 0;
+    snap.docs.forEach(d => {
+      const num = d.data().number || '';
+      if (!num.startsWith(prefix)) return;
+      const n = parseInt(num.replace(prefix, ''), 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    });
+
+    return prefix + String(maxNum + 1).padStart(4, '0');
+  } catch (e) {
+    console.warn('[Admin/Arqueo] Error generando número:', e);
+    return prefix + String(Date.now()).slice(-4);
+  }
+}
+
 window.approveArqueo = async (id) => {
   const a = cashRegisters.find(x => x.id === id);
   if (!a) return;
@@ -13027,7 +13334,27 @@ window.approveArqueo = async (id) => {
       note: `Arqueo aprobado (${a.type}) - ${a.storeId} · ${fmt(a.actualAmount)}`
     });
 
+    // 🆕 Generar asiento contable del arqueo (solo si hay diferencia)
+    try {
+      await generateComprobanteFromArqueoAdmin({
+        id: id,
+        type: a.type,
+        storeId: a.storeId,
+        storeName: stores.find(s => s.storeId === a.storeId)?.name || a.storeId,
+        expectedBase: a.expectedBase,
+        actualAmount: a.actualAmount,
+        difference: a.difference,
+        date: a.date || null,
+        adminEmail: a.adminEmail || null
+      });
+    } catch (contabErr) {
+      console.warn('[Admin/Arqueo] Error generando asiento:', contabErr);
+      // No bloqueamos la aprobación
+    }
+
     window.SmartecCache.invalidate('cashRegisters');
+    window.SmartecCache.invalidate('comprobantes_all');
+    window.SmartecCache.invalidate('movimientos_all');
 
     closeArqModal();
     await loadAll();

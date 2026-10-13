@@ -46,9 +46,16 @@
   <main class="container mx-auto p-4 md:p-6">
 
     <!-- Info -->
-    <div class="mb-4">
-      <h2 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight">Cobros pendientes</h2>
-      <p class="text-xs text-[#6E6E73] mt-1">Ventas contraentrega esperando confirmación del pago.</p>
+    <div class="flex justify-between items-start mb-4 flex-wrap gap-3">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-[#1D1D1F] tracking-tight">Cobros pendientes</h2>
+        <p class="text-xs text-[#6E6E73] mt-1">Ventas contraentrega esperando confirmación del pago.</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="openReportarLiquidacion()" class="bg-[#0071E3] hover:bg-[#0077ED] text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-apple transition inline-flex items-center gap-2">
+          📝 Reportar liquidación
+        </button>
+      </div>
     </div>
 
     <!-- Filtros -->
@@ -136,6 +143,20 @@
 
   </main>
 </div>
+
+<!-- ============ MODAL REPORTAR LIQUIDACIÓN (se llena por JS) ============ -->
+<div id="reportar-liquidacion-modal" class="fixed inset-0 z-[70] hidden items-center justify-center p-4 pointer-events-none">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto" onclick="closeReportarLiquidacion()"></div>
+  <div class="relative glass-strong rounded-3xl shadow-apple-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 pointer-events-auto scrollbar-thin border border-white/70">
+    <button onclick="closeReportarLiquidacion()" class="absolute top-3 right-3 z-20 p-2 glass-soft rounded-full hover:bg-white/80 transition text-[#6E6E73]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h3 class="text-xl font-bold text-[#1D1D1F] mb-1 pr-10 tracking-tight">📝 Reportar liquidación</h3>
+    <p class="text-xs text-[#6E6E73] mb-5">Reporta cuánto se te debe por tus entregas. El admin lo revisará y aprobará.</p>
+    <div id="reportar-liquidacion-body"></div>
+  </div>
+</div>
+
 
 <!-- ============ MODAL CONFIRMAR COBRO (se llena por JS) ============ -->
 <div id="confirm-payment-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 pointer-events-none">
@@ -867,6 +888,213 @@ function validateConfirmPayment() {
 
   btn.disabled = false;
 }
+
+/* ============================================================
+   🆕 REPORTAR LIQUIDACIÓN (domiciliario → admin)
+============================================================ */
+
+window.openReportarLiquidacion = async function () {
+  // 1. Validar que sea domiciliario
+  if (currentUserData?.role !== 'domiciliario') {
+    alert('Solo los domiciliarios pueden reportar liquidaciones.');
+    return;
+  }
+
+  // 2. Cargar el empleado vinculado al user
+  let empleado = null;
+  try {
+    const empSnap = await getDocs(query(
+      collection(db, 'empleados'),
+      where('userId', '==', currentUser.uid)
+    ));
+    if (!empSnap.empty) {
+      empleado = { id: empSnap.docs[0].id, ...empSnap.docs[0].data() };
+    }
+  } catch (e) {
+    console.warn('No se pudo cargar el empleado:', e);
+  }
+
+  // 3. Si no está vinculado, permitir usar el perfil del user como respaldo
+  const fallbackName = currentUserData.name || currentUser.email;
+  const fallbackDoc = currentUserData.employeeDoc || '';
+  const fallbackPhone = currentUserData.phone || '';
+
+  const employeeId = empleado?.id || currentUser.uid;
+  const employeeName = empleado?.name || fallbackName;
+  const employeeDoc = empleado?.documentNumber || fallbackDoc;
+  const employeePhone = empleado?.phone || fallbackPhone;
+
+  // 4. Guardar contexto
+  window.__reportarLidCtx = {
+    employeeId,
+    employeeName,
+    employeeDoc,
+    employeePhone,
+    storeId: empleado?.storeId || currentUserData.storeId || 'general',
+    storeName: empleado?.storeName || 'General'
+  };
+
+  // 5. Renderizar
+  const body = $('reportar-liquidacion-body');
+  if (!body) return;
+
+  const hoy = new Date().toISOString().split('T')[0];
+  const hace15 = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  body.innerHTML = `
+    <div class="bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-4 text-xs">
+      <p class="font-bold text-blue-700 mb-1">👤 Reportando como</p>
+      <p class="text-blue-600">${escapeHtml(employeeName)}</p>
+      ${employeeDoc ? `<p class="text-blue-600">Cédula: <b>${escapeHtml(employeeDoc)}</b></p>` : ''}
+      ${!empleado ? `<p class="text-amber-600 mt-1 text-[10px]">⚠️ No estás vinculado a un empleado. Se usará tu perfil de usuario.</p>` : ''}
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd block mb-1">Período desde *</label>
+        <input id="rl-period-from" type="date" value="${hace15}" class="w-full px-3 py-2 border rounded-lg text-sm">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd block mb-1">Período hasta *</label>
+        <input id="rl-period-to" type="date" value="${hoy}" class="w-full px-3 py-2 border rounded-lg text-sm">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold text-sd block mb-1">Cantidad de entregas</label>
+        <input id="rl-entries" type="number" min="0" value="0" class="w-full px-3 py-2 border rounded-lg text-sm font-mono text-right">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-sd block mb-1">Monto a cobrar *</label>
+        <input id="rl-amount" type="number" min="0" step="1000" value="" placeholder="0" class="w-full px-3 py-2 border rounded-lg text-sm font-mono font-bold text-lg text-right">
+      </div>
+    </div>
+
+    <label class="text-xs font-semibold text-sd block mb-1">Notas / detalle (opcional)</label>
+    <textarea id="rl-notes" rows="3" class="w-full px-3 py-2 border rounded-lg text-sm mb-4" placeholder="Ej: 25 entregas entre el 1 y el 15 de octubre. Zona norte."></textarea>
+
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4 text-xs">
+      <p class="text-amber-700">💡 Tu reporte quedará <b>pendiente de aprobación</b> por el administrador.</p>
+    </div>
+
+    <div class="flex gap-3">
+      <button onclick="closeReportarLiquidacion()" class="flex-1 bg-gray-100 text-sd py-2.5 rounded-lg hover:bg-gray-200 font-semibold">
+        Cancelar
+      </button>
+      <button id="rl-submit-btn" onclick="submitReportarLiquidacion()" class="flex-1 bg-[#0071E3] hover:bg-[#0077ED] text-white py-2.5 rounded-lg font-semibold">
+        📤 Enviar reporte
+      </button>
+    </div>
+  `;
+
+  const modal = $('reportar-liquidacion-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+};
+
+window.closeReportarLiquidacion = function () {
+  const modal = $('reportar-liquidacion-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  window.__reportarLidCtx = null;
+};
+
+window.submitReportarLiquidacion = async function () {
+  const ctx = window.__reportarLidCtx;
+  if (!ctx) return;
+
+  const periodFrom = $('rl-period-from')?.value;
+  const periodTo = $('rl-period-to')?.value;
+  const entriesCount = Number($('rl-entries')?.value || 0);
+  const reportedAmount = Number($('rl-amount')?.value || 0);
+  const notes = ($('rl-notes')?.value || '').trim();
+
+  // Validaciones
+  if (!periodFrom || !periodTo) return alert('⚠️ El período es obligatorio.');
+  if (periodFrom > periodTo) return alert('⚠️ La fecha "desde" no puede ser mayor a "hasta".');
+  if (reportedAmount <= 0) return alert('⚠️ El monto debe ser mayor a 0.');
+
+  const btn = $('rl-submit-btn');
+  if (btn) { btn.disabled = true; btn.innerText = '⏳ Enviando...'; }
+
+  try {
+    // Idempotencia: evitar reportes duplicados en el mismo período
+    const dupQuery = query(
+      collection(db, 'liquidacionesDomiciliario'),
+      where('employeeId', '==', ctx.employeeId),
+      where('periodFrom', '==', periodFrom),
+      where('periodTo', '==', periodTo),
+      where('status', '==', 'pending')
+    );
+    const dupSnap = await getDocs(dupQuery);
+
+    if (!dupSnap.empty) {
+      if (btn) { btn.disabled = false; btn.innerText = '📤 Enviar reporte'; }
+      return alert('⚠️ Ya tienes una liquidación pendiente para ese mismo período.\n\nEspera a que el admin la revise antes de crear otra.');
+    }
+
+    const periodoLabel = `${periodFrom} → ${periodTo}`;
+
+    const ref = await addDoc(collection(db, 'liquidacionesDomiciliario'), {
+      // Domiciliario
+      employeeId: ctx.employeeId,
+      employeeName: ctx.employeeName,
+      employeeDoc: ctx.employeeDoc,
+      employeePhone: ctx.employeePhone,
+
+      // Período
+      periodFrom,
+      periodTo,
+      periodLabel: periodoLabel,
+      entriesCount,
+
+      // Monto reportado
+      reportedAmount,
+      reportedAt: serverTimestamp(),
+      reportedBy: currentUser.email,
+      reportedByName: currentUserData.name || currentUser.email,
+
+      // Notas
+      notes,
+
+      // Estado
+      status: 'pending',
+
+      // Tienda
+      storeId: ctx.storeId,
+      storeName: ctx.storeName,
+
+      // Meta
+      createdAt: serverTimestamp(),
+      createdBy: currentUser.email,
+      updatedAt: serverTimestamp()
+    });
+
+    // Auditoría
+    await audit({
+      action: 'create',
+      collection: 'liquidacionesDomiciliario',
+      docId: ref.id,
+      after: { employeeName: ctx.employeeName, reportedAmount, periodFrom, periodTo },
+      note: `Liquidación reportada por ${ctx.employeeName}: ${fmt(reportedAmount)} · ${periodoLabel}`
+    });
+
+    // Invalidar caches para que contabilidad lo vea fresco
+    window.SmartecCache.invalidate('liquidacionesDomiciliario_all');
+
+    closeReportarLiquidacion();
+    alert(`✅ Reporte enviado\n\nMonto: ${fmt(reportedAmount)}\nPeríodo: ${periodoLabel}\n\nEl administrador lo revisará para su aprobación.`);
+  } catch (e) {
+    console.error('[Reportar liquidación] Error:', e);
+    alert('❌ Error: ' + (e.message || 'desconocido'));
+    if (btn) { btn.disabled = false; btn.innerText = '📤 Enviar reporte'; }
+  }
+};
+
 
 /* ============================================================
    🆕 CERRAR REGISTRO DE CARTERA AL CONFIRMAR EL COBRO

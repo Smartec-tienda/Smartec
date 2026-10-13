@@ -2232,6 +2232,48 @@
 
           <button id="save-general-settings" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm">Guardar</button>
         </div>
+                <!-- 🆕 Configuración de domicilios -->
+        <div class="bg-white p-6 rounded-xl shadow">
+          <h3 class="font-bold text-sd mb-4">🚚 Domicilios</h3>
+          <p class="text-xs text-gray-500 mb-4">Configuración contable de los gastos por domicilios y liquidaciones a domiciliarios.</p>
+
+          <label class="text-xs font-semibold text-sd block mb-1">Cuenta PUC para gastos de domicilios</label>
+          <input
+            id="set-pucDomicilios"
+            type="text"
+            placeholder="513505"
+            class="w-full px-3 py-2 border rounded-lg mt-1 mb-1 font-mono"
+          >
+          <p class="text-[10px] text-gray-400 mb-3">
+            Cuenta contable donde se registrarán los pagos a domiciliarios. Por defecto: <b>513505 · Domicilios y mensajería</b>
+          </p>
+
+          <label class="text-xs font-semibold text-sd block mb-1">Nombre de la cuenta</label>
+          <input
+            id="set-pucDomiciliosName"
+            type="text"
+            placeholder="Domicilios y mensajería"
+            class="w-full px-3 py-2 border rounded-lg mt-1 mb-3"
+          >
+          <p class="text-[10px] text-gray-400 mb-3">
+            Nombre descriptivo de la cuenta. Se usa para mostrar en comprobantes y reportes.
+          </p>
+
+          <label class="text-xs font-semibold text-sd block mb-1">Cuenta PUC para pagos de domicilios (caja/bancos)</label>
+          <input
+            id="set-pucDomiciliosPayment"
+            type="text"
+            placeholder="110505"
+            class="w-full px-3 py-2 border rounded-lg mt-1 mb-1 font-mono"
+          >
+          <p class="text-[10px] text-gray-400 mb-3">
+            Cuenta de caja/bancos que se usa para pagar las liquidaciones. Por defecto: <b>110505 · Caja general</b>
+          </p>
+
+          <button id="save-domicilios-settings" class="bg-sd text-white px-4 py-2 rounded-lg hover:bg-sl text-sm font-semibold">
+            💾 Guardar configuración de domicilios
+          </button>
+        </div>
         <div class="bg-white p-6 rounded-xl shadow">
           <h3 class="font-bold text-sd mb-4">Impuestos e IVA</h3>
           <label class="flex items-center gap-2 text-sm mb-3">
