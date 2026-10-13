@@ -65,7 +65,7 @@ exports.createUserAdmin = onCall({ cors: true, region: 'us-central1' }, async (r
     );
   }
 
-  
+
   try {
     // 4. Crear usuario en Firebase Auth
     const userRecord = await admin.auth().createUser({
@@ -415,3 +415,165 @@ exports.verifyWebAuthnRegistration = onCall(
     };
   }
 );
+
+/* ============================================================
+   deleteUser
+   Elimina un usuario completamente:
+     - Deshabilita y elimina su cuenta en Firebase Auth
+     - Marca el documento en Firestore como eliminado (soft delete)
+     - Conserva todo el historial (ventas, comprobantes, etc.)
+   Solo puede ser invocado por un superadmin autenticado.
+============================================================ */
+exports.deleteUser = onCall({ cors: true, region: 'us-central1' }, async (request) => {
+  const { auth, data } = request;
+
+  // 1. Verificar autenticación
+  if (!auth) {
+    throw new HttpsError(
+      "unauthenticated",
+      "Debes iniciar sesión para eliminar usuarios."
+    );
+  }
+
+  // 2. Verificar que quien llama es superadmin
+  const callerUid = auth.uid;
+  const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
+  if (!callerDoc.exists) {
+    throw new HttpsError("permission-denied", "Tu perfil de usuario no existe.");
+  }
+  const callerData = callerDoc.data();
+  if (callerData.role !== "superadmin") {
+    throw new HttpsError("permission-denied", "Solo el superadmin puede eliminar usuarios.");
+  }
+
+  // 3. Validar el UID a eliminar
+  const targetUid = (data.uid || "").trim();
+  if (!targetUid) {
+    throw new HttpsError("invalid-argument", "El UID es obligatorio.");
+  }
+
+  // 4. No permitir eliminar el propio usuario
+  if (targetUid === callerUid) {
+    throw new HttpsError(
+      "invalid-argument",
+      "No puedes eliminar tu propio usuario."
+    );
+  }
+
+  // 5. Leer el usuario target
+  const targetDoc = await admin.firestore().collection("users").doc(targetUid).get();
+  if (!targetDoc.exists) {
+    throw new HttpsError("not-found", "El usuario no existe.");
+  }
+  const targetData = targetDoc.data();
+
+  // 6. Si ya estaba eliminado, retornar idempotente
+  if (targetData.deleted === true) {
+    return {
+      success: true,
+      uid: targetUid,
+      email: targetData.email || null,
+      alreadyDeleted: true,
+      note: "El usuario ya estaba eliminado previamente."
+    };
+  }
+
+  // 7. No permitir eliminar al último superadmin activo
+  if (targetData.role === "superadmin" && targetData.active !== false) {
+    const superadminsSnap = await admin.firestore()
+      .collection("users")
+      .where("role", "==", "superadmin")
+      .where("active", "==", true)
+      .where("deleted", "!=", true)
+      .get();
+
+    // Contar cuántos superadmins activos quedan además del target
+    let activeSuperadmins = 0;
+    superadminsSnap.forEach(doc => {
+      if (doc.id !== targetUid && doc.data().deleted !== true) {
+        activeSuperadmins++;
+      }
+    });
+
+    if (activeSuperadmins === 0) {
+      throw new HttpsError(
+        "failed-precondition",
+        "No puedes eliminar al último superadmin activo. Debe quedar al menos uno para administrar el sistema."
+      );
+    }
+  }
+
+  const targetEmail = targetData.email || null;
+  const targetName = targetData.name || targetEmail || 'Usuario';
+  const targetRole = targetData.role || 'desconocido';
+
+  // 8. Marcar como eliminado en Firestore (soft delete)
+  try {
+    await admin.firestore().collection("users").doc(targetUid).update({
+      deleted: true,
+      deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+      deletedBy: auth.token.email || null,
+      active: false,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) {
+    console.error("Error marcando usuario como eliminado en Firestore:", e);
+    throw new HttpsError("internal", "Error al marcar el usuario como eliminado.");
+  }
+
+  // 9. Eliminar de Firebase Auth
+  let authDeleted = false;
+  let authError = null;
+  try {
+    await admin.auth().deleteUser(targetUid);
+    authDeleted = true;
+  } catch (e) {
+    // Si el usuario ya no existe en Auth, no es error crítico
+    if (e.code === "auth/user-not-found") {
+      authDeleted = true;
+    } else {
+      authError = e.message;
+      console.error("Error eliminando de Firebase Auth:", e);
+    }
+  }
+
+  // 10. Auditoría
+  try {
+    await admin.firestore().collection("auditLog").add({
+      action: "delete",
+      collection: "users",
+      docId: targetUid,
+      userId: callerUid,
+      userEmail: auth.token.email || null,
+      userRole: callerData.role,
+      storeId: targetData.storeId || null,
+      before: {
+        name: targetData.name,
+        email: targetData.email,
+        role: targetData.role,
+        active: targetData.active,
+        storeId: targetData.storeId
+      },
+      after: {
+        deleted: true,
+        authDeleted,
+        authError
+      },
+      note: `Usuario eliminado: ${targetName} (${targetRole})${targetEmail ? ' · ' + targetEmail : ''}${authDeleted ? ' · Auth OK' : ' · Auth FAIL: ' + authError}`,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) {
+    console.warn("Auditoría falló:", e);
+  }
+
+  return {
+    success: true,
+    uid: targetUid,
+    email: targetEmail,
+    authDeleted: authDeleted,
+    authError: authError,
+    note: authDeleted
+      ? "Usuario eliminado correctamente."
+      : "Usuario marcado como eliminado, pero hubo un error al eliminar de Auth: " + authError
+  };
+});

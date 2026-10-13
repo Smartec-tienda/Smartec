@@ -4902,12 +4902,52 @@ function renderSellers() {
   const filter = $('sellers-store-filter').value;  
   const tb = $('sellers-tbody');
   let list = users;
+
+  // 🆕 Filtrar usuarios eliminados (soft delete)
+  list = list.filter(u => u.deleted !== true);
+
   if (filter !== 'all') list = list.filter(u => u.storeId === filter);
+
+  // 🆕 Ordenar: activos primero, luego por nombre
+  list = list.slice().sort((a, b) => {
+    const aAct = a.active !== false ? 0 : 1;
+    const bAct = b.active !== false ? 0 : 1;
+    if (aAct !== bAct) return aAct - bAct;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  const myUid = currentUser?.uid;
 
   tb.innerHTML = list.length ? list.map(u => {
     const store = stores.find(s => s.storeId === u.storeId);
-    return `<tr class="border-b hover:bg-gray-50">
-      <td class="p-3 font-medium text-sd">${escapeHtml(u.name) || '-'}</td>
+    const isActive = u.active !== false;
+    const isMe = u.id === myUid;
+
+    // Badge de estado
+    const statusBadge = isActive
+      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-green-100 text-green-700 font-semibold">✓ Activo</span>'
+      : '<span class="text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-700 font-semibold">⏸ Suspendido</span>';
+
+    // Botones de acción
+    const btnEditar = `<button onclick='editSeller("${u.id}")' class="text-sl hover:underline mr-2 text-xs">Editar</button>`;
+
+    const btnSuspender = isMe
+      ? '<span class="text-[10px] text-gray-400 italic mr-2" title="No puedes suspender tu propio usuario">—</span>'
+      : (isActive
+          ? `<button onclick='toggleSellerActive("${u.id}")' class="text-orange-500 hover:underline mr-2 text-xs" title="Suspender acceso">⏸ Suspender</button>`
+          : `<button onclick='toggleSellerActive("${u.id}")' class="text-green-600 hover:underline mr-2 text-xs" title="Reactivar acceso">▶ Reactivar</button>`
+        );
+
+    // 🆕 Botón Eliminar (solo si no soy yo)
+    const btnEliminar = isMe
+      ? '<span class="text-[10px] text-gray-400 italic" title="No puedes eliminar tu propio usuario">—</span>'
+      : `<button onclick='deleteSeller("${u.id}")' class="text-red-500 hover:underline text-xs" title="Eliminar usuario definitivamente">🗑 Eliminar</button>`;
+
+    return `<tr class="border-b hover:bg-gray-50 ${!isActive ? 'bg-gray-50 opacity-70' : ''}">
+      <td class="p-3 font-medium text-sd">
+        ${escapeHtml(u.name) || '-'}
+        ${isMe ? '<span class="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold ml-1">TÚ</span>' : ''}
+      </td>
       <td class="p-3 text-gray-500 text-xs">${escapeHtml(u.email) || '-'}</td>
       <td class="p-3"><span class="text-xs px-2 py-1 rounded ${
         u.role==='superadmin'?'bg-purple-100 text-purple-700':
@@ -4931,7 +4971,7 @@ function renderSellers() {
           `;
         })()}
       </td>
-            <td class="p-3 text-center">
+      <td class="p-3 text-center">
         <div class="text-xs font-semibold">${((u.commissionRate||0)*100).toFixed(1)}%</div>
         ${Number(u.goalAmount) > 0 ? (() => {
           const now = new Date();
@@ -4954,12 +4994,195 @@ function renderSellers() {
           `;
         })() : '<div class="text-[10px] text-gray-300 mt-1">Sin meta</div>'}
       </td>
+      <td class="p-3 text-center">${statusBadge}</td>
       <td class="p-3 text-right whitespace-nowrap">
-        <button onclick='editSeller("${u.id}")' class="text-sl hover:underline mr-2">Editar</button>
+        ${btnEditar}
+        ${btnSuspender}
+        ${btnEliminar}
       </td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="p-6 text-center text-gray-400">Sin usuarios</td></tr>';
+  }).join('') : '<tr><td colspan="8" class="p-6 text-center text-gray-400">Sin usuarios</td></tr>';
 }
+
+/* ============================================================
+   🆕 SUSPENDER / REACTIVAR USUARIO
+============================================================ */
+window.toggleSellerActive = async (uid) => {
+  // 1. Buscar usuario
+  const u = users.find(x => x.id === uid);
+  if (!u) {
+    alert('⛔ Usuario no encontrado.');
+    return;
+  }
+
+  // 2. No permitir suspenderse a sí mismo
+  if (currentUser && u.id === currentUser.uid) {
+    alert('⛔ No puedes suspender tu propio usuario.');
+    return;
+  }
+
+  // 3. No permitir suspender al último superadmin activo
+  if (u.role === 'superadmin' && u.active !== false) {
+    const otrosSuperadmins = users.filter(x =>
+      x.role === 'superadmin' &&
+      x.id !== uid &&
+      x.active !== false
+    );
+    if (otrosSuperadmins.length === 0) {
+      alert('⛔ No puedes suspender al ÚLTIMO superadmin activo.\n\nDebe quedar al menos uno para administrar el sistema.');
+      return;
+    }
+  }
+
+  const isActive = u.active !== false;
+  const newState = !isActive;
+  const actionLabel = newState ? 'reactivar' : 'suspender';
+
+  // 4. Confirmar
+  const confirmMsg =
+    `¿${newState ? 'REACTIVAR' : 'SUSPENDER'} a este usuario?\n\n` +
+    `Nombre: ${u.name || u.email}\n` +
+    `Rol: ${u.role}\n` +
+    `Email: ${u.email}\n\n` +
+    (newState
+      ? '✅ El usuario podrá iniciar sesión nuevamente.'
+      : '⏸ El usuario NO podrá iniciar sesión mientras esté suspendido.\n' +
+        'Sus datos, ventas y movimientos se conservan intactos.');
+
+  if (!confirm(confirmMsg)) return;
+
+  // 5. Actualizar en Firestore
+  try {
+    await updateDoc(doc(db, 'users', uid), {
+      active: newState,
+      suspendedAt: newState ? null : serverTimestamp(),
+      suspendedBy: newState ? null : (currentUser?.email || null),
+      updatedAt: serverTimestamp()
+    });
+
+    // 6. Auditoría
+    await audit({
+      action: 'update',
+      collection: 'users',
+      docId: uid,
+      before: { active: isActive },
+      after: { active: newState },
+      note: `Usuario ${actionLabel}: ${u.name || u.email} (${u.role})${!newState ? ' · Motivo: suspensión manual' : ''}`
+    });
+
+    // 7. Actualizar estado local
+    const idx = users.findIndex(x => x.id === uid);
+    if (idx !== -1) {
+      users[idx].active = newState;
+      users[idx].suspendedAt = newState ? null : new Date();
+      users[idx].suspendedBy = newState ? null : (currentUser?.email || null);
+    }
+
+    // 8. Invalidar cache
+    window.SmartecCache.invalidate('users');
+
+    // 9. Re-render
+    renderSellers();
+
+    // 10. Feedback
+    alert(`✅ Usuario ${actionLabel}do correctamente.`);
+
+  } catch (e) {
+    console.error('[Admin] Error cambiando estado del usuario:', e);
+    alert('❌ Error:\n\n' + (e.message || 'desconocido'));
+  }
+};
+
+
+/* ============================================================
+   🆕 ELIMINAR USUARIO DEFINITIVAMENTE
+   Llama a la Cloud Function deleteUser y maneja la UI.
+============================================================ */
+window.deleteSeller = async (uid) => {
+  // 1. Buscar usuario
+  const u = users.find(x => x.id === uid);
+  if (!u) {
+    alert('⛔ Usuario no encontrado.');
+    return;
+  }
+
+  // 2. No permitir eliminarse a sí mismo
+  if (currentUser && u.id === currentUser.uid) {
+    alert('⛔ No puedes eliminar tu propio usuario.');
+    return;
+  }
+
+  // 3. Advertencia fuerte
+  const warning =
+    `⚠️ ELIMINAR DEFINITIVAMENTE\n\n` +
+    `Nombre: ${u.name || u.email}\n` +
+    `Rol: ${u.role}\n` +
+    `Email: ${u.email}\n\n` +
+    `Esta acción:\n` +
+    `• Elimina la cuenta de Firebase Auth\n` +
+    `• Marca el usuario como eliminado\n` +
+    `• El usuario NO podrá volver a iniciar sesión\n` +
+    `• Sus ventas, comprobantes y movimientos SE CONSERVAN para histórico\n\n` +
+    `Si solo quieres bloquear el acceso temporalmente, usa "Suspender" en su lugar.\n\n` +
+    `Para confirmar, escribe la palabra ELIMINAR:`;
+
+  const typed = prompt(warning);
+  if (typed !== 'ELIMINAR') {
+    if (typed !== null) alert('Cancelado. No se escribió "ELIMINAR" correctamente.');
+    return;
+  }
+
+  // 4. Llamar a la Cloud Function
+  try {
+    const deleteUserFn = httpsCallable(functions, 'deleteUser');
+    const result = await deleteUserFn({ uid });
+
+    if (!result.data?.success) {
+      throw new Error('La función no confirmó la eliminación.');
+    }
+
+    // 5. Actualizar estado local (marcar como eliminado)
+    const idx = users.findIndex(x => x.id === uid);
+    if (idx !== -1) {
+      users[idx].deleted = true;
+      users[idx].active = false;
+    }
+
+    // 6. Invalidar cache
+    window.SmartecCache.invalidate('users');
+
+    // 7. Re-render (filtrar eliminados)
+    renderSellers();
+
+    // 8. Feedback
+    const note = result.data.note || 'Usuario eliminado.';
+    alert(`✅ ${note}`);
+
+    // 9. Si hubo error en Auth, avisar
+    if (result.data.authError) {
+      console.warn('[Admin] Error en Auth:', result.data.authError);
+      alert(
+        `⚠️ Aviso:\n\n` +
+        `El usuario quedó marcado como eliminado en Firestore, pero hubo un error al eliminarlo de Firebase Auth:\n\n` +
+        `${result.data.authError}\n\n` +
+        `Revisa Firebase Console → Authentication → Users manualmente.`
+      );
+    }
+
+  } catch (e) {
+    console.error('[Admin] Error eliminando usuario:', e);
+    let msg = e.message || 'Error desconocido';
+    if (e.code === 'functions/permission-denied') {
+      msg = 'Solo el superadmin puede eliminar usuarios.';
+    } else if (e.code === 'functions/failed-precondition') {
+      msg = e.message || 'No se puede eliminar al último superadmin activo.';
+    } else if (e.code === 'functions/not-found') {
+      msg = 'El usuario no existe.';
+    }
+    alert('❌ Error:\n\n' + msg);
+  }
+};
+
 
 /* ============================================================
    🆕 Cambio de rol en el formulario de usuario
