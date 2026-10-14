@@ -1522,23 +1522,49 @@ function renderProductCard(p, index = 0) {
   `;
 }
 
-const searchInputs = [$('search-input'), $('search-input-mobile')];
-searchInputs.forEach(inp => {
-  if (!inp) return;
-  let timer;
-  inp.addEventListener('input', () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      searchInputs.forEach(i => { if (i && i !== inp) i.value = inp.value; });
+/* ============================================================
+   🆕 BUSCADOR — Delegación de eventos
+   Funciona aunque el header se inyecte DESPUÉS de cargar el módulo.
+============================================================ */
+(function initSearchDelegation() {
+  let searchTimer = null;
+
+  // Delegación global: captura cualquier input con id search-input
+  // o search-input-mobile, sin importar cuándo se cree.
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (!t || (t.id !== 'search-input' && t.id !== 'search-input-mobile')) return;
+
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      const v = t.value;
+
+      // Sincronizar desktop ↔ móvil
+      document.querySelectorAll('#search-input, #search-input-mobile').forEach(el => {
+        if (el !== t) el.value = v;
+      });
+
+      // 🆕 Guardar en el filtro y re-renderizar
+      filters.search = v.trim();
       renderProducts();
     }, 250);
   });
-});
 
-$('mobile-search-toggle')?.addEventListener('click', () => {
-  $('mobile-search').classList.toggle('hidden');
-  if (!$('mobile-search').classList.contains('hidden')) $('search-input-mobile').focus();
-});
+  // Toggle del buscador móvil (delegado también)
+  document.addEventListener('click', (e) => {
+    const toggle = e.target.closest('#mobile-search-toggle');
+    if (!toggle) return;
+
+    const mobileWrap = document.getElementById('mobile-search');
+    if (!mobileWrap) return;
+
+    mobileWrap.classList.toggle('hidden');
+    if (!mobileWrap.classList.contains('hidden')) {
+      const inp = document.getElementById('search-input-mobile');
+      if (inp) inp.focus();
+    }
+  });
+})();
 
 window.clearAllFilters = () => {
   activeGroup = 'all';

@@ -897,6 +897,95 @@ window.blockedChangeUser = async () => {
   }
 };
 
+/* ============================================================
+   🆕 BANNER DE SUPERADMIN EN MODO AUDITORÍA
+   Se inserta al inicio del <main> y permite activar modo prueba.
+============================================================ */
+function showSuperadminBanner() {
+  // Evitar duplicados
+  if (document.getElementById('superadmin-audit-banner')) return;
+
+  const main = document.querySelector('#app-screen main');
+  if (!main) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'superadmin-audit-banner';
+  banner.className = 'mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-3xl p-4 shadow-apple';
+
+  banner.innerHTML = `
+    <div class="flex items-start gap-3 flex-wrap">
+      <div class="text-3xl">🔍</div>
+      <div class="flex-1 min-w-0">
+        <p class="font-bold text-amber-800 text-sm">Modo Auditoría</p>
+        <p class="text-xs text-amber-700 mt-1">
+          Estás viendo el portal de mayoristas como superadmin.
+          El carrito está deshabilitado para no ensuciar datos reales.
+        </p>
+      </div>
+      <button onclick="toggleSuperadminTestMode()" id="superadmin-test-toggle"
+        class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition">
+        🧪 Activar modo prueba
+      </button>
+    </div>
+  `;
+
+  main.insertBefore(banner, main.firstChild);
+}
+
+/* ============================================================
+   🆕 TOGGLE — Activar/desactivar modo prueba del superadmin
+============================================================ */
+window.toggleSuperadminTestMode = () => {
+  const current = window.__MAY_MODE || 'audit';
+  const next = current === 'audit' ? 'test' : 'audit';
+  window.__MAY_MODE = next;
+
+  const banner = document.getElementById('superadmin-audit-banner');
+  const btn = document.getElementById('superadmin-test-toggle');
+
+  if (next === 'test') {
+    // Cambiar banner a modo prueba
+    banner.className = 'mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-3xl p-4 shadow-apple';
+    banner.innerHTML = `
+      <div class="flex items-start gap-3 flex-wrap">
+        <div class="text-3xl">🧪</div>
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-green-800 text-sm">Modo Prueba Activo</p>
+          <p class="text-xs text-green-700 mt-1">
+            Puedes agregar al carrito y enviar cotizaciones.
+            Se marcarán con <b>isTest: true</b> para que las identifiques.
+          </p>
+        </div>
+        <button onclick="toggleSuperadminTestMode()"
+          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition">
+          🔍 Volver a auditoría
+        </button>
+      </div>
+    `;
+    showMayToast('🧪 Modo prueba activado');
+  } else {
+    // Volver a modo auditoría
+    banner.className = 'mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-3xl p-4 shadow-apple';
+    banner.innerHTML = `
+      <div class="flex items-start gap-3 flex-wrap">
+        <div class="text-3xl">🔍</div>
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-amber-800 text-sm">Modo Auditoría</p>
+          <p class="text-xs text-amber-700 mt-1">
+            Estás viendo el portal de mayoristas como superadmin.
+            El carrito está deshabilitado para no ensuciar datos reales.
+          </p>
+        </div>
+        <button onclick="toggleSuperadminTestMode()" id="superadmin-test-toggle"
+          class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition">
+          🧪 Activar modo prueba
+        </button>
+      </div>
+    `;
+    showMayToast('🔍 Modo auditoría activado');
+  }
+};
+
 /* ============ LOGOUT ============ */
 window.logout = async () => {
   try {
@@ -989,9 +1078,12 @@ if (!user) {
     currentUserData = null;
   }
 
-  // Validar rol
-  if (!currentUserData || currentUserData.role !== 'mayorista') {
-    console.warn('[Auth] Usuario no es mayorista:', currentUserData?.role);
+  // 🆕 Detectar si es superadmin (modo auditoría)
+  const isSuperadmin = currentUserData?.role === 'superadmin';
+
+  // 🆕 Validar rol: mayorista O superadmin
+  if (!currentUserData || (currentUserData.role !== 'mayorista' && !isSuperadmin)) {
+    console.warn('[Auth] Usuario sin acceso:', currentUserData?.role);
     $('login-screen').classList.add('hidden');
     $('login-screen').classList.remove('flex');
     $('blocked-title').innerText = 'Acceso restringido';
@@ -999,7 +1091,6 @@ if (!user) {
     $('blocked-screen').classList.remove('hidden');
     $('blocked-screen').classList.add('flex');
 
-        // 🆕 Poblar email del usuario bloqueado
     const infoWrap = $('blocked-user-info');
     const emailEl = $('blocked-user-email');
     if (infoWrap && emailEl && user?.email) {
@@ -1007,7 +1098,6 @@ if (!user) {
       infoWrap.classList.remove('hidden');
     }
 
-    // 🆕 Ocultar splash a la fuerza
     document.body.classList.remove('app-loading');
     const splashEl = document.getElementById('app-splash');
     if (splashEl) {
@@ -1018,7 +1108,93 @@ if (!user) {
     return;
   }
 
-  // 🆕 Buscar el doc del cliente mayorista por linkedUserId (uid)
+  // ============================================================
+  // 🆕 CASO 1: SUPERADMIN — Modo auditoría / prueba
+  // ============================================================
+  if (isSuperadmin) {
+    console.log('[Auth] Superadmin en modo auditoría');
+
+    // 🆕 Modo global de auditoría
+    window.__MAY_MODE = 'audit';        // 'audit' | 'test'
+    window.__MAY_IS_SUPERADMIN = true;
+
+    // 🆕 Crear un "cliente ficticio" para que el resto del código funcione
+    currentCustomer = {
+      id: '__superadmin__',
+      name: currentUserData.name || user.email,
+      email: user.email,
+      phone: '—',
+      wholesale: {
+        companyName: '🔍 Vista Superadmin (Auditoría)',
+        nit: '—',
+        status: 'activo',
+        paymentTerms: 'net_30',
+        discountBase: 0,
+        linkedUserId: user.uid
+      }
+    };
+
+    // Mostrar app
+    $('login-screen').classList.add('hidden');
+    $('login-screen').classList.remove('flex');
+    $('blocked-screen').classList.add('hidden');
+    $('blocked-screen').classList.remove('flex');
+    $('loading-screen').classList.add('hidden');
+
+    $('app-user-name').innerText = currentUserData.name || user.email;
+
+    $('app-screen').classList.remove('hidden');
+    $('app-screen').classList.add('flex');
+
+    document.body.classList.remove('app-loading');
+    const splashEl = document.getElementById('app-splash');
+    if (splashEl) {
+      splashEl.style.opacity = '0';
+      splashEl.style.pointerEvents = 'none';
+      splashEl.style.display = 'none';
+    }
+
+    // 🆕 Banner de auditoría (se inserta dinámicamente)
+    showSuperadminBanner();
+
+    // 🆕 Cargar datos del portal
+    try {
+      await loadPortalLogo();
+      await loadCategories();
+      await loadWholesaleProducts();
+
+      renderWelcomeCard();
+      renderCategoryFilters();
+      renderProducts();
+
+      const loadingEl = $('may-products-loading');
+      if (loadingEl) loadingEl.classList.add('hidden');
+    } catch (err) {
+      console.error('[Portal MAY/Superadmin] Error cargando datos:', err);
+      const grid = $('may-products-grid');
+      if (grid) {
+        grid.innerHTML = `
+          <div class="col-span-full text-center py-12">
+            <p class="text-3xl mb-2">⚠️</p>
+            <p class="text-sm font-semibold text-[#0A2A4A] mb-1">No se pudo cargar el catálogo</p>
+            <p class="text-xs text-[#6E6E73]">${err.message || 'Error desconocido'}</p>
+          </div>
+        `;
+      }
+      const loadingEl = $('may-products-loading');
+      if (loadingEl) loadingEl.classList.add('hidden');
+    }
+
+    return;
+  }
+
+  // ============================================================
+  // CASO 2: MAYORISTA NORMAL — Flujo original
+  // ============================================================
+  window.__MAY_MODE = 'mayorista';
+  window.__MAY_IS_SUPERADMIN = false;
+
+  // Buscar el doc del cliente mayorista por linkedUserId (uid)
   let foundCustomer = null;
   try {
     const q = query(
@@ -1043,7 +1219,6 @@ if (!user) {
     $('blocked-screen').classList.remove('hidden');
     $('blocked-screen').classList.add('flex');
 
-    // 🆕 Ocultar splash a la fuerza
     document.body.classList.remove('app-loading');
     const splashEl = document.getElementById('app-splash');
     if (splashEl) {
@@ -1066,7 +1241,6 @@ if (!user) {
     $('blocked-screen').classList.remove('hidden');
     $('blocked-screen').classList.add('flex');
 
-    // 🆕 Ocultar splash a la fuerza
     document.body.classList.remove('app-loading');
     const splashEl = document.getElementById('app-splash');
     if (splashEl) {
@@ -1482,6 +1656,12 @@ let mayPickerVariant = null;
 let mayPickerQtyVal = 1;
 
 window.openMayPicker = (productId) => {
+  // 🆕 Bloquear en modo auditoría
+  if (window.__MAY_MODE === 'audit') {
+    showMayToast('🔍 Modo Auditoría · Activa el modo prueba para agregar productos');
+    return;
+  }
+
   const p = products.find(x => x.id === productId);
   if (!p) return;
 
@@ -2222,6 +2402,13 @@ window.submitQuoteRequest = async () => {
 
       // 🆕 Datos del comprador final (opcional)
       finalCustomer: finalCustomer,   // null si todos los campos vacíos
+
+      // 🆕 Marcar como prueba si es superadmin en modo prueba
+      isTest: window.__MAY_MODE === 'test',
+      createdByRole: currentUserData?.role || null,
+      createdByUid: currentUser?.uid || null,
+      createdByEmail: currentUser?.email || null,
+      createdByName: currentUserData?.name || null,
 
       // Estado
       status: 'pendiente',   // 'pendiente' | 'aprobada' | 'rechazada' | 'convertida'

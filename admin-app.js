@@ -6614,6 +6614,12 @@ function renderSales() {
   const tb = $('sales-tbody');
   let list = sales.slice();
 
+  // 🆕 Excluir ventas de prueba por defecto (salvo que el filtro lo pida)
+  const includeTest = document.getElementById('sales-include-test')?.checked === true;
+  if (!includeTest) {
+    list = list.filter(s => s.isTest !== true);
+  }
+
   if (storeF !== 'all') list = list.filter(s => s.storeId === storeF);
   if (methodF !== 'all') list = list.filter(s => s.paymentMethod === methodF);
   if (statusF !== 'all') {
@@ -6682,9 +6688,18 @@ function renderSales() {
       : (s.paymentStatus === 'pending' ? '⏳ Sin cobrar' : '');
     const paidAtClass = s.paidAt?.seconds ? 'text-green-600' : 'text-amber-600';
 
-    return `<tr class="border-b hover:bg-gray-50 ${s.paymentStatus==='pending'?'bg-amber-50/40':''}">
+    // 🆕 Badge y estilo para ventas de prueba
+    const isTest = s.isTest === true;
+    const testBadge = isTest
+      ? '<span class="inline-block text-[9px] bg-purple-100 text-purple-700 border border-purple-300 px-1.5 py-0.5 rounded font-bold ml-1">🧪 PRUEBA</span>'
+      : '';
+    const rowClass = isTest
+      ? 'bg-purple-50/40 border-l-4 border-purple-400'
+      : (s.paymentStatus === 'pending' ? 'bg-amber-50/40' : '');
+
+    return `<tr class="border-b hover:bg-gray-50 ${rowClass}">
       <td class="p-3 text-xs font-mono font-semibold text-sd whitespace-nowrap">
-        ${escapeHtml(s.documentNumber) || '<span class="text-gray-300">—</span>'}
+        ${escapeHtml(s.documentNumber) || '<span class="text-gray-300">—</span>'}${testBadge}
       </td>
       <td class="p-3 text-xs text-gray-500">
         ${fmtDate(s.createdAt)}
@@ -6750,7 +6765,22 @@ window.viewSale = async (id) => {
   const store = stores.find(x => x.storeId === s.storeId);
   const seller = users.find(u => u.id === s.sellerUid);
 
+  // 🆕 Banner de prueba (solo si aplica)
+  const isTestSale = s.isTest === true;
+  const testBanner = isTestSale
+    ? `
+      <div class="bg-purple-50 border-2 border-purple-300 rounded-2xl p-3 mb-4 text-xs">
+        <p class="font-bold text-purple-800 mb-1">🧪 Venta de prueba</p>
+        <p class="text-purple-600">
+          Esta venta fue creada a partir de una cotización de prueba.
+          Los datos son ficticios.
+        </p>
+      </div>
+    `
+    : '';
+
   $('sale-detail').innerHTML = `
+    ${testBanner}
     <div class="grid grid-cols-2 gap-3 text-sm mb-4">
       <div><p class="text-xs text-gray-400">Fecha</p><p class="font-semibold">${fmtDate(s.createdAt)}</p></div>
       <div><p class="text-xs text-gray-400">Estado</p><p class="font-semibold">${s.status||'pendiente'}</p></div>
@@ -13888,7 +13918,14 @@ window.clearReportFilters = () => {
 
 /* ============ FILTRADO ============ */
 function getFilteredSales() {
-  let list = sales.filter(s => s.status !== 'anulada');
+  // 🆕 Excluir ventas de prueba de los reportes (salvo que las pidan explícitamente)
+  const includeTest = document.getElementById('sales-include-test')?.checked === true;
+
+  let list = sales.filter(s => {
+    if (s.status === 'anulada') return false;
+    if (!includeTest && s.isTest === true) return false;
+    return true;
+  });
 
   // 🆕 Determinar qué fecha usar como referencia
   const dateMode = $('rep-date-mode')?.value || 'created';
@@ -16968,6 +17005,363 @@ window.forceRefreshCache = async () => {
 
   alert('✅ Datos actualizados desde el servidor');
 };
+
+/* ============================================================
+   🆕 LIMPIAR DATOS DE PRUEBA
+   Elimina cotizaciones, ventas, comprobantes y movimientos
+   marcados con isTest: true.
+============================================================ */
+
+/**
+ * Abre el modal y muestra el resumen de cuántos datos se van a eliminar.
+ */
+window.openCleanupTestModal = async () => {
+  const modal = document.getElementById('cleanup-test-modal');
+  const summary = document.getElementById('cleanup-test-summary');
+  const btn = document.getElementById('cleanup-test-btn');
+  const input = document.getElementById('cleanup-test-input');
+
+  if (!modal || !summary) return;
+
+  // Reset UI
+  input.value = '';
+  btn.disabled = true;
+  btn.className = 'flex-1 bg-gray-300 text-white py-2.5 rounded-lg font-semibold cursor-not-allowed transition';
+  summary.innerHTML = '<p class="text-center text-gray-400">⏳ Analizando datos...</p>';
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  try {
+    // Contar cotizaciones de prueba
+    const quotesQ = query(
+      collection(db, 'wholesaleQuotes'),
+      where('isTest', '==', true)
+    );
+    const quotesSnap = await getDocs(quotesQ);
+    const quotesCount = quotesSnap.size;
+
+    // Contar ventas de prueba
+    const salesQ = query(
+      collection(db, 'sales'),
+      where('isTest', '==', true)
+    );
+    const salesSnap = await getDocs(salesQ);
+    const salesCount = salesSnap.size;
+
+    // Contar comprobantes de prueba (los que vienen de esas ventas)
+    let compsCount = 0;
+    const saleIds = salesSnap.docs.map(d => d.id);
+    if (saleIds.length > 0) {
+      // Firestore no permite "in" con más de 30 items, hacemos batches
+      const batches = [];
+      for (let i = 0; i < saleIds.length; i += 30) {
+        batches.push(saleIds.slice(i, i + 30));
+      }
+      for (const batch of batches) {
+        const compQ = query(
+          collection(db, 'comprobantes'),
+          where('sourceType', '==', 'sale'),
+          where('sourceId', 'in', batch)
+        );
+        const compSnap = await getDocs(compQ);
+        compsCount += compSnap.size;
+      }
+    }
+
+    // Mostrar resumen
+    summary.innerHTML = `
+      <p class="font-bold text-gray-700 mb-2">📊 Datos a eliminar:</p>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Cotizaciones de prueba:</span>
+        <span class="font-bold text-purple-700">${quotesCount}</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Ventas de prueba:</span>
+        <span class="font-bold text-purple-700">${salesCount}</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Comprobantes contables asociados:</span>
+        <span class="font-bold text-purple-700">${compsCount}</span>
+      </div>
+      <div class="flex justify-between pt-2 mt-2 border-t border-gray-200">
+        <span class="font-semibold text-gray-700">Total:</span>
+        <span class="font-bold text-purple-700">${quotesCount + salesCount + compsCount}</span>
+      </div>
+    `;
+
+    // Si no hay nada, deshabilitar botón y avisar
+    if (quotesCount + salesCount + compsCount === 0) {
+      summary.innerHTML += `
+        <p class="text-center text-green-600 font-semibold mt-3">
+          ✅ No hay datos de prueba para limpiar.
+        </p>
+      `;
+      btn.disabled = true;
+      btn.className = 'flex-1 bg-gray-300 text-white py-2.5 rounded-lg font-semibold cursor-not-allowed transition';
+      return;
+    }
+
+    // Activar input de confirmación
+    setTimeout(() => input.focus(), 100);
+
+  } catch (e) {
+    console.error('[Cleanup] Error analizando:', e);
+    summary.innerHTML = `
+      <p class="text-center text-red-500 font-semibold">
+        ❌ Error al analizar: ${e.message}
+      </p>
+    `;
+  }
+};
+
+/**
+ * Cierra el modal.
+ */
+window.closeCleanupTestModal = () => {
+  const modal = document.getElementById('cleanup-test-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+};
+
+/**
+ * Listener del input "LIMPIAR" → activa el botón.
+ */
+(function attachCleanupInputListener() {
+  function bind() {
+    const input = document.getElementById('cleanup-test-input');
+    const btn = document.getElementById('cleanup-test-btn');
+    if (!input || !btn || input.dataset.bound === '1') {
+      if (!input) setTimeout(bind, 300);
+      return;
+    }
+    input.dataset.bound = '1';
+    input.addEventListener('input', () => {
+      const ok = input.value === 'LIMPIAR';
+      btn.disabled = !ok;
+      btn.className = ok
+        ? 'flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-semibold transition'
+        : 'flex-1 bg-gray-300 text-white py-2.5 rounded-lg font-semibold cursor-not-allowed transition';
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  } else {
+    bind();
+  }
+})();
+
+/**
+ * Ejecuta la limpieza.
+ */
+window.executeCleanupTest = async () => {
+  const input = document.getElementById('cleanup-test-input');
+  const btn = document.getElementById('cleanup-test-btn');
+  const summary = document.getElementById('cleanup-test-summary');
+
+  if (input.value !== 'LIMPIAR') {
+    return alert('⚠️ Debes escribir "LIMPIAR" exactamente.');
+  }
+
+  if (!confirm('🚨 ÚLTIMA CONFIRMACIÓN\n\nEsto eliminará permanentemente todos los datos marcados como prueba.\n\n¿Continuar?')) {
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = '⏳ Eliminando...';
+  summary.innerHTML = '<p class="text-center text-purple-600 font-semibold">⏳ Eliminando datos, por favor espera...</p>';
+
+  try {
+    let deletedQuotes = 0;
+    let deletedSales = 0;
+    let deletedComps = 0;
+    let deletedMovs = 0;
+    let errors = 0;
+
+    // ============================================================
+    // 1. Eliminar movimientos contables asociados a ventas de prueba
+    // ============================================================
+    const salesQ = query(collection(db, 'sales'), where('isTest', '==', true));
+    const salesSnap = await getDocs(salesQ);
+    const saleIds = salesSnap.docs.map(d => d.id);
+
+    // Procesar en batches de 30 (límite de Firestore en "in")
+    const batches = [];
+    for (let i = 0; i < saleIds.length; i += 30) {
+      batches.push(saleIds.slice(i, i + 30));
+    }
+
+    // Eliminar comprobantes + movimientos
+    for (const batch of batches) {
+      // Comprobantes
+      const compQ = query(
+        collection(db, 'comprobantes'),
+        where('sourceType', '==', 'sale'),
+        where('sourceId', 'in', batch)
+      );
+      const compSnap = await getDocs(compQ);
+
+      for (const compDoc of compSnap.docs) {
+        const compId = compDoc.id;
+
+        // Eliminar movimientos del comprobante
+        const movQ = query(
+          collection(db, 'movimientos'),
+          where('comprobanteId', '==', compId)
+        );
+        const movSnap = await getDocs(movQ);
+        for (const movDoc of movSnap.docs) {
+          try {
+            await deleteDoc(doc(db, 'movimientos', movDoc.id));
+            deletedMovs++;
+          } catch (e) { errors++; }
+        }
+
+        // Eliminar comprobante
+        try {
+          await deleteDoc(doc(db, 'comprobantes', compId));
+          deletedComps++;
+        } catch (e) { errors++; }
+      }
+
+      // Eliminar cartera asociada
+      const carteraQ = query(
+        collection(db, 'cartera'),
+        where('saleId', 'in', batch)
+      );
+      const carteraSnap = await getDocs(carteraQ);
+      for (const c of carteraSnap.docs) {
+        try { await deleteDoc(doc(db, 'cartera', c.id)); } catch (e) { errors++; }
+      }
+
+      // Eliminar márgenes mayoristas asociados
+      const margenQ = query(
+        collection(db, 'margenesMayorista'),
+        where('saleId', 'in', batch)
+      );
+      const margenSnap = await getDocs(margenQ);
+      for (const m of margenSnap.docs) {
+        try { await deleteDoc(doc(db, 'margenesMayorista', m.id)); } catch (e) { errors++; }
+      }
+
+      // Eliminar remisiones asociadas
+      const remQ = query(
+        collection(db, 'remisiones'),
+        where('saleId', 'in', batch)
+      );
+      const remSnap = await getDocs(remQ);
+      for (const r of remSnap.docs) {
+        try { await deleteDoc(doc(db, 'remisiones', r.id)); } catch (e) { errors++; }
+      }
+    }
+
+    // ============================================================
+    // 2. Eliminar ventas de prueba
+    // ============================================================
+    for (const saleDoc of salesSnap.docs) {
+      try {
+        await deleteDoc(doc(db, 'sales', saleDoc.id));
+        deletedSales++;
+      } catch (e) { errors++; }
+    }
+
+    // ============================================================
+    // 3. Eliminar cotizaciones de prueba
+    // ============================================================
+    const quotesQ = query(collection(db, 'wholesaleQuotes'), where('isTest', '==', true));
+    const quotesSnap = await getDocs(quotesQ);
+
+    for (const q of quotesSnap.docs) {
+      try {
+        await deleteDoc(doc(db, 'wholesaleQuotes', q.id));
+        deletedQuotes++;
+      } catch (e) { errors++; }
+    }
+
+    // ============================================================
+    // 4. Auditoría
+    // ============================================================
+    try {
+      await audit({
+        action: 'cleanup',
+        collection: 'system',
+        after: {
+          deletedQuotes,
+          deletedSales,
+          deletedComps,
+          deletedMovs,
+          errors
+        },
+        note: `Limpieza de datos de prueba: ${deletedQuotes} cotizaciones, ${deletedSales} ventas, ${deletedComps} comprobantes, ${deletedMovs} movimientos`
+      });
+    } catch (e) { /* ignore */ }
+
+    // ============================================================
+    // 5. Invalidar caches
+    // ============================================================
+    window.SmartecCache.invalidate('sales');
+    window.SmartecCache.invalidate('wholesaleQuotes_all');
+    window.SmartecCache.invalidate('comprobantes_all');
+    window.SmartecCache.invalidate('movimientos_all');
+    window.SmartecCache.invalidate('cartera_all');
+    window.SmartecCache.invalidate('margenesMayorista_all');
+    window.SmartecCache.invalidate('remisiones_all');
+
+    // ============================================================
+    // 6. Mostrar resumen final
+    // ============================================================
+    summary.innerHTML = `
+      <p class="text-center text-green-700 font-bold mb-2">✅ Limpieza completada</p>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Cotizaciones eliminadas:</span>
+        <span class="font-bold text-purple-700">${deletedQuotes}</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Ventas eliminadas:</span>
+        <span class="font-bold text-purple-700">${deletedSales}</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Comprobantes eliminados:</span>
+        <span class="font-bold text-purple-700">${deletedComps}</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Movimientos eliminados:</span>
+        <span class="font-bold text-purple-700">${deletedMovs}</span>
+      </div>
+      ${errors > 0 ? `
+        <p class="text-red-500 text-center mt-2">
+          ⚠️ ${errors} error(es) durante la limpieza
+        </p>
+      ` : ''}
+    `;
+
+    btn.innerText = '✅ Completado';
+    btn.disabled = true;
+
+    // Recargar datos y refrescar la UI
+    setTimeout(async () => {
+      window.SmartecCache.clear();
+      await loadAll();
+      if (typeof renderSales === 'function') renderSales();
+    }, 500);
+
+  } catch (e) {
+    console.error('[Cleanup] Error:', e);
+    summary.innerHTML = `
+      <p class="text-center text-red-500 font-semibold">
+        ❌ Error: ${e.message}
+      </p>
+    `;
+    btn.disabled = false;
+    btn.innerText = '🧹 Reintentar';
+  }
+};
+
+// 🆕 Exponer para el HTML
+window.openCleanupTestModal = openCleanupTestModal;
+window.closeCleanupTestModal = closeCleanupTestModal;
+window.executeCleanupTest = executeCleanupTest;
 
 /* ============================================================
    BADGE EN TIEMPO REAL — SOLICITUDES PENDIENTES

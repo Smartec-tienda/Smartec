@@ -4815,6 +4815,25 @@ window.solicitarAutorizacionDispositivo = async () => {
     }
   });
 
+    /* ============================================================
+     🆕 BUSCADOR DE PRODUCTOS — Delegación de eventos
+     Filtra el catálogo al escribir en #search
+  ============================================================ */
+  (function initPosSearch() {
+    let searchTimer = null;
+
+    document.addEventListener('input', (e) => {
+      const t = e.target;
+      if (!t || t.id !== 'search') return;
+
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        renderProducts();
+      }, 250);
+    });
+  })();
+
+  
   /* ============================================================
      🆕 INICIALIZAR MÓDULO DE TURNOS
      (Va aquí al final porque necesita que $ y audit ya estén definidos)

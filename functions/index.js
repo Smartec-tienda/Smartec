@@ -56,7 +56,7 @@ exports.createUserAdmin = onCall({ cors: true, region: 'us-central1' }, async (r
   }
 
     // 🆕 Validar el rol contra lista blanca
-  const validRoles = ['superadmin', 'admin', 'vendedor', 'domiciliario'];
+  const validRoles = ['superadmin', 'admin', 'vendedor', 'domiciliario', 'mayorista'];
   const role = data.role || 'vendedor';
   if (!validRoles.includes(role)) {
     throw new HttpsError(
@@ -64,7 +64,6 @@ exports.createUserAdmin = onCall({ cors: true, region: 'us-central1' }, async (r
       `Rol no válido: "${role}". Debe ser uno de: ${validRoles.join(', ')}.`
     );
   }
-
 
   try {
     // 4. Crear usuario en Firebase Auth

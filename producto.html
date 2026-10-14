@@ -701,7 +701,8 @@ if (!firebaseConfig) {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const WHATSAPP_NUMBER = "573104304428";
+// 🆕 El número de WhatsApp ahora viene de settings/general (admin → Configuración)
+let WHATSAPP_NUMBER = "";
 
 let product = null;
 let allInventory = [];
@@ -1056,6 +1057,16 @@ function buildVariantLabel() {
 
 window.btnBuy = () => {
   if (!product) return;
+
+  // 🆕 Validar que el WhatsApp esté configurado
+  if (!WHATSAPP_NUMBER) {
+    alert(
+      '⚠️ Aún no se ha configurado el WhatsApp de contacto.\n\n' +
+      'Por favor contacta al administrador para que lo agregue en Configuración.'
+    );
+    return;
+  }
+
   const variant = buildVariantLabel();
   const unitPrice = (product.onSale && product.salePrice) ? product.salePrice : product.price;
   const delta = Number(selectedVariant?.priceDelta || 0);
@@ -1075,6 +1086,16 @@ window.btnBuy = () => {
 
 window.btnConsult = () => {
   if (!product) return;
+
+  // 🆕 Validar que el WhatsApp esté configurado
+  if (!WHATSAPP_NUMBER) {
+    alert(
+      '⚠️ Aún no se ha configurado el WhatsApp de contacto.\n\n' +
+      'Por favor contacta al administrador para que lo agregue en Configuración.'
+    );
+    return;
+  }
+
   const variant = buildVariantLabel();
 
   let msg = `¡Hola Smartec! 👋\n\nQuiero CONSULTAR DISPONIBILIDAD:\n`;
@@ -1381,6 +1402,18 @@ async function loadAndApplyLogoAndGetSettings() {
   try {
     const snap = await getDoc(doc(db, 'settings', 'general'));
     setData = snap.exists() ? snap.data() : {};
+
+    // 🆕 Cargar el número de WhatsApp desde los settings
+    const rawWa = String(setData.whatsapp || '').replace(/\D/g, '');
+    if (rawWa) {
+      // Si tiene 10 dígitos, anteponer el código de Colombia (57)
+      WHATSAPP_NUMBER = rawWa.length === 10 ? '57' + rawWa : rawWa;
+    } else {
+      WHATSAPP_NUMBER = '';
+      console.warn('[Producto] No hay número de WhatsApp configurado en admin → Configuración.');
+    }
+
+    console.log('[Producto] WhatsApp configurado:', WHATSAPP_NUMBER || '(vacío)');
   } catch (e) {
     console.warn('[Producto] No se pudo cargar settings:', e);
   }
