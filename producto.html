@@ -15,7 +15,6 @@
 <script src="components/favicon.js"></script>
 <script src="components/header-public.js"></script>
 <script src="components/footer.js"></script>
-
 <style>
   :root{
     --bg:#F5F5F7;
@@ -525,16 +524,11 @@
       </div>
 
       <!-- Beneficios rápidos -->
-      <div class="grid grid-cols-3 gap-3 mb-7">
+      <div class="grid grid-cols-2 gap-3 mb-7">
         <div class="benefit-mini">
           <p class="text-2xl mb-1">🛡️</p>
           <p class="text-xs text-[#1D1D1F] font-semibold">Garantía</p>
-          <p id="warranty-mini" class="text-[10px] text-[#6E6E73] mt-0.5">12 meses</p>
-        </div>
-        <div class="benefit-mini">
-          <p class="text-2xl mb-1">🚚</p>
-          <p class="text-xs text-[#1D1D1F] font-semibold">Envío</p>
-          <p class="text-[10px] text-[#6E6E73] mt-0.5">A coordinar</p>
+          <p id="warranty-mini" class="text-[10px] text-[#6E6E73] mt-0.5">Según la marca</p>
         </div>
         <div class="benefit-mini">
           <p class="text-2xl mb-1">💬</p>
@@ -566,16 +560,6 @@
             <p class="text-xs text-[#6E6E73] mt-3 leading-relaxed">
               <b class="text-[#1D1D1F]">Atención y acompañamiento:</b> La garantía será atendida directamente por la marca fabricante o por sus centros de servicio autorizados. Nuestro equipo gestionará, asesorará y acompañará al cliente durante el proceso, facilitando la comunicación y el seguimiento con la marca.
             </p>
-          </div>
-        </details>
-
-        <details class="glass-strong rounded-2xl shadow-apple overflow-hidden">
-          <summary class="p-5 font-semibold text-[#1D1D1F] text-sm flex justify-between items-center">
-            🚚 Envío y entrega
-            <svg class="w-4 h-4 text-[#6E6E73] transition-transform flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-          </summary>
-          <div class="px-5 pb-5 text-sm text-[#6E6E73] leading-relaxed">
-            <p>Envío a coordinar según la ciudad. Envío gratis en compras superiores a $200.000. Tiempo estimado de entrega: 2-5 días hábiles (varía según la ubicación).</p>
           </div>
         </details>
 
@@ -842,10 +826,10 @@ function renderProduct() {
     `).join('');
   }
 
-  const months = Number(product.warrantyMonths || 12);
-  $('warranty-mini').innerText = `${months} meses`;
-  $('warranty-text').innerHTML = `Este producto cuenta con una garantía de <b class="text-[#1D1D1F]">${months} meses</b> otorgada por la marca.`;
-
+  // 🆕 La garantía queda sujeta a lo que indique la marca (no un valor fijo)
+  $('warranty-mini').innerText = 'Según la marca';
+  $('warranty-text').innerHTML = `La garantía de este producto está sujeta a las condiciones y el término establecidos por la marca fabricante.`;
+  
   const images = (product.images && product.images.length) ? product.images : ['https://placehold.co/600x600/F5F5F7/6E6E73?text=Sin+imagen'];
   zoomImages = images;
   $('main-image').src = images[0];
