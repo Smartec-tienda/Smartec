@@ -117,72 +117,127 @@
     const doc = new jsPDF('p', 'mm', 'letter');
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
-    const M = 15; // margen
+    const M = 15;                // margen lateral
+    const CW = pageW - 2 * M;    // ancho útil
 
     const c = getCompanyInfo(sale, settings);
     const docNumber = sale.documentNumber || 'SIN-NÚMERO';
 
     let y = M;
 
+    // ===== Helpers locales =====
+    const dashedLine = (yy, x1 = M, x2 = pageW - M) => {
+      doc.setLineDashPattern([1, 1], 0);
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.15);
+      doc.line(x1, yy, x2, yy);
+      doc.setLineDashPattern([], 0);
+    };
+
+    const solidLine = (yy, x1 = M, x2 = pageW - M, width = 0.4) => {
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(width);
+      doc.line(x1, yy, x2, yy);
+    };
+
     // ============ CABECERA ============
     // Barra azul superior
     doc.setFillColor(0, 113, 227);
     doc.rect(0, 0, pageW, 4, 'F');
 
-    // Logo / título SMARTEC
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.setTextColor(0, 113, 227);
-    doc.text('SMART', M, y + 8);
-    const smartWidth = doc.getTextWidth('SMART');
-    doc.setTextColor(29, 29, 31);
-    doc.text('EC', M + smartWidth, y + 8);
+    // 🆕 Logo (imagen) o texto SMARTEC como respaldo
+    const logoUrl = settings.logoUrl || settings.faviconUrl || null;
+    let logoRendered = false;
 
-    // Razón social
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(110, 110, 115);
-    doc.text((c.razonSocial || '').toUpperCase(), M, y + 14);
+    if (logoUrl) {
+      try {
+        const imgData = await loadImageAsDataURL(logoUrl);
+        if (imgData) {
+          const probe = await loadImageElement(logoUrl);
+          let logoW = 50;
+          let logoH = 14;
+
+          if (probe && probe.naturalWidth && probe.naturalHeight) {
+            const ratio = probe.naturalWidth / probe.naturalHeight;
+            // Alto máximo 14mm, ancho máximo 60mm
+            logoH = 14;
+            logoW = logoH * ratio;
+            if (logoW > 60) {
+              logoW = 60;
+              logoH = logoW / ratio;
+            }
+          }
+
+          doc.addImage(imgData, 'PNG', M, y + 2, logoW, logoH);
+          logoRendered = true;
+          y += logoH + 4;
+        }
+      } catch (e) {
+        console.warn('[PDF] No se pudo agregar logo a la remisión:', e);
+      }
+    }
+
+    if (!logoRendered) {
+      // Respaldo: texto SMARTEC
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.setTextColor(0, 113, 227);
+      doc.text('SMART', M, y + 8);
+      const smartWidth = doc.getTextWidth('SMART');
+      doc.setTextColor(29, 29, 31);
+      doc.text('EC', M + smartWidth, y + 8);
+      y += 12;
+    }
+
+    // Razón social (debajo del logo)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(29, 29, 31);
+    doc.text((c.razonSocial || '').toUpperCase(), M, y);
+    y += 4;
 
     // Info empresa (izquierda)
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(85, 85, 85);
-    let infoY = y + 20;
-    doc.text(`NIT: ${c.nit}${c.regimen ? ' · ' + c.regimen : ''}`, M, infoY);
-    if (c.address) { infoY += 4; doc.text(c.address, M, infoY); }
-    if (c.phone) { infoY += 4; doc.text(`Tel: ${c.phone}`, M, infoY); }
-    if (c.email) { infoY += 4; doc.text(`Email: ${c.email}`, M, infoY); }
+    doc.text(`NIT: ${c.nit}${c.regimen ? ' · ' + c.regimen : ''}`, M, y);
+    y += 4;
+    if (c.address) { doc.text(c.address, M, y); y += 4; }
+    if (c.phone) { doc.text(`Tel: ${c.phone}`, M, y); y += 4; }
+    if (c.email) { doc.text(`Email: ${c.email}`, M, y); y += 4; }
+
+    let infoY = y;
 
     // Tipo de documento (derecha)
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
+    doc.setFontSize(20);
     doc.setTextColor(29, 29, 31);
-    doc.text('REMISIÓN', pageW - M, y + 8, { align: 'right' });
+    doc.text('REMISIÓN', pageW - M, M + 8, { align: 'right' });
 
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`No. ${docNumber}`, pageW - M, y + 14, { align: 'right' });
+    doc.text(`No. ${docNumber}`, pageW - M, M + 15, { align: 'right' });
 
     doc.setFontSize(8);
     doc.setTextColor(110, 110, 115);
-    doc.text(fmtDate(sale.createdAt), pageW - M, y + 19, { align: 'right' });
+    doc.text(fmtDate(sale.createdAt), pageW - M, M + 20, { align: 'right' });
     if (c.storeName) {
-      doc.text(`Sede: ${c.storeName}`, pageW - M, y + 24, { align: 'right' });
+      doc.text(`Sede: ${c.storeName}`, pageW - M, M + 25, { align: 'right' });
     }
 
     // 🆕 Badge MAYORISTA (si aplica)
     const wInfo = getWholesaleInfo(sale);
     let extraHeaderHeight = 0;
     if (wInfo) {
-      // Caja morada debajo del tipo de documento
+      // Caja morada debajo del tipo de documento (a la derecha)
       const boxW = 85;
       const boxH = wInfo.nit ? 14 : 10;
       const boxX = pageW - M - boxW;
-      const boxY = y + 28;
+      const boxY = M + 30;
 
       doc.setFillColor(245, 235, 255); // morado muy suave
       doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'F');
-      doc.setDrawColor(10, 42, 74);   // borde morado
+      doc.setDrawColor(10, 42, 74);
       doc.setLineWidth(0.4);
       doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'S');
 
@@ -202,64 +257,71 @@
         doc.text(`NIT: ${wInfo.nit}`, boxX + 4, boxY + 13.5);
       }
 
-      extraHeaderHeight = boxH + 2;
+      extraHeaderHeight = boxH + 4;
     }
 
-    // Línea separadora
-    y = Math.max(infoY, y + 26) + 4 + extraHeaderHeight;
+    // Línea separadora (usa el max entre infoY y el badge)
+    y = Math.max(infoY, M + 30 + extraHeaderHeight) + 4;
+
     doc.setDrawColor(0, 113, 227);
-    doc.setLineWidth(0.5);
+    doc.setLineWidth(0.6);
     doc.line(M, y, pageW - M, y);
-    y += 6;
+    y += 8;
 
     // ============ DATOS DEL CLIENTE ============
+    // Título de sección con línea decorativa
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setTextColor(0, 113, 227);
     doc.text('DATOS DEL CLIENTE', M, y);
     y += 1;
     doc.setDrawColor(0, 113, 227);
-    doc.setLineWidth(0.2);
-    doc.line(M, y, M + 45, y);
-    y += 5;
+    doc.setLineWidth(0.3);
+    doc.line(M, y, M + 55, y);
+    y += 6;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    // Nombre del cliente en negrita y más grande
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
     doc.setTextColor(29, 29, 31);
     doc.text(sale.customer?.name || '-', M, y);
-    y += 5;
+    y += 6;
 
+    // Datos secundarios
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(85, 85, 85);
-    if (sale.customer?.phone) { doc.text(`Teléfono: ${sale.customer.phone}`, M, y); y += 4; }
-    if (sale.customer?.email) { doc.text(`Email: ${sale.customer.email}`, M, y); y += 4; }
+    if (sale.customer?.phone) { doc.text(`📞 Teléfono: ${sale.customer.phone}`, M, y); y += 4.5; }
+    if (sale.customer?.email) { doc.text(`✉️ Email: ${sale.customer.email}`, M, y); y += 4.5; }
     if (sale.customer?.address) {
       const dir = sale.customer.address + (sale.customer.city ? ', ' + sale.customer.city : '');
-      doc.text(`Dirección: ${dir}`, M, y);
-      y += 4;
+      const dirLines = doc.splitTextToSize(`📍 Dirección: ${dir}`, CW);
+      dirLines.forEach(l => { doc.text(l, M, y); y += 4.5; });
     }
     y += 4;
 
     // ============ TABLA DE PRODUCTOS ============
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setTextColor(0, 113, 227);
     doc.text('PRODUCTOS', M, y);
     y += 1;
-    doc.line(M, y, M + 30, y);
-    y += 4;
+    doc.setDrawColor(0, 113, 227);
+    doc.setLineWidth(0.3);
+    doc.line(M, y, M + 55, y);
+    y += 6;
 
     const items = (sale.items || []).map(it => {
       const variantParts = [];
       if (it.colorName) variantParts.push(it.colorName);
       if (it.size) variantParts.push(it.size);
 
-      // 🆕 Marcar el producto con ⚠️ si tiene excepción
+      // Marcar el producto con ⚠️ si tiene excepción
       const nameDisplay = it.priceException
         ? `⚠️ ${it.name || '-'}`
         : (it.name || '-');
 
-      // 🆕 Mostrar precio de lista tachado si hay excepción
+      // Mostrar precio con * si tiene excepción
       const priceDisplay = it.priceException
         ? `${fmt(it.unitPrice)}*`
         : fmt(it.unitPrice);
@@ -283,28 +345,27 @@
         fillColor: [0, 113, 227],
         textColor: 255,
         fontStyle: 'bold',
-        fontSize: 8,
-        cellPadding: 2.5,
+        fontSize: 9,
+        cellPadding: 3,
       },
       bodyStyles: {
-        fontSize: 8,
-        cellPadding: 2.5,
+        fontSize: 8.5,
+        cellPadding: 3,
         textColor: [51, 51, 51],
       },
       alternateRowStyles: {
-        fillColor: [250, 251, 252],
+        fillColor: [248, 250, 252],
       },
       columnStyles: {
         0: { cellWidth: 22 },
-        2: { cellWidth: 30 },
+        2: { cellWidth: 32 },
         3: { cellWidth: 14, halign: 'center' },
-        4: { cellWidth: 24, halign: 'right' },
-        5: { cellWidth: 26, halign: 'right', fontStyle: 'bold' },
+        4: { cellWidth: 26, halign: 'right' },
+        5: { cellWidth: 28, halign: 'right', fontStyle: 'bold' },
       },
       margin: { left: M, right: M },
     });
 
-    
     y = doc.lastAutoTable.finalY + 8;
 
     // 🆕 Nota al pie sobre excepciones de precio
@@ -313,24 +374,41 @@
         return `   • ${ex.name}: mín ${fmt(ex.minPrice)} → ${fmt(ex.finalPrice)} (-${fmt(Math.abs(ex.difference))}, ${ex.differencePct.toFixed(1)}%) · Autorizó: ${ex.authorizedByName || '—'} · Motivo: ${ex.reason || '—'}`;
       });
 
-      const headerText = '⚠️ EXCEPCIONES DE PRECIO AUTORIZADAS:';
-      doc.setFontSize(7.5);
+      // Caja naranja de fondo
+      const headerText = '⚠️  EXCEPCIONES DE PRECIO AUTORIZADAS';
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255, 149, 10); // naranja
-      doc.text(headerText, M, y);
-      y += 4;
 
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(120, 120, 120);
+      // Calcular altura necesaria
+      const exWrapped = [];
       exLines.forEach(line => {
-        const wrapped = doc.splitTextToSize(line, pageW - 2 * M);
-        wrapped.forEach(l => {
-          doc.text(l, M, y);
-          y += 3.2;
-        });
+        const wrapped = doc.splitTextToSize(line, CW - 6);
+        wrapped.forEach(l => exWrapped.push(l));
       });
-      y += 3;
+      const boxHeight = 6 + exWrapped.length * 3.4 + 3;
+
+      // Fondo de la caja
+      doc.setFillColor(255, 249, 240);
+      doc.rect(M, y - 4, CW, boxHeight, 'F');
+      // Franja naranja a la izquierda
+      doc.setFillColor(255, 149, 10);
+      doc.rect(M, y - 4, 1.2, boxHeight, 'F');
+
+      // Título de la caja
+      doc.setTextColor(255, 149, 10);
+      doc.text(headerText, M + 3, y + 1);
+      y += 6;
+
+      // Líneas de excepciones
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(85, 85, 85);
+      exWrapped.forEach(l => {
+        doc.text(l, M + 3, y);
+        y += 3.4;
+      });
+
+      y += 5;
     }
 
 
@@ -342,65 +420,78 @@
     if (sale.shipping) totals.push(['Envío', fmt(sale.shipping)]);
     if (sale.surchargeAmount) totals.push(['Recargo tarjeta', fmt(sale.surchargeAmount)]);
 
-    const totalsW = 70;
+    const totalsW = 80;
     const totalsX = pageW - M - totalsW;
 
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 51, 51);
     totals.forEach(([label, value]) => {
       doc.text(label, totalsX, y);
       doc.text(value, pageW - M, y, { align: 'right' });
-      y += 5;
+      y += 5.5;
     });
 
-    // Línea y total
+    // Línea doble y total
     doc.setDrawColor(0, 113, 227);
-    doc.setLineWidth(0.5);
+    doc.setLineWidth(0.6);
     doc.line(totalsX, y, pageW - M, y);
-    y += 6;
+    doc.setLineWidth(0.3);
+    doc.line(totalsX, y + 1, pageW - M, y + 1);
+    y += 7;
 
-    doc.setFontSize(13);
+    doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 113, 227);
     doc.text('TOTAL', totalsX, y);
     doc.setTextColor(29, 29, 31);
     doc.text(fmt(sale.total), pageW - M, y, { align: 'right' });
-    y += 10;
+    y += 12;
 
     // ============ INFO DE PAGO ============
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 113, 227);
     doc.text('INFORMACIÓN DE PAGO', M, y);
     y += 1;
-    doc.line(M, y, M + 45, y);
+    doc.setDrawColor(0, 113, 227);
+    doc.setLineWidth(0.3);
+    doc.line(M, y, M + 55, y);
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 51, 51);
+    doc.text(`💳 Método: `, M, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${sale.paymentMethod || '-'}`, M + 22, y);
     y += 5;
 
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 51, 51);
-    doc.text(`Método: ${sale.paymentMethod || '-'}`, M, y);
-    y += 4;
-    doc.text(`Vendedor: ${sale.sellerName || sale.sellerEmail || '-'}`, M, y);
-    y += 8;
+    doc.text(`👤 Vendedor: `, M, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${sale.sellerName || sale.sellerEmail || '-'}`, M + 22, y);
+    y += 10;
 
-    // ============ GARANTÍA ============
-    const garantiaText = 'GARANTÍA: Todos los productos cuentan con garantía mínima de 12 meses o la superior otorgada por el fabricante. La garantía cubre defectos de fábrica y no cubre daños por mal uso, golpes, líquidos o manipulación indebida. Para hacer efectiva la garantía, presente este documento junto con el producto.';
+    // ============ GARANTÍA LEGAL (Ley 1480/2011) ============
+    const garantiaText = 'GARANTÍA LEGAL: Los productos cuentan con la garantía legal mínima establecida en la Ley 1480 de 2011 (Estatuto del Consumidor) y con la garantía adicional otorgada por el fabricante, la cual puede ser superior. La garantía cubre defectos de fábrica y no cubre daños por mal uso, golpes, líquidos o manipulación indebida. Para hacerla efectiva, presente este documento junto con el producto.';
 
     doc.setFillColor(245, 247, 250);
-    const garantiaLines = doc.splitTextToSize(garantiaText, pageW - 2 * M - 6);
-    const garantiaH = (garantiaLines.length * 3.5) + 6;
-    doc.rect(M, y, pageW - 2 * M, garantiaH, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const garantiaLines = doc.splitTextToSize(garantiaText, CW - 8);
+    const garantiaH = (garantiaLines.length * 3.8) + 8;
+
+    doc.rect(M, y, CW, garantiaH, 'F');
     doc.setFillColor(0, 113, 227);
     doc.rect(M, y, 1.5, garantiaH, 'F');
 
-    doc.setFontSize(7.5);
     doc.setTextColor(85, 85, 85);
-    doc.text(garantiaLines, M + 4, y + 4);
+    doc.text(garantiaLines, M + 5, y + 5);
     y += garantiaH + 12;
 
     // ============ FIRMAS ============
-    if (y > pageH - 40) {
+    if (y > pageH - 50) {
       doc.addPage();
       y = M;
     }
@@ -413,19 +504,51 @@
     doc.setLineWidth(0.3);
     doc.line(M, firmaY, M + firmaW, firmaY);
     doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(110, 110, 115);
     doc.text('FIRMA DEL CLIENTE', M + firmaW / 2, firmaY + 4, { align: 'center' });
+    doc.setFontSize(7.5);
+    doc.setTextColor(150, 150, 150);
+    doc.text(sale.customer?.name || '', M + firmaW / 2, firmaY + 8, { align: 'center' });
 
     // Firma vendedor
     const firma2X = pageW - M - firmaW;
+    doc.setDrawColor(51, 51, 51);
+    doc.setLineWidth(0.3);
     doc.line(firma2X, firmaY, firma2X + firmaW, firmaY);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(110, 110, 115);
     doc.text('FIRMA DEL VENDEDOR', firma2X + firmaW / 2, firmaY + 4, { align: 'center' });
+    doc.setFontSize(7.5);
+    doc.setTextColor(150, 150, 150);
+    doc.text(sale.sellerName || sale.sellerEmail || '', firma2X + firmaW / 2, firmaY + 8, { align: 'center' });
 
     // ============ FOOTER ============
-    const footerText = `Este documento no constituye factura electrónica de venta. Smartec · ${c.nit}`;
+    const footerY = pageH - 14;
+
+    // Línea decorativa antes del footer
+    doc.setDrawColor(0, 113, 227);
+    doc.setLineWidth(0.3);
+    doc.line(M, footerY - 3, pageW - M, footerY - 3);
+
+    // Fila 1: WhatsApp + Email
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(85, 85, 85);
+
+    const contactParts = [];
+    if (c.phone) contactParts.push(`📞 ${c.phone}`);
+    if (c.email) contactParts.push(`✉️ ${c.email}`);
+    if (contactParts.length) {
+      doc.text(contactParts.join('  ·  '), pageW / 2, footerY, { align: 'center' });
+    }
+
+    // Fila 2: Nota legal
     doc.setFontSize(7);
     doc.setTextColor(150, 150, 150);
-    doc.text(footerText, pageW / 2, pageH - 8, { align: 'center' });
+    const footerText = `Este documento no constituye factura electrónica de venta · ${c.razonSocial || 'Smartec'} · NIT ${c.nit}`;
+    doc.text(footerText, pageW / 2, footerY + 4, { align: 'center' });
 
     // ============ DEVOLVER BLOB ============
     const blob = doc.output('blob');
@@ -440,12 +563,13 @@
     const c = getCompanyInfo(sale, settings);
     const docNumber = sale.documentNumber || 'SIN-NÚMERO';
 
-    // Ancho 58mm, alto estimado (se ajusta después)
-    const W = 58;
-    const H = 200; // alto inicial, se recorta al final
+    // Ancho 80mm, alto estimado (se ajusta al final)
+    const W = 80;
+    const H = 250;
     const doc = new jsPDF('p', 'mm', [W, H]);
-    const M = 3;
-    let y = M;
+    const M = 2.5;              // margen lateral
+    const CW = W - 2 * M;       // ancho útil
+    let y = 5;
 
     const dateStr = fmtDateShort(sale.createdAt);
     const timeStr = fmtTime(sale.createdAt);
@@ -459,54 +583,101 @@
     const dashedLine = (yy) => {
       doc.setLineDashPattern([1, 1], 0);
       doc.setDrawColor(0, 0, 0);
-      doc.setLineWidth(0.2);
+      doc.setLineWidth(0.15);
       doc.line(M, yy, W - M, yy);
       doc.setLineDashPattern([], 0);
     };
 
     // Helper para línea sólida
-    const solidLine = (yy) => {
+    const solidLine = (yy, width = 0.4) => {
       doc.setDrawColor(0, 0, 0);
-      doc.setLineWidth(0.4);
+      doc.setLineWidth(width);
       doc.line(M, yy, W - M, yy);
     };
 
-    // ============ CABECERA ============
+    // 🆕 Helper para línea doble (separa secciones importantes)
+    const doubleLine = (yy) => {
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.5);
+      doc.line(M, yy, W - M, yy);
+      doc.setLineWidth(0.3);
+      doc.line(M, yy + 0.8, W - M, yy + 0.8);
+      return yy + 0.8;
+    };
+
+    // ============================================================
+    // 🏢 ENCABEZADO
+    // ============================================================
+    // Barra superior decorativa
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, W, 1.2, 'F');
+    y = 6;
+
+    // Nombre SMARTEC grande
     doc.setFont('courier', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(18);
     doc.setTextColor(0, 0, 0);
-    centerText('SMARTEC', y + 4);
+    centerText('SMARTEC', y);
     y += 6;
 
-    doc.setFont('courier', 'normal');
-    doc.setFontSize(7);
-    if (c.razonSocial) { centerText(c.razonSocial, y + 3); y += 4; }
-    centerText(`NIT: ${c.nit}`, y + 3);
+    // Doble línea inferior
+    y = doubleLine(y);
     y += 4;
-    if (c.address) {
-      const addrLines = doc.splitTextToSize(c.address, W - 2 * M);
-      addrLines.forEach(l => { centerText(l, y + 3); y += 3.5; });
-    }
-    if (c.phone) { centerText(`Tel: ${c.phone}`, y + 3); y += 4; }
 
-    y += 1;
+    // Razón social + NIT
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(8);
+    if (c.razonSocial) {
+      const rsLines = doc.splitTextToSize(c.razonSocial, CW);
+      rsLines.forEach(l => { centerText(l, y); y += 3.5; });
+    }
+    centerText(`NIT: ${c.nit}`, y);
+    y += 3.5;
+
+    if (c.address) {
+      const addrLines = doc.splitTextToSize(c.address, CW);
+      addrLines.forEach(l => { centerText(l, y); y += 3; });
+    }
+    if (c.phone) {
+      centerText(`Tel: ${c.phone}`, y);
+      y += 3;
+    }
+    if (c.email) {
+      const emLines = doc.splitTextToSize(c.email, CW);
+      emLines.forEach(l => { centerText(l, y); y += 3; });
+    }
+
+    y += 2;
     dashedLine(y);
     y += 4;
 
+    // ============================================================
+    // 🧾 TIPO DE DOCUMENTO (con recuadro)
+    // ============================================================
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.4);
+    const boxH = 6;
+    doc.rect(M + 4, y - 4, CW - 8, boxH, 'S');
+
     doc.setFont('courier', 'bold');
-    doc.setFontSize(8);
-    centerText('COMPROBANTE DE VENTA', y + 3);
-    y += 4;
-    centerText(`No. ${docNumber}`, y + 3);
+    doc.setFontSize(10);
+    centerText('COMPROBANTE DE VENTA', y);
+    y += 6;
+
+    // Número y fecha
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(9);
+    centerText(`No. ${docNumber}`, y);
     y += 4;
 
     doc.setFont('courier', 'normal');
-    doc.setFontSize(7);
-    centerText(`${dateStr} · ${timeStr}`, y + 3);
-    y += 4;
+    doc.setFontSize(8);
+    centerText(`${dateStr}  ·  ${timeStr}`, y);
+    y += 3.5;
+
     if (c.storeName) {
-      centerText(`Sede: ${c.storeName}`, y + 3);
-      y += 4;
+      centerText(`Sede: ${c.storeName}`, y);
+      y += 3.5;
     }
 
     // 🆕 Badge MAYORISTA (si aplica)
@@ -517,125 +688,146 @@
       y += 4;
 
       doc.setFont('courier', 'bold');
-      doc.setFontSize(8);
-      centerText('** MAYORISTA **', y + 3);
+      doc.setFontSize(9);
+      centerText('** VENTA MAYORISTA **', y);
       y += 4;
 
       doc.setFont('courier', 'normal');
-      doc.setFontSize(7);
-
-      // Nombre de la empresa (con split si es largo)
-      const companyLines = doc.splitTextToSize(wInfo.companyName, W - 2 * M);
-      companyLines.forEach(l => { centerText(l, y + 3); y += 3.5; });
+      doc.setFontSize(8);
+      const companyLines = doc.splitTextToSize(wInfo.companyName, CW);
+      companyLines.forEach(l => { centerText(l, y); y += 3.2; });
 
       if (wInfo.nit) {
-        centerText(`NIT: ${wInfo.nit}`, y + 3);
-        y += 3.5;
+        centerText(`NIT: ${wInfo.nit}`, y);
+        y += 3.2;
       }
-
       if (wInfo.discountBase > 0) {
-        centerText(`Desc. aplicado: -${(wInfo.discountBase * 100).toFixed(1)}%`, y + 3);
-        y += 3.5;
+        centerText(`Desc. aplicado: -${(wInfo.discountBase * 100).toFixed(1)}%`, y);
+        y += 3.2;
       }
-
-      y += 1;
-      dashedLine(y);
-      y += 4;
-    } else {
-      y += 1;
-      solidLine(y);
-      y += 4;
     }
 
-    // ============ CLIENTE ============
-    doc.setFont('courier', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('CLIENTE', M, y + 3);
+    y += 2;
+    dashedLine(y);
     y += 4;
 
+    // ============================================================
+    // 👤 CLIENTE
+    // ============================================================
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(8);
+    doc.text('CLIENTE', M, y);
+    y += 3.5;
+
     doc.setFont('courier', 'normal');
-    const nameLines = doc.splitTextToSize(sale.customer?.name || '-', W - 2 * M);
-    nameLines.forEach(l => { doc.text(l, M, y + 3); y += 3.5; });
+    doc.setFontSize(8);
+    const nameLines = doc.splitTextToSize(sale.customer?.name || '-', CW);
+    nameLines.forEach(l => { doc.text(l, M, y); y += 3.2; });
 
     if (sale.customer?.phone) {
-      doc.text(`Tel: ${sale.customer.phone}`, M, y + 3);
-      y += 3.5;
+      doc.text(`Tel: ${sale.customer.phone}`, M, y);
+      y += 3.2;
     }
     if (sale.customer?.address) {
-      const addrLines = doc.splitTextToSize(sale.customer.address, W - 2 * M);
-      addrLines.forEach(l => { doc.text(l, M, y + 3); y += 3.5; });
+      const addrLines = doc.splitTextToSize(sale.customer.address, CW);
+      addrLines.forEach(l => { doc.text(l, M, y); y += 3.2; });
     }
 
     y += 1;
     dashedLine(y);
     y += 4;
 
-    // ============ PRODUCTOS ============
+    // ============================================================
+    // 📦 PRODUCTOS
+    // ============================================================
     doc.setFont('courier', 'bold');
-    doc.text('PRODUCTOS', M, y + 3);
-    y += 4;
+    doc.setFontSize(8);
+    doc.text('PRODUCTOS', M, y);
+    y += 3.5;
 
+    // Encabezado de columnas (referencia visual)
     doc.setFont('courier', 'normal');
+    doc.setFontSize(7);
+    doc.text('Descripción', M, y);
+    doc.text('Importe', W - M, y, { align: 'right' });
+    y += 1;
+    dashedLine(y);
+    y += 3.5;
+
     (sale.items || []).forEach(it => {
-      // 🆕 Marcar con ⚠️ si tiene excepción
+      // Nombre del producto (con ! si tiene excepción)
       const nameDisplay = it.priceException
         ? `! ${it.name || '-'}`
         : (it.name || '-');
-      const nameLines = doc.splitTextToSize(nameDisplay, W - 2 * M);
-      nameLines.forEach(l => { doc.text(l, M, y + 3); y += 3.5; });
 
+      const nameLines = doc.splitTextToSize(nameDisplay, CW);
+      nameLines.forEach(l => {
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(8);
+        doc.text(l, M, y);
+        y += 3.3;
+      });
+
+      // Variante (color / tamaño)
       const variantParts = [];
       if (it.colorName) variantParts.push(it.colorName);
       if (it.size) variantParts.push(it.size);
       if (variantParts.length) {
+        doc.setFont('courier', 'normal');
         doc.setFontSize(6.5);
-        doc.text(variantParts.join(' · '), M, y + 3);
-        doc.setFontSize(7);
-        y += 3.5;
-      }
-
-      // Línea de cantidad × precio + subtotal
-      const left = `${it.qty} × ${fmt(it.unitPrice)}`;
-      const right = fmt((it.qty || 0) * (it.unitPrice || 0));
-      doc.text(left, M, y + 3);
-      doc.setFont('courier', 'bold');
-      doc.text(right, W - M, y + 3, { align: 'right' });
-      doc.setFont('courier', 'normal');
-      y += 4.5;
-
-      // 🆕 Si tiene excepción, mostrar referencia de mínimo
-      if (it.priceException) {
-        doc.setFontSize(6);
-        doc.text(`  (min ${fmt(it.priceException.minPrice)})`, M, y + 3);
+        doc.text(`   ${variantParts.join(' · ')}`, M, y);
         y += 3;
-        doc.setFontSize(7);
       }
+
+      // Cantidad × Precio + Subtotal
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(7.5);
+      const left = `   ${it.qty} × ${fmt(it.unitPrice)}`;
+      const right = fmt((it.qty || 0) * (it.unitPrice || 0));
+      doc.text(left, M, y);
+      doc.setFont('courier', 'bold');
+      doc.text(right, W - M, y, { align: 'right' });
+      y += 4;
+
+      // Nota de excepción de precio
+      if (it.priceException) {
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(6);
+        doc.text(`   (precio autorizado: min ${fmt(it.priceException.minPrice)})`, M, y);
+        y += 2.8;
+      }
+
+      // Pequeño espacio entre productos
+      y += 1;
     });
 
-    y += 0.5;
+    y += 1;
     dashedLine(y);
     y += 4;
 
-    // 🆕 Aviso de excepción de precio
+    // Aviso general de excepciones
     if (sale.hasPriceExceptions && Array.isArray(sale.priceExceptions) && sale.priceExceptions.length) {
       doc.setFont('courier', 'bold');
       doc.setFontSize(6.5);
       const warnLines = doc.splitTextToSize(
         '! PRECIO AUTORIZADO POR ADMINISTRADOR',
-        W - 2 * M
+        CW
       );
-      warnLines.forEach(l => { centerText(l, y + 3); y += 3; });
+      warnLines.forEach(l => { centerText(l, y); y += 3; });
       y += 1;
       dashedLine(y);
       y += 4;
     }
 
-    // ============ TOTALES ============
-    doc.setFontSize(7.5);
-    const addRow = (label, value, isBold = false) => {
-      doc.setFont('courier', isBold ? 'bold' : 'normal');
-      doc.text(label, M, y + 3);
-      doc.text(value, W - M, y + 3, { align: 'right' });
+    // ============================================================
+    // 💰 TOTALES
+    // ============================================================
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(8);
+    const addRow = (label, value, bold = false) => {
+      doc.setFont('courier', bold ? 'bold' : 'normal');
+      doc.text(label, M + 4, y);
+      doc.text(value, W - M - 4, y, { align: 'right' });
       y += 4;
     };
 
@@ -645,65 +837,165 @@
     if (sale.surchargeAmount) addRow('Rec. tarjeta', fmt(sale.surchargeAmount));
 
     y += 1;
-    solidLine(y);
-    y += 5;
+    y = doubleLine(y);
+    y += 6;
 
+    // TOTAL destacado
     doc.setFont('courier', 'bold');
-    doc.setFontSize(11);
-    centerText(`TOTAL ${fmt(sale.total)}`, y + 3);
+    doc.setFontSize(13);
+    centerText(`TOTAL   ${fmt(sale.total)}`, y);
+    y += 6;
+
+    y = doubleLine(y);
     y += 5;
 
-    solidLine(y);
-    y += 5;
-
-    // ============ PAGO ============
+    // ============================================================
+    // 💳 PAGO
+    // ============================================================
     doc.setFont('courier', 'normal');
     doc.setFontSize(7.5);
-    doc.text(`Pago: ${sale.paymentMethod || '-'}`, M, y + 3);
+    doc.text(`Pago:     ${sale.paymentMethod || '-'}`, M, y);
+    y += 3.5;
+    const seller = (sale.sellerName || sale.sellerEmail || '-').substring(0, 24);
+    doc.text(`Vendedor: ${seller}`, M, y);
     y += 4;
-    const seller = (sale.sellerName || sale.sellerEmail || '-').substring(0, 20);
-    doc.text(`Vendedor: ${seller}`, M, y + 3);
-    y += 5;
 
-    // Notas
+    // Notas del cliente
     if (sale.customer?.notes) {
       dashedLine(y);
       y += 4;
       doc.setFontSize(6.5);
-      const notesLines = doc.splitTextToSize(`Nota: ${sale.customer.notes}`, W - 2 * M);
-      notesLines.forEach(l => { doc.text(l, M, y + 3); y += 3.5; });
+      const notesLines = doc.splitTextToSize(`Nota: ${sale.customer.notes}`, CW);
+      notesLines.forEach(l => { doc.text(l, M, y); y += 3; });
+      y += 1;
     }
 
-    // ============ GARANTÍA ============
+    // ============================================================
+    // 🛡️ GARANTÍA (genérica + ley 1480)
+    // ============================================================
     y += 1;
     dashedLine(y);
     y += 4;
 
-    doc.setFontSize(6);
-    const garantiaText = 'GARANTÍA: Garantía mínima de 12 meses o la superior de fábrica. Presente este recibo para hacerla efectiva. No cubre daños por mal uso.';
-    const garantiaLines = doc.splitTextToSize(garantiaText, W - 2 * M);
-    garantiaLines.forEach(l => { doc.text(l, M, y + 3); y += 3; });
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(7);
+    centerText('GARANTÍA', y);
+    y += 3;
+
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(6.5);
+    const garantiaText = 'Aplica la garantía legal mínima del producto (Ley 1480 de 2011). Conserve este recibo para hacerla efectiva.';
+    const gLines = doc.splitTextToSize(garantiaText, CW);
+    gLines.forEach(l => { doc.text(l, M, y); y += 3; });
 
     y += 2;
+    y = doubleLine(y);
+    y += 5;
+
+    // ============================================================
+    // 🙏 CIERRE
+    // ============================================================
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(10);
+    centerText('¡GRACIAS POR SU COMPRA!', y);
+    y += 5;
+
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(6.5);
+    centerText('Este documento no es factura electrónica de venta.', y);
+    y += 4;
+
+    // ============================================================
+    // 🖼️ LOGO AL FINAL (logoUrl → faviconUrl → nada)
+    // ============================================================
+    const logoUrl = settings.logoUrl || settings.faviconUrl || null;
+    if (logoUrl) {
+      try {
+        const imgData = await loadImageAsDataURL(logoUrl);
+        if (imgData) {
+          // Cargar la imagen como elemento para conocer proporciones
+          const probe = await loadImageElement(logoUrl);
+          let finalW = 30;
+          let finalH = 30;
+
+          if (probe && probe.naturalWidth && probe.naturalHeight) {
+            const ratio = probe.naturalWidth / probe.naturalHeight;
+            if (ratio > 1) {
+              // Horizontal
+              finalH = 30 / ratio;
+            } else {
+              // Vertical o cuadrada
+              finalW = 30 * ratio;
+            }
+          }
+
+          const finalX = (W - finalW) / 2;
+          doc.addImage(imgData, 'PNG', finalX, y, finalW, finalH);
+          y += finalH + 3;
+        }
+      } catch (e) {
+        console.warn('[PDF] No se pudo agregar el logo a la tirilla:', e);
+      }
+    }
+
+    // ============================================================
+    // 📞 PIE DE PÁGINA
+    // ============================================================
+    y += 1;
     solidLine(y);
     y += 4;
 
-    doc.setFont('courier', 'bold');
-    doc.setFontSize(8);
-    centerText('¡GRACIAS POR SU COMPRA!', y + 3);
-    y += 4;
-
     doc.setFont('courier', 'normal');
-    doc.setFontSize(6);
-    centerText('Este documento no es factura electrónica', y + 3);
-    y += 5;
+    doc.setFontSize(7);
 
-    // ============ RECORTAR ALTO REAL ============
-    const realH = y + 2;
+    if (c.phone) {
+      centerText(`WhatsApp / Tel: ${c.phone}`, y);
+      y += 3.2;
+    }
+    if (c.email) {
+      centerText(c.email, y);
+      y += 3.2;
+    }
+
+    // ============================================================
+    // ✂️ RECORTAR ALTO REAL
+    // ============================================================
+    const realH = y + 3;
     doc.internal.pageSize.height = realH;
 
     const blob = doc.output('blob');
     return blob;
+  }
+
+  /* ============================================================
+     🆕 HELPERS AUXILIARES — Carga de imágenes para jsPDF
+  ============================================================ */
+  function loadImageElement(url) {
+    return new Promise((resolve) => {
+      if (!url) return resolve(null);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  }
+
+  async function loadImageAsDataURL(url) {
+    try {
+      const img = await loadImageElement(url);
+      if (!img) return null;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      return canvas.toDataURL('image/png');
+    } catch (e) {
+      console.warn('[PDF] Error convirtiendo imagen a DataURL:', e);
+      return null;
+    }
   }
 
   /* ============================================================
@@ -715,52 +1007,109 @@
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const M = 10;
+    const CW = pageW - 2 * M;   // ancho útil
 
     const c = getCompanyInfo(sale, settings);
     const docNumber = sale.documentNumber || 'SIN-NÚMERO';
 
     let y = M;
 
+    // ===== Helpers locales =====
+    const dashedLine = (yy, x1 = M, x2 = pageW - M) => {
+      doc.setLineDashPattern([1, 1], 0);
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.15);
+      doc.line(x1, yy, x2, yy);
+      doc.setLineDashPattern([], 0);
+    };
+
+    const solidLine = (yy, x1 = M, x2 = pageW - M, width = 0.4) => {
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(width);
+      doc.line(x1, yy, x2, yy);
+    };
+
     // Barra azul superior
     doc.setFillColor(0, 113, 227);
     doc.rect(0, 0, pageW, 3, 'F');
 
-    // Logo / título
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(0, 113, 227);
-    doc.text('SMART', M, y + 6);
-    const smartWidth = doc.getTextWidth('SMART');
-    doc.setTextColor(29, 29, 31);
-    doc.text('EC', M + smartWidth, y + 6);
+    // 🆕 Logo (imagen) o texto SMARTEC como respaldo
+    const logoUrl = settings.logoUrl || settings.faviconUrl || null;
+    let logoRendered = false;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(110, 110, 115);
-    doc.text((c.razonSocial || '').toUpperCase(), M, y + 11);
+    if (logoUrl) {
+      try {
+        const imgData = await loadImageAsDataURL(logoUrl);
+        if (imgData) {
+          const probe = await loadImageElement(logoUrl);
+          let logoW = 40;
+          let logoH = 11;
+
+          if (probe && probe.naturalWidth && probe.naturalHeight) {
+            const ratio = probe.naturalWidth / probe.naturalHeight;
+            logoH = 11;
+            logoW = logoH * ratio;
+            if (logoW > 45) {
+              logoW = 45;
+              logoH = logoW / ratio;
+            }
+          }
+
+          doc.addImage(imgData, 'PNG', M, y + 2, logoW, logoH);
+          logoRendered = true;
+          y += logoH + 3;
+        }
+      } catch (e) {
+        console.warn('[PDF] No se pudo agregar logo a media carta:', e);
+      }
+    }
+
+    if (!logoRendered) {
+      // Respaldo: texto SMARTEC
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor(0, 113, 227);
+      doc.text('SMART', M, y + 6);
+      const smartWidth = doc.getTextWidth('SMART');
+      doc.setTextColor(29, 29, 31);
+      doc.text('EC', M + smartWidth, y + 6);
+      y += 10;
+    }
+
+    // Razón social (debajo del logo)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(29, 29, 31);
+    doc.text((c.razonSocial || '').toUpperCase(), M, y);
+    y += 3.5;
 
     // Info empresa
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(85, 85, 85);
-    let infoY = y + 16;
-    doc.text(`NIT: ${c.nit}${c.regimen ? ' · ' + c.regimen : ''}`, M, infoY);
-    if (c.address) { infoY += 3.5; doc.text(c.address, M, infoY); }
-    if (c.phone) { infoY += 3.5; doc.text(`Tel: ${c.phone}`, M, infoY); }
+    doc.text(`NIT: ${c.nit}${c.regimen ? ' · ' + c.regimen : ''}`, M, y);
+    y += 3.5;
+    if (c.address) { doc.text(c.address, M, y); y += 3.5; }
+    if (c.phone) { doc.text(`Tel: ${c.phone}`, M, y); y += 3.5; }
+    if (c.email) { doc.text(`Email: ${c.email}`, M, y); y += 3.5; }
+
+    let infoY = y;
 
     // Tipo doc (derecha)
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(13);
     doc.setTextColor(29, 29, 31);
-    doc.text('DOC. COMERCIAL', pageW - M, y + 6, { align: 'right' });
-    doc.setFontSize(8);
+    doc.text('DOC. COMERCIAL', pageW - M, M + 6, { align: 'right' });
+
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
-    doc.text(`No. ${docNumber}`, pageW - M, y + 11, { align: 'right' });
+    doc.text(`No. ${docNumber}`, pageW - M, M + 12, { align: 'right' });
 
     doc.setFontSize(7);
     doc.setTextColor(110, 110, 115);
-    doc.text(fmtDate(sale.createdAt), pageW - M, y + 15.5, { align: 'right' });
+    doc.text(fmtDate(sale.createdAt), pageW - M, M + 16.5, { align: 'right' });
     if (c.storeName) {
-      doc.text(`Sede: ${c.storeName}`, pageW - M, y + 19.5, { align: 'right' });
+      doc.text(`Sede: ${c.storeName}`, pageW - M, M + 20.5, { align: 'right' });
     }
 
     // 🆕 Badge MAYORISTA (si aplica)
@@ -770,7 +1119,7 @@
       const boxW = 60;
       const boxH = wInfo.nit ? 12 : 8;
       const boxX = pageW - M - boxW;
-      const boxY = y + 23;
+      const boxY = M + 24;
 
       doc.setFillColor(245, 235, 255);
       doc.roundedRect(boxX, boxY, boxW, boxH, 1.5, 1.5, 'F');
@@ -794,46 +1143,58 @@
         doc.text(`NIT: ${wInfo.nit}`, boxX + 3, boxY + 11.5);
       }
 
-      extraHeaderHeight = boxH + 2;
+      extraHeaderHeight = boxH + 4;
     }
 
-    y = Math.max(infoY, y + 21) + 4 + extraHeaderHeight;
+    // Línea separadora (usa el max entre infoY y el badge)
+    y = Math.max(infoY, M + 24 + extraHeaderHeight) + 4;
+
     doc.setDrawColor(0, 113, 227);
-    doc.setLineWidth(0.4);
+    doc.setLineWidth(0.5);
     doc.line(M, y, pageW - M, y);
-    y += 5;
+    y += 6;
 
     // ============ CLIENTE ============
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(0, 113, 227);
     doc.text('CLIENTE', M, y);
-    y += 3.5;
+    y += 1;
+    doc.setDrawColor(0, 113, 227);
+    doc.setLineWidth(0.2);
+    doc.line(M, y, M + 25, y);
+    y += 5;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    // Nombre del cliente en negrita
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
     doc.setTextColor(29, 29, 31);
     doc.text(sale.customer?.name || '-', M, y);
+    y += 5;
 
+    // Datos secundarios
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(85, 85, 85);
-    if (sale.customer?.phone) {
-      doc.text(`Tel: ${sale.customer.phone}`, pageW - M, y, { align: 'right' });
-    }
-    y += 4;
-
+    if (sale.customer?.phone) { doc.text(`📞 ${sale.customer.phone}`, M, y); y += 3.8; }
+    if (sale.customer?.email) { doc.text(`✉️ ${sale.customer.email}`, M, y); y += 3.8; }
     if (sale.customer?.address) {
-      doc.text(sale.customer.address + (sale.customer.city ? ', ' + sale.customer.city : ''), M, y);
-      y += 4;
+      const dir = sale.customer.address + (sale.customer.city ? ', ' + sale.customer.city : '');
+      const dirLines = doc.splitTextToSize(`📍 ${dir}`, CW);
+      dirLines.forEach(l => { doc.text(l, M, y); y += 3.8; });
     }
     y += 3;
 
-    // ============ TABLA ============
+    // ============ TABLA DE PRODUCTOS ============
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(0, 113, 227);
     doc.text('PRODUCTOS', M, y);
-    y += 3;
+    y += 1;
+    doc.setDrawColor(0, 113, 227);
+    doc.setLineWidth(0.25);
+    doc.line(M, y, M + 30, y);
+    y += 5;
 
     const items = (sale.items || []).map(it => {
       const variantParts = [];
@@ -843,11 +1204,16 @@
       const nameBase = (it.name || '-') + (variantParts.length ? '\n' + variantParts.join(' · ') : '');
       const name = it.priceException ? `⚠️ ${nameBase}` : nameBase;
 
+      // Precio con * si tiene excepción
+      const priceDisplay = it.priceException
+        ? `${fmt(it.unitPrice)}*`
+        : fmt(it.unitPrice);
+
       return [
         it.sku || '-',
         name,
         String(it.qty || 0),
-        fmt(it.unitPrice),
+        priceDisplay,
         fmt((it.qty || 0) * (it.unitPrice || 0))
       ];
     });
@@ -861,56 +1227,79 @@
         fillColor: [0, 113, 227],
         textColor: 255,
         fontStyle: 'bold',
-        fontSize: 7,
-        cellPadding: 1.5,
+        fontSize: 7.5,
+        cellPadding: 2,
       },
       bodyStyles: {
-        fontSize: 7,
-        cellPadding: 1.5,
+        fontSize: 7.5,
+        cellPadding: 2,
         textColor: [51, 51, 51],
       },
-      alternateRowStyles: { fillColor: [250, 251, 252] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: {
-        0: { cellWidth: 18 },
-        2: { cellWidth: 10, halign: 'center' },
-        3: { cellWidth: 18, halign: 'right' },
-        4: { cellWidth: 20, halign: 'right', fontStyle: 'bold' },
+        0: { cellWidth: 20 },
+        2: { cellWidth: 12, halign: 'center' },
+        3: { cellWidth: 20, halign: 'right' },
+        4: { cellWidth: 22, halign: 'right', fontStyle: 'bold' },
       },
       margin: { left: M, right: M },
     });
 
-    y = doc.lastAutoTable.finalY + 4;
+    y = doc.lastAutoTable.finalY + 6;
 
     // 🆕 Nota de excepciones de precio
     if (sale.hasPriceExceptions && Array.isArray(sale.priceExceptions) && sale.priceExceptions.length) {
-      const exNote = sale.priceExceptions.map(ex =>
-        `⚠️ ${ex.name}: ${fmt(ex.finalPrice)} (mín ${fmt(ex.minPrice)}) · ${ex.authorizedByName || '—'}`
-      ).join('\n');
+      const exLines = sale.priceExceptions.map(ex =>
+        `   • ${ex.name}: mín ${fmt(ex.minPrice)} → ${fmt(ex.finalPrice)} · Autorizó: ${ex.authorizedByName || '—'}`
+      );
 
-      doc.setFillColor(255, 245, 230);
-      const wrapped = doc.splitTextToSize(exNote, pageW - 2 * M - 4);
-      const h = wrapped.length * 3 + 5;
-      doc.rect(M, y, pageW - 2 * M, h, 'F');
+      // Caja naranja con franja lateral
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+
+      const exWrapped = [];
+      exLines.forEach(line => {
+        const wrapped = doc.splitTextToSize(line, CW - 6);
+        wrapped.forEach(l => exWrapped.push(l));
+      });
+      const boxHeight = 5 + exWrapped.length * 3.2 + 3;
+
+      // Fondo de la caja
+      doc.setFillColor(255, 249, 240);
+      doc.rect(M, y - 3, CW, boxHeight, 'F');
+      // Franja naranja a la izquierda
       doc.setFillColor(255, 149, 10);
-      doc.rect(M, y, 1.2, h, 'F');
-      doc.setFontSize(6);
-      doc.setTextColor(180, 100, 0);
-      doc.text(wrapped, M + 3, y + 3.5);
-      y += h + 3;
+      doc.rect(M, y - 3, 1.2, boxHeight, 'F');
+
+      // Título
+      doc.setTextColor(255, 149, 10);
+      doc.text('⚠️  EXCEPCIONES DE PRECIO', M + 3, y + 1);
+      y += 5;
+
+      // Líneas
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(85, 85, 85);
+      exWrapped.forEach(l => {
+        doc.text(l, M + 3, y);
+        y += 3.2;
+      });
+
+      y += 4;
     }
 
     // ============ TOTALES ============
-    const totalsW = 60;
+    const totalsW = 70;
     const totalsX = pageW - M - totalsW;
 
-    doc.setFontSize(7.5);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 51, 51);
 
     const addRow = (label, value) => {
       doc.text(label, totalsX, y);
       doc.text(value, pageW - M, y, { align: 'right' });
-      y += 4;
+      y += 4.5;
     };
 
     addRow('Subtotal', fmt(sale.subtotal));
@@ -918,41 +1307,56 @@
     if (sale.shipping) addRow('Envío', fmt(sale.shipping));
     if (sale.surchargeAmount) addRow('Rec. tarjeta', fmt(sale.surchargeAmount));
 
+    // Línea doble
     doc.setDrawColor(0, 113, 227);
-    doc.setLineWidth(0.4);
+    doc.setLineWidth(0.5);
     doc.line(totalsX, y, pageW - M, y);
-    y += 5;
+    doc.setLineWidth(0.25);
+    doc.line(totalsX, y + 1, pageW - M, y + 1);
+    y += 6;
 
-    doc.setFontSize(11);
+    doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 113, 227);
     doc.text('TOTAL', totalsX, y);
     doc.setTextColor(29, 29, 31);
     doc.text(fmt(sale.total), pageW - M, y, { align: 'right' });
-    y += 8;
+    y += 10;
 
     // ============ PAGO ============
-    doc.setFontSize(7.5);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 51, 51);
-    doc.text(`Pago: ${sale.paymentMethod || '-'} · Vendedor: ${sale.sellerName || sale.sellerEmail || '-'}`, M, y);
-    y += 6;
+    doc.text(`💳 Pago: `, M, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${sale.paymentMethod || '-'}`, M + 14, y);
+    y += 4.5;
 
-    // ============ GARANTÍA ============
-    const garantiaText = 'GARANTÍA: Productos con garantía mínima de 12 meses o la superior de fábrica. No cubre daños por mal uso. Presente este documento para hacerla efectiva.';
+    doc.setFont('helvetica', 'normal');
+    doc.text(`👤 Vendedor: `, M, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${sale.sellerName || sale.sellerEmail || '-'}`, M + 22, y);
+    y += 8;
+
+    // ============ GARANTÍA LEGAL (Ley 1480/2011) ============
+    const garantiaText = 'GARANTÍA LEGAL: Los productos cuentan con la garantía legal mínima establecida en la Ley 1480 de 2011 (Estatuto del Consumidor) y con la garantía adicional otorgada por el fabricante, la cual puede ser superior. La garantía cubre defectos de fábrica y no cubre daños por mal uso, golpes, líquidos o manipulación indebida. Para hacerla efectiva, presente este documento junto con el producto.';
+
     doc.setFillColor(245, 247, 250);
-    const lines = doc.splitTextToSize(garantiaText, pageW - 2 * M - 4);
-    const gH = lines.length * 3 + 5;
-    doc.rect(M, y, pageW - 2 * M, gH, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    const lines = doc.splitTextToSize(garantiaText, CW - 6);
+    const gH = lines.length * 3.3 + 6;
+
+    doc.rect(M, y, CW, gH, 'F');
     doc.setFillColor(0, 113, 227);
     doc.rect(M, y, 1.2, gH, 'F');
-    doc.setFontSize(6.5);
+
     doc.setTextColor(85, 85, 85);
-    doc.text(lines, M + 3, y + 3.5);
-    y += gH + 8;
+    doc.text(lines, M + 4, y + 4);
+    y += gH + 10;
 
     // ============ FIRMAS ============
-    if (y > pageH - 35) {
+    if (y > pageH - 45) {
       doc.addPage();
       y = M;
     }
@@ -960,27 +1364,58 @@
     const firmaW = (pageW - 3 * M) / 2;
     const firmaY = y + 12;
 
+    // Firma cliente
     doc.setDrawColor(51, 51, 51);
     doc.setLineWidth(0.3);
     doc.line(M, firmaY, M + firmaW, firmaY);
-    doc.setFontSize(7);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(110, 110, 115);
     doc.text('FIRMA DEL CLIENTE', M + firmaW / 2, firmaY + 3.5, { align: 'center' });
-
-    const firma2X = pageW - M - firmaW;
-    doc.line(firma2X, firmaY, firma2X + firmaW, firmaY);
-    doc.text('FIRMA DEL VENDEDOR', firma2X + firmaW / 2, firmaY + 3.5, { align: 'center' });
-
-    // Footer
-    doc.setFontSize(6);
+    doc.setFontSize(7);
     doc.setTextColor(150, 150, 150);
-    doc.text(
-      `Documento no válido como factura electrónica · Smartec · ${c.nit}`,
-      pageW / 2,
-      pageH - 6,
-      { align: 'center' }
-    );
+    doc.text(sale.customer?.name || '', M + firmaW / 2, firmaY + 7, { align: 'center' });
 
+    // Firma vendedor
+    const firma2X = pageW - M - firmaW;
+    doc.setDrawColor(51, 51, 51);
+    doc.setLineWidth(0.3);
+    doc.line(firma2X, firmaY, firma2X + firmaW, firmaY);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(110, 110, 115);
+    doc.text('FIRMA DEL VENDEDOR', firma2X + firmaW / 2, firmaY + 3.5, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text(sale.sellerName || sale.sellerEmail || '', firma2X + firmaW / 2, firmaY + 7, { align: 'center' });
+
+    // ============ FOOTER ============
+    const footerY = pageH - 12;
+
+    // Línea decorativa antes del footer
+    doc.setDrawColor(0, 113, 227);
+    doc.setLineWidth(0.25);
+    doc.line(M, footerY - 3, pageW - M, footerY - 3);
+
+    // Fila 1: WhatsApp + Email
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(85, 85, 85);
+
+    const contactParts = [];
+    if (c.phone) contactParts.push(`📞 ${c.phone}`);
+    if (c.email) contactParts.push(`✉️ ${c.email}`);
+    if (contactParts.length) {
+      doc.text(contactParts.join('  ·  '), pageW / 2, footerY, { align: 'center' });
+    }
+
+    // Fila 2: Nota legal
+    doc.setFontSize(6.5);
+    doc.setTextColor(150, 150, 150);
+    const footerText = `Este documento no constituye factura electrónica de venta · ${c.razonSocial || 'Smartec'} · NIT ${c.nit}`;
+    doc.text(footerText, pageW / 2, footerY + 3.5, { align: 'center' });
+
+    // ============ DEVOLVER BLOB ============
     const blob = doc.output('blob');
     return blob;
   }
