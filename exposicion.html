@@ -270,6 +270,9 @@
     display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
     margin-top:8px;
     flex-shrink:0;
+    width:100%;
+    max-width:100%;
+    overflow:hidden;
   }
   #slide-price{
     font-family:'Inter Tight',sans-serif;
@@ -279,6 +282,8 @@
     letter-spacing:-0.045em;
     background:linear-gradient(135deg,#1D1D1F 30%,#0071E3 100%);
     -webkit-background-clip:text;background-clip:text;color:transparent;
+    white-space:nowrap;
+    max-width:100%;
   }
   #slide-old-price{
     font-size:24px;color:var(--text-dim);
@@ -460,16 +465,22 @@ function fitText(el, maxSize, minSize, maxHeightPx){
   // Reset al tamaño máximo
   el.style.fontSize = maxSize + 'px';
 
-  // Si ya cabe al máximo, dejarlo así
-  if (el.scrollHeight <= maxHeightPx) return;
-
-  // Reducir de 1 en 1 px hasta que quepa o llegue al mínimo
+  // Medir si el texto cabe al tamaño máximo
   let size = maxSize;
-  while (size > minSize){
-    size -= 1;
+  let guard = 100; // límite de seguridad de iteraciones
+
+  while (size > minSize && guard-- > 0){
     el.style.fontSize = size + 'px';
-    if (el.scrollHeight <= maxHeightPx) break;
+
+    // Verificar si cabe en alto Y si no se desborda horizontalmente
+    const fitsHeight = el.scrollHeight <= maxHeightPx;
+    const fitsWidth  = el.scrollWidth  <= el.clientWidth + 1;
+
+    if (fitsHeight && fitsWidth) break;
+    size -= 1;
   }
+
+  el.style.fontSize = size + 'px';
 }
 
 /* ============ RELOJ ============ */
@@ -626,15 +637,22 @@ function renderSlide(product){
     img.onload = () => img.classList.add('ready');
   }
 
-  // 🆕 Ajustar tamaño del texto al espacio disponible
-  // Usamos requestAnimationFrame para asegurar que el DOM ya pintó el texto
+  // 🆕 Ajustar TODOS los textos al espacio disponible
   requestAnimationFrame(() => {
-    // Nombre: máx 42px, mín 22px, máx 140px de alto (aprox 3 líneas a 42px)
-    fitText(name, 42, 22, 140);
+    // Nombre: máx 42px, mín 20px, hasta 3-4 líneas (140px de alto máx)
+    fitText(name, 42, 20, 150);
 
-    // Descripción: máx 17px, mín 12px, máx 150px de alto (aprox 5-6 líneas)
+    // Descripción: máx 17px, mín 12px, hasta 6 líneas (150px de alto máx)
     if (desc.style.display !== 'none'){
       fitText(desc, 17, 12, 150);
+    }
+
+    // Precio: máx 64px, mín 28px, alto de 1 línea (75px)
+    fitText(price, 64, 28, 75);
+
+    // Precio viejo (tachado): máx 24px, mín 14px
+    if (!oldPrice.classList.contains('hidden')){
+      fitText(oldPrice, 24, 14, 30);
     }
   });
 
