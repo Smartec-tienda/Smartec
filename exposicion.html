@@ -69,7 +69,6 @@
   }
 
   /* ============ LAYOUT PRINCIPAL ============ */
-  /* Stack vertical: header arriba, contenido en medio, footer abajo */
   .stage{
     position:relative;z-index:2;
     width:100%;
@@ -99,7 +98,7 @@
   .clock-time{font-size:30px;font-weight:700;letter-spacing:-0.02em;line-height:1;color:var(--text)}
   .clock-date{font-size:12px;color:var(--text-dim);font-weight:600;margin-top:6px;text-transform:capitalize;letter-spacing:0.05em}
 
-  /* ============ SLIDE — FLEX 50/50 ============ */
+  /* ============ SLIDE ============ */
   .slide-wrap{
     flex: 1 1 auto;
     display:flex;
@@ -110,7 +109,6 @@
     overflow:hidden;
   }
 
-  /* Columna izquierda: imagen */
   .slide-img-box{
     flex: 1 1 50%;
     width:50%;
@@ -145,7 +143,7 @@
   }
   #slide-img.ready{opacity:1}
 
-  /* Columna derecha: info */
+  /* ============ PANEL INFO — ALTURA FIJA ============ */
   .slide-info{
     flex: 1 1 50%;
     width:50%;
@@ -174,15 +172,26 @@
     font-size:13px;letter-spacing:0.14em;text-transform:uppercase;
     padding:8px 16px;border-radius:999px;width:max-content;
     box-shadow:0 8px 24px rgba(255,55,95,0.42);
+    flex-shrink:0;
   }
   .promo-tag.hidden{display:none}
 
   #slide-brand{
     font-size:12px;color:var(--blue);
     font-weight:700;letter-spacing:0.22em;text-transform:uppercase;
+    flex-shrink:0;
   }
   #slide-brand:empty{display:none}
 
+  /* Bloque de nombre con altura reservada (para que el layout no salte) */
+  .name-slot{
+    flex-shrink:0;
+    min-height:60px;
+    max-height:140px;
+    display:flex;
+    align-items:flex-start;
+    overflow:hidden;
+  }
   #slide-name{
     font-family:'Inter Tight',sans-serif;
     font-weight:800;
@@ -192,15 +201,10 @@
     color:var(--text);
     word-wrap:break-word;
     overflow-wrap:break-word;
-    /* 🆕 Máximo 3 líneas para nombres muy largos */
-    display:-webkit-box;
-    -webkit-line-clamp:3;
-    line-clamp:3;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
+    width:100%;
   }
 
-  /* ============ BLOQUE DESCRIPCIÓN ============ */
+  /* Bloque descripción con altura reservada */
   .desc-block{
     display:flex;
     gap:14px;
@@ -211,7 +215,11 @@
     border-radius:16px;
     padding:16px 18px 16px 16px;
     box-shadow:0 1px 2px rgba(0,0,0,0.03),0 4px 12px rgba(0,0,0,0.04);
-    max-width:100%;
+    width:100%;
+    flex-shrink:0;
+    min-height:90px;
+    max-height:180px;
+    overflow:hidden;
   }
   .desc-block.hidden{display:none}
 
@@ -233,12 +241,6 @@
     min-width:0;
     word-wrap:break-word;
     overflow-wrap:break-word;
-    /* 🆕 Máximo 3 líneas — texto corto tipo vitrina */
-    display:-webkit-box;
-    -webkit-line-clamp:3;
-    line-clamp:3;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
   }
   #slide-desc:empty{display:none}
 
@@ -246,9 +248,6 @@
     list-style:none;
     display:flex;flex-direction:column;gap:6px;
     width:100%;
-    /* 🆕 Máximo 3 items para no desbordar */
-    max-height:130px;
-    overflow:hidden;
   }
   .specs-fallback.hidden{display:none}
   .specs-fallback li{
@@ -270,6 +269,7 @@
   .price-block{
     display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
     margin-top:8px;
+    flex-shrink:0;
   }
   #slide-price{
     font-family:'Inter Tight',sans-serif;
@@ -338,15 +338,12 @@
     .glass-strong{background:rgba(255,255,255,0.95)}
   }
 
-  /* ============ RESPONSIVE AJUSTES ============ */
+  /* ============ RESPONSIVE ============ */
   @media (max-width: 1400px){
-    #slide-name{font-size:36px}
     #slide-price{font-size:56px}
-    #slide-desc{font-size:16px}
   }
   @media (max-width: 1100px){
     .stage{padding:16px 20px;gap:12px}
-    #slide-name{font-size:30px}
     #slide-price{font-size:48px}
     .slide-wrap{gap:20px}
     .slide-info{padding:24px 20px}
@@ -380,7 +377,10 @@
     <div class="slide-info glass-strong shadow-apple-xl">
       <span id="slide-promo" class="promo-tag hidden">🔥 Promoción</span>
       <span id="slide-brand"></span>
-      <h1 id="slide-name">Cargando catálogo…</h1>
+
+      <div class="name-slot">
+        <h1 id="slide-name">Cargando catálogo…</h1>
+      </div>
 
       <div id="desc-block" class="desc-block">
         <div class="desc-icon">📋</div>
@@ -447,6 +447,29 @@ function globalProductStock(product, inventory){
 function bestImage(product){
   if (Array.isArray(product.images) && product.images.length && product.images[0]) return product.images[0];
   return 'https://placehold.co/800x800/F5F5F7/6E6E73?text=Sin+imagen';
+}
+
+/* ============================================================
+   🆕 FIT TEXT — Ajusta automáticamente el tamaño de la fuente
+   para que el texto quepa COMPLETO en su contenedor.
+   No recorta con "…". Solo reduce el font-size hasta que quepa.
+============================================================ */
+function fitText(el, maxSize, minSize, maxHeightPx){
+  if (!el) return;
+
+  // Reset al tamaño máximo
+  el.style.fontSize = maxSize + 'px';
+
+  // Si ya cabe al máximo, dejarlo así
+  if (el.scrollHeight <= maxHeightPx) return;
+
+  // Reducir de 1 en 1 px hasta que quepa o llegue al mínimo
+  let size = maxSize;
+  while (size > minSize){
+    size -= 1;
+    el.style.fontSize = size + 'px';
+    if (el.scrollHeight <= maxHeightPx) break;
+  }
 }
 
 /* ============ RELOJ ============ */
@@ -556,35 +579,25 @@ function renderSlide(product){
   const hasPromo = product.onSale === true && Number(product.salePrice) > 0;
   const finalPrice = hasPromo ? Number(product.salePrice) : Number(product.price);
 
-  // Textos
+  // Marca y nombre (siempre visibles)
   brand.textContent = product.brand || product.categoryGroupName || '';
   name.textContent = product.name || '';
   price.textContent = fmt(finalPrice);
 
-  // 🆕 SOLO description corta. Si no hay, usar specs. NUNCA longDescription.
+  // Descripción: SOLO description corta. Si no hay, usar specs.
   const shortDesc = String(product.description || '').trim();
   const specs = Array.isArray(product.specs) ? product.specs.filter(s => s && s.key && s.value) : [];
 
-  // Truncar la descripción a un máximo "seguro" (por si alguna viene muy larga)
-  // 180 caracteres ≈ 2-3 líneas a 17px
-  const MAX_CHARS = 180;
-  const shortDescTrunc =
-    shortDesc.length > MAX_CHARS
-      ? shortDesc.slice(0, MAX_CHARS).trim() + '…'
-      : shortDesc;
-
-  if (shortDescTrunc){
-    // Hay descripción corta → mostrarla
-    desc.textContent = shortDescTrunc;
+  if (shortDesc){
+    desc.textContent = shortDesc;
     desc.style.display = '';
     specsList.classList.add('hidden');
     specsList.innerHTML = '';
     descBlock.classList.remove('hidden');
   } else if (specs.length){
-    // No hay descripción → usar specs (máximo 3 para no desbordar)
     desc.textContent = '';
     desc.style.display = 'none';
-    specsList.innerHTML = specs.slice(0, 3).map(s =>
+    specsList.innerHTML = specs.slice(0, 4).map(s =>
       '<li><b>' + escapeHtml(s.key) + ':</b> ' + escapeHtml(s.value) + '</li>'
     ).join('');
     specsList.classList.remove('hidden');
@@ -612,6 +625,18 @@ function renderSlide(product){
   } else {
     img.onload = () => img.classList.add('ready');
   }
+
+  // 🆕 Ajustar tamaño del texto al espacio disponible
+  // Usamos requestAnimationFrame para asegurar que el DOM ya pintó el texto
+  requestAnimationFrame(() => {
+    // Nombre: máx 42px, mín 22px, máx 140px de alto (aprox 3 líneas a 42px)
+    fitText(name, 42, 22, 140);
+
+    // Descripción: máx 17px, mín 12px, máx 150px de alto (aprox 5-6 líneas)
+    if (desc.style.display !== 'none'){
+      fitText(desc, 17, 12, 150);
+    }
+  });
 
   // Re-trigger animación info
   const info = document.querySelector('.slide-info');
