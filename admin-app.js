@@ -4180,6 +4180,20 @@ window.openStoreForm = (s = null) => {
       </div>
     </div>
 
+    <!-- 🆕 Plan Separe: cuota inicial mínima -->
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-semibold">Plan Separe · Cuota inicial mínima (%)</label>
+        <input id="f-planSepareMinPct" type="number" step="1" min="0" max="100" value="${Math.round((v.planSepareMinPct ?? 0.40) * 100)}" placeholder="40" class="w-full px-3 py-2 border rounded">
+        <p class="text-[10px] text-gray-400 mt-1">% mínimo de cuota inicial para crear un plan separe</p>
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Plan Separe · Plazo (días)</label>
+        <input id="f-planSepareDays" type="number" step="1" min="1" max="365" value="${v.planSepareDays ?? 30}" placeholder="30" class="w-full px-3 py-2 border rounded">
+        <p class="text-[10px] text-gray-400 mt-1">Días que dura el plan antes de vencer</p>
+      </div>
+    </div>
+
     <div class="border-t pt-3 mt-3 mb-3">
       <p class="text-xs font-semibold text-sd mb-2">🌇 Cierre de caja y alertas</p>
       <div class="grid grid-cols-3 gap-3">
@@ -4361,6 +4375,8 @@ window.saveStore = async (existingId) => {
     closeHour: $('f-closeHour').value || '20:00',
     alertCloseMinutesBefore: Number($('f-alertCloseMinutesBefore').value) || 30,
     alertCloseEnabled: $('f-alertCloseEnabled').checked,
+    planSepareMinPct: (Number($('f-planSepareMinPct')?.value) || 40) / 100,
+    planSepareDays: Number($('f-planSepareDays')?.value) || 30,
     active: $('f-active').checked,
     updatedAt: serverTimestamp()
   };
@@ -4444,11 +4460,11 @@ window.saveStore = async (existingId) => {
       console.log('✅ Meta del mes sincronizada');
     }
 
-        // ========== NUEVO: Asegurar contadores de documentos ==========
-    // Se crean los contadores de remisión, tirilla y media carta
-    // para el año actual. Si ya existen, no se tocan.
+    // ========== NUEVO: Asegurar contadores de documentos ==========
+    // Se crean los contadores de remisión, tirilla, media carta
+    // y plan separe para el año actual. Si ya existen, no se tocan.
     const year = new Date().getFullYear();
-    const tiposDocumento = ['remision', 'tirilla', 'mediacarta'];
+    const tiposDocumento = ['remision', 'tirilla', 'mediacarta', 'planSepare'];
 
     for (const tipo of tiposDocumento) {
       const counterId = `${storeId}_${tipo}_${year}`;
@@ -4459,7 +4475,8 @@ window.saveStore = async (existingId) => {
         // Prefijo: primeras 3 letras de la tienda en mayúsculas + tipo corto
         const tipoShort = tipo === 'remision' ? 'REM'
                         : tipo === 'tirilla' ? 'TIR'
-                        : 'MED';
+                        : tipo === 'mediacarta' ? 'MED'
+                        : 'PS';
         const prefix = storeId.slice(0, 3).toUpperCase() + '-' + tipoShort + '-' + year + '-';
 
         await setDoc(counterRef, {

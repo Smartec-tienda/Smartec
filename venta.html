@@ -13,6 +13,7 @@
   <script src="lib/common.js"></script>
   <script src="lib/cache.js"></script>
   <script src="lib/fifo.js"></script>
+  <script src="lib/plan-separe.js"></script>
   <script src="lib/accounting-engine.js"></script>
   <script src="components/header-app.js"></script>
   <script src="components/favicon.js"></script>
@@ -4856,6 +4857,52 @@ window.solicitarAutorizacionDispositivo = async () => {
     getCurrentUserData: () => currentUserData,
     getCurrentStore: () => currentStore,
   });
+
+  /* ============================================================
+     🆕 INICIALIZAR MÓDULO DE PLAN SEPARE
+     (Va aquí al final, junto con el módulo de turnos)
+     ============================================================ */
+  (async function initPlanSepare() {
+    try {
+      // Necesitamos importar las funciones que faltan (runTransaction, deleteDoc, orderBy, limit)
+      const {
+        runTransaction,
+        deleteDoc: deleteDocFn,
+        orderBy: orderByFn,
+        limit: limitFn
+      } = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+
+      window.SmartecPlanSepare.init({
+        db,
+        auth,
+        // 🆕 Pasar getter (no el valor) porque currentUserData cambia después del login
+        userData: () => currentUserData,
+        audit,
+        // 🆕 Pasar el generador de consecutivos de venta
+        generateDocumentNumber,
+        // Funciones de Firestore
+        collection,
+        doc,
+        getDoc,
+        getDocs,
+        addDoc,
+        updateDoc,
+        deleteDoc: deleteDocFn,
+        setDoc,
+        query,
+        where,
+        orderBy: orderByFn,
+        limit: limitFn,
+        runTransaction,
+        serverTimestamp,
+        Timestamp
+      });
+
+      console.log('[POS] ✅ SmartecPlanSepare inicializado');
+    } catch (e) {
+      console.warn('[POS] ⚠️ No se pudo inicializar SmartecPlanSepare:', e);
+    }
+  })();
     /* ============================================================
      🆕 MODO DE VENTA — Retail / Mayorista
   ============================================================ */
