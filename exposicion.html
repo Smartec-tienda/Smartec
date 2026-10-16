@@ -150,6 +150,7 @@
     flex: 1 1 50%;
     width:50%;
     max-width:50%;
+    height:100%;
     display:flex;
     flex-direction:column;
     justify-content:center;
@@ -158,6 +159,7 @@
     border-radius:28px;
     min-width:0;
     min-height:0;
+    overflow:hidden;
     animation: slideInfoIn 0.5s cubic-bezier(.2,.8,.2,1);
   }
   @keyframes slideInfoIn{
@@ -190,6 +192,12 @@
     color:var(--text);
     word-wrap:break-word;
     overflow-wrap:break-word;
+    /* 🆕 Máximo 3 líneas para nombres muy largos */
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
   }
 
   /* ============ BLOQUE DESCRIPCIÓN ============ */
@@ -225,6 +233,12 @@
     min-width:0;
     word-wrap:break-word;
     overflow-wrap:break-word;
+    /* 🆕 Máximo 3 líneas — texto corto tipo vitrina */
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
   }
   #slide-desc:empty{display:none}
 
@@ -232,6 +246,9 @@
     list-style:none;
     display:flex;flex-direction:column;gap:6px;
     width:100%;
+    /* 🆕 Máximo 3 items para no desbordar */
+    max-height:130px;
+    overflow:hidden;
   }
   .specs-fallback.hidden{display:none}
   .specs-fallback li{
@@ -544,27 +561,30 @@ function renderSlide(product){
   name.textContent = product.name || '';
   price.textContent = fmt(finalPrice);
 
-  // Descripción con fallback
+  // 🆕 SOLO description corta. Si no hay, usar specs. NUNCA longDescription.
   const shortDesc = String(product.description || '').trim();
-  const longDesc = String(product.longDescription || '').trim();
   const specs = Array.isArray(product.specs) ? product.specs.filter(s => s && s.key && s.value) : [];
 
-  if (shortDesc){
-    desc.textContent = shortDesc;
-    desc.style.display = '';
-    specsList.classList.add('hidden');
-    specsList.innerHTML = '';
-    descBlock.classList.remove('hidden');
-  } else if (longDesc){
-    desc.textContent = longDesc;
+  // Truncar la descripción a un máximo "seguro" (por si alguna viene muy larga)
+  // 180 caracteres ≈ 2-3 líneas a 17px
+  const MAX_CHARS = 180;
+  const shortDescTrunc =
+    shortDesc.length > MAX_CHARS
+      ? shortDesc.slice(0, MAX_CHARS).trim() + '…'
+      : shortDesc;
+
+  if (shortDescTrunc){
+    // Hay descripción corta → mostrarla
+    desc.textContent = shortDescTrunc;
     desc.style.display = '';
     specsList.classList.add('hidden');
     specsList.innerHTML = '';
     descBlock.classList.remove('hidden');
   } else if (specs.length){
+    // No hay descripción → usar specs (máximo 3 para no desbordar)
     desc.textContent = '';
     desc.style.display = 'none';
-    specsList.innerHTML = specs.slice(0, 4).map(s =>
+    specsList.innerHTML = specs.slice(0, 3).map(s =>
       '<li><b>' + escapeHtml(s.key) + ':</b> ' + escapeHtml(s.value) + '</li>'
     ).join('');
     specsList.classList.remove('hidden');
