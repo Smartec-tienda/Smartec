@@ -109,6 +109,7 @@
     overflow:hidden;
   }
 
+  /* Columna izquierda: imagen */
   .slide-img-box{
     flex: 1 1 50%;
     width:50%;
@@ -143,51 +144,66 @@
   }
   #slide-img.ready{opacity:1}
 
-  /* ============ PANEL INFO — ALTURA FIJA ============ */
-  .slide-info{
+  /* ============ CONTENEDOR DEL PANEL (solo reserva espacio) ============ */
+  .slide-info-scaler{
     flex: 1 1 50%;
     width:50%;
     max-width:50%;
     height:100%;
     display:flex;
-    flex-direction:column;
+    align-items:center;
     justify-content:center;
-    gap:16px;
-    padding:32px 28px;
-    border-radius:28px;
+    position:relative;
+    overflow:hidden;
     min-width:0;
     min-height:0;
+  }
+
+  /* ============ PANEL INFO — TAMAÑO BASE FIJO (900x700) ============ */
+  .slide-info{
+    width:900px;
+    height:700px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:20px;
+    padding:40px 36px;
+    border-radius:32px;
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform-origin:center center;
+    transform:translate(-50%, -50%) scale(1);
     overflow:hidden;
     animation: slideInfoIn 0.5s cubic-bezier(.2,.8,.2,1);
   }
   @keyframes slideInfoIn{
-    from{opacity:0;transform:translateY(12px)}
-    to{opacity:1;transform:translateY(0)}
+    from{opacity:0}
+    to{opacity:1}
   }
 
   .promo-tag{
-    display:inline-flex;align-items:center;gap:6px;
+    display:inline-flex;align-items:center;gap:8px;
     background:linear-gradient(135deg,#FF375F,#C41E3A);
     color:white;font-weight:700;
-    font-size:13px;letter-spacing:0.14em;text-transform:uppercase;
-    padding:8px 16px;border-radius:999px;width:max-content;
+    font-size:14px;letter-spacing:0.14em;text-transform:uppercase;
+    padding:10px 18px;border-radius:999px;width:max-content;
     box-shadow:0 8px 24px rgba(255,55,95,0.42);
     flex-shrink:0;
   }
   .promo-tag.hidden{display:none}
 
   #slide-brand{
-    font-size:12px;color:var(--blue);
+    font-size:13px;color:var(--blue);
     font-weight:700;letter-spacing:0.22em;text-transform:uppercase;
     flex-shrink:0;
   }
   #slide-brand:empty{display:none}
 
-  /* Bloque de nombre con altura reservada (para que el layout no salte) */
+  /* Bloque de nombre — altura reservada para hasta 3 líneas */
   .name-slot{
     flex-shrink:0;
-    min-height:60px;
-    max-height:140px;
+    height:132px;
     display:flex;
     align-items:flex-start;
     overflow:hidden;
@@ -195,8 +211,8 @@
   #slide-name{
     font-family:'Inter Tight',sans-serif;
     font-weight:800;
-    font-size:42px;
-    line-height:1.05;
+    font-size:40px;
+    line-height:1.1;
     letter-spacing:-0.03em;
     color:var(--text);
     word-wrap:break-word;
@@ -204,32 +220,31 @@
     width:100%;
   }
 
-  /* Bloque descripción con altura reservada */
+  /* Bloque de descripción — altura reservada */
   .desc-block{
     display:flex;
-    gap:14px;
+    gap:16px;
     align-items:flex-start;
     background:rgba(255,255,255,0.7);
     border:1px solid rgba(0,0,0,0.06);
     border-left:4px solid var(--blue);
-    border-radius:16px;
-    padding:16px 18px 16px 16px;
+    border-radius:18px;
+    padding:18px 20px 18px 18px;
     box-shadow:0 1px 2px rgba(0,0,0,0.03),0 4px 12px rgba(0,0,0,0.04);
     width:100%;
     flex-shrink:0;
-    min-height:90px;
-    max-height:180px;
+    height:160px;
     overflow:hidden;
   }
   .desc-block.hidden{display:none}
 
   .desc-icon{
     flex-shrink:0;
-    width:32px;height:32px;
+    width:34px;height:34px;
     border-radius:50%;
     background:linear-gradient(135deg,rgba(0,113,227,0.18),rgba(10,42,74,0.10));
     display:flex;align-items:center;justify-content:center;
-    font-size:16px;
+    font-size:17px;
   }
 
   #slide-desc{
@@ -241,12 +256,14 @@
     min-width:0;
     word-wrap:break-word;
     overflow-wrap:break-word;
+    max-height:124px;
+    overflow:hidden;
   }
   #slide-desc:empty{display:none}
 
   .specs-fallback{
     list-style:none;
-    display:flex;flex-direction:column;gap:6px;
+    display:flex;flex-direction:column;gap:8px;
     width:100%;
   }
   .specs-fallback.hidden{display:none}
@@ -266,13 +283,13 @@
   }
   .specs-fallback li b{color:var(--text);font-weight:700;margin-right:4px}
 
+  /* Bloque precio — altura reservada */
   .price-block{
-    display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
-    margin-top:8px;
-    flex-shrink:0;
+    display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
     width:100%;
-    max-width:100%;
+    height:80px;
     overflow:hidden;
+    flex-shrink:0;
   }
   #slide-price{
     font-family:'Inter Tight',sans-serif;
@@ -282,8 +299,6 @@
     letter-spacing:-0.045em;
     background:linear-gradient(135deg,#1D1D1F 30%,#0071E3 100%);
     -webkit-background-clip:text;background-clip:text;color:transparent;
-    white-space:nowrap;
-    max-width:100%;
   }
   #slide-old-price{
     font-size:24px;color:var(--text-dim);
@@ -342,17 +357,6 @@
   @supports not (backdrop-filter: blur(20px)){
     .glass-strong{background:rgba(255,255,255,0.95)}
   }
-
-  /* ============ RESPONSIVE ============ */
-  @media (max-width: 1400px){
-    #slide-price{font-size:56px}
-  }
-  @media (max-width: 1100px){
-    .stage{padding:16px 20px;gap:12px}
-    #slide-price{font-size:48px}
-    .slide-wrap{gap:20px}
-    .slide-info{padding:24px 20px}
-  }
 </style>
 </head>
 <body>
@@ -379,23 +383,28 @@
     <div class="slide-img-box">
       <img id="slide-img" src="" alt="">
     </div>
-    <div class="slide-info glass-strong shadow-apple-xl">
-      <span id="slide-promo" class="promo-tag hidden">🔥 Promoción</span>
-      <span id="slide-brand"></span>
 
-      <div class="name-slot">
-        <h1 id="slide-name">Cargando catálogo…</h1>
-      </div>
+    <!-- 🆕 Contenedor que reserva el espacio -->
+    <div class="slide-info-scaler">
+      <!-- 🆕 Panel de tamaño base fijo que se escala completo -->
+      <div class="slide-info glass-strong shadow-apple-xl">
+        <span id="slide-promo" class="promo-tag hidden">🔥 Promoción</span>
+        <span id="slide-brand"></span>
 
-      <div id="desc-block" class="desc-block">
-        <div class="desc-icon">📋</div>
-        <p id="slide-desc"></p>
-        <ul id="slide-specs" class="specs-fallback hidden"></ul>
-      </div>
+        <div class="name-slot">
+          <h1 id="slide-name">Cargando catálogo…</h1>
+        </div>
 
-      <div class="price-block">
-        <span id="slide-price">$0</span>
-        <span id="slide-old-price" class="hidden">$0</span>
+        <div id="desc-block" class="desc-block">
+          <div class="desc-icon">📋</div>
+          <p id="slide-desc"></p>
+          <ul id="slide-specs" class="specs-fallback hidden"></ul>
+        </div>
+
+        <div class="price-block">
+          <span id="slide-price">$0</span>
+          <span id="slide-old-price" class="hidden">$0</span>
+        </div>
       </div>
     </div>
   </main>
@@ -427,6 +436,9 @@ const db = getFirestore(app);
 const SLIDE_DURATION = 8000;
 const MAX_PRODUCTS = 20;
 
+const PANEL_BASE_W = 900;
+const PANEL_BASE_H = 700;
+
 const TICKER_MESSAGES = [
   'Envío a todo el país',
   'Garantía oficial de marca',
@@ -455,33 +467,28 @@ function bestImage(product){
 }
 
 /* ============================================================
-   🆕 FIT TEXT — Ajusta automáticamente el tamaño de la fuente
-   para que el texto quepa COMPLETO en su contenedor.
-   No recorta con "…". Solo reduce el font-size hasta que quepa.
+   🆕 ESCALADO DEL PANEL — Ajusta el panel de 900x700 a
+   cualquier espacio disponible manteniendo proporciones.
 ============================================================ */
-function fitText(el, maxSize, minSize, maxHeightPx){
-  if (!el) return;
+function scalePanel(){
+  const scaler = document.querySelector('.slide-info-scaler');
+  const panel  = document.querySelector('.slide-info');
+  if (!scaler || !panel) return;
 
-  // Reset al tamaño máximo
-  el.style.fontSize = maxSize + 'px';
+  const sw = scaler.clientWidth;
+  const sh = scaler.clientHeight;
+  if (!sw || !sh) return;
 
-  // Medir si el texto cabe al tamaño máximo
-  let size = maxSize;
-  let guard = 100; // límite de seguridad de iteraciones
+  // Cuánto podemos escalar (ancho y alto), quedamos con el menor
+  const scale = Math.min(sw / PANEL_BASE_W, sh / PANEL_BASE_H);
 
-  while (size > minSize && guard-- > 0){
-    el.style.fontSize = size + 'px';
-
-    // Verificar si cabe en alto Y si no se desborda horizontalmente
-    const fitsHeight = el.scrollHeight <= maxHeightPx;
-    const fitsWidth  = el.scrollWidth  <= el.clientWidth + 1;
-
-    if (fitsHeight && fitsWidth) break;
-    size -= 1;
-  }
-
-  el.style.fontSize = size + 'px';
+  panel.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
 }
+
+// Escalar al cargar y cada vez que cambie el tamaño
+window.addEventListener('resize', scalePanel);
+window.addEventListener('orientationchange', () => setTimeout(scalePanel, 100));
+window.addEventListener('load', scalePanel);
 
 /* ============ RELOJ ============ */
 function updateClock(){
@@ -550,6 +557,8 @@ async function loadData(){
     }
 
     startRotation();
+    // Escalar después de renderizar
+    setTimeout(scalePanel, 50);
   } catch(e){
     console.error('Error cargando datos:', e);
     showEmpty('Error al cargar datos', 'Verifica la conexión a Firestore.');
@@ -590,7 +599,6 @@ function renderSlide(product){
   const hasPromo = product.onSale === true && Number(product.salePrice) > 0;
   const finalPrice = hasPromo ? Number(product.salePrice) : Number(product.price);
 
-  // Marca y nombre (siempre visibles)
   brand.textContent = product.brand || product.categoryGroupName || '';
   name.textContent = product.name || '';
   price.textContent = fmt(finalPrice);
@@ -637,33 +645,6 @@ function renderSlide(product){
     img.onload = () => img.classList.add('ready');
   }
 
-  // 🆕 Ajustar TODOS los textos al espacio disponible
-  requestAnimationFrame(() => {
-    // Nombre: máx 42px, mín 20px, hasta 3-4 líneas (140px de alto máx)
-    fitText(name, 42, 20, 150);
-
-    // Descripción: máx 17px, mín 12px, hasta 6 líneas (150px de alto máx)
-    if (desc.style.display !== 'none'){
-      fitText(desc, 17, 12, 150);
-    }
-
-    // Precio: máx 64px, mín 28px, alto de 1 línea (75px)
-    fitText(price, 64, 28, 75);
-
-    // Precio viejo (tachado): máx 24px, mín 14px
-    if (!oldPrice.classList.contains('hidden')){
-      fitText(oldPrice, 24, 14, 30);
-    }
-  });
-
-  // Re-trigger animación info
-  const info = document.querySelector('.slide-info');
-  if (info){
-    info.style.animation = 'none';
-    void info.offsetWidth;
-    info.style.animation = '';
-  }
-
   renderDots(PRODUCTS.length);
 }
 
@@ -688,6 +669,9 @@ document.addEventListener('mousemove', () => {
 
 /* ============ INICIO ============ */
 loadData();
+
+// Escalar cuando el DOM esté listo (por si acaso)
+document.addEventListener('DOMContentLoaded', () => setTimeout(scalePanel, 100));
 </script>
 </body>
 </html>
