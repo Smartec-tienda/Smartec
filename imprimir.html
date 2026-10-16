@@ -809,7 +809,7 @@ window.sendWhatsAppFromPreview = () => {
   if (s.surchargeAmount > 0) msg += `\nRecargo tarjeta: ${fmt(s.surchargeAmount)}`;
   msg += `\n*TOTAL: ${fmt(s.total)}*\n`;
   msg += `Método de pago: ${s.paymentMethod || '-'}\n\n`;
-  msg += `*GARANTÍA:* Todos los productos cuentan con garantía mínima de 12 meses o la superior que otorgue la marca. Nuestro equipo te acompañará en cualquier solicitud de garantía.\n\n`;
+  msg += `*GARANTÍA:* Aplica la garantía legal mínima del producto (Ley 1480 de 2011). Conserve este comprobante para hacerla efectiva.\n\n`;
   msg += `¡Gracias por tu compra! 🛒`;
 
   const rawPhone = (s.customer?.phone || '').replace(/\D/g, '');
@@ -914,22 +914,8 @@ function renderRemisionClienteFinal(remision, settings) {
     ? new Date(remision.date + 'T12:00:00').toLocaleDateString('es-CO', { year:'numeric', month:'2-digit', day:'2-digit' })
     : '—';
 
-  // Garantía dinámica
-  const warranties = (remision.items || [])
-    .map(it => Number(it.warrantyMonths ?? 12))
-    .filter(n => !isNaN(n) && n > 0);
-
-  let garantiaTexto = 'Todos los productos cuentan con garantía mínima de 12 meses o la superior otorgada por el fabricante.';
-  if (warranties.length) {
-    const unique = [...new Set(warranties)];
-    if (unique.length === 1) {
-      const meses = unique[0];
-      garantiaTexto = meses === 1
-        ? 'Este producto cuenta con garantía de 1 mes por defectos de fábrica.'
-        : `Este producto cuenta con garantía de ${meses} meses por defectos de fábrica.`;
-    }
-  }
-  garantiaTexto += ' No cubre daños por mal uso, golpes, líquidos o manipulación indebida.';
+  // Garantía legal genérica (Ley 1480 de 2011)
+  const garantiaTexto = 'Los productos cuentan con la garantía legal mínima establecida en la Ley 1480 de 2011 (Estatuto del Consumidor) y con la garantía adicional otorgada por el fabricante, la cual puede ser superior. La garantía cubre defectos de fábrica y no cubre daños por mal uso, golpes, líquidos o manipulación indebida. Para hacerla efectiva, presente este documento junto con el producto.';
 
   return `
     <div class="doc">
@@ -1158,7 +1144,7 @@ function renderRemision(sale, settings) {
       </div>
 
       <div class="garantia">
-        <b>GARANTÍA:</b> Todos los productos cuentan con garantía mínima de 12 meses o la superior otorgada por el fabricante. La garantía cubre defectos de fábrica y no cubre daños por mal uso, golpes, líquidos o manipulación indebida. Para hacer efectiva la garantía, presente este documento junto con el producto.
+        <b>GARANTÍA LEGAL:</b> Los productos cuentan con la garantía legal mínima establecida en la Ley 1480 de 2011 (Estatuto del Consumidor) y con la garantía adicional otorgada por el fabricante, la cual puede ser superior. La garantía cubre defectos de fábrica y no cubre daños por mal uso, golpes, líquidos o manipulación indebida. Para hacerla efectiva, presente este documento junto con el producto.
       </div>
 
       <div class="firmas">
@@ -1261,7 +1247,7 @@ function renderMediaCarta(sale, settings) {
       </div>
 
       <div class="garantia" style="font-size:9px; padding:8px 10px; margin-top:20px;">
-        <b>GARANTÍA:</b> Productos con garantía mínima de 12 meses o la superior de fábrica. No cubre daños por mal uso. Presente este documento para hacerla efectiva.
+        <b>GARANTÍA LEGAL:</b> Los productos cuentan con la garantía legal mínima establecida en la Ley 1480 de 2011 (Estatuto del Consumidor) y con la garantía adicional otorgada por el fabricante, la cual puede ser superior. La garantía cubre defectos de fábrica y no cubre daños por mal uso, golpes, líquidos o manipulación indebida. Para hacerla efectiva, presente este documento junto con el producto.
       </div>
 
       <div class="firmas" style="margin-top:48px;">
@@ -1295,47 +1281,8 @@ function renderTirilla(sale, settings) {
 
   const logoUrl = settings.logoUrl || null;
 
-  // ============ GARANTÍA DINÁMICA ============
-  // Si TODOS los items tienen el mismo warrantyMonths, mostramos ese.
-  // Si son distintos, mostramos "según el producto".
-  const warranties = (sale.items || [])
-    .map(it => Number(it.warrantyMonths ?? 0))
-    .filter(n => !isNaN(n));
-
-  let garantiaTexto = '';
-
-  if (!warranties.length) {
-    // Ningún producto tiene garantía definida → mensaje genérico
-    garantiaTexto = 'Garantía mínima de 12 meses o la superior otorgada por el fabricante.';
-  } else {
-    const unique = [...new Set(warranties)];
-    if (unique.length === 1 && unique[0] > 0) {
-      const meses = unique[0];
-      if (meses === 1) {
-        garantiaTexto = 'Garantía de 1 mes por defectos de fábrica.';
-      } else if (meses < 12) {
-        garantiaTexto = `Garantía de ${meses} meses por defectos de fábrica.`;
-      } else if (meses === 12) {
-        garantiaTexto = 'Garantía de 12 meses o la superior del fabricante.';
-      } else {
-        garantiaTexto = `Garantía de ${meses} meses o la superior del fabricante.`;
-      }
-    } else {
-      garantiaTexto = 'Garantía según el producto. Ver detalle en cada ítem.';
-    }
-  }
-
-  garantiaTexto += ' No cubre daños por mal uso, golpes, líquidos o manipulación indebida. Presente este recibo para hacerla efectiva.';
-
-  // ============ HELPER PARA GARANTÍA POR ITEM ============
-  const formatWarranty = (months) => {
-    const n = Number(months ?? 0);
-    if (!n || n <= 0) return '';
-    if (n === 1) return 'Garantía: 1 mes';
-    if (n < 12) return `Garantía: ${n} meses`;
-    if (n === 12) return 'Garantía: 12 meses';
-    return `Garantía: ${n} meses`;
-  };
+  // ============ GARANTÍA LEGAL (Ley 1480 de 2011) ============
+  const garantiaTexto = 'Aplica la garantía legal mínima del producto (Ley 1480 de 2011). Conserve este recibo para hacerla efectiva.';
 
   return `
     <div class="tirilla-wrapper">
@@ -1391,13 +1338,11 @@ function renderTirilla(sale, settings) {
           if (it.colorName) variantParts.push(it.colorName);
           if (it.size) variantParts.push(it.size);
           const variant = variantParts.join(' · ');
-          const warrantyLine = formatWarranty(it.warrantyMonths);
 
           return `
             <div class="producto">
               <div class="nombre">${escapeHtmlTirilla(it.name || '-')}</div>
               ${variant ? `<div class="variant">${escapeHtmlTirilla(variant)}</div>` : ''}
-              ${warrantyLine ? `<div class="variant" style="color:#000;">${warrantyLine}</div>` : ''}
               <div class="detalle">
                 <span>${it.qty} × ${fmt(it.unitPrice)}</span>
                 <span class="bold">${fmt((it.qty||0) * (it.unitPrice||0))}</span>
