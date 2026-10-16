@@ -203,7 +203,8 @@
   /* Bloque de nombre — altura reservada para hasta 3 líneas */
   .name-slot{
     flex-shrink:0;
-    height:132px;
+    min-height:80px;
+    max-height:132px;
     display:flex;
     align-items:flex-start;
     overflow:hidden;
@@ -223,17 +224,17 @@
   /* Bloque de descripción — altura reservada */
   .desc-block{
     display:flex;
-    gap:16px;
-    align-items:flex-start;
+    gap:18px;
+    align-items:center;
     background:rgba(255,255,255,0.7);
     border:1px solid rgba(0,0,0,0.06);
     border-left:4px solid var(--blue);
     border-radius:18px;
-    padding:18px 20px 18px 18px;
+    padding:24px 28px 24px 22px;
     box-shadow:0 1px 2px rgba(0,0,0,0.03),0 4px 12px rgba(0,0,0,0.04);
     width:100%;
-    flex-shrink:0;
-    height:160px;
+    flex: 3 1 auto;
+    min-height:200px;
     overflow:hidden;
   }
   .desc-block.hidden{display:none}
@@ -248,16 +249,14 @@
   }
 
   #slide-desc{
-    font-size:17px;
+    font-size:24px;
     color:#3A3A3C;
-    line-height:1.5;
+    line-height:1.35;
     font-weight:500;
     flex:1;
     min-width:0;
     word-wrap:break-word;
     overflow-wrap:break-word;
-    max-height:124px;
-    overflow:hidden;
   }
   #slide-desc:empty{display:none}
 
@@ -490,6 +489,28 @@ window.addEventListener('resize', scalePanel);
 window.addEventListener('orientationchange', () => setTimeout(scalePanel, 100));
 window.addEventListener('load', scalePanel);
 
+
+/* ============================================================
+   FIT TEXT — Ajusta el font-size para que el texto llene el
+   contenedor (puede agrandar O achicar según el espacio).
+============================================================ */
+function fitText(el, minSize, maxSize, containerH, containerW){
+  if (!el || !containerH || !containerW) return;
+
+  let size = minSize;
+  el.style.fontSize = size + 'px';
+
+  while (size < maxSize){
+    size += 1;
+    el.style.fontSize = size + 'px';
+    if (el.scrollHeight > containerH || el.scrollWidth > containerW){
+      size -= 1;
+      el.style.fontSize = size + 'px';
+      break;
+    }
+  }
+}
+
 /* ============ RELOJ ============ */
 function updateClock(){
   const now = new Date();
@@ -613,6 +634,11 @@ function renderSlide(product){
     specsList.classList.add('hidden');
     specsList.innerHTML = '';
     descBlock.classList.remove('hidden');
+
+    // 🆕 Ajustar tamaño de la descripción para llenar el bloque
+    requestAnimationFrame(() => {
+      fitText(desc, 18, 40, descBlock.clientHeight - 48, desc.clientWidth);
+    });
   } else if (specs.length){
     desc.textContent = '';
     desc.style.display = 'none';
